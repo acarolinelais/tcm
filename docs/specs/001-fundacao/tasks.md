@@ -21,7 +21,9 @@
   - Arquivos: `.env`, `.env.example`
   - Cobre: —
   - Verificação: `uv run python -c "from dotenv import load_dotenv; import os; load_dotenv('../.env'); assert os.environ['DATABASE_URL']"` → sem erro.
-    ⚠️ Verificação com Postgres real (`docker compose up -d`) **não executada**: ver Backlog.
+    ✅ Verificado contra Postgres real: o ambiente tem Postgres 18 nativo instalado (não via Docker); banco
+    `sdf_manager` criado à mão. `docker compose up -d` continua indisponível (ver Backlog), mas o fluxo
+    completo foi validado contra Postgres de verdade.
 
 ## Fase 2: Domain comum
 - [x] **T04. Criar `EntityBase`**
@@ -68,12 +70,14 @@
 - [x] **T12. Inicializar o Alembic**
   - Arquivos: `backend/alembic.ini` (local real, gerado pelo `alembic init`), `backend/src/infrastructure/data/migrations/env.py`, `.../script.py.mako`
   - Cobre: —
-  - Verificação: `uv run alembic history` → roda sem erro (não precisa de banco real). ⚠️ `alembic current`/`upgrade` contra Postgres real: ver Backlog (Docker).
+  - Verificação: `uv run alembic history` → roda sem erro. ✅ `uv run alembic upgrade head` também
+    executado contra o Postgres nativo (`sdf_manager`): aplicou sem erro.
 
 - [x] **T13. Criar o `migrations_runner` (aplicar no startup)**
   - Arquivos: `backend/src/infrastructure/data/migrations_runner.py`
   - Cobre: CA-08 (parcial)
-  - Verificação: `uv run python -c "from src.infrastructure.data.migrations_runner import ALEMBIC_INI_PATH"` → resolve o caminho do `alembic.ini` corretamente. ⚠️ Execução real (`aplicar_migrations()`): ver Backlog (Docker).
+  - Verificação: `uv run python -c "from src.infrastructure.data.migrations_runner import ALEMBIC_INI_PATH"` → resolve o caminho do `alembic.ini` corretamente. ✅ `aplicar_migrations()` executado de
+    verdade (via `alembic upgrade head` contra o Postgres nativo).
 
 ## Fase 4: API comum
 - [x] **T14. Criar o schema `ProblemDetails`**
@@ -94,7 +98,10 @@
 - [x] **T17. Criar `api/main.py` (lifespan aplica migrations, Scalar em `/scalar`)**
   - Arquivos: `backend/src/api/main.py`
   - Cobre: CA-08
-  - Verificação: `uv run uvicorn src.api.main:app --app-dir backend` sobe sem erro; `curl -s -o /dev/null -w '%{http_code}' localhost:8000/scalar` → `200`
+  - Verificação: `uv run uvicorn src.api.main:app --app-dir backend` sobe sem erro; `curl -s -o /dev/null -w '%{http_code}' localhost:8000/scalar` → `200`.
+    ✅ Testado com Postgres real: `POST /api/usuarios` → 201, `GET /api/usuarios` → lista o criado,
+    e-mail duplicado → 409. Achado e corrigido um bug real: psycopg (modo assíncrono) não roda sobre o
+    `ProactorEventLoop` padrão do asyncio no Windows — ver Backlog.
 
 - [x] **T18. Configurar o import-linter com teste de arquitetura**
   - Arquivos: `backend/pyproject.toml` (`[tool.importlinter]`), `backend/tests/architecture/test_dependencias.py`
@@ -126,7 +133,9 @@
 - [x] **T23. Gerar e revisar a migration do `Usuario`**
   - Arquivos: migration em `backend/src/infrastructure/data/migrations/versions/`
   - Cobre: —
-  - Verificação: migration escrita à mão (ver Backlog — `--autogenerate` precisa de Postgres real); `uv run alembic history` reconhece a revisão. ⚠️ `upgrade head` contra banco real: ver Backlog.
+  - Verificação: migration escrita à mão (sem `--autogenerate`, que exige conexão em tempo de geração);
+    `uv run alembic history` reconhece a revisão. ✅ `upgrade head` aplicado contra o Postgres nativo —
+    tabela `usuarios` criada com o schema esperado (conferido com `\d usuarios`).
 
 - [x] **T24. Implementar `UsuarioRepositoryImpl` (`existe_email`)**
   - Arquivos: `backend/src/infrastructure/repositories/usuario_repository.py`
@@ -322,14 +331,23 @@
 
 ## Backlog
 - **Docker indisponível neste ambiente** (`O sistema não pode conectar ao Docker Desktop; a máquina não
-  aceita virtualização necessária para WSL2/Hyper-V`). Isso bloqueia, por ora: `docker compose up -d`
-  (Postgres local, ADR 0005), os testes de **integração** (Testcontainers), **funcionais** (API + Postgres
-  real) e **e2e** (Playwright contra o stack completo), além de `alembic upgrade head` contra um banco real.
-  Combinado com o usuário: seguir implementando o **código de produção** e os testes de **unidade**
-  (com dublês, sem banco real) de todas as fases; os testes/verificações que dependem de Docker ficam
-  **escritos mas não executados**, marcados com ⚠️ task a task. Retomar a execução real assim que houver
-  Docker funcional (ou Postgres nativo) disponível — decidir então se cabe um ADR formalizando uma
-  alternativa ao Testcontainers, ou se foi só uma limitação pontual deste ambiente.
+  aceita virtualização necessária para WSL2/Hyper-V`). **Atualização:** a máquina tem **Postgres 18
+  nativo instalado** (serviço Windows `postgresql-x64-18`, já rodando, credenciais iguais às do `.env`).
+  Criamos o banco `sdf_manager` à mão e validamos contra ele: migration aplicada, API sobe, CRUD completo
+  de `Usuario` funciona de ponta a ponta (criar, listar, conflito de e-mail). Isso ainda **não** é
+  Testcontainers — os testes de integração/funcionais (ADR 0010) continuam escritos mas não executados,
+  porque Testcontainers em si precisa de Docker pra orquestrar o container efêmero, não só de "um Postgres
+  em algum lugar". Decisão pendente com o usuário: (a) esperar o Docker ser resolvido e manter Testcontainers
+  como está no ADR 0010, ou (b) propor um ADR novo permitindo rodar esses testes contra o Postgres nativo
+  local como alternativa (ganha velocidade, perde isolamento/paridade com CI). `docker compose up -d`
+  continua indisponível.
+- **Bug real encontrado e corrigido ao testar contra Postgres de verdade:** no Windows, o `asyncio` usa
+  por padrão o `ProactorEventLoop`, que o driver assíncrono do psycopg3 não suporta — toda chamada à API
+  quebrava com `InterfaceError`. Corrigido em `backend/src/infrastructure/data/session.py`, trocando a
+  política do event loop pra `WindowsSelectorEventLoopPolicy` quando `sys.platform == "win32"`. Isso só
+  apareceu porque testamos contra um banco real; os testes de unidade (com dublês) nunca criavam uma
+  conexão de verdade, então nunca pegariam esse bug — reforça por que os níveis de integração/funcional
+  do ADR 0010 importam.
 - **`UsuarioToggleAtivo` usa `confirm()` nativo do navegador** em vez do `AlertDialog` do shadcn (receita
   `react-crud` sugere `AlertDialog`). Troca rápida depois, não bloqueia nada — é só polimento visual.
 - **Bundle único de produção acima de 500kB** (aviso do Vite no build). Considerar `React.lazy` por módulo
