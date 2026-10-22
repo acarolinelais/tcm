@@ -1,0 +1,23 @@
+# Postgres para desenvolvimento local (ADR 0005). Uso: docker compose up -d
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: sdf-manager-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sdf_manager}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # A partir da imagem 18, o volume é montado em /var/lib/postgresql (e não mais em /data)
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

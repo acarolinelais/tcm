@@ -1,0 +1,41 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+*.egg-info/
+
+# Node / React
+node_modules/
+dist/
+build/
+.vite/
+npm-debug.log*
+playwright-report/
+test-results/
+__screenshots__/
+
+# IDEs / SO
+.vs/
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Ambiente
+.env
+*.local
+
+# MCP (pode conter tokens em texto puro, ex.: Figma)
+.mcp.json
+
+# Claude Code (config pessoal)
+.claude/settings.local.json

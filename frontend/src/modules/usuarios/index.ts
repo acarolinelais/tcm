@@ -1,0 +1,1 @@
+export { usuariosRoutes } from "./routes";
