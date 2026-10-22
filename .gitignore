@@ -20,6 +20,7 @@ npm-debug.log*
 playwright-report/
 test-results/
 __screenshots__/
+*.tsbuildinfo
 
 # IDEs / SO
 .vs/

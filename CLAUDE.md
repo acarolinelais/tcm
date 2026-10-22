@@ -20,6 +20,7 @@ Documentação em PT-BR. Termos de domínio no código em português; termos té
 | `python-crud` | Criar ou alterar uma entidade/recurso CRUD no backend |
 | `react-crud` | Criar ou alterar uma feature CRUD no frontend |
 | `study-log` | Ao concluir uma task ou spec: registrar o que foi aprendido |
+| `ui-density` | Revisar/reajustar proporção e densidade de uma tela React (cards, ícones, tipografia, espaçamento), principalmente depois de portar um design do Figma |
 | `caveman` | Respostas enxutas no chat para economizar tokens (`/caveman` liga, "stop caveman" desliga). Código, commits, docs e ADRs continuam em texto normal. Origem e licença em `.claude/skills/caveman/ORIGEM.md` |
 
 ## Skills globais e quando usar
