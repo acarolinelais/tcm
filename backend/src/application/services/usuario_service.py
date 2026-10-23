@@ -21,17 +21,54 @@ class UsuarioServiceImpl:
         self._uow = uow
 
     async def listar(
-        self, usuario_atual: UsuarioAutenticado, page: int, page_size: int
+        self,
+        usuario_atual: UsuarioAutenticado,
+        page: int,
+        page_size: int,
+        nome: str | None = None,
+        email: str | None = None,
+        ativo: bool | None = None,
+        perfil_id: UUID | None = None,
+        sem_perfil: bool = False,
     ) -> PagedResult[UsuarioResponse]:
+        tem_filtros = any((nome, email, ativo is not None, perfil_id, sem_perfil))
         if usuario_atual.admin_unidade:
-            result = await self._repo.listar_paginado(usuario_atual.unidade_id, page, page_size)
+            if tem_filtros:
+                result = await self._repo.listar_filtrado(
+                    usuario_atual.unidade_id,
+                    page,
+                    page_size,
+                    nome,
+                    email,
+                    ativo,
+                    perfil_id,
+                    sem_perfil,
+                )
+            else:
+                result = await self._repo.listar_paginado(
+                    usuario_atual.unidade_id, page, page_size
+                )
         else:
             escopo = tuple(
                 dict.fromkeys((*usuario_atual.times_gerenciados, *usuario_atual.time_ids))
             )
-            result = await self._repo.listar_visiveis(
-                usuario_atual.unidade_id, page, page_size, escopo, usuario_atual.id
-            )
+            if tem_filtros:
+                result = await self._repo.listar_visiveis_filtrado(
+                    usuario_atual.unidade_id,
+                    page,
+                    page_size,
+                    escopo,
+                    usuario_atual.id,
+                    nome,
+                    email,
+                    ativo,
+                    perfil_id,
+                    sem_perfil,
+                )
+            else:
+                result = await self._repo.listar_visiveis(
+                    usuario_atual.unidade_id, page, page_size, escopo, usuario_atual.id
+                )
         return result.map(to_response)
 
     async def obter(self, usuario_atual: UsuarioAutenticado, id: UUID) -> UsuarioResponse:

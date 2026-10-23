@@ -26,6 +26,7 @@ class PerfilAtualResponse(BaseModel):
     nome: str
     email: str
     unidade_id: UUID
+    unidade_nome: str
     admin_unidade: bool
     perfil: str | None
     permissoes: list[str]

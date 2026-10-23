@@ -13,6 +13,7 @@ from src.application.services.auth_service import AuthServiceImpl
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.infrastructure.data.models.time_membro_model import TimeMembroModel
 from src.infrastructure.data.models.time_model import TimeModel
+from src.infrastructure.data.models.unidade_model import UnidadeModel
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -70,6 +71,9 @@ async def perfil_atual(
             .order_by(TimeModel.nome)
         )
     ).all()
+    unidade_nome = await session.scalar(
+        select(UnidadeModel.nome).where(UnidadeModel.id == usuario_atual.unidade_id)
+    )
     existentes = {time["id"] for time in times}
     times.extend(
         {"id": str(row.id), "nome": row.nome, "papel": "gerente"}
@@ -81,6 +85,7 @@ async def perfil_atual(
         nome=usuario_atual.nome,
         email=usuario_atual.email,
         unidade_id=usuario_atual.unidade_id,
+        unidade_nome=unidade_nome or "",
         admin_unidade=usuario_atual.admin_unidade,
         perfil=usuario_atual.perfil or None,
         permissoes=sorted(usuario_atual.permissoes),

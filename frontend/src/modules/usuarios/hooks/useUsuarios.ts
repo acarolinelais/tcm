@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { usuarioApi } from "../api/usuario.api";
+import { usuarioApi, type UsuarioFiltros } from "../api/usuario.api";
 
-export function useUsuariosList(page: number, pageSize: number) {
+export function useUsuariosList(page: number, pageSize: number, filtros: UsuarioFiltros = {}) {
   return useQuery({
-    queryKey: ["usuarios", page, pageSize],
-    queryFn: () => usuarioApi.listar(page, pageSize),
+    queryKey: ["usuarios", page, pageSize, filtros],
+    queryFn: () => usuarioApi.listar(page, pageSize, filtros),
     placeholderData: (prev) => prev,
   });
 }

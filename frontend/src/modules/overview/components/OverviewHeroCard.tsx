@@ -5,15 +5,21 @@ import note from "@/shared/assets/figma/icons/note.svg";
 import type { OverviewStats } from "../model/overview";
 import { StatCard } from "./StatCard";
 
-export function OverviewHeroCard({ stats }: { stats: OverviewStats }) {
+export function OverviewHeroCard({
+  stats,
+  title,
+  userName,
+}: {
+  stats: OverviewStats;
+  title: string;
+  userName: string;
+}) {
   return (
-    <div className="rounded-3xl border border-border bg-card px-6 py-5">
-      <h1 className="text-xl font-semibold text-foreground">Hi Caroline, you are almost done.</h1>
-      <p className="mt-0.5 text-sm text-muted-foreground">
-        Explore information and activity about your property
-      </p>
-      <div className="my-4 border-t border-border" />
-      <div className="flex flex-wrap gap-8">
+    <div className="rounded-3xl border border-border bg-card px-6 py-4">
+      <h1 className="text-sm font-medium text-foreground">{title}</h1>
+      <p className="mt-0.5 text-xs text-muted-foreground">You are almost done, {userName}.</p>
+      <div className="my-3 border-t border-border" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
         <StatCard icon={memoCheck} label="Completed" value={`${stats.completed} TCs`} />
         <StatCard
           icon={assigned}

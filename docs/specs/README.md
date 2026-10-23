@@ -18,6 +18,7 @@ Para criar: skill `spec`. Para implementar: skill `implement-task`. Templates em
 | 001 | Fundação: esqueleto executável (API FastAPI, app React, Postgres) | Aprovada |
 | 002 | Multi-tenancy e autenticação (hierarquia Unidade/Setor/Time, login JWT, RBAC) | Aprovada |
 | 003 | Perfis, permissões e ciclo de vida do JWT | Implementada (validação pendente) |
+| 004 | Listagem filtrável de usuários e padronização de tabela | Em andamento |
 
 > O repositório tem a governança (ADRs, skills, templates) pronta. A spec `001-fundacao` cria a
 > infraestrutura comum dos dois lados e a primeira entidade de referência. As demais specs de contexto

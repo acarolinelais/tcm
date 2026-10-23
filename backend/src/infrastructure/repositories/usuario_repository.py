@@ -12,6 +12,100 @@ from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
 class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
     model = UsuarioModel
 
+    async def listar_filtrado(
+        self,
+        unidade_id: UUID,
+        page: int,
+        page_size: int,
+        nome: str | None = None,
+        email: str | None = None,
+        ativo: bool | None = None,
+        perfil_id: UUID | None = None,
+        sem_perfil: bool = False,
+    ) -> PagedResult[Usuario]:
+        filtros = self._filtros(nome, email, ativo, perfil_id, sem_perfil)
+        filtros.insert(0, UsuarioModel.unidade_id == unidade_id)
+        total = (
+            await self.session.execute(
+                select(func.count()).select_from(UsuarioModel).where(*filtros)
+            )
+        ).scalar_one()
+        stmt = (
+            select(UsuarioModel)
+            .where(*filtros)
+            .order_by(UsuarioModel.nome, UsuarioModel.id)
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        models = (await self.session.execute(stmt)).scalars().all()
+        return PagedResult([self._to_entity(model) for model in models], page, page_size, total)
+
+    async def listar_visiveis_filtrado(
+        self,
+        unidade_id: UUID,
+        page: int,
+        page_size: int,
+        time_ids: tuple[UUID, ...],
+        usuario_atual_id: UUID,
+        nome: str | None = None,
+        email: str | None = None,
+        ativo: bool | None = None,
+        perfil_id: UUID | None = None,
+        sem_perfil: bool = False,
+    ) -> PagedResult[Usuario]:
+        consultas = [
+            select(UsuarioModel.id.label("usuario_id")).where(UsuarioModel.id == usuario_atual_id)
+        ]
+        if time_ids:
+            consultas.append(
+                select(TimeMembroModel.usuario_id.label("usuario_id")).where(
+                    TimeMembroModel.unidade_id == unidade_id,
+                    TimeMembroModel.ativo.is_(True),
+                    TimeMembroModel.time_id.in_(time_ids),
+                )
+            )
+        visible_ids = union(*consultas)
+        filtros = [
+            UsuarioModel.unidade_id == unidade_id,
+            UsuarioModel.id.in_(visible_ids),
+            *self._filtros(nome, email, ativo, perfil_id, sem_perfil),
+        ]
+        total = (
+            await self.session.execute(
+                select(func.count()).select_from(UsuarioModel).where(*filtros)
+            )
+        ).scalar_one()
+        stmt = (
+            select(UsuarioModel)
+            .where(*filtros)
+            .order_by(UsuarioModel.nome, UsuarioModel.id)
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        models = (await self.session.execute(stmt)).scalars().all()
+        return PagedResult([self._to_entity(model) for model in models], page, page_size, total)
+
+    @staticmethod
+    def _filtros(
+        nome: str | None,
+        email: str | None,
+        ativo: bool | None,
+        perfil_id: UUID | None,
+        sem_perfil: bool,
+    ):
+        filtros = []
+        if nome and nome.strip():
+            filtros.append(UsuarioModel.nome.ilike(f"%{nome.strip()}%"))
+        if email and email.strip():
+            filtros.append(UsuarioModel.email.ilike(f"%{email.strip()}%"))
+        if ativo is not None:
+            filtros.append(UsuarioModel.ativo.is_(ativo))
+        if perfil_id is not None:
+            filtros.append(UsuarioModel.perfil_id == perfil_id)
+        if sem_perfil:
+            filtros.append(UsuarioModel.perfil_id.is_(None))
+        return filtros
+
     async def existe_email(self, email: str, ignorar_id: UUID | None) -> bool:
         normalizado = Usuario.normalizar_email(email)
         stmt = select(UsuarioModel.id).where(UsuarioModel.email == normalizado)

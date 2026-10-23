@@ -6,6 +6,7 @@ export interface PerfilAtual {
   nome: string;
   email: string;
   unidade_id: string;
+  unidade_nome: string;
   admin_unidade: boolean;
   perfil: string | null;
   permissoes: string[];

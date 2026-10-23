@@ -19,10 +19,17 @@ router = APIRouter(prefix="/api/usuarios", tags=["usuarios"])
 async def listar(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    nome: str | None = Query(None, min_length=1, max_length=150),
+    email: str | None = Query(None, min_length=1, max_length=254),
+    ativo: bool | None = Query(None),
+    perfil_id: UUID | None = Query(None),
+    sem_perfil: bool = Query(False),
     service: UsuarioService = Depends(get_usuario_service),
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
-    return await service.listar(usuario_atual, page, page_size)
+    return await service.listar(
+        usuario_atual, page, page_size, nome, email, ativo, perfil_id, sem_perfil
+    )
 
 
 @router.get("/{id}", response_model=UsuarioResponse)
