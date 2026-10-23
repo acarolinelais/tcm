@@ -7,6 +7,8 @@ import type { PerfilAtual } from "@/core/auth/api";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
+import { Label } from "@/shared/ui/label";
+import { SELECT_EMPTY_VALUE, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyState, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
 import { toast } from "@/shared/lib/toast";
 import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
@@ -108,14 +110,32 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
     </TableLayout>
     <Dialog open={criarAberto} onOpenChange={(open) => { setCriarAberto(open); if (!open) { setNome(""); setSetorId(""); setErrosCriacao({}); } }}>
       <DrawerContent>
-        <DrawerHeader><DrawerTitle>{t("newTeam")}</DrawerTitle></DrawerHeader>
+        <DrawerHeader>
+          <DrawerTitle>{t("newTeam")}</DrawerTitle>
+          <p className="mt-1.5 text-sm leading-5 text-muted-foreground">{t("newTeamDescription")}</p>
+        </DrawerHeader>
         <form noValidate className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => { event.preventDefault(); const errors: typeof errosCriacao = {}; if (!nome.trim()) errors.nome = t("requiredField"); if (!setorSelecionadoParaCriar) errors.setor = t("requiredField"); setErrosCriacao(errors); if (Object.keys(errors).length) return; criar.mutate(); }}>
-          <div className="flex-1 space-y-5 px-7 py-6">
-            <label className="block space-y-2 text-sm font-medium">{t("teamName")}<Input aria-invalid={Boolean(errosCriacao.nome)} aria-describedby={errosCriacao.nome ? "team-name-error" : undefined} value={nome} onChange={(e) => { setNome(e.target.value); setErrosCriacao((errors) => ({ ...errors, nome: undefined })); }} required maxLength={120} />{errosCriacao.nome && <p id="team-name-error" role="alert" className="text-sm text-destructive">{errosCriacao.nome}</p>}</label>
-            <label className="block space-y-2 text-sm font-medium">{t("sector")}
-              {!admin && ehGerenteComEscopo && setores.isLoading ? <Input aria-label={t("sector")} value={t("loadingSectors")} readOnly disabled /> : setorUnicoGerenciado ? <Input aria-label={t("sector")} value={setorUnicoGerenciado.nome} readOnly /> : <select aria-invalid={Boolean(errosCriacao.setor)} aria-describedby={errosCriacao.setor ? "team-sector-error" : undefined} required aria-label={t("sector")} className="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm aria-invalid:border-destructive aria-invalid:focus-visible:ring-2 aria-invalid:focus-visible:ring-destructive" value={setorId} onChange={(e) => { setSetorId(e.target.value); setErrosCriacao((errors) => ({ ...errors, setor: undefined })); }}><option value="">{t("selectSector")}</option>{setoresAtivos.map((setor) => <option key={setor.id} value={setor.id}>{setor.nome}</option>)}</select>}
-              {errosCriacao.setor && <p id="team-sector-error" role="alert" className="text-sm text-destructive">{errosCriacao.setor}</p>}
-            </label>
+          <div className="flex-1 space-y-6 px-7 py-6">
+            <div className="flex flex-col">
+              <Label htmlFor="team-name">{t("teamName")}</Label>
+              <Input id="team-name" className="mt-2.5" aria-invalid={Boolean(errosCriacao.nome)} aria-describedby={errosCriacao.nome ? "team-name-hint team-name-error" : "team-name-hint"} value={nome} onChange={(e) => { setNome(e.target.value); setErrosCriacao((errors) => ({ ...errors, nome: undefined })); }} required maxLength={120} />
+              <p id="team-name-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("teamNameHint")}</p>
+              {errosCriacao.nome && <p id="team-name-error" role="alert" className="mt-1.5 text-sm text-destructive">{errosCriacao.nome}</p>}
+            </div>
+            <div className="flex flex-col">
+              <Label htmlFor="team-sector">{t("sector")}</Label>
+              {!admin && ehGerenteComEscopo && setores.isLoading ? <Input id="team-sector" className="mt-2.5" value={t("loadingSectors")} readOnly disabled aria-describedby="team-sector-hint" /> : setorUnicoGerenciado ? <Input id="team-sector" className="mt-2.5" value={setorUnicoGerenciado.nome} readOnly aria-describedby="team-sector-hint" /> : <Select value={setorId} onValueChange={(value) => { setSetorId(value === SELECT_EMPTY_VALUE ? "" : value); setErrosCriacao((errors) => ({ ...errors, setor: undefined })); }}>
+                <SelectTrigger id="team-sector" aria-invalid={Boolean(errosCriacao.setor)} aria-describedby={errosCriacao.setor ? "team-sector-hint team-sector-error" : "team-sector-hint"} className="mt-2.5 h-11 rounded-xl px-3.5">
+                  <SelectValue placeholder={t("selectSector")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={SELECT_EMPTY_VALUE}>{t("selectSector")}</SelectItem>
+                  {setoresAtivos.map((setor) => <SelectItem key={setor.id} value={setor.id}>{setor.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>}
+              <p id="team-sector-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("teamSectorHint")}</p>
+              {errosCriacao.setor && <p id="team-sector-error" role="alert" className="mt-1.5 text-sm text-destructive">{errosCriacao.setor}</p>}
+            </div>
           </div>
           <div className="flex justify-end border-t border-border px-7 py-5"><div className="flex gap-2"><DrawerClose asChild><Button type="button" variant="outline">{t("cancel")}</Button></DrawerClose><Button disabled={criar.isPending || setores.isLoading}>{t("createTeam")}</Button></div></div>
         </form>
@@ -125,7 +145,8 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
       <DrawerContent>
         <DrawerHeader className="border-b border-border pb-5">
           <DrawerTitle>{timeAtual ? t("memberTitle", { name: timeAtual.nome }) : t("members")}</DrawerTitle>
-          <p className="text-sm font-normal text-muted-foreground">{t("teamMembersCount", { count: (membros.data ?? []).filter((membro) => membro.ativo).length })}</p>
+          <p className="mt-1.5 text-sm leading-5 text-muted-foreground">{t("manageTeamMembersDescription")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("teamMembersCount", { count: (membros.data ?? []).filter((membro) => membro.ativo).length })}</p>
         </DrawerHeader>
         <div className="flex-1 space-y-7 overflow-y-auto px-7 py-6">
           <form className="space-y-4 rounded-2xl border border-border bg-[#FBFBFC] p-4" onSubmit={(event) => { event.preventDefault(); adicionar.mutate(); }}>
@@ -134,12 +155,19 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
               <p className="mt-1 text-xs text-muted-foreground">{t("addMemberHint")}</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-              <label className="block min-w-0 space-y-1.5 text-xs font-medium text-muted-foreground">{t("selectUser")}
-                <select className="h-10 w-full min-w-0 rounded-lg border border-input bg-white px-3 text-sm text-foreground" value={usuarioId} onChange={(e) => setUsuarioId(e.target.value)}>
-                  <option value="">{t("selectUser")}</option>
-                  {(usuarios.data ?? []).filter((usuario) => usuario.ativo && !(membros.data ?? []).some((membro) => membro.usuario_id === usuario.id && membro.ativo)).map((usuario) => <option key={usuario.id} value={usuario.id}>{usuario.nome} · {usuario.email}</option>)}
-                </select>
-              </label>
+              <div className="flex min-w-0 flex-col">
+                <Label htmlFor="team-member-user" className="text-xs text-muted-foreground">{t("selectUser")}</Label>
+                <Select value={usuarioId} onValueChange={(value) => setUsuarioId(value === SELECT_EMPTY_VALUE ? "" : value)}>
+                  <SelectTrigger id="team-member-user" aria-describedby="team-member-user-hint" className="mt-2.5 rounded-lg bg-white">
+                    <SelectValue placeholder={t("selectUser")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={SELECT_EMPTY_VALUE}>{t("selectUser")}</SelectItem>
+                    {(usuarios.data ?? []).filter((usuario) => usuario.ativo && !(membros.data ?? []).some((membro) => membro.usuario_id === usuario.id && membro.ativo)).map((usuario) => <SelectItem key={usuario.id} value={usuario.id}>{usuario.nome} · {usuario.email}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p id="team-member-user-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("selectUserHint")}</p>
+              </div>
               <Button disabled={!usuarioId || adicionar.isPending} className="h-10">{adicionar.isPending ? t("pleaseWait") : t("add")}</Button>
             </div>
           </form>

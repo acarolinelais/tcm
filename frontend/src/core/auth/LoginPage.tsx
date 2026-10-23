@@ -99,14 +99,14 @@ export function LoginPage() {
             </header>
 
             <div className="space-y-5">
-              <label className="block space-y-2 text-sm font-medium text-foreground">
+              <label className="flex flex-col gap-4 text-sm font-medium text-foreground">
                 <span>{t("email")}</span>
-                <Input ref={emailRef} required type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} className="h-11 rounded-xl border-border bg-white px-3.5 focus-visible:ring-2" />
+                <Input ref={emailRef} required type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} className="h-11 rounded-xl border-border bg-white px-3.5" />
               </label>
-              <label className="block space-y-2 text-sm font-medium text-foreground">
+              <label className="flex flex-col gap-4 text-sm font-medium text-foreground">
                 <span>{t("password")}</span>
                 <span className="relative block">
-                  <Input ref={senhaRef} required type={mostrarSenha ? "text" : "password"} autoComplete="current-password" value={senha} onChange={(event) => setSenha(event.target.value)} className="h-11 rounded-xl border-border bg-white px-3.5 pr-11 focus-visible:ring-2" />
+                  <Input ref={senhaRef} required type={mostrarSenha ? "text" : "password"} autoComplete="current-password" value={senha} onChange={(event) => setSenha(event.target.value)} className="h-11 rounded-xl border-border bg-white px-3.5 pr-11" />
                   <button type="button" onClick={() => setMostrarSenha((visivel) => !visivel)} aria-label={mostrarSenha ? t("hidePassword") : t("showPassword")} aria-pressed={mostrarSenha} className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-xl text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                     {mostrarSenha ? <EyeOff aria-hidden="true" className="h-4 w-4" /> : <Eye aria-hidden="true" className="h-4 w-4" />}
                   </button>

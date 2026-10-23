@@ -7,6 +7,8 @@ import { useAtribuirResponsavel, useAtivarUsuario, useInativarUsuario } from "..
 import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from "@/shared/ui/dialog";
+import { Label } from "@/shared/ui/label";
+import { SELECT_EMPTY_VALUE, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { toast } from "@/shared/lib/toast";
 import { useTranslation } from "react-i18next";
 
@@ -119,14 +121,20 @@ export function UsuarioActionsMenu({
               toast.error(t("ownerUpdateError"));
             }
           }}>
-            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-7 py-6">
-              <label htmlFor={`responsavel-${usuario.id}`} className="block space-y-2 text-sm font-medium">
-                <span>{t("managerOwner")}</span>
-                <select id={`responsavel-${usuario.id}`} value={responsavelId} onChange={(event) => setResponsavelId(event.target.value)} className="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <option value="">{t("noOwner")}</option>
-                  {gerentes.filter((gerente) => gerente.ativo).map((gerente) => <option key={gerente.id} value={gerente.id}>{gerente.nome} · {gerente.email}</option>)}
-                </select>
-              </label>
+            <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-7 py-6">
+              <div className="flex flex-col">
+                <Label htmlFor={`responsavel-${usuario.id}`}>{t("managerOwner")}</Label>
+                <Select value={responsavelId} onValueChange={(value) => setResponsavelId(value === SELECT_EMPTY_VALUE ? "" : value)}>
+                  <SelectTrigger id={`responsavel-${usuario.id}`} aria-describedby={`responsavel-hint-${usuario.id}`} className="mt-2.5 h-11 rounded-xl px-3.5">
+                    <SelectValue placeholder={t("noOwner")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={SELECT_EMPTY_VALUE}>{t("noOwner")}</SelectItem>
+                    {gerentes.filter((gerente) => gerente.ativo).map((gerente) => <SelectItem key={gerente.id} value={gerente.id}>{gerente.nome} · {gerente.email}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p id={`responsavel-hint-${usuario.id}`} className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("managerOwnerHint")}</p>
+              </div>
             </div>
             <div className="flex shrink-0 justify-end border-t border-border bg-white px-7 py-5">
               <div className="flex gap-2">

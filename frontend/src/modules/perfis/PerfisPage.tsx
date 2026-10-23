@@ -8,6 +8,8 @@ import { ApiError } from "@/shared/api/problem-details";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { Input } from "@/shared/ui/input";
+import { Label } from "@/shared/ui/label";
 import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyState, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
 import { criarPerfil, listarPerfis, listarPermissoes, salvarPermissoes } from "./api/perfis.api";
 import type { Perfil, Permissao } from "./api/perfis.api";
@@ -280,16 +282,18 @@ export function PerfisPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
                   <div className="min-w-0 flex-1">
                     {criando ? (
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <label className="block space-y-1.5 text-sm">
-                          <span className="font-medium">{t("profileName")} <span className="text-destructive" aria-hidden="true">*</span></span>
-                          <input autoFocus required aria-invalid={Boolean(erroNome)} aria-describedby={erroNome ? "profile-name-error" : undefined} maxLength={100} value={nome} onChange={(event) => { setNome(event.target.value); setErroNome(""); }} placeholder={t("profileExample")} className="w-full rounded-lg border border-border bg-background px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-primary aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive" />
-                          {erroNome && <p id="profile-name-error" role="alert" className="text-sm text-destructive">{erroNome}</p>}
-                        </label>
-                        <label className="block space-y-1.5 text-sm">
-                          <span className="font-medium">{t("description")} <span className="text-muted-foreground">({t("optional")})</span></span>
-                          <input maxLength={300} value={descricao} onChange={(event) => setDescricao(event.target.value)} placeholder={t("profileDescriptionHint")} className="w-full rounded-lg border border-border bg-background px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-primary" />
-                        </label>
+                      <div className="grid gap-5 sm:grid-cols-2">
+                        <div className="flex flex-col">
+                          <Label htmlFor="profile-name">{t("profileName")} <span className="text-destructive" aria-hidden="true">*</span></Label>
+                          <Input id="profile-name" className="mt-2.5" autoFocus required aria-invalid={Boolean(erroNome)} aria-describedby={erroNome ? "profile-name-hint profile-name-error" : "profile-name-hint"} maxLength={100} value={nome} onChange={(event) => { setNome(event.target.value); setErroNome(""); }} placeholder={t("profileExample")} />
+                          <p id="profile-name-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("profileNameHint")}</p>
+                          {erroNome && <p id="profile-name-error" role="alert" className="mt-1.5 text-sm text-destructive">{erroNome}</p>}
+                        </div>
+                        <div className="flex flex-col">
+                          <Label htmlFor="profile-description">{t("description")} <span className="text-muted-foreground">({t("optional")})</span></Label>
+                          <Input id="profile-description" className="mt-2.5" aria-describedby="profile-description-hint" maxLength={300} value={descricao} onChange={(event) => setDescricao(event.target.value)} />
+                          <p id="profile-description-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("profileDescriptionHint")}</p>
+                        </div>
                       </div>
                     ) : (
                       <>
@@ -309,7 +313,7 @@ export function PerfisPage() {
                   {!criando && dirty && <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-900">{t("unsavedChanges")}</span>}
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {grupos.map(([codigo, grupo]) => {
                     const ids = grupo.itens.map((item) => item.id);
                     const selecionadas = grupo.itens.filter((item) => marcadas.includes(item.id));

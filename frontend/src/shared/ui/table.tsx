@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { useTranslation } from "react-i18next";
 
 export const DEFAULT_TABLE_PAGE_SIZE = 10;
@@ -122,14 +123,14 @@ export function TablePagination({
       </div>
       <label className="flex items-center gap-3 text-xs text-muted-foreground">
         {t("itemsPerPage")}
-        <select
-          aria-label={t("pageSize")}
-          value={pageSize}
-          onChange={(event) => onPageSizeChange(Number(event.target.value))}
-          className="h-8 rounded-lg border border-border bg-background px-2 text-xs text-foreground"
-        >
-          {pageSizeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-        </select>
+        <Select value={String(pageSize)} onValueChange={(value) => onPageSizeChange(Number(value))}>
+          <SelectTrigger aria-label={t("pageSize")} className="h-8 w-auto gap-1 rounded-lg border-border px-2 pr-2 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {pageSizeOptions.map((option) => <SelectItem key={option} value={String(option)}>{option}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </label>
     </div>
   );
