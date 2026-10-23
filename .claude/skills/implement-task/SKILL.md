@@ -12,6 +12,9 @@ Se o usuário pedir uma task específica, o bloco é só essa task.
 ## Passos
 1. **Contexto.** Leia o `spec.md`, o `plan.md` e o `tasks.md` da spec, e também os ADRs citados no plan.
    Se a spec não estiver `Aprovada`, avise o usuário e pergunte se ele quer seguir mesmo assim.
+   **Branch (ADR 0027):** confira `git branch --show-current`. Trabalhe na `feat/NNN-nome` da spec; se ela
+   não existir, crie a partir da `dev` atualizada (`git switch dev && git pull && git switch -c feat/NNN-nome`).
+   Nunca implemente em `main` ou `dev`.
 2. **Escolha o bloco.** A fase com a primeira task `- [ ]`, a não ser que o usuário tenha indicado outra.
    Anuncie em uma linha quais tasks vai fazer.
 3. **Verifique a coerência.** Se uma task contradiz a spec, o plan ou um ADR, ou depende de algo que não existe,
