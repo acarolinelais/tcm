@@ -13,6 +13,7 @@ test.beforeEach(async ({ page }) => {
       id: "u1", nome: "Admin", email: "admin@example.com", unidade_id: "unit1", unidade_nome: "Unidade",
       perfil_codigo: "ADMIN_UNIDADE", perfil: "Administrador", permissoes: ["perfis.gerenciar"], times: [],
       time_atual_id: null, tem_multiplos_times: false, senha_alteracao_obrigatoria: false,
+      idioma_preferido: "pt-BR",
     },
   }));
   await page.route("**/api/perfis/permissoes", (route) => route.fulfill({ json: permissoes }));
@@ -35,7 +36,15 @@ test("perfis: grupos e checkboxes continuam acessíveis em viewport estreito e p
   await page.getByRole("button", { name: /Usuários/ }).click();
   const checkbox = page.getByLabel("Consultar usuários");
   await expect(group).toBeVisible();
-  expect(await page.locator("body").evaluate((body) => body.scrollWidth <= window.innerWidth)).toBe(true);
+  const overflowVisivel = await page.locator("body").evaluate(() =>
+    [...document.querySelectorAll("body *")].some((element) => {
+      const style = getComputedStyle(element);
+      return style.visibility === "visible"
+        && Number(style.opacity) > 0
+        && element.getBoundingClientRect().right > window.innerWidth + 1;
+    }),
+  );
+  expect(overflowVisivel).toBe(false);
   await expect(checkbox).toBeChecked();
   await checkbox.focus();
   await page.keyboard.press("Space");
