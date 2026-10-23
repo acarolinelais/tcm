@@ -17,8 +17,10 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
   const { t } = useTranslation();
   const perfil = useOutletContext<PerfilAtual>();
   const ehAdmin = perfil.perfil_codigo === "ADMIN_UNIDADE";
+  const ehGerente = perfil.perfil_codigo === "GERENTE";
   const podeGerenciar = ehAdmin || perfil.permissoes.includes("usuarios.gerenciar");
   const podeAtribuirPerfil = ehAdmin || perfil.permissoes.includes("perfis.gerenciar");
+  const podeAtribuirPerfilKP = ehGerente;
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const [filtros, setFiltros] = useState<UsuarioFiltros>({});
@@ -86,7 +88,7 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
         filtros={filtros}
         onFiltroChange={alterarFiltro}
         onPageChange={setPage}
-          pageSizeOptions={TABLE_PAGE_SIZE_OPTIONS}
+        pageSizeOptions={TABLE_PAGE_SIZE_OPTIONS}
         onPageSizeChange={(size) => {
           setPageSize(size);
           setPage(1);
@@ -96,6 +98,7 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
         onLimparFiltros={limparFiltros}
         podeGerenciar={podeGerenciar}
         podeAtribuirPerfil={podeAtribuirPerfil}
+        podeAtribuirPerfilKP={podeAtribuirPerfilKP}
         usuarioAtualId={perfil.id}
       />
 
@@ -104,7 +107,13 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
           <DrawerHeader>
             <DrawerTitle>{usuarioEmEdicao ? t("editUser") : t("newUser")}</DrawerTitle>
           </DrawerHeader>
-          <UsuarioForm usuario={usuarioEmEdicao} onSalvo={aoSalvar} podeGerenciar={podeGerenciar} podeAtribuirPerfil={podeAtribuirPerfil} />
+          <UsuarioForm
+            usuario={usuarioEmEdicao}
+            onSalvo={aoSalvar}
+            podeGerenciar={podeGerenciar}
+            podeAtribuirPerfil={podeAtribuirPerfil}
+            podeAtribuirPerfilKP={podeAtribuirPerfilKP}
+          />
         </DrawerContent>
       </Dialog>
     </div>

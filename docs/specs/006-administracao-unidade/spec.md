@@ -187,9 +187,11 @@ permissões do perfil e o isolamento da unidade.
   acordo com suas permissões e escopos.
 - Usuários, Setores e Times do admin ficam em páginas separadas dentro da área de Administração.
 - A área de Administração aparece como grupo expansível no sidebar, apenas para o admin.
-- Nesta entrega, KP continua como papel por time. Está planejado um perfil de conta KP com
-  permissões superiores às de `USUARIO_PADRAO`, sem substituir o papel que delimita os times em que a
-  pessoa atua como KP. As permissões exatas e a atribuição desse perfil serão definidas em spec futura.
+- Nesta entrega, KP continua como papel por time. A spec 008 detalha um perfil de conta KP, atribuído
+  pelo administrador no cadastro ou edição do usuário, com permissões adicionais para gerenciar
+  atividades e tarefas. O papel que delimita os times em que a pessoa atua como KP permanece
+  obrigatório; a matriz de ações e os códigos de permissão serão definidos nas specs dos módulos de
+  atividades e tarefas.
 - Setores podem ser criados, editados e inativados.
 - Remover associação gerente-setor revoga o acesso a todos os times daquele setor; `Time.gerente_id`
   sozinho não concede autorização.

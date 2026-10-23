@@ -32,6 +32,7 @@ ser registradas em ADR antes de serem introduzidas.
 | 005 | Gestão de perfis e permissões por módulo | Aprovada |
 | 006 | Administração da unidade (usuários, setores, gerentes e times) | Concluída |
 | 007 | Internacionalização do frontend (inglês, português e coreano) | Em andamento |
+| 008 | Perfil de conta KP e permissões adicionais | Em andamento |
 
 > O repositório tem a governança (ADRs, skills, templates) pronta. A spec `001-fundacao` cria a
 > infraestrutura comum dos dois lados e a primeira entidade de referência. As demais specs de contexto

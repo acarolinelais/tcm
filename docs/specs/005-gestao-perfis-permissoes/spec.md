@@ -132,11 +132,11 @@ selecionado e controles claros para alterar ações por grupo ou individualmente
 
 ## Evolução planejada
 
-- A unidade precisará de um perfil **KP** com permissões superiores às do perfil `USUARIO_PADRAO`.
-  Essa evolução não altera o escopo desta entrega. Uma spec própria definirá as permissões exatas,
-  como o perfil será disponibilizado e como suas permissões de conta coexistem com o papel `KP` por
-  time (`TimeMembro.papel`). O papel por time continuará delimitando em quais times a pessoa atua
-  como KP; possuir o perfil de conta, por si só, não deve conceder acesso a todos os times.
+- A spec 008 detalha o perfil de conta **KP**, atribuído pelo administrador no cadastro ou edição do
+  usuário, com permissões adicionais para gerenciar atividades e tarefas. O papel `KP` do vínculo
+  (`TimeMembro.papel`) continua delimitando em quais times essas permissões podem ser exercidas;
+  possuir o perfil de conta, por si só, não concede acesso a todos os times. A matriz de ações e os
+  códigos de permissão serão definidos nas specs dos módulos de atividades e tarefas.
 
 ## Decisões de UX
 

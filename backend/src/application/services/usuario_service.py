@@ -103,7 +103,19 @@ class UsuarioServiceImpl:
         await self._garantir_email_unico(request.email, None)
         usuario = Usuario(usuario_atual.unidade_id, request.nome, request.email)
         if not usuario_atual.eh_administrador:
-            usuario.perfil_id = await self._repo.obter_perfil_padrao(usuario_atual.unidade_id)
+            perfil_padrao_id = await self._repo.obter_perfil_padrao(usuario_atual.unidade_id)
+            if request.perfil_id is None or request.perfil_id == perfil_padrao_id:
+                usuario.perfil_id = perfil_padrao_id
+            elif (
+                usuario_atual.perfil_codigo == "GERENTE"
+                and request.perfil_id is not None
+                and await self._repo.perfil_kp_atribuivel(
+                    usuario_atual.unidade_id, request.perfil_id
+                )
+            ):
+                usuario.perfil_id = request.perfil_id
+            else:
+                raise ForbiddenException("Gerentes podem atribuir somente o perfil KP ou padrão.")
             usuario.responsavel_id = usuario_atual.id
         elif request.perfil_id is None:
             usuario.perfil_id = await self._repo.obter_perfil_padrao(usuario_atual.unidade_id)

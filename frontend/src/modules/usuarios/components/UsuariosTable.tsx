@@ -26,6 +26,7 @@ interface UsuariosTableProps {
   onLimparFiltros: () => void;
   podeGerenciar?: boolean;
   podeAtribuirPerfil?: boolean;
+  podeAtribuirPerfilKP?: boolean;
   usuarioAtualId?: string;
 }
 
@@ -42,6 +43,7 @@ export function UsuariosTable({
   onLimparFiltros,
   podeGerenciar = false,
   podeAtribuirPerfil = false,
+  podeAtribuirPerfilKP = false,
   usuarioAtualId = "",
 }: UsuariosTableProps) {
   const { t } = useTranslation();
@@ -49,7 +51,7 @@ export function UsuariosTable({
   const perfis = useQuery({
     queryKey: ["perfis"],
     queryFn: listarPerfis,
-    enabled: podeAtribuirPerfil,
+    enabled: podeAtribuirPerfil || podeAtribuirPerfilKP,
   });
   const perfilGerenteId = perfis.data?.find((perfil) => perfil.codigo === "GERENTE")?.id;
   const gerentes = useQuery({
@@ -99,7 +101,7 @@ export function UsuariosTable({
                 ]}
               />
             </TableHead>
-            {podeAtribuirPerfil && (
+            {(podeAtribuirPerfil || podeAtribuirPerfilKP) && (
               <TableHead>
                 <TableColumnFilter
                   label={t("profile")}
@@ -131,7 +133,7 @@ export function UsuariosTable({
                   {usuario.ativo ? t("active") : t("inactive")}
                 </Badge>
               </TableCell>
-              {podeAtribuirPerfil && (
+              {(podeAtribuirPerfil || podeAtribuirPerfilKP) && (
                 <TableCell className="text-sm text-muted-foreground">
                   {(() => {
                     const perfil = perfis.data?.find((item) => item.id === usuario.perfil_id);

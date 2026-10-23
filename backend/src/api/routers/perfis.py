@@ -14,7 +14,7 @@ from src.application.schemas.perfil import (
     PerfilResponse,
     PermissaoResponse,
 )
-from src.domain.common.exceptions import ConflictException, NotFoundException
+from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.infrastructure.data.models.perfil_model import PerfilModel
 from src.infrastructure.data.models.permissao_model import PerfilPermissaoModel, PermissaoModel
@@ -49,18 +49,12 @@ async def listar_perfis(
     usuario: UsuarioAutenticado = Depends(get_usuario_atual),
     session: AsyncSession = Depends(get_session),
 ):
-    exigir_permissao(usuario, "perfis.gerenciar")
-    perfis = (
-        (
-            await session.execute(
-                select(PerfilModel)
-                .where(PerfilModel.unidade_id == usuario.unidade_id)
-                .order_by(PerfilModel.nome)
-            )
-        )
-        .scalars()
-        .all()
-    )
+    consulta = select(PerfilModel).where(PerfilModel.unidade_id == usuario.unidade_id)
+    if usuario.perfil_codigo == "GERENTE" and usuario.pode("usuarios.gerenciar"):
+        consulta = consulta.where(PerfilModel.codigo.in_(("KP", "USUARIO_PADRAO")))
+    else:
+        exigir_permissao(usuario, "perfis.gerenciar")
+    perfis = (await session.execute(consulta.order_by(PerfilModel.nome))).scalars().all()
     saida = []
     for perfil in perfis:
         codigos = (
@@ -196,13 +190,25 @@ async def atribuir_perfil(
     usuario: UsuarioAutenticado = Depends(get_usuario_atual),
     session: AsyncSession = Depends(get_session),
 ):
-    exigir_permissao(usuario, "perfis.gerenciar")
+    eh_gerente = usuario.perfil_codigo == "GERENTE"
+    if eh_gerente:
+        exigir_permissao(usuario, "usuarios.gerenciar")
+    else:
+        exigir_permissao(usuario, "perfis.gerenciar")
     alvo = await session.get(UsuarioModel, usuario_id)
     if alvo is None or alvo.unidade_id != usuario.unidade_id:
+        raise NotFoundException("Usuário não encontrado.")
+    if eh_gerente and alvo.responsavel_id != usuario.id:
         raise NotFoundException("Usuário não encontrado.")
     perfil = await session.get(PerfilModel, request.perfil_id)
     if perfil is None or perfil.unidade_id != usuario.unidade_id:
         raise NotFoundException("Perfil não encontrado.")
+    if eh_gerente and perfil.codigo not in ("KP", "USUARIO_PADRAO"):
+        raise ForbiddenException("Gerentes podem atribuir somente o perfil KP ou padrão.")
+    if perfil.codigo == "KP" and not (usuario.eh_administrador or eh_gerente):
+        raise ForbiddenException(
+            "Apenas o administrador ou gerente responsável pode atribuir o perfil KP."
+        )
     atual = await session.get(PerfilModel, alvo.perfil_id)
     if perfil.codigo == "ADMIN_UNIDADE" and (atual is None or atual.codigo != "ADMIN_UNIDADE"):
         raise ConflictException("O perfil administrador é reservado à conta bootstrap.")

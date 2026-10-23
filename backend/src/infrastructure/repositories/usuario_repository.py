@@ -45,6 +45,14 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
         )
         return (await self.session.execute(stmt)).first() is not None
 
+    async def perfil_kp_atribuivel(self, unidade_id: UUID, perfil_id: UUID) -> bool:
+        stmt = select(PerfilModel.id).where(
+            PerfilModel.id == perfil_id,
+            PerfilModel.unidade_id == unidade_id,
+            PerfilModel.codigo == "KP",
+        )
+        return (await self.session.execute(stmt)).first() is not None
+
     async def listar_ativos_da_unidade(self, unidade_id: UUID) -> list[Usuario]:
         stmt = (
             select(UsuarioModel)
@@ -76,7 +84,9 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
         )
         return {
             usuario_id: (usuario_nome, perfil_nome, perfil_codigo)
-            for usuario_id, usuario_nome, perfil_nome, perfil_codigo in (await self.session.execute(stmt)).all()
+            for usuario_id, usuario_nome, perfil_nome, perfil_codigo in (
+                await self.session.execute(stmt)
+            ).all()
         }
 
     async def listar_filtrado(
