@@ -26,6 +26,10 @@ Se o usuário pedir uma task específica, o bloco é só essa task.
    - Marque `- [x]` no `tasks.md` e siga para a próxima, sem relatório intermediário.
 5. **Simplifique o bloco (OBRIGATÓRIO).** Rode a skill `simplify` **uma vez** sobre o diff do bloco inteiro.
    Nunca pule este passo nem decida que "não precisa". Aplique o que for do escopo do bloco.
+   **Use um único subagente:** em vez dos quatro agentes que a `simplify` sugere, lance **um** subagente
+   (contexto limpo, sem o histórico da sessão) que recebe o diff do bloco e cobre os quatro ângulos
+   (reuso, simplificação, eficiência, altitude) numa passada só. Ele só reporta; quem aplica os achados é
+   você. Quatro agentes custam bem mais tokens e não compensam em blocos deste tamanho.
    Achados que exigem mexer fora do bloco (outra entidade, outro ADR, refatoração geral) **não** viram trabalho agora:
    anote-os em `## Backlog` no fim do `tasks.md` (um item por achado, com o motivo) e siga.
 6. **Verifique o bloco.** Rode a suíte completa da camada (`uv run pytest` no backend ou
