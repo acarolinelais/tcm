@@ -3,7 +3,12 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from src.api.error_handling.problem_details import ProblemDetails, ProblemDetailsError
-from src.domain.common.exceptions import ConflictException, NotFoundException
+from src.domain.common.exceptions import (
+    ConflictException,
+    CredenciaisInvalidasException,
+    ForbiddenException,
+    NotFoundException,
+)
 
 MEDIA_TYPE = "application/problem+json"
 
@@ -39,6 +44,16 @@ async def handle_conflict(request: Request, exc: ConflictException) -> JSONRespo
     return _response(problem)
 
 
+async def handle_forbidden(request: Request, exc: ForbiddenException) -> JSONResponse:
+    return _response(ProblemDetails(title="Acesso negado.", status=status.HTTP_403_FORBIDDEN))
+
+
+async def handle_invalid_credentials(
+    request: Request, exc: CredenciaisInvalidasException
+) -> JSONResponse:
+    return _response(ProblemDetails(title="Não autenticado.", status=status.HTTP_401_UNAUTHORIZED))
+
+
 async def handle_unexpected(request: Request, exc: Exception) -> JSONResponse:
     problem = ProblemDetails(title="Erro interno.", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     return _response(problem)
@@ -48,4 +63,6 @@ def registrar_handlers(app: FastAPI) -> None:
     app.add_exception_handler(RequestValidationError, handle_validation_error)
     app.add_exception_handler(NotFoundException, handle_not_found)
     app.add_exception_handler(ConflictException, handle_conflict)
+    app.add_exception_handler(ForbiddenException, handle_forbidden)
+    app.add_exception_handler(CredenciaisInvalidasException, handle_invalid_credentials)
     app.add_exception_handler(Exception, handle_unexpected)

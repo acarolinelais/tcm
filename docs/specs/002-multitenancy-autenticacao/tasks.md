@@ -6,12 +6,9 @@
 > em uma task própria logo depois da implementação. Implementar com a skill `implement-task`, um bloco
 > (fase) por vez.
 
-> Retomada em 2026-10-22: T01–T27 e T29–T42 verificadas por imports, histórico Alembic
-> e testes locais. Suíte completa do backend: 60 testes passando (incluindo arquitetura),
-> com lint sem erros. T28 permanece aberta: a aplicação do schema no Postgres não foi
-> confirmada nesta retomada. A emissão de JWT é injetada no `AuthService` como callable,
-> mantendo a camada application independente da infraestrutura. As permissões de admin
-> e gerente serão adicionadas em T48 e T50; os services novos ainda não estão expostos na API.
+> Concluído em 2026-10-22: T01–T59 implementadas. Migration do schema e seed aplicadas ao
+> Postgres local; login do admin bootstrap validado. Suíte completa: 78 testes passando
+> (incluindo API, integração com Postgres e arquitetura), com Ruff sem erros.
 
 ## Fase 1: Base comum nova
 - [x] **T01. Criar `EntidadeTenant`**
@@ -153,7 +150,7 @@
   - Cobre: —
   - Verificação: `uv run alembic history` reconhece a revisão
 
-- [ ] **T28. Aplicar a migration contra o Postgres real e conferir o schema**
+- [x] **T28. Aplicar a migration contra o Postgres real e conferir o schema**
   - Arquivos: —
   - Cobre: —
   - Verificação: `uv run alembic upgrade head` → sem erro; `\d unidades`, `\d setores`, `\d times`, `\d time_membros`, `\d usuarios` conferem com o `plan.md`
@@ -231,95 +228,92 @@
   - Verificação: `uv run pytest backend/tests/unit/application/services/test_auth_service.py -q` → verde
 
 ## Fase 8: API — erros, dependencies e routers
-- [ ] **T43. Registrar os handlers de `ForbiddenException` (403) e `CredenciaisInvalidasException` (401)**
+- [x] **T43. Registrar os handlers de `ForbiddenException` (403) e `CredenciaisInvalidasException` (401)**
   - Arquivos: `backend/src/api/error_handling/handlers.py`, `backend/tests/unit/api/test_problem_details.py` (novos casos)
   - Cobre: —
   - Verificação: `uv run pytest backend/tests/unit/api -q` → verde
 
-- [ ] **T44. Criar a dependency `get_usuario_atual`** (decodifica `Authorization: Bearer`)
+- [x] **T44. Criar a dependency `get_usuario_atual`** (decodifica `Authorization: Bearer`)
   - Arquivos: `backend/src/api/dependencies.py`
   - Cobre: CA-03 (falha, parcial)
   - Verificação: `uv run python -c "from src.api.dependencies import get_usuario_atual"` → sem erro
 
-- [ ] **T45. Criar o router `auth` e registrar**
+- [x] **T45. Criar o router `auth` e registrar**
   - Arquivos: `backend/src/api/routers/auth.py`, `backend/src/api/dependencies.py` (`+ get_auth_service`), `backend/src/api/main.py`
   - Cobre: —
   - Verificação: API sobe; `curl -s localhost:8000/openapi.json | grep '/api/auth/login'` → encontra a rota
 
-- [ ] **T46. Proteger o router `usuarios`** (`Depends(get_usuario_atual)`, repassa `unidade_id`)
+- [x] **T46. Proteger o router `usuarios`** (`Depends(get_usuario_atual)`, repassa `unidade_id`)
   - Arquivos: `backend/src/api/routers/usuarios.py`
   - Cobre: CA-03 (falha)
   - Verificação: `uv run python -c "from src.api.routers.usuarios import router"` → sem erro
 
-- [ ] **T47. Criar o router `setores` e registrar** (sem checagem de papel ainda)
+- [x] **T47. Criar o router `setores` e registrar** (sem checagem de papel ainda)
   - Arquivos: `backend/src/api/routers/setores.py`, `backend/src/api/dependencies.py` (`+ get_setor_service`), `backend/src/api/main.py`
   - Cobre: —
   - Verificação: `curl -s localhost:8000/openapi.json | grep '/api/setores'` → encontra a rota
 
-- [ ] **T48. Adicionar a checagem de `admin_unidade` ao `SetorService.criar`, com teste de falha**
+- [x] **T48. Adicionar a checagem de `admin_unidade` ao `SetorService.criar`, com teste de falha**
   - Arquivos: `backend/src/application/services/setor_service.py`, `backend/tests/unit/application/services/test_setor_service.py`
   - Cobre: CA-05 (falha)
   - Verificação: `uv run pytest backend/tests/unit/application/services/test_setor_service.py -q` → verde
 
-- [ ] **T49. Criar o router `times` e registrar** (sem checagem de papel ainda)
+- [x] **T49. Criar o router `times` e registrar** (sem checagem de papel ainda)
   - Arquivos: `backend/src/api/routers/times.py`, `backend/src/api/dependencies.py` (`+ get_time_service`), `backend/src/api/main.py`
   - Cobre: —
   - Verificação: `curl -s localhost:8000/openapi.json | grep '/api/times'` → encontra a rota
 
-- [ ] **T50. Adicionar a checagem de posse (admin ou gerente do time) ao `TimeService`, com teste de falha**
+- [x] **T50. Adicionar a checagem de posse (admin ou gerente do time) ao `TimeService`, com teste de falha**
   - Arquivos: `backend/src/application/services/time_service.py`, `backend/tests/unit/application/services/test_time_service.py`
   - Cobre: CA-08 (falha)
   - Verificação: `uv run pytest backend/tests/unit/application/services/test_time_service.py -q` → verde
 
 ## Fase 9: Seed/bootstrap
-- [ ] **T51. Adicionar `BOOTSTRAP_ADMIN_SENHA` ao `.env`/`.env.example`**
+- [x] **T51. Adicionar `BOOTSTRAP_ADMIN_SENHA` ao `.env`/`.env.example`**
   - Arquivos: `.env`, `.env.example`
   - Cobre: —
   - Verificação: leitura via `python-dotenv` confirma o valor presente
 
-- [ ] **T52. Escrever a migration de seed** (Unidade Manaus + admin bootstrap)
+- [x] **T52. Escrever a migration de seed** (Unidade Manaus + admin bootstrap)
   - Arquivos: migration em `backend/src/infrastructure/data/migrations/versions/`
   - Cobre: RN-07
   - Verificação: `uv run alembic history` reconhece a revisão
 
-- [ ] **T53. Aplicar a migration de seed e conferir**
+- [x] **T53. Aplicar a migration de seed e conferir**
   - Arquivos: —
   - Cobre: CA-11
   - Verificação: `uv run alembic upgrade head` → sem erro; `SELECT * FROM unidades; SELECT email, admin_unidade FROM usuarios;` mostra a Unidade Manaus e a admin
 
 ## Fase 10: Testes funcionais e de integração (Postgres real)
-- [ ] **T54. Teste funcional de login — sucesso e falha**
+- [x] **T54. Teste funcional de login — sucesso e falha**
   - Arquivos: `backend/tests/functional/test_auth_api.py`
   - Cobre: CA-01, CA-02 (falha)
   - Verificação: `uv run pytest backend/tests/functional/test_auth_api.py -q` → verde
 
-- [ ] **T55. Teste funcional de endpoint protegido sem token**
+- [x] **T55. Teste funcional de endpoint protegido sem token**
   - Arquivos: `backend/tests/functional/test_auth_api.py`
   - Cobre: CA-03 (falha)
   - Verificação: `uv run pytest backend/tests/functional/test_auth_api.py -q` → verde
 
-- [ ] **T56. Teste funcional de `setores` — sucesso e falha**
+- [x] **T56. Teste funcional de `setores` — sucesso e falha**
   - Arquivos: `backend/tests/functional/test_setores_api.py`
   - Cobre: CA-04, CA-05 (falha)
   - Verificação: `uv run pytest backend/tests/functional/test_setores_api.py -q` → verde
 
-- [ ] **T57. Teste funcional de `times` e membros — sucesso e falha**
+- [x] **T57. Teste funcional de `times` e membros — sucesso e falha**
   - Arquivos: `backend/tests/functional/test_times_api.py`
   - Cobre: CA-06, CA-07, CA-08 (falha), CA-09
   - Verificação: `uv run pytest backend/tests/functional/test_times_api.py -q` → verde
 
-- [ ] **T58. Teste de integração de isolamento cross-tenant**
+- [x] **T58. Teste de integração de isolamento cross-tenant**
   - Arquivos: `backend/tests/integration/test_isolamento_tenant.py`
   - Cobre: CA-10 (falha)
   - Verificação: `uv run pytest backend/tests/integration/test_isolamento_tenant.py -q` → verde
 
-- [ ] **T59. Teste de integração do bootstrap**
+- [x] **T59. Teste de integração do bootstrap**
   - Arquivos: `backend/tests/integration/test_bootstrap.py`
   - Cobre: CA-11
   - Verificação: `uv run pytest backend/tests/integration/test_bootstrap.py -q` → verde
 
 ## Backlog
-- Ao validar T28, conferir a existência de usuários antigos: a migration adiciona
-  `usuarios.unidade_id` obrigatório sem preencher registros existentes e pode falhar em banco populado.
-- Ao integrar a autenticação na API, validar claims ausentes ou malformados no decoder JWT:
-  hoje a construção de `TokenPayload` pode levantar `KeyError`/`ValueError` em vez de recusar o token.
+- Nenhum item pendente desta spec.

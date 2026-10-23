@@ -8,7 +8,7 @@ from src.application.schemas.time import (
     CriarTimeRequest,
 )
 from src.application.services.time_service import TimeServiceImpl
-from src.domain.common.exceptions import ConflictException, NotFoundException
+from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.papel_time import PapelTime
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
@@ -120,4 +120,15 @@ async def test_atualizar_papel_membro_inexistente_falha_sem_commit(contexto):
             atual, time.id, uuid4(), AtualizarPapelMembroRequest(papel=PapelTime.KP)
         )
     membros.atualizar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+async def test_adicionar_membro_time_de_terceiro_falha_sem_commit(contexto):
+    service, _, _, membros, _, uow, atual, time = contexto
+    gerente_alheio = UsuarioAutenticado(uuid4(), atual.unidade_id, False)
+    with pytest.raises(ForbiddenException):
+        await service.adicionar_membro(
+            gerente_alheio, time.id, AdicionarMembroRequest(usuario_id=uuid4())
+        )
+    membros.adicionar.assert_not_awaited()
     uow.commit.assert_not_awaited()

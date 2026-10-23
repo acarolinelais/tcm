@@ -5,6 +5,7 @@ import pytest
 from pydantic import ValidationError
 from src.application.schemas.setor import CriarSetorRequest
 from src.application.services.setor_service import SetorServiceImpl
+from src.domain.common.exceptions import ForbiddenException
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.setor import Setor
@@ -43,5 +44,14 @@ async def test_criar_setor_nome_vazio_falha_sem_persistir(contexto):
     service, repo, uow, atual = contexto
     with pytest.raises(ValidationError):
         await service.criar(atual, CriarSetorRequest(nome=""))
+    repo.adicionar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+async def test_criar_setor_sem_admin_falha_sem_persistir(contexto):
+    service, repo, uow, atual = contexto
+    nao_admin = UsuarioAutenticado(atual.id, atual.unidade_id, False)
+    with pytest.raises(ForbiddenException):
+        await service.criar(nao_admin, CriarSetorRequest(nome="Engenharia"))
     repo.adicionar.assert_not_awaited()
     uow.commit.assert_not_awaited()

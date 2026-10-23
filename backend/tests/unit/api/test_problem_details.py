@@ -1,8 +1,13 @@
+import httpx
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 from pydantic import BaseModel
 from src.api.error_handling.handlers import registrar_handlers
-from src.domain.common.exceptions import ConflictException, NotFoundException
+from src.domain.common.exceptions import (
+    ConflictException,
+    CredenciaisInvalidasException,
+    ForbiddenException,
+    NotFoundException,
+)
 
 
 class _Payload(BaseModel):
@@ -18,35 +23,67 @@ def _build_app() -> FastAPI:
         return {"ok": True}
 
     @app.get("/nao-encontrado")
-    def nao_encontrado():
+    async def nao_encontrado():
         raise NotFoundException("Usuário 1 não encontrado.")
 
     @app.get("/conflito")
-    def conflito():
+    async def conflito():
         raise ConflictException("E-mail já cadastrado.")
+
+    @app.get("/proibido")
+    async def proibido():
+        raise ForbiddenException("Sem permissão.")
+
+    @app.get("/nao-autenticado")
+    async def nao_autenticado():
+        raise CredenciaisInvalidasException("Credenciais inválidas.")
 
     return app
 
 
-client = TestClient(_build_app(), raise_server_exceptions=False)
+app = _build_app()
 
 
-def test_validacao_invalida_retorna_422_com_errors():
-    resposta = client.post("/validar", json={})
+async def _get(path: str) -> httpx.Response:
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app, raise_app_exceptions=False),
+        base_url="http://test",
+    ) as client:
+        return await client.get(path)
+
+
+async def test_validacao_invalida_retorna_422_com_errors():
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app, raise_app_exceptions=False),
+        base_url="http://test",
+    ) as client:
+        resposta = await client.post("/validar", json={})
 
     assert resposta.status_code == 422
     assert resposta.headers["content-type"] == "application/problem+json"
     assert resposta.json()["errors"]
 
 
-def test_recurso_inexistente_retorna_404():
-    resposta = client.get("/nao-encontrado")
+async def test_recurso_inexistente_retorna_404():
+    resposta = await _get("/nao-encontrado")
 
     assert resposta.status_code == 404
     assert resposta.json()["title"] == "Recurso não encontrado."
 
 
-def test_conflito_retorna_409():
-    resposta = client.get("/conflito")
+async def test_conflito_retorna_409():
+    resposta = await _get("/conflito")
 
     assert resposta.status_code == 409
+
+
+async def test_forbidden_retorna_403():
+    resposta = await _get("/proibido")
+    assert resposta.status_code == 403
+    assert resposta.headers["content-type"] == "application/problem+json"
+
+
+async def test_credenciais_invalidas_retorna_401():
+    resposta = await _get("/nao-autenticado")
+    assert resposta.status_code == 401
+    assert resposta.headers["content-type"] == "application/problem+json"

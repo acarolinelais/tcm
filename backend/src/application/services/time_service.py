@@ -9,7 +9,7 @@ from src.application.schemas.time import (
     membro_to_response,
     to_response,
 )
-from src.domain.common.exceptions import ConflictException, NotFoundException
+from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.papel_time import PapelTime
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
@@ -40,6 +40,8 @@ class TimeServiceImpl:
     async def criar(
         self, usuario_atual: UsuarioAutenticado, request: CriarTimeRequest
     ) -> TimeResponse:
+        if not usuario_atual.admin_unidade:
+            raise ForbiddenException("Apenas administradores da unidade podem criar times.")
         unidade_id = usuario_atual.unidade_id
         if await self._setor_repo.obter_por_id(unidade_id, request.setor_id) is None:
             raise NotFoundException("Setor não encontrado.")
@@ -65,7 +67,8 @@ class TimeServiceImpl:
         self, usuario_atual: UsuarioAutenticado, id: UUID, request: AdicionarMembroRequest
     ) -> TimeMembroResponse:
         unidade_id = usuario_atual.unidade_id
-        await self._obter_time(unidade_id, id)
+        time = await self._obter_time(unidade_id, id)
+        self._garantir_gestao_time(usuario_atual, time)
         await self._garantir_usuario(unidade_id, request.usuario_id)
         if await self._membro_repo.obter_por_time_e_usuario(unidade_id, id, request.usuario_id):
             raise ConflictException("Usuário já é membro deste time.")
@@ -82,7 +85,8 @@ class TimeServiceImpl:
         request: AtualizarPapelMembroRequest,
     ) -> TimeMembroResponse:
         unidade_id = usuario_atual.unidade_id
-        await self._obter_time(unidade_id, id)
+        time = await self._obter_time(unidade_id, id)
+        self._garantir_gestao_time(usuario_atual, time)
         membro = await self._membro_repo.obter_por_time_e_usuario(unidade_id, id, usuario_id)
         if membro is None:
             raise NotFoundException("Membro não encontrado.")
@@ -103,3 +107,8 @@ class TimeServiceImpl:
     async def _garantir_usuario(self, unidade_id: UUID, id: UUID) -> None:
         if await self._usuario_repo.obter_por_id(unidade_id, id) is None:
             raise NotFoundException("Usuário não encontrado.")
+
+    @staticmethod
+    def _garantir_gestao_time(usuario_atual: UsuarioAutenticado, time: Time) -> None:
+        if not usuario_atual.admin_unidade and time.gerente_id != usuario_atual.id:
+            raise ForbiddenException("Apenas o gerente do time ou administrador pode alterá-lo.")

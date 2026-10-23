@@ -7,6 +7,7 @@ Create Date: 2026-10-22 00:00:00.000000
 """
 
 from collections.abc import Sequence
+from uuid import uuid4
 
 import sqlalchemy as sa
 from alembic import op
@@ -30,15 +31,26 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
 
-    op.add_column("usuarios", sa.Column("unidade_id", sa.Uuid(), nullable=False))
+    op.add_column("usuarios", sa.Column("unidade_id", sa.Uuid(), nullable=True))
     op.add_column("usuarios", sa.Column("senha_hash", sa.String(length=255), nullable=True))
     op.add_column(
         "usuarios",
         sa.Column("admin_unidade", sa.Boolean(), nullable=False, server_default=sa.false()),
     )
-    op.create_foreign_key(
-        "fk_usuarios_unidade_id", "usuarios", "unidades", ["unidade_id"], ["id"]
-    )
+    op.create_foreign_key("fk_usuarios_unidade_id", "usuarios", "unidades", ["unidade_id"], ["id"])
+
+    bind = op.get_bind()
+    if bind.execute(sa.text("SELECT 1 FROM usuarios LIMIT 1")).first() is not None:
+        unidade_legada_id = uuid4()
+        bind.execute(
+            sa.text("INSERT INTO unidades (id, nome, ativo) VALUES (:id, :nome, true)"),
+            {"id": unidade_legada_id, "nome": "Unidade legada"},
+        )
+        bind.execute(
+            sa.text("UPDATE usuarios SET unidade_id = :id WHERE unidade_id IS NULL"),
+            {"id": unidade_legada_id},
+        )
+    op.alter_column("usuarios", "unidade_id", nullable=False)
 
     op.create_table(
         "setores",

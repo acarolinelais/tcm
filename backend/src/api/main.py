@@ -5,6 +5,9 @@ from fastapi import FastAPI
 from scalar_fastapi import get_scalar_api_reference
 
 from src.api.error_handling.handlers import registrar_handlers
+from src.api.routers.auth import router as auth_router
+from src.api.routers.setores import router as setores_router
+from src.api.routers.times import router as times_router
 from src.api.routers.usuarios import router as usuarios_router
 from src.infrastructure.data.migrations_runner import aplicar_migrations
 
@@ -18,6 +21,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="SDF Manager", lifespan=lifespan)
 registrar_handlers(app)
 app.include_router(usuarios_router)
+app.include_router(auth_router)
+app.include_router(setores_router)
+app.include_router(times_router)
 
 
 @app.get("/scalar", include_in_schema=False)

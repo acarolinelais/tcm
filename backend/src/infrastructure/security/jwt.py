@@ -38,8 +38,12 @@ def decodificar_token(token: str) -> TokenPayload | None:
         payload = jwt.decode(token, os.environ["JWT_SECRET_KEY"], algorithms=[ALGORITHM])
     except jwt.PyJWTError:
         return None
-    return TokenPayload(
-        usuario_id=UUID(payload["sub"]),
-        unidade_id=UUID(payload["unidade_id"]),
-        admin_unidade=payload["admin_unidade"],
-    )
+    try:
+        usuario_id = UUID(payload["sub"])
+        unidade_id = UUID(payload["unidade_id"])
+        admin_unidade = payload["admin_unidade"]
+        if not isinstance(admin_unidade, bool):
+            return None
+        return TokenPayload(usuario_id, unidade_id, admin_unidade)
+    except (KeyError, TypeError, ValueError):
+        return None

@@ -1,4 +1,5 @@
 from src.application.schemas.setor import CriarSetorRequest, SetorResponse, to_response
+from src.domain.common.exceptions import ForbiddenException
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.interfaces.setor_repository import SetorRepository
@@ -14,6 +15,8 @@ class SetorServiceImpl:
     async def criar(
         self, usuario_atual: UsuarioAutenticado, request: CriarSetorRequest
     ) -> SetorResponse:
+        if not usuario_atual.admin_unidade:
+            raise ForbiddenException("Apenas administradores da unidade podem criar setores.")
         setor = Setor(usuario_atual.unidade_id, request.nome)
         await self._repo.adicionar(setor)
         await self._uow.commit()

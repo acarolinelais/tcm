@@ -1,7 +1,9 @@
 from uuid import uuid4
 
+import jwt
+import pytest
 from src.domain.entities.usuario import Usuario
-from src.infrastructure.security.jwt import criar_token, decodificar_token
+from src.infrastructure.security.jwt import ALGORITHM, criar_token, decodificar_token
 
 
 def test_criar_e_decodificar_token_recupera_os_dados():
@@ -21,3 +23,19 @@ def test_decodificar_token_invalido_retorna_none():
     payload = decodificar_token("token-invalido")
 
     assert payload is None
+
+
+@pytest.mark.parametrize(
+    "claims",
+    [
+        {"unidade_id": str(uuid4()), "admin_unidade": False},
+        {"sub": "nao-e-uuid", "unidade_id": str(uuid4()), "admin_unidade": False},
+        {"sub": str(uuid4()), "unidade_id": str(uuid4()), "admin_unidade": "sim"},
+    ],
+)
+def test_decodificar_token_com_claims_invalidos_retorna_none(monkeypatch, claims):
+    secret = "segredo-com-comprimento-suficiente-para-hs256"
+    monkeypatch.setenv("JWT_SECRET_KEY", secret)
+    token = jwt.encode(claims, secret, algorithm=ALGORITHM)
+
+    assert decodificar_token(token) is None
