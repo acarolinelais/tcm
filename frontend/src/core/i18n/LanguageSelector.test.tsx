@@ -1,4 +1,6 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { atualizarIdiomaPreferido } from "@/core/auth/api";
@@ -10,6 +12,10 @@ vi.mock("@/core/auth/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/core/auth/api")>();
   return { ...actual, atualizarIdiomaPreferido: vi.fn() };
 });
+
+function renderComQueryClient(ui: ReactNode) {
+  render(<QueryClientProvider client={new QueryClient()}>{ui}</QueryClientProvider>);
+}
 
 function LanguageReactiveText() {
   const { t } = useTranslation();
@@ -24,7 +30,7 @@ describe("LanguageSelector", () => {
   });
 
   it("applies and temporarily stores the pre-login selection", async () => {
-    render(<><LanguageSelector /><LanguageReactiveText /></>);
+    renderComQueryClient(<><LanguageSelector /><LanguageReactiveText /></>);
     expect(screen.getByText("New user")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /English/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Portuguese" }));
@@ -37,7 +43,7 @@ describe("LanguageSelector", () => {
 
   it("saves authenticated selections in the account", async () => {
     vi.mocked(atualizarIdiomaPreferido).mockResolvedValue({ idioma_preferido: "ko" });
-    render(<LanguageSelector perfil={{ idioma_preferido: "en" } as never} />);
+    renderComQueryClient(<LanguageSelector perfil={{ idioma_preferido: "en" } as never} />);
     fireEvent.click(screen.getByRole("button", { name: /English/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Korean" }));
 

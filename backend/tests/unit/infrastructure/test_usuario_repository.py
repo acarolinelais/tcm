@@ -65,9 +65,7 @@ async def test_listar_filtrado_compõe_filtros_escopo_contagem_e_paginacao(repo,
     unidade_id, perfil_id = uuid4(), uuid4()
     session.execute.side_effect = resultado_consulta(1, [usuario_model(unidade_id, perfil_id)])
 
-    resultado = await repo.listar_filtrado(
-        unidade_id, 2, 10, " ana ", "EXAMPLE", True, perfil_id
-    )
+    resultado = await repo.listar_filtrado(unidade_id, 2, 10, " ana ", "EXAMPLE", True, perfil_id)
 
     assert resultado.total_count == 1
     assert (resultado.page, resultado.page_size) == (2, 10)

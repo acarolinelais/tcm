@@ -56,9 +56,7 @@ async def test_listar_times_repassa_unidade_setor_e_paginacao(contexto, filtrar)
     setor_id = time.setor_id if filtrar else None
     repo.listar_paginado.return_value = PagedResult([time], 1, 10, 1)
     resposta = await service.listar(atual, 1, 10, setor_id)
-    repo.listar_paginado.assert_awaited_once_with(
-        atual.unidade_id, 1, 10, setor_id, None, None
-    )
+    repo.listar_paginado.assert_awaited_once_with(atual.unidade_id, 1, 10, setor_id, None, None)
     assert resposta.items[0].id == time.id
     assert resposta.total_count == 1
     uow.commit.assert_not_awaited()

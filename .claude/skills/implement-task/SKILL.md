@@ -12,6 +12,9 @@ Se o usuário pedir uma task específica, o bloco é só essa task.
 ## Passos
 1. **Contexto.** Leia o `spec.md`, o `plan.md` e o `tasks.md` da spec, e também os ADRs citados no plan.
    Se a spec não estiver `Aprovada`, avise o usuário e pergunte se ele quer seguir mesmo assim.
+   **Branch (ADR 0027):** confira `git branch --show-current`. Trabalhe na `feat/NNN-nome` da spec; se ela
+   não existir, crie a partir da `dev` atualizada (`git switch dev && git pull && git switch -c feat/NNN-nome`).
+   Nunca implemente em `main` ou `dev`.
 2. **Escolha o bloco.** A fase com a primeira task `- [ ]`, a não ser que o usuário tenha indicado outra.
    Anuncie em uma linha quais tasks vai fazer.
 3. **Verifique a coerência.** Se uma task contradiz a spec, o plan ou um ADR, ou depende de algo que não existe,
@@ -26,6 +29,10 @@ Se o usuário pedir uma task específica, o bloco é só essa task.
    - Marque `- [x]` no `tasks.md` e siga para a próxima, sem relatório intermediário.
 5. **Simplifique o bloco (OBRIGATÓRIO).** Rode a skill `simplify` **uma vez** sobre o diff do bloco inteiro.
    Nunca pule este passo nem decida que "não precisa". Aplique o que for do escopo do bloco.
+   **Use um único subagente:** em vez dos quatro agentes que a `simplify` sugere, lance **um** subagente
+   (contexto limpo, sem o histórico da sessão) que recebe o diff do bloco e cobre os quatro ângulos
+   (reuso, simplificação, eficiência, altitude) numa passada só. Ele só reporta; quem aplica os achados é
+   você. Quatro agentes custam bem mais tokens e não compensam em blocos deste tamanho.
    Achados que exigem mexer fora do bloco (outra entidade, outro ADR, refatoração geral) **não** viram trabalho agora:
    anote-os em `## Backlog` no fim do `tasks.md` (um item por achado, com o motivo) e siga.
 6. **Verifique o bloco.** Rode a suíte completa da camada (`uv run pytest` no backend ou

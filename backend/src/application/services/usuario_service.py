@@ -78,7 +78,11 @@ class UsuarioServiceImpl:
                 )
             else:
                 result = await self._repo.listar_visiveis(
-                    usuario_atual.unidade_id, page, page_size, escopo, usuario_atual.id,
+                    usuario_atual.unidade_id,
+                    page,
+                    page_size,
+                    escopo,
+                    usuario_atual.id,
                     usuario_atual.id,
                 )
         return result.map(to_response)
@@ -86,12 +90,18 @@ class UsuarioServiceImpl:
     async def obter(self, usuario_atual: UsuarioAutenticado, id: UUID) -> UsuarioResponse:
         self._exigir_permissao(usuario_atual, "usuarios.consultar")
         if not usuario_atual.eh_administrador:
-            if id != usuario_atual.id and not await self._repo.pertence_a_escopo(
-                usuario_atual.unidade_id,
-                id,
-                tuple(dict.fromkeys((*usuario_atual.times_gerenciados, *usuario_atual.time_ids))),
-            ) and not await self._repo.pertence_a_responsabilidade(
-                usuario_atual.unidade_id, id, usuario_atual.id
+            if (
+                id != usuario_atual.id
+                and not await self._repo.pertence_a_escopo(
+                    usuario_atual.unidade_id,
+                    id,
+                    tuple(
+                        dict.fromkeys((*usuario_atual.times_gerenciados, *usuario_atual.time_ids))
+                    ),
+                )
+                and not await self._repo.pertence_a_responsabilidade(
+                    usuario_atual.unidade_id, id, usuario_atual.id
+                )
             ):
                 raise NotFoundException(f"Usuário {id} não encontrado.")
         return to_response(await self._obter_entidade(usuario_atual.unidade_id, id))

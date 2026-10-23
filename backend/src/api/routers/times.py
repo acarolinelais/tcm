@@ -90,7 +90,6 @@ async def listar_membros(
     return await service.listar_membros(usuario_atual, id)
 
 
-
 @router.delete("/{id}/membros/{usuario_id}", status_code=204)
 async def remover_membro(
     id: UUID,

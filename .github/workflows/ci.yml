@@ -1,0 +1,69 @@
+# Verificação contínua (ADR 0028). Os nomes dos jobs são os checks obrigatórios dos PRs.
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev, main]
+
+# Em PR, um push novo cancela o run anterior. Em dev/main, todo commit integrado é verificado.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: sdf_manager
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d sdf_manager"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # Sem esta variável os testes de integração são pulados.
+      SDF_TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/sdf_manager
+      # O banco do CI começa vazio: as migrations rodam antes do pytest (ADR 0012), com a mesma
+      # senha de bootstrap que os testes assumem (tests/integration/test_bootstrap.py).
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/sdf_manager
+      BOOTSTRAP_ADMIN_SENHA: mude-esta-senha
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run alembic upgrade head
+      - run: uv run pytest
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build

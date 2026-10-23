@@ -1,0 +1,38 @@
+# Convenção de branches, commits e PRs (ADR 0027 e 0028). Fica separado do ci.yml para
+# revalidar quando só o título do PR é editado, sem rodar backend e frontend de novo.
+name: Convenção
+
+on:
+  pull_request:
+    branches: [dev, main]
+    types: [opened, synchronize, reopened, edited]
+
+concurrency:
+  group: convencao-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  convencao:
+    runs-on: ubuntu-latest
+    # Dados do PR entram por env, nunca interpolados no script (o título é texto livre).
+    env:
+      BASE_REF: ${{ github.base_ref }}
+      HEAD_REF: ${{ github.head_ref }}
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      TITULO: ${{ github.event.pull_request.title }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Testes do script de convenção
+        run: sh scripts/git/convencao.test.sh
+      - name: Origem do PR e commits
+        run: sh scripts/git/convencao.sh pr "$BASE_REF" "$HEAD_REF" "$BASE_SHA" "$HEAD_SHA"
+      - name: Título do PR
+        run: sh scripts/git/convencao.sh pr-titulo "$TITULO"
+      - name: Spec da branch
+        run: sh scripts/git/convencao.sh spec "$HEAD_REF"
