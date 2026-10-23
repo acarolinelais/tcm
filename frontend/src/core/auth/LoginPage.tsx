@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 
+import { ApiError } from "@/shared/api/problem-details";
 import { login } from "./api";
 
 export function LoginPage() {
@@ -17,8 +18,14 @@ export function LoginPage() {
     try {
       await login(email, senha);
       navigate("/", { replace: true });
-    } catch {
-      setErro("E-mail ou senha inválidos.");
+    } catch (error) {
+      if (error instanceof ApiError && error.problem.status === 401) {
+        setErro("E-mail ou senha inválidos.");
+      } else if (error instanceof ApiError && error.problem.status >= 500) {
+        setErro("A API encontrou um erro ao autenticar. Tente novamente em instantes.");
+      } else {
+        setErro("Não foi possível conectar à API. Verifique se o backend está ativo.");
+      }
     } finally {
       setCarregando(false);
     }

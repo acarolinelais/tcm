@@ -41,7 +41,11 @@ async function request<T>(path: string, init?: RequestInit, retry = true): Promi
       }
       clearTokens();
     }
-    const problem = (await response.json()) as ProblemDetails;
+    const problem = (await response.json().catch(() => ({
+      type: "about:blank",
+      title: "Erro na comunicação com a API.",
+      status: response.status,
+    }))) as ProblemDetails;
     throw new ApiError(problem);
   }
 
