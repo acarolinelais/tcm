@@ -74,10 +74,12 @@ permissões do perfil e o isolamento da unidade.
 - RN-13a: O sidebar do administrador apresenta um grupo expansível **Administração**, com links para
   Usuários, Setores, Times e Perfis e permissões. Esse grupo não aparece para usuários sem perfil
   `ADMIN_UNIDADE`.
-- RN-14: KP continua sendo um papel por vínculo de membro com time (`TimeMembro.papel`); não é um
-  perfil de conta. Gerentes e KP usam a mesma área de Times: gerente vê/gerencia times dos setores
-  associados; KP vê/atua somente nos times em que tem esse papel. A navegação e as ações também
-  dependem das permissões efetivas.
+- RN-14: Nesta entrega, KP continua sendo um papel por vínculo de membro com time
+  (`TimeMembro.papel`) e delimita em quais times a pessoa atua como KP. Está planejado um perfil de
+  conta **KP** com permissões superiores às de `USUARIO_PADRAO`; possuir esse perfil não concederá
+  acesso a todos os times, pois o vínculo `TimeMembro.papel` continuará definindo o escopo. Gerentes e
+  KP usam a mesma área de Times: gerente vê/gerencia times dos setores associados; KP vê/atua somente
+  nos times em que tem esse papel. A navegação e as ações também dependem das permissões efetivas.
 - RN-15: A conta com perfil `GERENTE`, mas sem associação ativa a setor, não tem escopo de gestão de
   times e não vê a opção de Times no sidebar até receber uma associação.
 - RN-16: O administrador pode inativar um time para resolver a inativação do setor correspondente;
@@ -185,7 +187,9 @@ permissões do perfil e o isolamento da unidade.
   acordo com suas permissões e escopos.
 - Usuários, Setores e Times do admin ficam em páginas separadas dentro da área de Administração.
 - A área de Administração aparece como grupo expansível no sidebar, apenas para o admin.
-- KP continua como papel por time, e não como perfil global da conta.
+- Nesta entrega, KP continua como papel por time. Está planejado um perfil de conta KP com
+  permissões superiores às de `USUARIO_PADRAO`, sem substituir o papel que delimita os times em que a
+  pessoa atua como KP. As permissões exatas e a atribuição desse perfil serão definidas em spec futura.
 - Setores podem ser criados, editados e inativados.
 - Remover associação gerente-setor revoga o acesso a todos os times daquele setor; `Time.gerente_id`
   sozinho não concede autorização.

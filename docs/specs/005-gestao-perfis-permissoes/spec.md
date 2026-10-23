@@ -130,6 +130,14 @@ selecionado e controles claros para alterar ações por grupo ou individualmente
 - Criar permissões pela interface. O catálogo é mantido pelo backend.
 - Implementar permissões para módulos de tarefas ainda não existentes.
 
+## Evolução planejada
+
+- A unidade precisará de um perfil **KP** com permissões superiores às do perfil `USUARIO_PADRAO`.
+  Essa evolução não altera o escopo desta entrega. Uma spec própria definirá as permissões exatas,
+  como o perfil será disponibilizado e como suas permissões de conta coexistem com o papel `KP` por
+  time (`TimeMembro.papel`). O papel por time continuará delimitando em quais times a pessoa atua
+  como KP; possuir o perfil de conta, por si só, não deve conceder acesso a todos os times.
+
 ## Decisões de UX
 
 - Criar e editar usam o mesmo espaço e os mesmos controles, evitando dois fluxos de configuração.
