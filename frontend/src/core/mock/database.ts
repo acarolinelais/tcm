@@ -130,7 +130,8 @@ function buildCurrentUser(db: Database, user: Usuario): PerfilAtual {
 }
 
 export const mockAuth = {
-  login(email: string, _password: string): TokenResponse {
+  login(email: string, password: string): TokenResponse {
+    void password;
     const db = readDb();
     const user = db.usuarios.find((item) => item.email.toLowerCase() === email.toLowerCase());
     if (!user || !user.ativo) throw new Error("Conta mock não encontrada ou inativa. Use admin@sdfmanager.com / admin@123.");
