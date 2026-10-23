@@ -34,19 +34,19 @@ no servidor, e nada entra em `dev` ou `main` sem a verificação automática ver
 - RN-01: Há duas branches de longa duração: `main` (estável) e `dev` (integração). Nenhuma das duas
   aceita commit nem envio direto.
 - RN-02: Branches de trabalho saem da `dev`, voltam para a `dev` por pedido de merge e são nomeadas
-  `<tipo>/<descricao>`. Os tipos são `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `style`,
-  `perf`, `ci` e `build`. Uma branch `feat/` começa com o número da spec (`feat/NNN-nome`).
+  `<tipo>/<descricao>`, com os tipos definidos no ADR 0027. Uma branch `feat/` começa com o número da
+  spec (`feat/NNN-nome`).
 - RN-03: A `main` só recebe pedido de merge vindo da `dev` ou de uma branch de correção urgente
-  (`hotfix/<descricao>`). A branch de hotfix sai da `main`.
-- RN-03a: Depois que um hotfix entra na `main`, um pedido de merge `main → dev` leva a correção para a
-  `dev`. A `dev` aceita pedidos de branches de trabalho e da `main`.
+  (`hotfix/<descricao>`), que sai da `main`. Depois que um hotfix entra na `main`, um pedido `main → dev`
+  leva a correção para a `dev`.
 - RN-04: Mensagens de commit e títulos de pedido seguem `tipo(escopo opcional): descrição`, com os
-  mesmos tipos da RN-02. Mensagens geradas pelo git para merge e revert são aceitas.
+  mesmos tipos da RN-02. Mensagens automáticas de merge e revert são aceitas.
 - RN-05: Uma spec corresponde a uma branch e a um pedido de merge para a `dev`, e a descrição do pedido
   cita a pasta da spec.
 - RN-06: Um pedido de merge só pode ser integrado com todas as verificações obrigatórias verdes: backend
   (lint e testes), frontend (lint, testes e build) e convenção (commits, título, nome e origem da branch).
-  Aprovação humana é opcional.
+  Aprovação humana é opcional. Enquanto o repositório não suportar bloqueio no servidor (limitação
+  aceita, ADR 0028), "não pode ser integrado" significa que o pedido fica marcado como reprovado.
 - RN-07: As regras de nome, mensagem e branch protegida também são checadas na máquina local, no momento
   do commit e do envio, para quem ativou a checagem local.
 - RN-08: A verificação automática também roda a cada integração em `dev` e `main`.
@@ -56,9 +56,9 @@ no servidor, e nada entra em `dev` ou `main` sem a verificação automática ver
 - **CA-01:** Dado um pedido de merge para a `dev` com backend e frontend corretos, quando ele é aberto
   ou atualizado, então as verificações de backend e frontend rodam e terminam verdes.
 - **CA-02 (falha):** Dado um pedido de merge com um teste de backend quebrado, quando a verificação
-  roda, então o job de backend fica vermelho e o pedido não pode ser integrado.
+  roda, então a verificação de backend falha e o pedido não pode ser integrado (RN-06).
 - **CA-03 (falha):** Dado um pedido de merge com erro de lint ou build no frontend, quando a
-  verificação roda, então o job de frontend fica vermelho e o pedido não pode ser integrado.
+  verificação roda, então a verificação de frontend falha e o pedido não pode ser integrado (RN-06).
 - **CA-04:** Dado um commit `feat(usuarios): filtra por perfil` numa branch `feat/009-x`, quando a
   pessoa commita e abre o pedido, então a checagem local e a do servidor passam.
 - **CA-05 (falha):** Dado um commit com mensagem fora da convenção (ex.: `Feat: Abluble`), quando a
@@ -67,18 +67,19 @@ no servidor, e nada entra em `dev` ou `main` sem a verificação automática ver
 - **CA-06 (falha):** Dado uma branch fora do padrão (ex.: `feature/abluble` ou `minha-branch`), quando
   a pessoa commita nela ou abre um pedido a partir dela, então a checagem recusa e mostra o padrão esperado.
 - **CA-07 (falha):** Dado alguém na `main` ou na `dev`, quando tenta commitar, então a checagem local
-  recusa. Quando tenta enviar direto ao servidor, então o servidor recusa.
+  recusa. Quando tenta enviar direto ao servidor, então a checagem local recusa (e o servidor também,
+  quando houver suporte a bloqueio).
 - **CA-08 (falha):** Dado um pedido de merge para a `main` vindo de uma branch que não é a `dev` nem
   `hotfix/*` (ex.: `feat/009-x`), quando a verificação roda, então ela falha e informa que a `main` só
   aceita pedidos da `dev` ou de hotfix.
-- **CA-08a:** Dado uma branch `hotfix/corrige-login` criada a partir da `main` com commits `fix: ...`,
+- **CA-09:** Dado uma branch `hotfix/corrige-login` criada a partir da `main` com commits `fix: ...`,
   quando o pedido para a `main` é aberto, então a verificação de convenção passa. Depois do merge, o
   pedido `main → dev` também passa.
-- **CA-09 (falha):** Dado um pedido de merge de uma branch `feat/NNN-...` sem citar uma pasta de spec
+- **CA-10 (falha):** Dado um pedido de merge de uma branch `feat/NNN-...` sem citar uma pasta de spec
   que exista, quando a verificação roda, então ela falha e informa o que falta.
-- **CA-10:** Dado um pedido `dev → main` verde, quando a pessoa integra, então a mudança entra na `main`
+- **CA-11:** Dado um pedido `dev → main` verde, quando a pessoa integra, então a mudança entra na `main`
   e a verificação roda de novo sobre a `main`.
-- **CA-11:** Dado a documentação do projeto, quando uma pessoa nova lê o README e o `CLAUDE.md`, então
+- **CA-12:** Dado a documentação do projeto, quando uma pessoa nova lê o README e o `CLAUDE.md`, então
   encontra o passo a passo: ativar a checagem local, criar a branch a partir da `dev`, implementar por
   blocos, abrir o pedido para a `dev` e promover para a `main`, além do caminho do hotfix.
 
@@ -93,6 +94,4 @@ no servidor, e nada entra em `dev` ou `main` sem a verificação automática ver
 
 ## Dúvidas em aberto
 
-- ~~Squash ou merge commit?~~ Resolvido: **merge commit**, porque preserva os commits de cada bloco.
-- ~~O que fazer com a `origin/feature/abluble`?~~ Resolvido: a branch já está toda contida na `main`.
-  Basta apagá-la.
+Nenhuma.

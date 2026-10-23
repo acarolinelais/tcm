@@ -17,18 +17,15 @@ Postgres real (`SDF_TEST_DATABASE_URL`).
     arquitetura (import-linter) e roda contra um Postgres em *service container*, com
     `SDF_TEST_DATABASE_URL` definida para os testes de integração não serem pulados.
   - `frontend`: `npm ci`, `npm run lint`, `npm test` e `npm run build`.
-  - `convencao` (só em PR): chama `scripts/git/convencao.sh`, o mesmo script dos hooks locais
-    (ADR 0029). Ele valida:
-    - a mensagem de cada commit do PR (`base..head`) e o título do PR;
-    - o nome da branch de origem;
-    - que um PR para a `main` venha da `dev` ou de uma `hotfix/*`;
-    - que um PR para a `dev` venha de uma branch de trabalho ou da `main` (sincronização pós-hotfix);
-    - que um PR de `feat/NNN-...` cite uma pasta `docs/specs/NNN-*` que existe.
+  - `convencao` (só em PR): aplica as regras do ADR 0027 (commits, título, nome e origem da branch,
+    spec citada) chamando `scripts/git/convencao.sh`, o mesmo script dos hooks locais (ADR 0029).
 - Proteção de branch (ruleset do GitHub) em `main` e `dev`:
   - exige PR;
   - exige os três checks verdes;
   - bloqueia force-push e exclusão da branch;
   - não exige aprovação mínima.
+  Enquanto o repositório for privado sem plano pago, o ruleset não é aplicado (limitação aceita em
+  2026-10-23): os checks ficam vermelhos, mas não bloqueiam o merge nem o push.
 - As versões das ferramentas vêm do repositório (Python 3.13 do `pyproject.toml`, `uv.lock`,
   `package-lock.json`, Node LTS) para o CI rodar o mesmo que a máquina local.
 - O e2e (Playwright) fica fora do CI até uma spec própria.
