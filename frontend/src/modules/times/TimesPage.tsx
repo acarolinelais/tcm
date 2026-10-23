@@ -72,12 +72,11 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
     <Table containerClassName={`min-h-0 ${times.data?.items.length ? "flex-1 overflow-auto" : "shrink-0 overflow-visible"}`}><TableHeader><TableRow>
       <TableHead><TableColumnFilter label={t("teams")} value={filtros.busca ?? ""} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, busca: value || undefined })); }} placeholder={t("searchTeam")} /></TableHead>
       <TableHead><TableColumnFilter label={t("sector")} value={filtros.setor_id ?? ""} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, setor_id: value || undefined })); }} options={[{ value: "", label: t("all") }, ...(setores.data?.items ?? []).map((setor) => ({ value: setor.id, label: setor.nome }))]} /></TableHead>
-      <TableHead><TableColumnFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, ativo: value === "" ? undefined : value === "true" })); }} options={[{ value: "", label: t("all") }, { value: "true", label: t("active") }, { value: "false", label: t("inactive") }]} /></TableHead>{podeGerenciarMembros && <TableHead>{t("members")}</TableHead>}{podeVisualizarDetalhe && <TableHead className="text-right">{t("actions")}</TableHead>}
+      {podeGerenciarMembros && <TableHead>{t("members")}</TableHead>}<TableHead><TableColumnFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, ativo: value === "" ? undefined : value === "true" })); }} options={[{ value: "", label: t("all") }, { value: "true", label: t("active") }, { value: "false", label: t("inactive") }]} /></TableHead>{podeVisualizarDetalhe && <TableHead className="text-right">{t("actions")}</TableHead>}
     </TableRow></TableHeader>{Boolean(times.data?.items.length) && <TableBody>
       {timesVisiveis.map((time, index) => <TableRow key={time.id}>
         <TableCell className="text-base font-medium text-foreground">{time.nome}</TableCell>
         <TableCell className="text-base text-muted-foreground">{setorNome(time.setor_id)}</TableCell>
-        <TableCell><Badge variant="secondary" className={time.ativo ? "rounded-md bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700" : "rounded-md bg-secondary px-2.5 py-1 text-xs text-muted-foreground"}>{time.ativo ? t("active") : t("inactive")}</Badge></TableCell>
         {podeGerenciarMembros && <TableCell>
           {(() => {
             const integrantes = (membrosPorTime[index]?.data ?? []).filter((membro) => membro.ativo).map((membro) => usuarioNome(membro.usuario_id));
@@ -92,6 +91,7 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
             </span>;
           })()}
         </TableCell>}
+        <TableCell><Badge variant="secondary" className={time.ativo ? "rounded-md bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700" : "rounded-md bg-secondary px-2.5 py-1 text-xs text-muted-foreground"}>{time.ativo ? t("active") : t("inactive")}</Badge></TableCell>
         {podeVisualizarDetalhe && <TableCell className="text-right"><TableRowActions label={time.nome} actions={[
           { label: t("viewTeam"), icon: Eye, onSelect: () => navigate(`${modoAdmin ? "/admin/times" : "/times"}/${time.id}`) },
           ...(podeGerenciarTime(time) && time.ativo ? [{ label: t("manageMembers"), icon: UsersRound, onSelect: () => setTimeAtual(time) }] : []),
