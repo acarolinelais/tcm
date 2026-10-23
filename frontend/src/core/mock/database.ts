@@ -304,7 +304,7 @@ export const mockTimesApi = {
     if (filters.setor_id) teams = teams.filter((team) => team.setor_id === filters.setor_id);
     if (filters.ativo !== undefined) teams = teams.filter((team) => team.ativo === filters.ativo);
     if (filters.busca) teams = teams.filter((team) => team.nome.toLocaleLowerCase().includes(filters.busca!.toLocaleLowerCase()));
-    return page(teams, pageNumber, pageSize);
+    return page(teams.map((team) => ({ ...team, setor_nome: db.setores.find((sector) => sector.id === team.setor_id)?.nome })), pageNumber, pageSize);
   },
   criar(body: { nome: string; setor_id: string }) {
     return updateDb((db) => { const team: Time = { id: id("mock-team"), setor_id: body.setor_id, nome: body.nome, gerente_id: null, ativo: true }; db.times.unshift(team); return team; });

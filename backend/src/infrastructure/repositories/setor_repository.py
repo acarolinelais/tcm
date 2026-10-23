@@ -22,6 +22,17 @@ class SetorRepositoryImpl(RepositoryBaseImpl[Setor, SetorModel]):
         )
         return tuple((await self.session.execute(stmt)).scalars().all())
 
+    async def nomes_por_ids(
+        self, unidade_id: UUID, setor_ids: tuple[UUID, ...]
+    ) -> dict[UUID, str]:
+        if not setor_ids:
+            return {}
+        stmt = select(SetorModel.id, SetorModel.nome).where(
+            SetorModel.unidade_id == unidade_id,
+            SetorModel.id.in_(setor_ids),
+        )
+        return dict((await self.session.execute(stmt)).all())
+
     async def listar_paginado(
         self,
         unidade_id: UUID,

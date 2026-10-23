@@ -76,7 +76,7 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
     </TableRow></TableHeader>{Boolean(times.data?.items.length) && <TableBody>
       {timesVisiveis.map((time, index) => <TableRow key={time.id}>
         <TableCell className="text-base font-medium text-foreground">{time.nome}</TableCell>
-        <TableCell className="text-base text-muted-foreground">{setorNome(time.setor_id)}</TableCell>
+        <TableCell className="text-base text-muted-foreground">{time.setor_nome ?? setorNome(time.setor_id)}</TableCell>
         {podeGerenciarMembros && <TableCell>
           {(() => {
             const integrantes = (membrosPorTime[index]?.data ?? []).filter((membro) => membro.ativo).map((membro) => usuarioNome(membro.usuario_id));

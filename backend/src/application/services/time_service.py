@@ -122,7 +122,20 @@ class TimeServiceImpl:
             )
         else:
             result = PagedResult([], page, page_size, 0)
-        return result.map(to_response)
+        nomes_por_ids = getattr(self._setor_repo, "nomes_por_ids", None)
+        nomes_setores = {}
+        if result.items and nomes_por_ids:
+            dados_nomes = await nomes_por_ids(
+                usuario_atual.unidade_id,
+                tuple(dict.fromkeys(time.setor_id for time in result.items)),
+            )
+            if isinstance(dados_nomes, dict):
+                nomes_setores = dados_nomes
+        return result.map(
+            lambda time: to_response(time).model_copy(
+                update={"setor_nome": nomes_setores.get(time.setor_id)}
+            )
+        )
 
     async def adicionar_membro(
         self, usuario_atual: UsuarioAutenticado, id: UUID, request: AdicionarMembroRequest

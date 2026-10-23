@@ -36,6 +36,7 @@ class TimeResponse(BaseModel):
     id: UUID
     unidade_id: UUID
     setor_id: UUID
+    setor_nome: str | None = None
     nome: str
     gerente_id: UUID | None
     ativo: bool

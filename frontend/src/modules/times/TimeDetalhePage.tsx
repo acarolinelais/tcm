@@ -48,7 +48,7 @@ export function TimeDetalhePage({ modoAdmin = false }: { modoAdmin?: boolean }) 
   if ((modoAdmin && !admin) || !podeConsultar) return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
 
   const caminhoVolta = modoAdmin ? "/admin/times" : "/times";
-  const setorNome = setores.data?.items.find((setor) => setor.id === time?.setor_id)?.nome ?? "—";
+  const setorNome = time?.setor_nome ?? setores.data?.items.find((setor) => setor.id === time?.setor_id)?.nome ?? "—";
   const membrosAtivos = (membros.data ?? []).filter((membro) => membro.ativo);
   const perfilLabel = (membro: (typeof membrosAtivos)[number]) => membro.usuario_perfil_codigo
     ? t(`catalog.profile.${membro.usuario_perfil_codigo}`, { defaultValue: membro.usuario_perfil ?? "—" })
