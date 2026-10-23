@@ -26,8 +26,7 @@ def upgrade() -> None:
 
         perfil_padrao_id = bind.execute(
             sa.text(
-                "SELECT id FROM perfis "
-                "WHERE unidade_id = :unidade_id AND codigo = 'USUARIO_PADRAO'"
+                "SELECT id FROM perfis WHERE unidade_id = :unidade_id AND codigo = 'USUARIO_PADRAO'"
             ),
             {"unidade_id": unidade_id},
         ).scalar_one_or_none()
