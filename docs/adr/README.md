@@ -38,3 +38,6 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0024](0024-responsavel-por-usuario.md) | Responsável direto por usuários criados por gerente | Aceito |
 | [0025](0025-idioma-preferido-por-conta.md) | Idioma preferido por conta | Aceito |
 | [0026](0026-perfil-kp-com-escopo-por-associacao.md) | Perfil KP com escopo por participação em times | Aceito |
+| [0027](0027-fluxo-de-branches-e-pull-requests.md) | Fluxo de branches (`main` + `dev`) e convenção de commits | Aceito |
+| [0028](0028-ci-com-github-actions.md) | Verificação contínua e proteção de branches no GitHub | Aceito |
+| [0029](0029-git-hooks-versionados.md) | Git hooks versionados no repositório | Aceito |
