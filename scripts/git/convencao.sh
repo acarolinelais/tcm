@@ -66,8 +66,11 @@ valida_origem_pr() {
 }
 
 valida_commits() {
-  invalidos=$(git log --no-merges --format='%h %s' "$1..$2" |
-    grep -Ev "^[0-9a-f]+ $REGEX_MENSAGEM" | sed 's/^/  /') || true
+  # git log separado do filtro: num pipe, uma falha dele (SHA inválido, clone raso) passaria em silêncio.
+  commits=$(git log --no-merges --format='%h %s' "$1..$2") ||
+    falha "Não foi possível ler os commits de $1..$2 (o clone tem o histórico completo?)."
+  [ -n "$commits" ] || return 0
+  invalidos=$(printf '%s\n' "$commits" | grep -Ev "^[0-9a-f]+ $REGEX_MENSAGEM" | sed 's/^/  /') || true
   [ -z "$invalidos" ] || falha "Commits fora do padrão:" "$invalidos" "$FORMATO_MENSAGEM"
 }
 
