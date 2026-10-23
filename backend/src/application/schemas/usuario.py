@@ -26,6 +26,8 @@ class UsuarioResponse(BaseModel):
     email: str
     ativo: bool
     perfil_id: UUID
+    perfil_nome: str | None = None
+    perfil_codigo: str | None = None
     responsavel_id: UUID | None
     created_at: datetime
 

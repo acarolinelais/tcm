@@ -69,15 +69,21 @@ async def test_criar_perfil_sem_permissao_retorna_403_sem_persistir(api_client):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("codigo", ["ADMIN_UNIDADE", "KP"])
-async def test_nao_permite_alterar_perfil_de_sistema(api_client, codigo):
+@pytest.mark.parametrize("codigo", ["ADMIN_UNIDADE", "USUARIO_PADRAO", "GERENTE", "KP"])
+async def test_admin_altera_permissoes_de_perfil_seedado(api_client, codigo):
     from src.api.main import app
 
     unidade_id = uuid4()
     usuario = UsuarioAutenticado(uuid4(), unidade_id, "ADMIN_UNIDADE")
-    perfil = SimpleNamespace(id=uuid4(), unidade_id=unidade_id, codigo=codigo)
+    perfil = SimpleNamespace(
+        id=uuid4(), unidade_id=unidade_id, codigo=codigo, nome=codigo, descricao=None
+    )
     session = AsyncMock()
     session.get.return_value = perfil
+    session.add_all = Mock()
+    session.execute.return_value = SimpleNamespace(
+        scalars=lambda: SimpleNamespace(all=lambda: ["usuarios.consultar"])
+    )
     app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
     app.dependency_overrides[get_session] = dependency_override(session)
 
@@ -85,9 +91,10 @@ async def test_nao_permite_alterar_perfil_de_sistema(api_client, codigo):
         f"/api/perfis/{perfil.id}/permissoes", json={"permissoes": ["usuarios.consultar"]}
     )
 
-    assert response.status_code == 409
-    session.execute.assert_not_awaited()
-    session.commit.assert_not_awaited()
+    assert response.status_code == 200
+    assert response.json()["codigo"] == codigo
+    assert response.json()["permissoes"] == ["usuarios.consultar"]
+    session.commit.assert_awaited_once()
 
 
 @pytest.mark.asyncio

@@ -10,10 +10,10 @@
   - Arquivos: migration Alembic em `backend/src/infrastructure/data/migrations/versions/`
   - Cobre: RN-01, CA-03
   - Verificação: `cd backend && uv run pytest tests/integration/test_bootstrap.py -q` → KP existe uma vez por unidade e a migration pode ser reaplicada sem duplicar
-- [x] **T02. Proteger perfil KP contra edição direta**
+- [x] **T02. Proteger identidade e código estável do perfil KP**
   - Arquivos: `backend/src/api/routers/perfis.py`, testes funcionais de perfis
   - Cobre: RN-01, CA-03
-  - Verificação: `cd backend && uv run pytest tests/functional/test_perfis_api.py -q` → tentativa via API de alterar permissões é recusada
+  - Verificação: API mantém código e identidade do perfil; alteração de permissões depende de autorização e unidade
 
 ## Fase 2: Atribuição de perfil a usuários
 
@@ -43,7 +43,7 @@
 - [x] **T09. Exibir permissões e proteger perfil KP na tela de perfis**
   - Arquivos: `frontend/src/modules/perfis/PerfisPage.tsx` e testes do módulo
   - Cobre: RN-01, CA-03
-  - Verificação: `cd frontend && npm test -- --run src/modules/perfis` → perfil KP aparece somente para leitura
+  - Verificação: `cd frontend && npm test -- --run src/modules/perfis` → perfil KP identificado como sistema e permissões editáveis pelo administrador
 - [x] **T10. Traduzir nome de exibição do perfil KP**
   - Arquivos: catálogos i18n inglês, português e coreano e testes
   - Cobre: RN-10, CA-08
@@ -81,3 +81,11 @@ futuras unidades será tratado na spec que introduzir esse fluxo.
 CA-04 e CA-05 permanecem pendentes: dependem dos módulos e endpoints de atividades/tarefas, fora do
 escopo desta spec. T12–T14 entregam a base de perfil, participação e autorização da área de times; não
 validam as ações de KP nesses módulos futuros.
+
+## Fase 6: Visualização de perfil no escopo do gerente
+
+- [x] **T15. Exibir perfil atual de cada usuário autorizado sem abrir o catálogo de permissões**
+  - Arquivos: resposta/listagem de usuários, serviço, tabela e formulário de usuários
+  - Cobre: RN-11, CA-11
+  - Verificação: testes de serviço e componentes confirmam que gerente vê o nome do perfil de contas
+    no escopo, mas recebe apenas KP/padrão como opções de atribuição

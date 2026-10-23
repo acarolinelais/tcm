@@ -1,7 +1,7 @@
 # 005. Gestão de perfis e permissões: Plan
 
 - **Spec:** [spec.md](spec.md)
-- **ADRs aplicados:** 0003, 0006, 0009, 0018, 0020
+- **ADRs aplicados:** 0003, 0006, 0009, 0018, 0020, 0031
 - **ADRs novos propostos:** nenhum
 
 ## Abordagem
@@ -88,9 +88,9 @@ Ausência do campo também é normalizada para lista vazia, se essa for a conven
 | CA-03 a CA-05 | Componente | Grupo fechado com resumo; checkbox individual; seleção vazia, parcial e completa |
 | CA-06, CA-07, CA-11 | Componente/E2E | Estados limpo/alterado, salvar, preservar erro, confirmação ao sair/trocar |
 | CA-08 a CA-10 | API/componente | Criar perfil com conjunto completo; conflito ou ID inválido sem registro parcial; campos preservados |
-| CA-12, CA-13 | Funcional/componente | Perfis de sistema somente leitura, 403 e isolamento por unidade |
+| CA-12, CA-13 | Funcional/componente | Administrador edita permissões de perfis seedados; autorização e isolamento por unidade |
 | CA-14 | E2E | Navegação por teclado e viewport estreito sem overflow horizontal |
-| CA-15 | Componente | Menu da tabela abre visualização e edição conforme o perfil é protegido ou editável |
+| CA-15 | Componente | Menu da tabela oferece visualização e edição de permissões para todos os perfis |
 
 ## Riscos e decisões
 

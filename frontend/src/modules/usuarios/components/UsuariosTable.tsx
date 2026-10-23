@@ -137,9 +137,11 @@ export function UsuariosTable({
                 <TableCell className="text-sm text-muted-foreground">
                   {(() => {
                     const perfil = perfis.data?.find((item) => item.id === usuario.perfil_id);
-                    return perfil?.codigo
-                      ? t(`catalog.profile.${perfil.codigo}`, { defaultValue: perfil.nome })
-                      : perfil?.nome ?? "—";
+                    const codigo = usuario.perfil_codigo ?? perfil?.codigo;
+                    const nome = usuario.perfil_nome ?? perfil?.nome;
+                    return codigo
+                      ? t(`catalog.profile.${codigo}`, { defaultValue: nome ?? "—" })
+                      : nome ?? "—";
                   })()}
                 </TableCell>
               )}

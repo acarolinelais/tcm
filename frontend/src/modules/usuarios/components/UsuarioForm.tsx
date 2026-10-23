@@ -148,8 +148,9 @@ export function UsuarioForm({
                 isPending ||
                 Boolean(
                   usuario &&
-                    perfis.data?.find((perfil) => perfil.id === usuario.perfil_id)?.codigo ===
-                      "ADMIN_UNIDADE",
+                    (usuario.perfil_codigo === "ADMIN_UNIDADE" ||
+                      perfis.data?.find((perfil) => perfil.id === usuario.perfil_id)?.codigo ===
+                        "ADMIN_UNIDADE"),
                 )
               }
             >
@@ -160,7 +161,11 @@ export function UsuarioForm({
               {!usuario && <SelectItem value={SELECT_EMPTY_VALUE}>{t("standardUser")}</SelectItem>}
               {usuario && perfilSelecionado && perfis.data && !perfilAtualDisponivel && (
                 <SelectItem value={perfilSelecionado} disabled>
-                  {t("currentProfileRestricted")}
+                  {usuario.perfil_codigo
+                    ? t(`catalog.profile.${usuario.perfil_codigo}`, {
+                        defaultValue: usuario.perfil_nome ?? t("currentProfileRestricted"),
+                      })
+                    : usuario.perfil_nome ?? t("currentProfileRestricted")}
                 </SelectItem>
               )}
               {perfis.data

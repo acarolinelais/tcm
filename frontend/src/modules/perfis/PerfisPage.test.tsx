@@ -123,8 +123,10 @@ describe("PerfisPage", () => {
 
   it.each([
     ["ADMIN_UNIDADE", "Administrador"],
+    ["USUARIO_PADRAO", "Usuário padrão"],
+    ["GERENTE", "Gerente"],
     ["KP", "Ponto focal"],
-  ])("exibe permissões do perfil de sistema %s sem permitir edição", async (codigo, nome) => {
+  ])("permite que o administrador edite permissões do perfil de sistema %s", async (codigo, nome) => {
     api.listarPerfis.mockResolvedValue([
       { id: "sys", nome, descricao: null, codigo, permissoes: ["usuarios.consultar"] },
     ]);
@@ -132,11 +134,14 @@ describe("PerfisPage", () => {
 
     const user = userEvent.setup();
     await screen.findByRole("table");
-    await abrirPerfil(user, nome);
-    expect(await screen.findByText("System protected")).toBeInTheDocument();
+    await abrirPerfil(user, nome, "Edit permissions");
+    expect(await screen.findByText("System profile")).toBeInTheDocument();
     await abrirGrupo(user, "Users");
-    expect(screen.getByLabelText("View users in the allowed scope")).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    const permissao = screen.getByLabelText("View users in the allowed scope");
+    expect(permissao).toBeChecked();
+    await user.click(permissao);
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(api.salvarPermissoes).toHaveBeenCalledWith("sys", []);
   });
 
   it("mantém os campos quando o backend informa conflito ao criar perfil", async () => {

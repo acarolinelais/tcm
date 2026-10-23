@@ -2,7 +2,7 @@
 
 - **Status:** Em andamento
 - **Data:** 2026-10-23
-- **ADRs relacionados:** 0018, 0020, 0021, 0026
+- **ADRs relacionados:** 0018, 0020, 0021, 0026, 0031
 
 ## Problema
 
@@ -29,8 +29,9 @@ atividades e tarefas serão adicionadas junto com os módulos correspondentes.
 
 ## Regras de negócio
 
-- RN-01: Cada unidade possui um perfil de sistema `KP` reutilizável, protegido contra edição de nome,
-  descrição e permissões pela tela e pela API. O perfil pode ser atribuído a várias contas.
+- RN-01: Cada unidade possui um perfil de sistema `KP` reutilizável. Nome, descrição e código são
+  mantidos pelo sistema; as permissões podem ser ajustadas por quem possui `perfis.gerenciar`, conforme
+  ADR 0031. O perfil pode ser atribuído a várias contas.
 - RN-02: O perfil `KP` inclui as permissões de `USUARIO_PADRAO`. Permissões de atividades e tarefas
   serão acrescentadas nas specs desses módulos, quando as ações e códigos forem definidos.
 - RN-03: O perfil de conta `KP` e a participação em times são dimensões distintas. Atribuir KP não
@@ -51,6 +52,9 @@ atividades e tarefas serão adicionadas junto com os módulos correspondentes.
   sua responsabilidade. O gerente não pode atribuir outros perfis nem alterar o responsável.
 - RN-10: O nome de exibição do perfil KP é traduzido para inglês, português e coreano. A tradução não
   altera o código estável `KP` nem nomes de perfis personalizados.
+- RN-11: O gerente pode visualizar o nome e o código do perfil atribuído às contas dentro do escopo
+  que já pode consultar. Essa leitura não libera o catálogo completo de permissões nem a administração
+  de perfis; as opções de atribuição continuam limitadas a KP e `USUARIO_PADRAO`.
 
 ## Critérios de aceite
 
@@ -59,8 +63,9 @@ atividades e tarefas serão adicionadas junto com os módulos correspondentes.
 - **CA-02:** Dado um gerente criando ou editando usuário sob sua responsabilidade, quando seleciona
   KP ou `USUARIO_PADRAO`, então a conta é salva mantendo o gerente como responsável; outros perfis
   são recusados.
-- **CA-03:** Dado o perfil de sistema KP, quando é consultado na tela de perfis, então aparece em
-  modo somente leitura; tentativa de alteração direta pela API é recusada.
+- **CA-03:** Dado o perfil de sistema KP, quando uma pessoa autorizada o consulta na tela de perfis,
+  então pode ajustar suas permissões; nome, descrição e código permanecem mantidos pelo sistema e
+  tentativas sem permissão ou fora da unidade são recusadas.
 - **CA-04:** Dada uma conta com perfil KP e participação ativa nos times A e B, quando os módulos de
   atividades/tarefas estiverem disponíveis, então pode executar as ações de KP nos dois times.
 - **CA-05:** Dada uma conta KP sem participação ativa no time C, quando tenta consultar ou gerenciar
@@ -76,6 +81,9 @@ atividades e tarefas serão adicionadas junto com os módulos correspondentes.
 - **CA-10:** Dado um gerente atribuindo ou removendo KP, quando o usuário está sob sua
   responsabilidade, então pode escolher KP ou `USUARIO_PADRAO`; para usuário fora desse escopo ou
   para qualquer outro perfil, o backend recusa a operação.
+- **CA-11:** Dado um gerente consultando usuários dentro do seu escopo, quando a lista é exibida,
+  então vê o nome do perfil atualmente atribuído sem acessar o catálogo de permissões ou alterar
+  perfis que não pode atribuir.
 
 ## Fora de escopo
 

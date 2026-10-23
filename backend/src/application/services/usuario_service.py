@@ -85,7 +85,25 @@ class UsuarioServiceImpl:
                     usuario_atual.id,
                     usuario_atual.id,
                 )
-        return result.map(to_response)
+        perfil_por_usuario = (
+            await self._repo.dados_por_usuarios(
+                usuario_atual.unidade_id, tuple(usuario.id for usuario in result.items)
+            )
+            if result.items
+            else {}
+        )
+        items = []
+        for usuario in result.items:
+            resposta = to_response(usuario)
+            _, perfil_nome, perfil_codigo = perfil_por_usuario.get(
+                usuario.id, ("", "", None)
+            )
+            items.append(
+                resposta.model_copy(
+                    update={"perfil_nome": perfil_nome or None, "perfil_codigo": perfil_codigo}
+                )
+            )
+        return PagedResult(items, result.page, result.page_size, result.total_count)
 
     async def obter(self, usuario_atual: UsuarioAutenticado, id: UUID) -> UsuarioResponse:
         self._exigir_permissao(usuario_atual, "usuarios.consultar")

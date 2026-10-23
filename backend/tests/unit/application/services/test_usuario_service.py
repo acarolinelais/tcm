@@ -6,6 +6,7 @@ import pytest
 from src.application.schemas.usuario import AtualizarUsuarioRequest, CriarUsuarioRequest
 from src.application.services.usuario_service import UsuarioServiceImpl
 from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
+from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.usuario import Usuario
 
@@ -266,3 +267,28 @@ async def test_usuario_sem_permissao_nao_consulta_listagem(service, repo):
 
     repo.listar_visiveis.assert_not_awaited()
     repo.listar_visiveis_filtrado.assert_not_awaited()
+
+
+async def test_gerente_recebe_nome_do_perfil_dos_usuarios_no_escopo(service, repo, gerente_atual):
+    usuario = Usuario(gerente_atual.unidade_id, "Carol", "carol@example.com")
+    usuario.perfil_id = uuid4()
+    usuario.created_at = datetime.now()
+    repo.listar_visiveis.return_value = PagedResult([usuario], 1, 20, 1)
+    repo.dados_por_usuarios.return_value = {
+        usuario.id: (usuario.nome, "Auditoria", None),
+    }
+
+    resposta = await service.listar(gerente_atual, 1, 20)
+
+    assert resposta.items[0].perfil_nome == "Auditoria"
+    assert resposta.items[0].perfil_codigo is None
+    repo.dados_por_usuarios.assert_awaited_once_with(gerente_atual.unidade_id, (usuario.id,))
+
+
+async def test_listagem_vazia_nao_busca_metadados_de_perfil(service, repo, gerente_atual):
+    repo.listar_visiveis.return_value = PagedResult([], 1, 20, 0)
+
+    resposta = await service.listar(gerente_atual, 1, 20)
+
+    assert resposta.items == []
+    repo.dados_por_usuarios.assert_not_awaited()

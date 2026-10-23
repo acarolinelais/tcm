@@ -2,7 +2,7 @@
 
 - **Status:** Aprovada
 - **Data:** 2026-10-23
-- **ADRs relacionados:** 0006, 0009, 0018, 0020
+- **ADRs relacionados:** 0006, 0009, 0018, 0020, 0031
 
 ## Problema
 
@@ -37,9 +37,9 @@ selecionado e controles claros para alterar ações por grupo ou individualmente
 - RN-02: A tela inicial apresenta os perfis em uma tabela no padrão da listagem de usuários, com
   nome, descrição, tipo, quantidade de permissões e ações. Perfis do sistema são identificados como
   protegidos.
-- RN-03: O menu de ações oferece **Visualizar permissões** para todos os perfis e **Editar
-  permissões** apenas para perfis editáveis. A visualização é somente leitura; edição abre o editor
-  de largura completa. Nenhuma segunda barra de navegação lateral é exibida.
+- RN-03: O menu de ações oferece **Visualizar permissões** e **Editar permissões** para todos os
+  perfis da unidade. A visualização é somente leitura; edição abre o editor de largura completa.
+  Nenhuma segunda barra de navegação lateral é exibida.
 - RN-04: Tabela, menu e editor se adaptam a telas estreitas sem exigir rolagem horizontal.
 - RN-05: Selecionar **Novo perfil** abre o mesmo editor vazio, com campos de nome e descrição no
   cabeçalho e as permissões
@@ -66,9 +66,10 @@ selecionado e controles claros para alterar ações por grupo ou individualmente
 - RN-12: Ao sair do editor, iniciar um novo, cancelar a criação ou sair da tela com mudanças
   pendentes, a pessoa pode salvar, descartar ou permanecer. No rascunho de criação, as opções
   equivalentes são criar, descartar ou permanecer. Nenhum rascunho é descartado sem decisão explícita.
-- RN-13: Perfis de sistema com `codigo` (`ADMIN_UNIDADE`, `USUARIO_PADRAO` e `GERENTE`) têm suas
-  permissões visíveis, são somente leitura e não oferecem ação de salvar. A API recusa tentativas de
-  alteração.
+- RN-13: Perfis de sistema com `codigo` (`ADMIN_UNIDADE`, `USUARIO_PADRAO`, `GERENTE` e `KP`) têm
+  nome, descrição e código mantidos pelo sistema, mas suas permissões podem ser alteradas por quem
+  possui `perfis.gerenciar`. A API preserva isolamento por unidade e invalida as sessões das contas
+  associadas ao perfil alterado. O indicador de perfil de sistema não implica permissões imutáveis.
 - RN-14: O perfil `ADMIN_UNIDADE` não pode ser atribuído a outras contas por esta tela. A atribuição
   continua na gestão de usuários, sujeita às restrições do ADR 0018.
 - RN-14a: O perfil de sistema `GERENTE` pode ser atribuído a usuários pela gestão de usuários. Ele
@@ -110,23 +111,23 @@ selecionado e controles claros para alterar ações por grupo ou individualmente
   como corrigir.
 - **CA-11:** Dado um rascunho de edição ou criação, quando a pessoa retorna à tabela, cancela ou
   tenta sair, então pode salvar/criar, descartar ou permanecer sem perder dados acidentalmente.
-- **CA-12:** Dado um perfil de sistema, quando a pessoa o seleciona, então vê o indicador de
-  proteção e as permissões em modo somente leitura; gravação direta pela API é recusada.
+- **CA-12:** Dado um perfil de sistema, quando a pessoa autorizada o seleciona, então pode alterar
+  suas permissões; nome, descrição e código permanecem mantidos pelo sistema. A gravação invalida as
+  sessões das contas vinculadas. Sem permissão, a API recusa a alteração.
 - **CA-13:** Dada uma pessoa sem `perfis.gerenciar` ou de outra unidade, quando tenta consultar ou
   alterar dados, então a API recusa a operação e não persiste mudanças.
 - **CA-14:** Dada uma tela estreita ou navegação por teclado, quando a pessoa percorre tabela,
   menu, editor, grupos e ações, então tudo permanece legível, operável, com foco visível e sem
   rolagem horizontal.
-- **CA-16:** Dado o perfil de sistema `GERENTE`, quando o administrador o consulta, então vê suas
-  permissões em modo somente leitura; quando atribui o perfil a um usuário pela gestão de usuários,
-  então a atribuição é permitida sem tornar o perfil editável.
+- **CA-16:** Dado o perfil de sistema `GERENTE`, quando a pessoa autorizada o consulta, então pode
+  editar suas permissões sem alterar seu código ou as regras de atribuição do perfil.
 
 ## Fora de escopo
 
 - Atribuir perfis a usuários, que permanece na gestão de usuários.
 - Renomear ou alterar a descrição de perfis já criados.
 - Excluir, duplicar ou criar perfis a partir de modelos.
-- Alterar permissões dos perfis de sistema ou definir dependências automáticas entre permissões.
+- Definir dependências automáticas entre permissões.
 - Criar permissões pela interface. O catálogo é mantido pelo backend.
 - Implementar permissões para módulos de tarefas ainda não existentes.
 

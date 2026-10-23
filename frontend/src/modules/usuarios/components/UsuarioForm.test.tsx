@@ -88,4 +88,30 @@ describe("UsuarioForm", () => {
     expect(options).not.toContain("Gerente");
     expect(options).not.toContain("Auditoria");
   });
+
+  it("gerente vê o perfil atual de um usuário sem poder atribuí-lo", async () => {
+    perfilApi.listarPerfis.mockResolvedValueOnce(profiles.slice(0, 2));
+    const { container } = renderForm(vi.fn(), {
+      podeGerenciar: false,
+      podeAtribuirPerfilKP: true,
+      usuario: {
+        id: "user-1",
+        nome: "Ana",
+        email: "ana@example.com",
+        ativo: true,
+        perfil_id: "custom",
+        perfil_nome: "Auditoria",
+        perfil_codigo: null,
+        created_at: "2026-01-01T00:00:00Z",
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("combobox", { name: "Profile" })).toHaveTextContent("Auditoria");
+    });
+    const optionAtual = [...container.querySelectorAll("select option")].find(
+      (option) => option.textContent === "Auditoria",
+    );
+    expect(optionAtual).toBeDisabled();
+  });
 });

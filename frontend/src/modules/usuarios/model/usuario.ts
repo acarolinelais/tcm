@@ -6,6 +6,8 @@ export interface Usuario {
   email: string;
   ativo: boolean;
   perfil_id: string;
+  perfil_nome?: string | null;
+  perfil_codigo?: string | null;
   responsavel_id?: string | null;
   created_at: string;
 }
