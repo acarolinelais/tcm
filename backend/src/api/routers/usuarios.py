@@ -24,10 +24,16 @@ async def listar(
     email: str | None = Query(None, min_length=1, max_length=254),
     ativo: bool | None = Query(None),
     perfil_id: UUID | None = Query(None),
+    responsavel_id: UUID | None = Query(None),
+    sem_responsavel: bool = Query(False),
+    setor_id: UUID | None = Query(None),
     service: UsuarioService = Depends(get_usuario_service),
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
-    return await service.listar(usuario_atual, page, page_size, nome, email, ativo, perfil_id)
+    return await service.listar(
+        usuario_atual, page, page_size, nome, email, ativo, perfil_id,
+        responsavel_id, sem_responsavel, setor_id,
+    )
 
 
 @router.get("/{id}", response_model=UsuarioResponse)

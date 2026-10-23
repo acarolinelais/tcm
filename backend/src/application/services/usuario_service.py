@@ -43,9 +43,21 @@ class UsuarioServiceImpl:
         email: str | None = None,
         ativo: bool | None = None,
         perfil_id: UUID | None = None,
+        responsavel_id: UUID | None = None,
+        sem_responsavel: bool = False,
+        setor_id: UUID | None = None,
     ) -> PagedResult[UsuarioResponse]:
         self._exigir_permissao(usuario_atual, "usuarios.consultar")
-        tem_filtros = any((nome, email, ativo is not None, perfil_id))
+        tem_filtros = any(
+            (nome, email, ativo is not None, perfil_id, responsavel_id, sem_responsavel, setor_id)
+        )
+        filtros_adicionais = {
+            chave: valor for chave, valor in (
+                ("responsavel_id", responsavel_id),
+                ("sem_responsavel", True if sem_responsavel else None),
+                ("setor_id", setor_id),
+            ) if valor is not None
+        }
         if usuario_atual.eh_administrador:
             if tem_filtros:
                 result = await self._repo.listar_filtrado(
@@ -56,6 +68,7 @@ class UsuarioServiceImpl:
                     email,
                     ativo,
                     perfil_id,
+                    **filtros_adicionais,
                 )
             else:
                 result = await self._repo.listar_paginado(usuario_atual.unidade_id, page, page_size)
@@ -75,6 +88,13 @@ class UsuarioServiceImpl:
                     ativo,
                     perfil_id,
                     usuario_atual.id,
+                    **(
+                        {"filtro_responsavel_id": responsavel_id}
+                        if responsavel_id is not None
+                        else {}
+                    ),
+                    **({"sem_responsavel": True} if sem_responsavel else {}),
+                    **({"setor_id": setor_id} if setor_id is not None else {}),
                 )
             else:
                 result = await self._repo.listar_visiveis(
@@ -94,6 +114,19 @@ class UsuarioServiceImpl:
             else {}
         )
         items = []
+        setores_por_usuario = {}
+        pode_consultar_setores = usuario_atual.eh_administrador or (
+            usuario_atual.perfil_codigo in ("GERENTE", "KP")
+            and usuario_atual.pode("setores.consultar")
+        )
+        if result.items and pode_consultar_setores:
+            listar_setores = getattr(self._repo, "setores_por_usuarios", None)
+            if listar_setores:
+                dados_setores = await listar_setores(
+                    usuario_atual.unidade_id, tuple(usuario.id for usuario in result.items)
+                )
+                if isinstance(dados_setores, dict):
+                    setores_por_usuario = dados_setores
         for usuario in result.items:
             resposta = to_response(usuario)
             _, perfil_nome, perfil_codigo = perfil_por_usuario.get(
@@ -101,7 +134,11 @@ class UsuarioServiceImpl:
             )
             items.append(
                 resposta.model_copy(
-                    update={"perfil_nome": perfil_nome or None, "perfil_codigo": perfil_codigo}
+                    update={
+                        "perfil_nome": perfil_nome or None,
+                        "perfil_codigo": perfil_codigo,
+                        "setores": setores_por_usuario.get(usuario.id, []),
+                    }
                 )
             )
         return PagedResult(items, result.page, result.page_size, result.total_count)

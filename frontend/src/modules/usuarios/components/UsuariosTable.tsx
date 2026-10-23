@@ -7,6 +7,7 @@ import { listarPerfis } from "@/modules/perfis/api/perfis.api";
 import { useQuery } from "@tanstack/react-query";
 import { SearchX, UsersRound } from "lucide-react";
 import { usuarioApi } from "../api/usuario.api";
+import { setoresApi } from "@/modules/setores/api/setores.api";
 
 import type { UsuarioFiltros } from "../api/usuario.api";
 import { useUsuariosList } from "../hooks/useUsuarios";
@@ -18,7 +19,7 @@ interface UsuariosTableProps {
   pageSize: number;
   pageSizeOptions: readonly number[];
   filtros: UsuarioFiltros;
-  onFiltroChange: (campo: "nome" | "email" | "ativo" | "perfil", valor: string) => void;
+  onFiltroChange: (campo: "nome" | "email" | "ativo" | "perfil" | "responsavel" | "setor", valor: string) => void;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
   onEditar: (usuario: Usuario) => void;
@@ -28,6 +29,7 @@ interface UsuariosTableProps {
   podeAtribuirPerfil?: boolean;
   podeAtribuirPerfilKP?: boolean;
   podeConsultarPerfil?: boolean;
+  podeConsultarSetores?: boolean;
   usuarioAtualId?: string;
 }
 
@@ -46,6 +48,7 @@ export function UsuariosTable({
   podeAtribuirPerfil = false,
   podeAtribuirPerfilKP = false,
   podeConsultarPerfil = false,
+  podeConsultarSetores = false,
   usuarioAtualId = "",
 }: UsuariosTableProps) {
   const { t } = useTranslation();
@@ -61,13 +64,18 @@ export function UsuariosTable({
     queryFn: () => usuarioApi.listar(1, 100, { perfil_id: perfilGerenteId }),
     enabled: podeAtribuirPerfil && Boolean(perfilGerenteId),
   });
+  const setores = useQuery({
+    queryKey: ["setores", "filtro-usuarios"],
+    queryFn: () => setoresApi.listar(1, 100),
+    enabled: podeConsultarSetores,
+  });
   const mostrarAcoes = podeGerenciar || podeAtribuirPerfil;
 
   if (isLoading) return <p className="text-sm text-muted-foreground">{t("loadingProfile")}</p>;
 
   const items = data?.items ?? [];
   const temFiltro = Boolean(
-    filtros.nome || filtros.email || filtros.ativo !== undefined || filtros.perfil_id,
+    filtros.nome || filtros.email || filtros.ativo !== undefined || filtros.perfil_id || filtros.responsavel_id || filtros.sem_responsavel || filtros.setor_id,
   );
 
   return (
@@ -91,18 +99,6 @@ export function UsuariosTable({
                 placeholder={t("usersSearchEmail")}
               />
             </TableHead>
-            <TableHead>
-              <TableColumnFilter
-                label={t("status")}
-                value={filtros.ativo === undefined ? "" : String(filtros.ativo)}
-                onChange={(valor) => onFiltroChange("ativo", valor)}
-                options={[
-                  { value: "", label: t("all") },
-                  { value: "true", label: t("active") },
-                  { value: "false", label: t("inactive") },
-                ]}
-              />
-            </TableHead>
             {podeConsultarPerfil && (
               <TableHead>
                 {(podeAtribuirPerfil || podeAtribuirPerfilKP) ? (
@@ -118,7 +114,38 @@ export function UsuariosTable({
                 ) : t("profile")}
               </TableHead>
             )}
-            {podeAtribuirPerfil && <TableHead>{t("owner")}</TableHead>}
+            {podeConsultarSetores && <TableHead>
+              <TableColumnFilter
+                label={t("sector")}
+                value={filtros.setor_id ?? ""}
+                onChange={(valor) => onFiltroChange("setor", valor)}
+                options={[{ value: "", label: t("all") }, ...(setores.data?.items ?? []).map((setor) => ({ value: setor.id, label: setor.nome }))]}
+              />
+            </TableHead>}
+            {podeAtribuirPerfil && <TableHead>
+              <TableColumnFilter
+                label={t("owner")}
+                value={filtros.sem_responsavel ? "__none" : filtros.responsavel_id ?? ""}
+                onChange={(valor) => onFiltroChange("responsavel", valor)}
+                options={[
+                  { value: "", label: t("all") },
+                  { value: "__none", label: t("noOwner") },
+                  ...(gerentes.data?.items ?? []).map((gerente) => ({ value: gerente.id, label: gerente.nome })),
+                ]}
+              />
+            </TableHead>}
+            <TableHead>
+              <TableColumnFilter
+                label={t("status")}
+                value={filtros.ativo === undefined ? "" : String(filtros.ativo)}
+                onChange={(valor) => onFiltroChange("ativo", valor)}
+                options={[
+                  { value: "", label: t("all") },
+                  { value: "true", label: t("active") },
+                  { value: "false", label: t("inactive") },
+                ]}
+              />
+            </TableHead>
             {mostrarAcoes && <TableHead>{t("actions")}</TableHead>}
           </TableRow>
         </TableHeader>
@@ -127,16 +154,6 @@ export function UsuariosTable({
             <TableRow key={usuario.id}>
               <TableCell className="text-base font-medium text-foreground">{usuario.nome}</TableCell>
               <TableCell className="text-base text-muted-foreground">{usuario.email}</TableCell>
-              <TableCell>
-                <Badge
-                  variant="secondary"
-                  className={usuario.ativo
-                    ? "rounded-md bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700"
-                    : "rounded-md px-2.5 py-1 text-xs"}
-                >
-                  {usuario.ativo ? t("active") : t("inactive")}
-                </Badge>
-              </TableCell>
               {podeConsultarPerfil && (
                 <TableCell className="text-sm text-muted-foreground">
                   {(() => {
@@ -149,9 +166,20 @@ export function UsuariosTable({
                   })()}
                 </TableCell>
               )}
+              {podeConsultarSetores && <TableCell className="text-sm text-muted-foreground">{usuario.setores?.join(", ") || "—"}</TableCell>}
               {podeAtribuirPerfil && <TableCell className="text-sm text-muted-foreground">
                   {gerentes.data?.items.find((gerente) => gerente.id === usuario.responsavel_id)?.nome ?? t("noOwner")}
               </TableCell>}
+              <TableCell>
+                <Badge
+                  variant="secondary"
+                  className={usuario.ativo
+                    ? "rounded-md bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700"
+                    : "rounded-md px-2.5 py-1 text-xs"}
+                >
+                  {usuario.ativo ? t("active") : t("inactive")}
+                </Badge>
+              </TableCell>
               {mostrarAcoes && <TableCell>
                 <UsuarioActionsMenu
                   usuario={usuario}

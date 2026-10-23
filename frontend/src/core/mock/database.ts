@@ -197,7 +197,22 @@ export const mockUsuarioApi = {
     if (filters.email) users = users.filter((user) => user.email.toLocaleLowerCase().includes(filters.email!.toLocaleLowerCase()));
     if (filters.ativo !== undefined) users = users.filter((user) => user.ativo === filters.ativo);
     if (filters.perfil_id) users = users.filter((user) => user.perfil_id === filters.perfil_id);
-    return page(users, pageNumber, pageSize);
+    if (filters.responsavel_id) users = users.filter((user) => user.responsavel_id === filters.responsavel_id);
+    if (filters.sem_responsavel) users = users.filter((user) => !user.responsavel_id);
+    if (filters.setor_id) users = users.filter((user) => db.membrosTime.some((member) => {
+      if (member.usuario_id !== user.id || !member.ativo) return false;
+      const team = db.times.find((item) => item.id === member.time_id && item.ativo);
+      return team?.setor_id === filters.setor_id;
+    }));
+    const withSectors = users.map((user) => ({
+      ...user,
+      setores: [...new Set(db.membrosTime.filter((member) => member.usuario_id === user.id && member.ativo)
+        .map((member) => db.times.find((team) => team.id === member.time_id && team.ativo)?.setor_id)
+        .filter((sectorId): sectorId is string => Boolean(sectorId))
+        .map((sectorId) => db.setores.find((sector) => sector.id === sectorId && sector.ativo)?.nome)
+        .filter((sectorName): sectorName is string => Boolean(sectorName)))],
+    }));
+    return page(withSectors, pageNumber, pageSize);
   },
   obter(userId: string) {
     const user = readDb().usuarios.find((item) => item.id === userId);

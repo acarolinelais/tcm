@@ -50,7 +50,7 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
     });
   }
 
-  function alterarFiltro(campo: "nome" | "email" | "ativo" | "perfil", valor: string) {
+  function alterarFiltro(campo: "nome" | "email" | "ativo" | "perfil" | "responsavel" | "setor", valor: string) {
     setPage(1);
     setFiltros((atuais) => {
       if (campo === "nome" || campo === "email") {
@@ -59,6 +59,14 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
       if (campo === "ativo") {
         return { ...atuais, ativo: valor === "" ? undefined : valor === "true" };
       }
+      if (campo === "responsavel") {
+        return {
+          ...atuais,
+          responsavel_id: valor && valor !== "__none" ? valor : undefined,
+          sem_responsavel: valor === "__none" ? true : undefined,
+        };
+      }
+      if (campo === "setor") return { ...atuais, setor_id: valor || undefined };
       return {
         ...atuais,
         perfil_id: valor || undefined,
@@ -101,6 +109,7 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
         podeAtribuirPerfil={podeAtribuirPerfil}
         podeAtribuirPerfilKP={podeAtribuirPerfilKP}
         podeConsultarPerfil={podeConsultarPerfilUsuario}
+        podeConsultarSetores={ehAdmin || ((ehGerente || perfil.perfil_codigo === "KP") && perfil.permissoes.includes("setores.consultar"))}
         usuarioAtualId={perfil.id}
       />
 

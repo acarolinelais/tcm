@@ -9,6 +9,7 @@ export interface Usuario {
   perfil_nome?: string | null;
   perfil_codigo?: string | null;
   responsavel_id?: string | null;
+  setores?: string[];
   created_at: string;
 }
 
