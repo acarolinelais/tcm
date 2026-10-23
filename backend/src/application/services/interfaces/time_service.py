@@ -3,6 +3,7 @@ from uuid import UUID
 
 from src.application.schemas.time import (
     AdicionarMembroRequest,
+    AtualizarTimeRequest,
     CriarTimeRequest,
     TimeMembroResponse,
     TimeResponse,
@@ -15,6 +16,10 @@ from src.domain.common.usuario_autenticado import UsuarioAutenticado
 class TimeService(Protocol):
     async def criar(
         self, usuario_atual: UsuarioAutenticado, request: CriarTimeRequest
+    ) -> TimeResponse: ...
+
+    async def atualizar(
+        self, usuario_atual: UsuarioAutenticado, id: UUID, request: AtualizarTimeRequest
     ) -> TimeResponse: ...
 
     async def listar(

@@ -44,7 +44,8 @@ atividades e tarefas serão adicionadas junto com os módulos correspondentes.
   e atribuir ou transferir itens entre membros do mesmo time, conforme a matriz detalhada na spec
   desses módulos.
 - RN-07: O perfil KP não concede permissões administrativas sobre usuários, setores, perfis ou
-  composição dos times. Essas ações continuam dependendo das permissões e escopos próprios.
+  administração da unidade. Com `times.gerenciar`, pode alterar a composição dos times em que tem
+  participação ativa, sem criar, inativar, mover ou alterar os dados cadastrais do time.
 - RN-08: Alterar o perfil da conta invalida sessões anteriores conforme o mecanismo existente.
   Remover ou inativar a participação em um time revoga imediatamente o acesso da pessoa àquele time.
 - RN-09: O administrador pode atribuir KP a qualquer usuário da unidade no cadastro ou edição. O
@@ -57,6 +58,9 @@ atividades e tarefas serão adicionadas junto com os módulos correspondentes.
   usuários dos times no seu escopo. A permissão não amplia esse escopo, não libera o catálogo de
   permissões nem a administração de perfis; as opções de atribuição do gerente continuam limitadas a
   KP e `USUARIO_PADRAO`. O perfil seedado `GERENTE` recebe essa permissão inicialmente.
+- RN-12: O perfil KP recebe `times.gerenciar` inicialmente. Essa permissão permite adicionar e
+  remover membros e alterar o nome somente nos times em que a conta tem participação ativa; não
+  concede permissão `usuarios.gerenciar` nem permite alterar setor, gerente responsável ou status.
 
 ## Critérios de aceite
 
@@ -86,13 +90,16 @@ atividades e tarefas serão adicionadas junto com os módulos correspondentes.
 - **CA-11:** Dado um gerente com `usuarios.perfil.consultar`, quando consulta usuários sob sua
   responsabilidade ou dentro do escopo dos seus times, então vê o nome do perfil atribuído; sem essa
   permissão, a resposta omite nome e código do perfil. Em ambos os casos, o escopo da lista não muda.
+- **CA-12:** Dada uma conta KP com `times.gerenciar`, quando altera o nome ou adiciona/remove membros
+  de um time em que possui participação ativa, então a alteração é permitida; para outros times ou sem
+  a permissão, a API recusa. A permissão não permite alterar setor, gerente responsável ou status.
 
 ## Fora de escopo
 
 - Implementar entidades, telas e endpoints de atividades ou tarefas; seus contratos e a matriz de
   ações serão definidos nas specs desses módulos.
-- Alterar a associação de pessoas aos times ou permitir que KP gerencie composição de time.
-- Conceder ao KP permissões de administração de unidade, setor, usuário, perfil ou time.
+- Permitir que KP altere o setor, o gerente responsável ou o status do time.
+- Conceder ao KP permissões de administração de unidade, setor, usuário ou perfil.
 - Limitar a quantidade de contas KP por unidade, setor ou time.
 
 ## Decisões confirmadas

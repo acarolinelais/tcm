@@ -51,9 +51,16 @@ class SetorServiceImpl:
     ) -> PagedResult[SetorResponse]:
         setor_ids = None
         if not usuario_atual.eh_administrador:
-            if usuario_atual.perfil_codigo != "GERENTE":
+            if not usuario_atual.pode("setores.consultar"):
                 raise ForbiddenException("Você não tem permissão para consultar setores.")
-            setor_ids = usuario_atual.setores_gerenciados
+            if usuario_atual.perfil_codigo == "GERENTE":
+                setor_ids = usuario_atual.setores_gerenciados
+            elif usuario_atual.perfil_codigo == "KP":
+                setor_ids = await self._repo.ids_por_times(
+                    usuario_atual.unidade_id, usuario_atual.time_ids
+                )
+            else:
+                raise ForbiddenException("Você não tem permissão para consultar setores.")
         if setor_ids is None and ativo is None and busca is None:
             result = await self._repo.listar_paginado(usuario_atual.unidade_id, page, page_size)
         else:

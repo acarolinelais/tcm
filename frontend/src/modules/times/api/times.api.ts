@@ -14,6 +14,7 @@ export const timesApi = {
     ...(filtros.busca ? { busca: filtros.busca } : {}),
   }),
   criar: (body: { nome: string; setor_id: string }) => useMock ? Promise.resolve(mockTimesApi.criar(body)) : httpPost<Time>("/api/times", body),
+  atualizar: (id: string, body: { nome: string }) => useMock ? Promise.resolve(mockTimesApi.atualizar(id, body)) : httpPatchBody<Time>(`/api/times/${id}`, body),
   definirAtivo: (id: string, ativo: boolean) => useMock ? Promise.resolve(mockTimesApi.definirAtivo(id, ativo)) : httpPatchBody<Time>(`/api/times/${id}/${ativo ? "ativar" : "inativar"}`, {}),
   membros: (id: string) => useMock ? Promise.resolve(mockTimesApi.membros(id)) : httpGet<TimeMembro[]>(`/api/times/${id}/membros`),
   usuariosDisponiveis: () => useMock ? Promise.resolve(mockTimesApi.usuariosDisponiveis()) : httpGet<Usuario[]>("/api/times/usuarios-disponiveis"),

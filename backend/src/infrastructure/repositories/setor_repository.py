@@ -12,6 +12,16 @@ from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
 class SetorRepositoryImpl(RepositoryBaseImpl[Setor, SetorModel]):
     model = SetorModel
 
+    async def ids_por_times(self, unidade_id: UUID, time_ids: tuple[UUID, ...]) -> tuple[UUID, ...]:
+        if not time_ids:
+            return ()
+        stmt = (
+            select(TimeModel.setor_id)
+            .where(TimeModel.unidade_id == unidade_id, TimeModel.id.in_(time_ids))
+            .distinct()
+        )
+        return tuple((await self.session.execute(stmt)).scalars().all())
+
     async def listar_paginado(
         self,
         unidade_id: UUID,

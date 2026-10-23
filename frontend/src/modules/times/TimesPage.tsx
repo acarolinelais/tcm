@@ -27,6 +27,7 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
   const podeVer = admin || perfil.permissoes.includes("times.consultar");
   const ehGerenteComEscopo = perfil.perfil_codigo === "GERENTE" && perfil.permissoes.includes("times.gerenciar") && perfil.setores_gerenciados.length > 0;
   const podeGerenciar = admin || ehGerenteComEscopo;
+  const podeGerenciarMembros = podeGerenciar || (perfil.perfil_codigo === "KP" && perfil.permissoes.includes("times.gerenciar"));
   const podeVisualizarDetalhe = podeGerenciar || (perfil.perfil_codigo === "KP" && perfil.times.length > 0);
   const client = useQueryClient();
   const [pagina, setPagina] = useState(1);
@@ -46,9 +47,9 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
   const setorSelecionadoParaCriar = setorUnicoGerenciado?.id ?? setorId;
   const times = useQuery({ queryKey: ["times", pagina, tamanho, filtros], queryFn: () => timesApi.listar(pagina, tamanho, filtros), enabled: podeVer });
   const timesVisiveis = times.data?.items ?? [];
-  const membrosPorTime = useQueries({ queries: podeGerenciar ? timesVisiveis.map((time) => ({ queryKey: ["time-membros", time.id], queryFn: () => timesApi.membros(time.id) })) : [] });
+  const membrosPorTime = useQueries({ queries: podeGerenciarMembros ? timesVisiveis.map((time) => ({ queryKey: ["time-membros", time.id], queryFn: () => timesApi.membros(time.id) })) : [] });
   const membros = useQuery({ queryKey: ["time-membros", timeAtual?.id], queryFn: () => timesApi.membros(timeAtual!.id), enabled: Boolean(timeAtual) });
-  const usuarios = useQuery({ queryKey: ["times", "usuarios-disponiveis"], queryFn: timesApi.usuariosDisponiveis, enabled: podeGerenciar });
+  const usuarios = useQuery({ queryKey: ["times", "usuarios-disponiveis"], queryFn: timesApi.usuariosDisponiveis, enabled: podeGerenciarMembros });
   const criar = useMutation({ mutationFn: () => timesApi.criar({ nome: nome.trim(), setor_id: setorSelecionadoParaCriar }), onSuccess: async () => { setCriarAberto(false); setNome(""); setSetorId(""); await client.invalidateQueries({ queryKey: ["times"] }); toast.success(t("teamCreateSuccess")); }, onError: () => toast.error(t("teamCreateError")) });
   const definirAtivo = useMutation({ mutationFn: (input: { id: string; ativo: boolean }) => timesApi.definirAtivo(input.id, input.ativo), onSuccess: async (time) => { await client.invalidateQueries({ queryKey: ["times"] }); setTimeParaInativar(null); toast.success(`${t("team")} ${time.nome} ${time.ativo ? t("activate").toLowerCase() : t("inactivate").toLowerCase()}.`); }, onError: () => toast.error(t("teamStatusError")) });
   const adicionar = useMutation({ mutationFn: () => timesApi.adicionar(timeAtual!.id, usuarioId.trim()), onSuccess: async () => { setUsuarioId(""); await client.invalidateQueries({ queryKey: ["time-membros", timeAtual?.id] }); toast.success(t("memberAdded")); }, onError: () => toast.error(t("memberAddError")) });
@@ -57,6 +58,9 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
   if (!podeVer) return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
   const setorNome = (id: string) => setores.data?.items.find((setor) => setor.id === id)?.nome ?? id;
   const usuarioNome = (id: string) => usuarios.data?.find((usuario) => usuario.id === id)?.nome ?? id;
+  const podeGerenciarTime = (time: Time) => admin ||
+    (ehGerenteComEscopo && perfil.setores_gerenciados.includes(time.setor_id)) ||
+    (perfil.perfil_codigo === "KP" && perfil.permissoes.includes("times.gerenciar") && perfil.times.some((item) => item.id === time.id));
   function abrirCriacaoTime() {
     setNome("");
     setSetorId("");
@@ -68,13 +72,13 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
     <Table containerClassName={`min-h-0 ${times.data?.items.length ? "flex-1 overflow-auto" : "shrink-0 overflow-visible"}`}><TableHeader><TableRow>
       <TableHead><TableColumnFilter label={t("teams")} value={filtros.busca ?? ""} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, busca: value || undefined })); }} placeholder={t("searchTeam")} /></TableHead>
       <TableHead><TableColumnFilter label={t("sector")} value={filtros.setor_id ?? ""} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, setor_id: value || undefined })); }} options={[{ value: "", label: t("all") }, ...(setores.data?.items ?? []).map((setor) => ({ value: setor.id, label: setor.nome }))]} /></TableHead>
-      <TableHead><TableColumnFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, ativo: value === "" ? undefined : value === "true" })); }} options={[{ value: "", label: t("all") }, { value: "true", label: t("active") }, { value: "false", label: t("inactive") }]} /></TableHead>{podeGerenciar && <TableHead>{t("members")}</TableHead>}{podeVisualizarDetalhe && <TableHead className="text-right">{t("actions")}</TableHead>}
+      <TableHead><TableColumnFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, ativo: value === "" ? undefined : value === "true" })); }} options={[{ value: "", label: t("all") }, { value: "true", label: t("active") }, { value: "false", label: t("inactive") }]} /></TableHead>{podeGerenciarMembros && <TableHead>{t("members")}</TableHead>}{podeVisualizarDetalhe && <TableHead className="text-right">{t("actions")}</TableHead>}
     </TableRow></TableHeader>{Boolean(times.data?.items.length) && <TableBody>
       {timesVisiveis.map((time, index) => <TableRow key={time.id}>
         <TableCell className="text-base font-medium text-foreground">{time.nome}</TableCell>
         <TableCell className="text-base text-muted-foreground">{setorNome(time.setor_id)}</TableCell>
         <TableCell><Badge variant="secondary" className={time.ativo ? "rounded-md bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700" : "rounded-md bg-secondary px-2.5 py-1 text-xs text-muted-foreground"}>{time.ativo ? t("active") : t("inactive")}</Badge></TableCell>
-        {podeGerenciar && <TableCell>
+        {podeGerenciarMembros && <TableCell>
           {(() => {
             const integrantes = (membrosPorTime[index]?.data ?? []).filter((membro) => membro.ativo).map((membro) => usuarioNome(membro.usuario_id));
             const nomesIntegrantes = integrantes.length ? integrantes : [t("teamMembersEmpty")];
@@ -90,7 +94,7 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
         </TableCell>}
         {podeVisualizarDetalhe && <TableCell className="text-right"><TableRowActions label={time.nome} actions={[
           { label: t("viewTeam"), icon: Eye, onSelect: () => navigate(`${modoAdmin ? "/admin/times" : "/times"}/${time.id}`) },
-          ...((admin || (ehGerenteComEscopo && perfil.setores_gerenciados.includes(time.setor_id))) && time.ativo ? [{ label: t("manageMembers"), icon: UsersRound, onSelect: () => setTimeAtual(time) }] : []),
+          ...(podeGerenciarTime(time) && time.ativo ? [{ label: t("manageMembers"), icon: UsersRound, onSelect: () => setTimeAtual(time) }] : []),
           ...(admin ? [{ label: time.ativo ? t("inactivate") : t("activate"), icon: time.ativo ? UserRoundX : UserRoundCheck, destructive: time.ativo, onSelect: () => time.ativo ? setTimeParaInativar(time) : definirAtivo.mutate({ id: time.id, ativo: true }) }] : []),
         ]} /></TableCell>}
       </TableRow>)}

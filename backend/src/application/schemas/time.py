@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from src.domain.entities.time import Time
 from src.domain.entities.time_membro import TimeMembro
@@ -10,6 +10,20 @@ class CriarTimeRequest(BaseModel):
     nome: str = Field(min_length=1, max_length=Time.NOME_MAX_LENGTH)
     setor_id: UUID
     gerente_id: UUID | None = None
+
+
+class AtualizarTimeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    nome: str = Field(min_length=1, max_length=Time.NOME_MAX_LENGTH)
+
+    @field_validator("nome")
+    @classmethod
+    def nome_nao_pode_ser_vazio(cls, nome: str) -> str:
+        nome = nome.strip()
+        if not nome:
+            raise ValueError("O nome do time é obrigatório.")
+        return nome
 
 
 class AdicionarMembroRequest(BaseModel):

@@ -14,6 +14,7 @@ const MANAGER_ID = "mock-user-manager";
 const TEAM_ID = "mock-team-platform";
 
 interface Database {
+  schemaVersion?: number;
   unidade: { id: string; nome: string; ativo: boolean };
   usuarios: Usuario[];
   perfis: Perfil[];
@@ -46,7 +47,7 @@ function createSeed(): Database {
   const adminProfile: Perfil = { id: "mock-profile-admin", nome: "Administrador", descricao: "Acesso completo à unidade.", codigo: "ADMIN_UNIDADE", permissoes: allPermissions };
   const standardProfile: Perfil = { id: "mock-profile-standard", nome: "Usuário padrão", descricao: "Perfil padrão da unidade.", codigo: "USUARIO_PADRAO", permissoes: ["usuarios.consultar", "setores.consultar", "times.consultar"] };
   const managerProfile: Perfil = { id: "mock-profile-manager", nome: "Gerente", descricao: "Gerencia pessoas e times do setor.", codigo: "GERENTE", permissoes: ["usuarios.consultar", "usuarios.perfil.consultar", "usuarios.gerenciar", "setores.consultar", "times.consultar", "times.criar", "times.gerenciar"] };
-  const kpProfile: Perfil = { id: "mock-profile-kp", nome: "KP", descricao: "Acompanha atividades dos times associados.", codigo: "KP", permissoes: ["times.consultar"] };
+  const kpProfile: Perfil = { id: "mock-profile-kp", nome: "KP", descricao: "Acompanha atividades dos times associados.", codigo: "KP", permissoes: ["usuarios.consultar", "setores.consultar", "times.consultar", "times.gerenciar"] };
   const developerProfile: Perfil = { id: "mock-profile-developer", nome: "Desenvolvedor", descricao: "Perfil personalizado para demonstração.", codigo: null, permissoes: ["usuarios.consultar", "times.consultar"] };
   const sectors: Setor[] = [
     { id: "mock-sector-engineering", unidade_id: UNIT_ID, nome: "Engenharia", ativo: true },
@@ -62,6 +63,7 @@ function createSeed(): Database {
     { id: "mock-user-inactive", nome: "Rafael Lima", email: "rafael.lima@example.com", ativo: false, perfil_id: standardProfile.id, created_at: "2026-02-10T12:00:00Z" },
   ];
   return {
+    schemaVersion: 4,
     unidade: { id: UNIT_ID, nome: "Manaus", ativo: true },
     usuarios: users,
     perfis: [adminProfile, standardProfile, managerProfile, kpProfile, developerProfile],
@@ -86,7 +88,18 @@ function createSeed(): Database {
 function readDb(): Database {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (!stored) return writeDb(createSeed());
-  try { return JSON.parse(stored) as Database; }
+  try {
+    const db = JSON.parse(stored) as Database;
+    if ((db.schemaVersion ?? 1) < 4) {
+      // Align existing demo data once without overriding later permission edits.
+      db.perfis.filter((profile) => profile.codigo === "KP").forEach((profile) => {
+        profile.permissoes = [...new Set([...profile.permissoes, "usuarios.consultar", "setores.consultar", "times.consultar", "times.gerenciar"])];
+      });
+      db.schemaVersion = 4;
+      return writeDb(db);
+    }
+    return db;
+  }
   catch { return writeDb(createSeed()); }
 }
 
@@ -166,7 +179,20 @@ function currentMockUserId() {
 export const mockUsuarioApi = {
   listar(pageNumber: number, pageSize: number, filters: UsuarioFiltros = {}) {
     const db = readDb();
-    let users = [...db.usuarios];
+    const currentUser = db.usuarios.find((user) => user.id === currentMockUserId());
+    const profile = currentUser && profileFor(db, currentUser);
+    const currentTeamIds = new Set(db.membrosTime
+      .filter((member) => member.usuario_id === currentUser?.id && member.ativo)
+      .map((member) => member.time_id));
+    const managedSectorIds = new Set(db.gerentesSetor
+      .filter((manager) => manager.usuario_id === currentUser?.id && manager.ativo)
+      .map((manager) => manager.setor_id));
+    db.times.filter((team) => managedSectorIds.has(team.setor_id)).forEach((team) => currentTeamIds.add(team.id));
+    let users = profile?.codigo === "ADMIN_UNIDADE"
+      ? [...db.usuarios]
+      : db.usuarios.filter((user) => user.id === currentUser?.id ||
+        (profile?.codigo === "GERENTE" && user.responsavel_id === currentUser?.id) ||
+        db.membrosTime.some((member) => member.usuario_id === user.id && member.ativo && currentTeamIds.has(member.time_id)));
     if (filters.nome) users = users.filter((user) => user.nome.toLocaleLowerCase().includes(filters.nome!.toLocaleLowerCase()));
     if (filters.email) users = users.filter((user) => user.email.toLocaleLowerCase().includes(filters.email!.toLocaleLowerCase()));
     if (filters.ativo !== undefined) users = users.filter((user) => user.ativo === filters.ativo);
@@ -219,7 +245,18 @@ export const mockPerfilApi = {
 
 export const mockSetoresApi = {
   listar(pageNumber: number, pageSize: number, active?: boolean, search?: string) {
-    let sectors = readDb().setores;
+    const db = readDb();
+    const user = db.usuarios.find((item) => item.id === currentMockUserId());
+    const profile = user && profileFor(db, user);
+    const userTeamIds = new Set(db.membrosTime.filter((member) => member.usuario_id === user?.id && member.ativo).map((member) => member.time_id));
+    const managedSectorIds = new Set(db.gerentesSetor.filter((manager) => manager.usuario_id === user?.id && manager.ativo).map((manager) => manager.setor_id));
+    let sectors = profile?.codigo === "ADMIN_UNIDADE"
+      ? db.setores
+      : profile?.codigo === "GERENTE"
+        ? db.setores.filter((sector) => managedSectorIds.has(sector.id))
+        : profile?.codigo === "KP"
+          ? db.setores.filter((sector) => db.times.some((team) => team.setor_id === sector.id && userTeamIds.has(team.id)))
+          : [];
     if (active !== undefined) sectors = sectors.filter((sector) => sector.ativo === active);
     if (search) sectors = sectors.filter((sector) => sector.nome.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
     return page(sectors, pageNumber, pageSize);
@@ -241,7 +278,14 @@ export const mockSetoresApi = {
 
 export const mockTimesApi = {
   listar(pageNumber: number, pageSize: number, filters: { setor_id?: string; ativo?: boolean; busca?: string } = {}) {
-    let teams = readDb().times;
+    const db = readDb();
+    const user = db.usuarios.find((item) => item.id === currentMockUserId());
+    const profile = user && profileFor(db, user);
+    const userTeamIds = new Set(db.membrosTime.filter((member) => member.usuario_id === user?.id && member.ativo).map((member) => member.time_id));
+    const managedSectorIds = new Set(db.gerentesSetor.filter((manager) => manager.usuario_id === user?.id && manager.ativo).map((manager) => manager.setor_id));
+    let teams = profile?.codigo === "ADMIN_UNIDADE" || profile?.codigo === "GERENTE"
+      ? db.times.filter((team) => profile?.codigo === "ADMIN_UNIDADE" || managedSectorIds.has(team.setor_id))
+      : db.times.filter((team) => userTeamIds.has(team.id));
     if (filters.setor_id) teams = teams.filter((team) => team.setor_id === filters.setor_id);
     if (filters.ativo !== undefined) teams = teams.filter((team) => team.ativo === filters.ativo);
     if (filters.busca) teams = teams.filter((team) => team.nome.toLocaleLowerCase().includes(filters.busca!.toLocaleLowerCase()));
@@ -249,6 +293,9 @@ export const mockTimesApi = {
   },
   criar(body: { nome: string; setor_id: string }) {
     return updateDb((db) => { const team: Time = { id: id("mock-team"), setor_id: body.setor_id, nome: body.nome, gerente_id: null, ativo: true }; db.times.unshift(team); return team; });
+  },
+  atualizar(teamId: string, body: { nome: string }) {
+    return updateDb((db) => { const team = db.times.find((item) => item.id === teamId); if (!team) throw new Error("Time não encontrado."); team.nome = body.nome; return team; });
   },
   definirAtivo(teamId: string, ativo: boolean) {
     return updateDb((db) => { const team = db.times.find((item) => item.id === teamId); if (!team) throw new Error("Time não encontrado."); team.ativo = ativo; if (!ativo) db.membrosTime.filter((item) => item.time_id === teamId).forEach((member) => { member.ativo = false; }); return team; });

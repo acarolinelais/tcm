@@ -2,6 +2,7 @@ from uuid import UUID
 
 from src.application.schemas.time import (
     AdicionarMembroRequest,
+    AtualizarTimeRequest,
     CriarTimeRequest,
     TimeMembroResponse,
     TimeResponse,
@@ -69,6 +70,16 @@ class TimeServiceImpl:
                 raise ConflictException("O responsável principal precisa estar associado ao setor.")
         time = Time(unidade_id, request.setor_id, request.nome, gerente_id)
         await self._repo.adicionar(time)
+        await self._uow.commit()
+        return to_response(time)
+
+    async def atualizar(
+        self, usuario_atual: UsuarioAutenticado, id: UUID, request: AtualizarTimeRequest
+    ) -> TimeResponse:
+        time = await self._obter_time(usuario_atual.unidade_id, id)
+        self._garantir_gestao_time(usuario_atual, time)
+        time.nome = request.nome
+        await self._repo.atualizar(time)
         await self._uow.commit()
         return to_response(time)
 
@@ -181,6 +192,10 @@ class TimeServiceImpl:
     async def listar_usuarios_disponiveis(self, usuario_atual: UsuarioAutenticado):
         if not usuario_atual.eh_administrador and not (
             usuario_atual.perfil_codigo == "GERENTE" and usuario_atual.pode("times.gerenciar")
+        ) and not (
+            usuario_atual.perfil_codigo == "KP"
+            and usuario_atual.pode("times.gerenciar")
+            and usuario_atual.time_ids
         ):
             raise ForbiddenException("Você não tem permissão para gerenciar membros dos times.")
         return [
@@ -230,9 +245,14 @@ class TimeServiceImpl:
     @staticmethod
     def _garantir_gestao_time(usuario_atual: UsuarioAutenticado, time: Time) -> None:
         dentro_do_setor = time.setor_id in usuario_atual.setores_gerenciados
+        dentro_do_time = time.id in usuario_atual.time_ids
         if not usuario_atual.eh_administrador and not (
             usuario_atual.perfil_codigo == "GERENTE"
             and usuario_atual.pode("times.gerenciar")
             and dentro_do_setor
+        ) and not (
+            usuario_atual.perfil_codigo == "KP"
+            and usuario_atual.pode("times.gerenciar")
+            and dentro_do_time
         ):
             raise ForbiddenException("Apenas o gerente do time ou administrador pode alterá-lo.")
