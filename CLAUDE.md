@@ -60,6 +60,9 @@ Documentação em PT-BR. Termos de domínio no código em português; termos té
 ## Git
 - Commits **sem** `Co-Authored-By` nem qualquer atribuição ao Claude.
 - Só commite quando o usuário pedir.
+- **Nunca** commite nem dê push direto em `main` ou `dev`. Uma spec = uma branch `feat/NNN-nome` criada a
+  partir da `dev` atualizada = um PR para a `dev`. Demais regras (hotfix, merge) no ADR 0027.
+- Commits e títulos de PR em Conventional Commits (`tipo(escopo): descrição`). Não use `--no-verify`.
 
 ## Ambiente
 - O repositório roda no **Windows**. O backend usa Python 3.13 com ambiente gerenciado por **uv**
@@ -75,4 +78,5 @@ uv run uvicorn <pacote>.api.main:app --reload   # sobe a API; docs em /scalar
 uv run pytest                                   # testes do backend
 cd frontend && npm run dev                      # sobe o frontend (Vite)
 cd frontend && npm test && npm run lint && npm run e2e
+sh scripts/git/convencao.test.sh                # testes das regras de branch/commit/PR
 ```

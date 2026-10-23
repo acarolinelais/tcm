@@ -79,7 +79,7 @@
     (regressão do próprio script) e depois chama `pr`, `pr-titulo` e `spec` com
     `github.base_ref`, `github.head_ref`, os SHAs e o título via `env` (nunca interpolados no
     script). Validação real na T10
-- [ ] **T10. 🌐 Enviar a branch e abrir o PR `feat/009-fluxo-branches-ci → dev`**
+- [x] **T10. 🌐 Enviar a branch e abrir o PR `feat/009-fluxo-branches-ci → dev`**
   - Arquivos: nenhum
   - Cobre: CA-01, CA-04
   - Verificação: `gh pr checks <n>` → `backend`, `frontend` e `convencao` verdes. Se um teste falhar só
@@ -98,7 +98,7 @@
 
 ## Fase 6: Documentação do fluxo
 
-- [ ] **T12. README: seção "Fluxo de desenvolvimento"**
+- [x] **T12. README: seção "Fluxo de desenvolvimento"**
   - Arquivos: `README.md`
   - Cobre: CA-12
   - Verificação: revisão. A seção cobre:
@@ -108,13 +108,13 @@
     - hotfix, incluindo o PR `main → dev`;
     - a tabela de tipos;
     - a limitação do repositório privado.
-- [ ] **T13. `CLAUDE.md` e skill `implement-task`**
+- [x] **T13. `CLAUDE.md` e skill `implement-task`**
   - Arquivos: `CLAUDE.md` (seção Git e comandos), `.claude/skills/implement-task/SKILL.md`
   - Cobre: CA-12, RN-05
   - Verificação: revisão. A skill confere, antes do primeiro bloco, que está numa branch `feat/NNN-*`
     (cria a partir da `dev` se não estiver e recusa trabalhar em `main`/`dev`), e os commits sugeridos
     seguem a convenção
-- [ ] **T14. Roteiro de configuração do GitHub para a dona do repositório**
+- [x] **T14. Roteiro de configuração do GitHub para a dona do repositório**
   - Arquivos: `docs/specs/009-fluxo-branches-ci/configuracao-github.md`
   - Cobre: RN-01, RN-06
   - Verificação: revisão. O roteiro traz os comandos `gh api` para:
@@ -132,7 +132,7 @@
   - Arquivos: nenhum
   - Cobre: RN-03, CA-11
   - Verificação: `convencao` verde no PR. Depois do merge, `gh run list --branch main --limit 1` → verde
-- [ ] **T17. 🌐 Apagar a `origin/feature/abluble`**
+- [x] **T17. 🌐 Apagar a `origin/feature/abluble`**
   - Arquivos: nenhum
   - Cobre: limpeza (a branch já está toda contida na `main`)
   - Verificação: `git merge-base --is-ancestor origin/feature/abluble origin/main` volta 0 antes de
