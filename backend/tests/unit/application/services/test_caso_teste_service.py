@@ -1,0 +1,352 @@
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock
+from uuid import uuid4
+
+import pytest
+from pydantic import ValidationError
+from src.application.schemas.caso_teste import AtualizarCasoTesteRequest, CriarCasoTesteRequest
+from src.application.services.caso_teste_service import CasoTesteServiceImpl
+from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
+from src.domain.common.usuario_autenticado import UsuarioAutenticado
+from src.domain.entities.caso_teste import (
+    CasoTeste,
+    CategoriaCasoTeste,
+    DificuldadeCasoTeste,
+    SituacaoCasoTeste,
+)
+from src.domain.entities.projeto import Projeto
+from src.domain.entities.time import Time
+from src.domain.entities.time_membro import TimeMembro
+from src.domain.entities.usuario import Usuario
+
+
+@pytest.fixture
+def contexto():
+    casos, projetos, times, membros, usuarios, uow = [AsyncMock() for _ in range(6)]
+    unidade_id, time_id, setor_id, projeto_id, kp_id = (uuid4() for _ in range(5))
+    time = Time(unidade_id, setor_id, "Clock", kp_id)
+    time.id = time_id
+    projeto = Projeto(unidade_id, time_id, "Clock", "9.5")
+    projeto.id = projeto_id
+    times.obter_por_id.return_value = time
+    projetos.obter_por_id.return_value = projeto
+    casos.obter_por_id.return_value = None
+    casos.existe_tc_id.return_value = False
+    service = CasoTesteServiceImpl(casos, projetos, times, membros, usuarios, uow)
+    admin = UsuarioAutenticado(kp_id, unidade_id, "ADMIN_UNIDADE")
+    return service, casos, projetos, times, membros, usuarios, uow, admin, projeto, time
+
+
+def request_criar(responsavel_id=None, backup_id=None, tc_id="Clock_001"):
+    return CriarCasoTesteRequest(
+        tc_id=tc_id,
+        category=CategoriaCasoTeste.A,
+        difficulty=DificuldadeCasoTeste.LOW,
+        responsavel_id=responsavel_id or uuid4(),
+        backup_id=backup_id or uuid4(),
+    )
+
+
+def tornar_membro(membros, usuarios, unidade_id, time_id, usuario_id):
+    usuario = Usuario(unidade_id, f"Usuário {usuario_id}", f"{usuario_id}@example.com")
+    membro = TimeMembro(unidade_id, time_id, usuario_id)
+    usuarios.obter_por_id.return_value = usuario
+    membros.obter_por_time_e_usuario.return_value = membro
+    return usuario, membro
+
+
+async def test_criar_caso_valido_com_responsavel_e_backup_do_time(contexto):
+    service, casos, _, _, membros, usuarios, uow, admin, projeto, time = contexto
+    request = request_criar()
+    tornar_membro(membros, usuarios, admin.unidade_id, time.id, request.responsavel_id)
+    tornar_membro(membros, usuarios, admin.unidade_id, time.id, request.backup_id)
+
+    resposta = await service.criar(admin, projeto.id, request)
+
+    caso = casos.adicionar.call_args.args[0]
+    assert resposta.id == caso.id
+    assert resposta.tc_id == "Clock_001"
+    assert resposta.situation is SituacaoCasoTeste.TO_DO
+    assert resposta.responsavel_id == request.responsavel_id
+    assert resposta.backup_id == request.backup_id
+    assert casos.existe_tc_id.await_count == 1
+    assert membros.obter_por_time_e_usuario.await_count == 2
+    casos.adicionar.assert_awaited_once_with(caso)
+    uow.commit.assert_awaited_once()
+
+
+async def test_criar_caso_com_tc_id_duplicado_falha_sem_commit(contexto):
+    service, casos, _, _, membros, _, uow, admin, projeto, _ = contexto
+    casos.existe_tc_id.return_value = True
+    casos.existe_tc_id.return_value = True
+
+    with pytest.raises(ConflictException, match="TC ID"):
+        await service.criar(admin, projeto.id, request_criar())
+
+    membros.obter_por_time_e_usuario.assert_not_awaited()
+    casos.adicionar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+async def test_responsavel_inativo_ou_fora_do_time_falha(contexto):
+    service, casos, _, _, membros, usuarios, uow, admin, projeto, time = contexto
+    request = request_criar()
+    usuarios.obter_por_id.return_value = Usuario(admin.unidade_id, "Pessoa", "pessoa@example.com")
+    membros.obter_por_time_e_usuario.return_value = None
+
+    with pytest.raises(ConflictException, match="usuários ativos do time"):
+        await service.criar(admin, projeto.id, request)
+
+    casos.adicionar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+async def test_responsavel_principal_e_backup_iguais_falham_sem_gravar(contexto):
+    service, casos, _, _, membros, _, uow, admin, projeto, _ = contexto
+    usuario_id = uuid4()
+
+    with pytest.raises(ConflictException, match="distintas"):
+        await service.criar(admin, projeto.id, request_criar(usuario_id, usuario_id))
+
+    membros.obter_por_time_e_usuario.assert_not_awaited()
+    casos.adicionar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+@pytest.mark.parametrize("perfil", ["GERENTE", "KP"])
+async def test_gerente_e_kp_criam_casos_dentro_do_escopo(contexto, perfil):
+    service, casos, _, _, membros, usuarios, uow, admin, projeto, time = contexto
+    gerente_ou_kp = UsuarioAutenticado(
+        admin.id,
+        admin.unidade_id,
+        perfil,
+        permissoes=frozenset({"test_cases.gerenciar"}),
+        setores_gerenciados=(time.setor_id,) if perfil == "GERENTE" else (),
+        time_ids=(time.id,) if perfil == "KP" else (),
+    )
+    request = request_criar()
+    tornar_membro(membros, usuarios, admin.unidade_id, time.id, request.responsavel_id)
+    tornar_membro(membros, usuarios, admin.unidade_id, time.id, request.backup_id)
+
+    await service.criar(gerente_ou_kp, projeto.id, request)
+
+    casos.adicionar.assert_awaited_once()
+    uow.commit.assert_awaited_once()
+
+
+async def test_gerente_fora_do_setor_nao_cria_caso(contexto):
+    service, casos, _, _, membros, _, uow, admin, projeto, _ = contexto
+    gerente = UsuarioAutenticado(
+        admin.id,
+        admin.unidade_id,
+        "GERENTE",
+        permissoes=frozenset({"test_cases.gerenciar"}),
+        setores_gerenciados=(uuid4(),),
+    )
+
+    with pytest.raises(NotFoundException):
+        await service.criar(gerente, projeto.id, request_criar())
+
+    membros.obter_por_time_e_usuario.assert_not_awaited()
+    casos.adicionar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+async def test_atualizar_caso_proprio_permite_campos_do_responsavel(contexto):
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    responsavel = UsuarioAutenticado(
+        uuid4(),
+        admin.unidade_id,
+        "USUARIO_PADRAO",
+        permissoes=frozenset({"test_cases.consultar"}),
+        time_ids=(time.id,),
+    )
+    caso = CasoTeste(
+        admin.unidade_id,
+        projeto.id,
+        "Clock_001",
+        CategoriaCasoTeste.A,
+        DificuldadeCasoTeste.LOW,
+        responsavel.id,
+        uuid4(),
+    )
+    caso.created_at = datetime(2026, 1, 1, tzinfo=UTC)
+    casos.obter_por_id.return_value = caso
+
+    resposta = await service.atualizar(
+        responsavel,
+        caso.id,
+        AtualizarCasoTesteRequest(
+            category=CategoriaCasoTeste.B,
+            difficulty=DificuldadeCasoTeste.MEDIUM,
+            situation=SituacaoCasoTeste.IN_PROGRESS,
+        ),
+    )
+
+    assert resposta.category is CategoriaCasoTeste.B
+    assert resposta.difficulty is DificuldadeCasoTeste.MEDIUM
+    assert resposta.situation is SituacaoCasoTeste.IN_PROGRESS
+    assert resposta.created_at == caso.created_at
+    casos.atualizar.assert_awaited_once_with(caso)
+    uow.commit.assert_awaited_once()
+
+
+async def test_responsavel_nao_edita_atribuicao_nem_caso_de_outra_pessoa(contexto):
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    responsavel = UsuarioAutenticado(
+        uuid4(),
+        admin.unidade_id,
+        "USUARIO_PADRAO",
+        permissoes=frozenset({"test_cases.consultar"}),
+        time_ids=(time.id,),
+    )
+    caso = CasoTeste(
+        admin.unidade_id,
+        projeto.id,
+        "Clock_001",
+        CategoriaCasoTeste.A,
+        DificuldadeCasoTeste.LOW,
+        uuid4(),
+        uuid4(),
+    )
+    casos.obter_por_id.return_value = caso
+
+    with pytest.raises(ForbiddenException):
+        await service.atualizar(
+            responsavel,
+            caso.id,
+            AtualizarCasoTesteRequest(category=CategoriaCasoTeste.B),
+        )
+
+    casos.atualizar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+    caso.responsavel_id = responsavel.id
+    with pytest.raises(ForbiddenException, match="responsável só pode editar"):
+        await service.atualizar(
+            responsavel,
+            caso.id,
+            AtualizarCasoTesteRequest(responsavel_id=uuid4()),
+        )
+    casos.atualizar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+async def test_gestor_pode_reatribuir_caso_a_membros_ativos(contexto):
+    service, casos, _, _, membros, usuarios, uow, admin, projeto, time = contexto
+    responsavel_id, backup_id = uuid4(), uuid4()
+    tornar_membro(membros, usuarios, admin.unidade_id, time.id, responsavel_id)
+    tornar_membro(membros, usuarios, admin.unidade_id, time.id, backup_id)
+    caso = CasoTeste(
+        admin.unidade_id,
+        projeto.id,
+        "Clock_001",
+        CategoriaCasoTeste.A,
+        DificuldadeCasoTeste.LOW,
+        uuid4(),
+        uuid4(),
+    )
+    casos.obter_por_id.return_value = caso
+
+    resposta = await service.atualizar(
+        admin,
+        caso.id,
+        AtualizarCasoTesteRequest(responsavel_id=responsavel_id, backup_id=backup_id),
+    )
+
+    assert resposta.responsavel_id == responsavel_id
+    assert resposta.backup_id == backup_id
+    assert membros.obter_por_time_e_usuario.await_count == 2
+    casos.atualizar.assert_awaited_once_with(caso)
+    uow.commit.assert_awaited_once()
+
+
+async def test_responsavel_transfere_para_backup_e_backup_fica_vazio(contexto):
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    backup_id = uuid4()
+    responsavel = UsuarioAutenticado(
+        uuid4(),
+        admin.unidade_id,
+        "USUARIO_PADRAO",
+        permissoes=frozenset({"test_cases.consultar"}),
+        time_ids=(time.id,),
+    )
+    caso = CasoTeste(
+        admin.unidade_id,
+        projeto.id,
+        "Clock_001",
+        CategoriaCasoTeste.A,
+        DificuldadeCasoTeste.LOW,
+        responsavel.id,
+        backup_id,
+    )
+    casos.obter_por_id.return_value = caso
+
+    resposta = await service.transferir_para_backup(responsavel, caso.id)
+
+    assert resposta.responsavel_id == backup_id
+    assert resposta.backup_id is None
+    casos.atualizar.assert_awaited_once_with(caso)
+    uow.commit.assert_awaited_once()
+
+
+async def test_usuario_que_nao_e_responsavel_nao_transfere_caso(contexto):
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    usuario = UsuarioAutenticado(
+        uuid4(),
+        admin.unidade_id,
+        "USUARIO_PADRAO",
+        permissoes=frozenset({"test_cases.consultar"}),
+        time_ids=(time.id,),
+    )
+    caso = CasoTeste(
+        admin.unidade_id,
+        projeto.id,
+        "Clock_001",
+        CategoriaCasoTeste.A,
+        DificuldadeCasoTeste.LOW,
+        uuid4(),
+        uuid4(),
+    )
+    casos.obter_por_id.return_value = caso
+
+    with pytest.raises(ForbiddenException, match="responsável principal"):
+        await service.transferir_para_backup(usuario, caso.id)
+
+    casos.atualizar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+async def test_transferir_sem_backup_falha_sem_persistir(contexto):
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    usuario = UsuarioAutenticado(
+        uuid4(),
+        admin.unidade_id,
+        "USUARIO_PADRAO",
+        permissoes=frozenset({"test_cases.consultar"}),
+        time_ids=(time.id,),
+    )
+    caso = CasoTeste(
+        admin.unidade_id,
+        projeto.id,
+        "Clock_001",
+        CategoriaCasoTeste.A,
+        DificuldadeCasoTeste.LOW,
+        usuario.id,
+        uuid4(),
+    )
+    caso.backup_id = None
+    casos.obter_por_id.return_value = caso
+
+    with pytest.raises(ConflictException, match="não possui backup"):
+        await service.transferir_para_backup(usuario, caso.id)
+
+    casos.atualizar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+def test_atualizacao_vazia_ou_com_campo_extra_e_rejeitada():
+    with pytest.raises(ValidationError):
+        AtualizarCasoTesteRequest()
+    with pytest.raises(ValidationError):
+        AtualizarCasoTesteRequest(nome="outro")

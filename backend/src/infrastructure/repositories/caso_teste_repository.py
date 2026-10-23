@@ -55,6 +55,21 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
         )
         return encontrado.scalar_one_or_none() is not None
 
+    async def obter_por_projeto_tc_id(
+        self, unidade_id: UUID, projeto_id: UUID, tc_id: str
+    ) -> CasoTeste | None:
+        modelo = (
+            await self.session.execute(
+                select(CasoTesteModel).where(
+                    CasoTesteModel.unidade_id == unidade_id,
+                    CasoTesteModel.projeto_id == projeto_id,
+                    CasoTesteModel.tc_id == tc_id,
+                    CasoTesteModel.ativo.is_(True),
+                )
+            )
+        ).scalar_one_or_none()
+        return self._to_entity(modelo) if modelo is not None else None
+
     def _to_entity(self, model: CasoTesteModel) -> CasoTeste:
         caso = CasoTeste(
             model.unidade_id,

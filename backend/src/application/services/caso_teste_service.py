@@ -1,0 +1,221 @@
+from uuid import UUID
+
+from src.application.schemas.caso_teste import (
+    AtualizarCasoTesteRequest,
+    CasoTesteResponse,
+    CriarCasoTesteRequest,
+    to_response,
+)
+from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
+from src.domain.common.paged_result import PagedResult
+from src.domain.common.usuario_autenticado import UsuarioAutenticado
+from src.domain.entities.caso_teste import CasoTeste
+from src.domain.entities.interfaces.caso_teste_repository import CasoTesteRepository
+from src.domain.entities.interfaces.projeto_repository import ProjetoRepository
+from src.domain.entities.interfaces.time_membro_repository import TimeMembroRepository
+from src.domain.entities.interfaces.time_repository import TimeRepository
+from src.domain.entities.interfaces.unit_of_work import UnitOfWork
+from src.domain.entities.interfaces.usuario_repository import UsuarioRepository
+from src.domain.entities.projeto import Projeto
+from src.domain.entities.time import Time
+
+
+class CasoTesteServiceImpl:
+    CAMPOS_RESPONSAVEL = frozenset({"category", "difficulty", "situation"})
+    CAMPOS_GESTAO = CAMPOS_RESPONSAVEL | {"responsavel_id", "backup_id"}
+
+    def __init__(
+        self,
+        caso_repo: CasoTesteRepository,
+        projeto_repo: ProjetoRepository,
+        time_repo: TimeRepository,
+        membro_repo: TimeMembroRepository,
+        usuario_repo: UsuarioRepository,
+        uow: UnitOfWork,
+    ) -> None:
+        self._caso_repo = caso_repo
+        self._projeto_repo = projeto_repo
+        self._time_repo = time_repo
+        self._membro_repo = membro_repo
+        self._usuario_repo = usuario_repo
+        self._uow = uow
+
+    async def listar(
+        self,
+        usuario_atual: UsuarioAutenticado,
+        projeto_id: UUID,
+        page: int,
+        page_size: int,
+    ) -> PagedResult[CasoTesteResponse]:
+        self._exigir_permissao(usuario_atual, "test_cases.consultar")
+        await self._obter_projeto_visivel(usuario_atual, projeto_id)
+        casos = await self._caso_repo.listar_por_projeto(
+            usuario_atual.unidade_id, projeto_id, page, page_size
+        )
+        return casos.map(to_response)
+
+    async def criar(
+        self,
+        usuario_atual: UsuarioAutenticado,
+        projeto_id: UUID,
+        request: CriarCasoTesteRequest,
+    ) -> CasoTesteResponse:
+        if not usuario_atual.eh_administrador and (
+            usuario_atual.perfil_codigo not in {"GERENTE", "KP"}
+            or not usuario_atual.pode("test_cases.gerenciar")
+        ):
+            raise ForbiddenException("Você não tem permissão para gerenciar Test Cases.")
+        projeto, time = await self._obter_projeto_visivel(usuario_atual, projeto_id)
+        self._exigir_gestao(usuario_atual, time)
+        if await self._caso_repo.existe_tc_id(usuario_atual.unidade_id, projeto.id, request.tc_id):
+            raise ConflictException("Este TC ID já está cadastrado neste projeto.")
+        if request.responsavel_id == request.backup_id:
+            raise ConflictException("Responsável principal e backup devem ser pessoas distintas.")
+        await self._garantir_membro(time, request.responsavel_id)
+        await self._garantir_membro(time, request.backup_id)
+
+        caso = CasoTeste(
+            usuario_atual.unidade_id,
+            projeto.id,
+            request.tc_id,
+            request.category,
+            request.difficulty,
+            request.responsavel_id,
+            request.backup_id,
+        )
+        await self._caso_repo.adicionar(caso)
+        await self._uow.commit()
+        caso_criado = await self._caso_repo.obter_por_id(usuario_atual.unidade_id, caso.id)
+        return to_response(caso_criado or caso)
+
+    async def atualizar(
+        self,
+        usuario_atual: UsuarioAutenticado,
+        caso_id: UUID,
+        request: AtualizarCasoTesteRequest,
+    ) -> CasoTesteResponse:
+        self._exigir_permissao(usuario_atual, "test_cases.consultar")
+        caso = await self._caso_repo.obter_por_id(usuario_atual.unidade_id, caso_id)
+        if caso is None:
+            raise NotFoundException("Test Case não encontrado.")
+        projeto, time = await self._obter_projeto_visivel(usuario_atual, caso.projeto_id)
+        campos_enviados = request.model_fields_set
+        eh_gestor = self._pode_gerenciar(usuario_atual, time)
+        if eh_gestor:
+            if campos_enviados - self.CAMPOS_GESTAO:
+                raise ForbiddenException("Os campos enviados não podem ser alterados.")
+            await self._atualizar_como_gestor(caso, time, request, campos_enviados)
+        else:
+            if not usuario_atual.pode("test_cases.consultar"):
+                raise ForbiddenException("Você não tem permissão para editar Test Cases.")
+            if caso.responsavel_id != usuario_atual.id:
+                raise ForbiddenException("Você só pode editar Test Cases atribuídos a você.")
+            if campos_enviados - self.CAMPOS_RESPONSAVEL:
+                raise ForbiddenException(
+                    "O responsável só pode editar situação, Category e Difficulty."
+                )
+            caso.atualizar_campos_do_responsavel(
+                request.situation or caso.situation,
+                request.category or caso.category,
+                request.difficulty or caso.difficulty,
+            )
+        await self._caso_repo.atualizar(caso)
+        await self._uow.commit()
+        caso_atualizado = await self._caso_repo.obter_por_id(usuario_atual.unidade_id, caso_id)
+        return to_response(caso_atualizado or caso)
+
+    async def transferir_para_backup(
+        self, usuario_atual: UsuarioAutenticado, caso_id: UUID
+    ) -> CasoTesteResponse:
+        self._exigir_permissao(usuario_atual, "test_cases.consultar")
+        caso = await self._caso_repo.obter_por_id(usuario_atual.unidade_id, caso_id)
+        if caso is None:
+            raise NotFoundException("Test Case não encontrado.")
+        await self._obter_projeto_visivel(usuario_atual, caso.projeto_id)
+        if caso.responsavel_id != usuario_atual.id:
+            raise ForbiddenException("Somente o responsável principal pode transferir o Test Case.")
+        try:
+            caso.transferir_para_backup()
+        except ValueError as erro:
+            raise ConflictException(str(erro)) from erro
+        await self._caso_repo.atualizar(caso)
+        await self._uow.commit()
+        caso_transferido = await self._caso_repo.obter_por_id(usuario_atual.unidade_id, caso_id)
+        return to_response(caso_transferido or caso)
+
+    async def _atualizar_como_gestor(
+        self,
+        caso: CasoTeste,
+        time: Time,
+        request: AtualizarCasoTesteRequest,
+        campos_enviados: set[str],
+    ) -> None:
+        responsavel_id = request.responsavel_id or caso.responsavel_id
+        backup_id = request.backup_id if "backup_id" in campos_enviados else caso.backup_id
+        if {"responsavel_id", "backup_id"} & campos_enviados:
+            if backup_id is None:
+                raise ConflictException(
+                    "Responsável principal e backup são obrigatórios na atribuição."
+                )
+            if responsavel_id == backup_id:
+                raise ConflictException(
+                    "Responsável principal e backup devem ser pessoas distintas."
+                )
+            await self._garantir_membro(time, responsavel_id)
+            await self._garantir_membro(time, backup_id)
+        caso.atualizar_gerenciamento(
+            responsavel_id,
+            backup_id,
+            request.situation or caso.situation,
+            request.category or caso.category,
+            request.difficulty or caso.difficulty,
+        )
+
+    async def _obter_projeto_visivel(
+        self, usuario_atual: UsuarioAutenticado, projeto_id: UUID
+    ) -> tuple[Projeto, Time]:
+        projeto = await self._projeto_repo.obter_por_id(usuario_atual.unidade_id, projeto_id)
+        if projeto is None:
+            raise NotFoundException("Projeto não encontrado.")
+        time = await self._time_repo.obter_por_id(usuario_atual.unidade_id, projeto.time_id)
+        if time is None:
+            raise NotFoundException("Projeto não encontrado.")
+        if not self._time_esta_no_escopo(usuario_atual, time):
+            raise NotFoundException("Projeto não encontrado.")
+        return projeto, time
+
+    async def _garantir_membro(self, time: Time, usuario_id: UUID) -> None:
+        usuario = await self._usuario_repo.obter_por_id(time.unidade_id, usuario_id)
+        membro = await self._membro_repo.obter_por_time_e_usuario(
+            time.unidade_id, time.id, usuario_id
+        )
+        if usuario is None or not usuario.ativo or membro is None or not membro.ativo:
+            raise ConflictException("Responsável e backup devem ser usuários ativos do time.")
+
+    @classmethod
+    def _pode_gerenciar(cls, usuario_atual: UsuarioAutenticado, time: Time) -> bool:
+        return usuario_atual.pode("test_cases.gerenciar") and (
+            usuario_atual.eh_administrador
+            or (
+                usuario_atual.perfil_codigo in {"GERENTE", "KP"}
+                and cls._time_esta_no_escopo(usuario_atual, time)
+            )
+        )
+
+    @classmethod
+    def _exigir_gestao(cls, usuario_atual: UsuarioAutenticado, time: Time) -> None:
+        if not cls._pode_gerenciar(usuario_atual, time):
+            raise ForbiddenException("Você não tem permissão para gerenciar Test Cases neste time.")
+
+    @staticmethod
+    def _time_esta_no_escopo(usuario_atual: UsuarioAutenticado, time: Time) -> bool:
+        if usuario_atual.eh_administrador:
+            return True
+        if usuario_atual.perfil_codigo == "GERENTE":
+            return time.setor_id in usuario_atual.setores_gerenciados
+        return time.id in usuario_atual.time_ids
+
+    @staticmethod
+    def _exigir_permissao(usuario_atual: UsuarioAutenticado, permissao: str) -> None:
+        if not usuario_atual.pode(permissao):
+            raise ForbiddenException("Você não tem permissão para consultar Test Cases.")

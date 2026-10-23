@@ -46,7 +46,7 @@ class CasoTeste(EntidadeTenant):
         self.situation = SituacaoCasoTeste(situation)
         self.responsavel_id = responsavel_id
         self.backup_id = backup_id
-        self._validar_responsaveis(responsavel_id, backup_id)
+        self._validar_responsaveis(responsavel_id, backup_id, exigir_backup=True)
 
     def atualizar_campos_do_responsavel(
         self,
@@ -61,12 +61,12 @@ class CasoTeste(EntidadeTenant):
     def atualizar_gerenciamento(
         self,
         responsavel_id: UUID,
-        backup_id: UUID,
+        backup_id: UUID | None,
         situation: SituacaoCasoTeste,
         category: CategoriaCasoTeste,
         difficulty: DificuldadeCasoTeste,
     ) -> None:
-        self._validar_responsaveis(responsavel_id, backup_id)
+        self._validar_responsaveis(responsavel_id, backup_id, exigir_backup=False)
         self.responsavel_id = responsavel_id
         self.backup_id = backup_id
         self.atualizar_campos_do_responsavel(situation, category, difficulty)
@@ -87,10 +87,14 @@ class CasoTeste(EntidadeTenant):
         return normalizado
 
     @staticmethod
-    def _validar_responsaveis(responsavel_id: UUID, backup_id: UUID | None) -> None:
+    def _validar_responsaveis(
+        responsavel_id: UUID,
+        backup_id: UUID | None,
+        exigir_backup: bool,
+    ) -> None:
         if responsavel_id is None:
             raise ValueError("Responsável principal é obrigatório.")
-        if backup_id is None:
+        if exigir_backup and backup_id is None:
             raise ValueError("Backup é obrigatório na criação ou atribuição do Test Case.")
-        if responsavel_id == backup_id:
+        if backup_id is not None and responsavel_id == backup_id:
             raise ValueError("Responsável principal e backup devem ser pessoas distintas.")

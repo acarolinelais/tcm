@@ -42,43 +42,43 @@
 
 ## Fase 2: regras de aplicação e importadores
 
-- [ ] **T09. Implementar CRUD do catálogo de modelos**
+- [x] **T09. Implementar CRUD do catálogo de modelos**
   - Arquivos: schemas, interfaces/services de `modelo_dispositivo`, implementação e testes unitários
   - Cobre: CA-05
   - Verificação: `cd backend && uv run pytest tests/unit/application/services/test_modelo_dispositivo_service.py` → cria, atualiza e inativa modelo; rejeita nome duplicado e modelo inválido.
-- [ ] **T10. Criar projetos manualmente no escopo autorizado**
+- [x] **T10. Criar projetos manualmente no escopo autorizado**
   - Arquivos: schemas/interfaces/service de `projeto`, testes unitários
   - Cobre: CA-01, CA-02, CA-03, CA-04, CA-11
   - Verificação: `cd backend && uv run pytest tests/unit/application/services/test_projeto_service.py` → admin atua na unidade, gerente no setor, KP no time; time fora do escopo é negado.
-- [ ] **T11. Implementar gestão de status e consulta de projetos**
+- [x] **T11. Implementar gestão de status e consulta de projetos**
   - Arquivos: `projeto_service.py`, schemas de listagem/status e testes unitários
   - Cobre: CA-11, CA-15, CA-18
   - Verificação: `cd backend && uv run pytest tests/unit/application/services/test_projeto_service.py` → status muda manualmente apenas por perfil autorizado e preserva `created_at`.
-- [ ] **T12. Criar e editar Test Cases com validação de membros**
+- [x] **T12. Criar e editar Test Cases com validação de membros**
   - Arquivos: schemas/interfaces/service de `caso_teste`, testes unitários
   - Cobre: CA-06, CA-07, CA-08, CA-09, CA-10, CA-13, CA-15, CA-16, CA-18
   - Verificação: `cd backend && uv run pytest tests/unit/application/services/test_caso_teste_service.py` → cria e gerencia casos no escopo; valida enums, unicidade, membros e edição limitada do responsável.
-- [ ] **T13. Implementar transferência do responsável para o backup**
+- [x] **T13. Implementar transferência do responsável para o backup**
   - Arquivos: `caso_teste_service.py`, testes unitários de autorização e transferência
   - Cobre: CA-16, CA-17, CA-18
-  - Verificação: `cd backend && uv run pytest tests/unit/application/services/test_caso_teste_service.py -k transferir` → responsável vira backup, backup fica nulo e usuário sem posse/permissão é recusado.
-- [ ] **T14. Validar a planilha inicial antes de criar projeto e casos**
+  - Verificação: `cd backend && uv run pytest tests/unit/application/services/test_caso_teste_service.py -k transfer` → responsável vira backup, backup fica nulo e usuário sem posse/permissão é recusado.
+- [x] **T14. Validar a planilha inicial antes de criar projeto e casos**
   - Arquivos: parser/validator da planilha inicial, fixtures e testes unitários
   - Cobre: CA-12, CA-13, CA-14
   - Verificação: `cd backend && uv run pytest tests/unit/application/validators/test_importacao_projeto.py` → extrai primeiro App/One UI preenchidos, valida linhas e aponta duplicidades sem persistir parcialmente.
-- [ ] **T15. Importar projeto e Test Cases da planilha inicial**
+- [x] **T15. Importar projeto e Test Cases da planilha inicial**
   - Arquivos: caso de uso/importador de projetos e testes unitários
   - Cobre: CA-02, CA-03, CA-04, CA-05, CA-12, CA-13, CA-14
   - Verificação: `cd backend && uv run pytest tests/unit/application/services/test_importacao_projeto_service.py` → arquivo válido cria projeto/casos em uma transação e arquivo inválido não grava dados.
-- [ ] **T16. Validar arquivo exportado pelo SDF**
+- [x] **T16. Validar arquivo exportado pelo SDF**
   - Arquivos: parser/validator do relatório SDF, fixtures e testes unitários
   - Cobre: CA-19, CA-20
   - Verificação: `cd backend && uv run pytest tests/unit/application/validators/test_relatorio_sdf.py` → identifica TC, SDF ID, data, One UI, modelos e resultados; reporta linhas/cabeçalhos inválidos.
-- [ ] **T17. Persistir importações SDF sem sobrescrever resultados anteriores**
+- [x] **T17. Persistir importações SDF sem sobrescrever resultados anteriores**
   - Arquivos: service/importador SDF, testes unitários de serviço
   - Cobre: CA-19, CA-20
   - Verificação: `cd backend && uv run pytest tests/unit/application/services/test_importacao_sdf_service.py` → exige permissão e escopo, associa TC IDs do projeto e grava novo lote sem alterar gerenciamento ou lotes prévios.
-- [ ] **T18. Consultar resultados Form Factor com filtros**
+- [x] **T18. Consultar resultados Form Factor com filtros**
   - Arquivos: queries do repositório, service/schema Form Factor e testes unitários
   - Cobre: CA-19, CA-20
   - Verificação: `cd backend && uv run pytest tests/unit/application/services/test_form_factor_service.py` → retorna resultados por TC/modelo/data e filtra por semana e One UI no escopo.
@@ -152,6 +152,6 @@
 ## Backlog
 
 - Definir limite de tamanho/linhas dos arquivos depois que as planilhas reais forem confirmadas.
-- Fechar política para reimportar o mesmo arquivo e dados duplicados dentro de um único relatório.
+- Definir idempotência ao reimportar o mesmo arquivo e política para SDF IDs repetidos; linhas com o mesmo TC ID são preservadas como execuções distintas.
 - Confirmar layout oficial do export SDF e convenção de semana antes de finalizar o parser e os filtros.
 - Reavaliar extração de validação compartilhada de textos se a duplicação entre entidades crescer nas fases de schemas/importadores.
