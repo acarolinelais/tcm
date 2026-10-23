@@ -31,7 +31,7 @@ ser registradas em ADR antes de serem introduzidas.
 | 004 | Listagem filtrável de usuários e padronização de tabela | Concluída |
 | 005 | Gestão de perfis e permissões por módulo | Aprovada |
 | 006 | Administração da unidade (usuários, setores, gerentes e times) | Concluída |
-| 007 | Internacionalização do frontend (inglês, português e coreano) | Em andamento |
+| 007 | Internacionalização do frontend (inglês, português e coreano) | Concluída |
 | 008 | Perfil de conta KP e permissões adicionais | Em andamento |
 | 009 | Fluxo de branches (`main` + `dev` + hotfix), hooks e CI | Concluída |
 | 010 | Modo mock persistido do frontend | Concluída |

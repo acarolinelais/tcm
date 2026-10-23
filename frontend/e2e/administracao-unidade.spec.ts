@@ -50,6 +50,7 @@ function perfilAtual(perfil: "ADMIN_UNIDADE" | "GERENTE" | "USUARIO_PADRAO" | "K
     time_atual_id: null,
     tem_multiplos_times: false,
     senha_alteracao_obrigatoria: false,
+    idioma_preferido: "pt-BR",
   };
 }
 
@@ -77,7 +78,8 @@ test("admin transfere a responsabilidade pela conta na tabela de usuários", asy
   await expect(page.getByRole("row", { name: /Carol/ })).toBeVisible();
   await page.getByRole("button", { name: "Ações para Carol" }).click();
   await page.getByRole("menuitem", { name: "Alterar responsável" }).click();
-  await page.getByLabel("Gerente responsável").selectOption("gerente-1");
+  await page.getByRole("combobox", { name: "Gerente responsável" }).click();
+  await page.getByRole("option", { name: /Gerente Ana/ }).click();
   await page.getByRole("button", { name: "Salvar" }).click();
 
   await expect(page.getByText("Responsável atualizado com sucesso.")).toBeVisible();
