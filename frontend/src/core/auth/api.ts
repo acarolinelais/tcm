@@ -10,7 +10,7 @@ export interface PerfilAtual {
   perfil_codigo: string | null;
   perfil: string | null;
   permissoes: string[];
-  times: { id: string; nome: string; papel: string }[];
+  times: { id: string; nome: string }[];
   setores_gerenciados: string[];
   time_atual_id: string | null;
   tem_multiplos_times: boolean;

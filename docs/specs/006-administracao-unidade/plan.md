@@ -135,7 +135,7 @@ ADR 0024.
   conflito com a chave única e preservando histórico.
 - A migration de `GERENTE` deve incluir todas as unidades existentes; qualquer provisionamento futuro
   de unidade deve criar o mesmo perfil para manter comportamento consistente.
-- A consulta de KP precisa distinguir `TimeMembro.papel == KP` de DEV, sem mudar o papel de membros
+- A consulta de KP precisa limitar a listagem aos times com participação ativa da conta KP
   em outros times do mesmo usuário.
 - Inativação do setor com time ativo retorna `409 Conflict`, identificando o motivo sem expor dados
   de outra unidade. A remoção/desassociação não apaga registros históricos.

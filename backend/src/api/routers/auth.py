@@ -82,7 +82,7 @@ async def perfil_atual(
 ) -> PerfilAtualResponse:
     rows = (
         await session.execute(
-            select(TimeModel.id, TimeModel.nome, TimeMembroModel.papel)
+            select(TimeModel.id, TimeModel.nome)
             .join(TimeMembroModel, TimeMembroModel.time_id == TimeModel.id)
             .where(
                 TimeMembroModel.usuario_id == usuario_atual.id,
@@ -93,7 +93,7 @@ async def perfil_atual(
             .order_by(TimeModel.nome)
         )
     ).all()
-    times = [{"id": str(row.id), "nome": row.nome, "papel": row.papel} for row in rows]
+    times = [{"id": str(row.id), "nome": row.nome} for row in rows]
     gerenciados = (
         (
             await session.execute(
@@ -125,7 +125,7 @@ async def perfil_atual(
     )
     existentes = {time["id"] for time in times}
     times.extend(
-        {"id": str(row.id), "nome": row.nome, "papel": "gerente"}
+        {"id": str(row.id), "nome": row.nome}
         for row in gerenciados
         if str(row.id) not in existentes
     )

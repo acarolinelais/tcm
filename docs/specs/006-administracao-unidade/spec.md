@@ -74,12 +74,11 @@ permissões do perfil e o isolamento da unidade.
 - RN-13a: O sidebar do administrador apresenta um grupo expansível **Administração**, com links para
   Usuários, Setores, Times e Perfis e permissões. Esse grupo não aparece para usuários sem perfil
   `ADMIN_UNIDADE`.
-- RN-14: Nesta entrega, KP continua sendo um papel por vínculo de membro com time
-  (`TimeMembro.papel`) e delimita em quais times a pessoa atua como KP. Está planejado um perfil de
-  conta **KP** com permissões superiores às de `USUARIO_PADRAO`; possuir esse perfil não concederá
-  acesso a todos os times, pois o vínculo `TimeMembro.papel` continuará definindo o escopo. Gerentes e
-  KP usam a mesma área de Times: gerente vê/gerencia times dos setores associados; KP vê/atua somente
-  nos times em que tem esse papel. A navegação e as ações também dependem das permissões efetivas.
+- RN-14: O perfil de conta **KP** define a capacidade KP em todos os times em que a conta possui participação
+  ativa; não há papel KP/DEV por vínculo. O perfil não cria participação nem concede acesso a times
+  sem vínculo. Gerentes e KP usam a mesma área de Times: gerente vê/gerencia times dos setores
+  associados; KP vê somente times dos quais é membro. A navegação e as ações também dependem das
+  permissões efetivas.
 - RN-15: A conta com perfil `GERENTE`, mas sem associação ativa a setor, não tem escopo de gestão de
   times e não vê a opção de Times no sidebar até receber uma associação.
 - RN-16: O administrador pode inativar um time para resolver a inativação do setor correspondente;
@@ -140,8 +139,8 @@ permissões do perfil e o isolamento da unidade.
   ativas de gerentes a esse setor também são inativadas e não concedem mais acesso.
 - **CA-16:** Dado um setor reativado, quando o gerente tenta gerir seus times, então só consegue após
   o admin criar novamente uma associação ativa.
-- **CA-17:** Dado um KP associado a times, quando abre a área de Times, então vê somente os times em
-  que possui o papel KP e as ações autorizadas para esses times.
+- **CA-17:** Dado uma conta com perfil KP associada a times, quando abre a área de Times, então vê somente os
+  times em que possui participação ativa e as ações autorizadas para esses times.
 - **CA-18 (falha):** Dado um usuário sem perfil `GERENTE` ou inativo, quando o administrador tenta
   associá-lo a um setor como gerente, então a API recusa a associação.
 - **CA-19:** Dado um usuário com perfil `GERENTE` sem setor associado, quando acessa o sistema, então

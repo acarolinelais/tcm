@@ -37,3 +37,4 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0023](0023-senha-sem-minimo-de-caracteres.md) | Troca de senha sem mínimo de caracteres | Aceito |
 | [0024](0024-responsavel-por-usuario.md) | Responsável direto por usuários criados por gerente | Aceito |
 | [0025](0025-idioma-preferido-por-conta.md) | Idioma preferido por conta | Aceito |
+| [0026](0026-perfil-kp-com-escopo-por-associacao.md) | Perfil KP com escopo por participação em times | Aceito |

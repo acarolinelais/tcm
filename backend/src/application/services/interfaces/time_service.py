@@ -3,7 +3,6 @@ from uuid import UUID
 
 from src.application.schemas.time import (
     AdicionarMembroRequest,
-    AtualizarPapelMembroRequest,
     CriarTimeRequest,
     TimeMembroResponse,
     TimeResponse,
@@ -30,14 +29,6 @@ class TimeService(Protocol):
 
     async def adicionar_membro(
         self, usuario_atual: UsuarioAutenticado, id: UUID, request: AdicionarMembroRequest
-    ) -> TimeMembroResponse: ...
-
-    async def atualizar_papel(
-        self,
-        usuario_atual: UsuarioAutenticado,
-        id: UUID,
-        usuario_id: UUID,
-        request: AtualizarPapelMembroRequest,
     ) -> TimeMembroResponse: ...
 
     async def remover_membro(

@@ -2,7 +2,6 @@ from uuid import UUID
 
 from src.application.schemas.time import (
     AdicionarMembroRequest,
-    AtualizarPapelMembroRequest,
     CriarTimeRequest,
     TimeMembroResponse,
     TimeResponse,
@@ -12,7 +11,6 @@ from src.application.schemas.time import (
 from src.application.schemas.usuario import to_response as to_usuario_response
 from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.domain.common.paged_result import PagedResult
-from src.domain.common.papel_time import PapelTime
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.interfaces.setor_gerente_repository import SetorGerenteRepository
 from src.domain.entities.interfaces.setor_repository import SetorRepository
@@ -92,17 +90,21 @@ class TimeServiceImpl:
                 usuario_atual.unidade_id,
                 page,
                 page_size,
-                tuple(dict.fromkeys((*usuario_atual.times_gerenciados, *usuario_atual.times_kp))),
+                usuario_atual.times_gerenciados,
                 setor_id,
                 ativo,
                 busca,
             )
-        elif usuario_atual.times_kp:
+        elif (
+            usuario_atual.perfil_codigo == "KP"
+            and usuario_atual.pode("times.consultar")
+            and usuario_atual.time_ids
+        ):
             result = await self._repo.listar_visiveis(
                 usuario_atual.unidade_id,
                 page,
                 page_size,
-                usuario_atual.times_kp,
+                usuario_atual.time_ids,
                 setor_id,
                 ativo,
                 busca,
@@ -125,11 +127,10 @@ class TimeServiceImpl:
             raise ConflictException("Usuário já é membro deste time.")
         if membro_existente:
             membro_existente.ativar()
-            membro_existente.papel = request.papel
             membro = membro_existente
             await self._membro_repo.atualizar(membro)
         else:
-            membro = TimeMembro(unidade_id, id, request.usuario_id, request.papel)
+            membro = TimeMembro(unidade_id, id, request.usuario_id)
             await self._membro_repo.adicionar(membro)
         await self._invalidar_sessoes(request.usuario_id)
         await self._uow.commit()
@@ -156,7 +157,11 @@ class TimeServiceImpl:
         if (
             not usuario_atual.eh_administrador
             and time.setor_id not in usuario_atual.setores_gerenciados
-            and id not in usuario_atual.times_kp
+            and not (
+                usuario_atual.perfil_codigo == "KP"
+                and usuario_atual.pode("times.consultar")
+                and id in usuario_atual.time_ids
+            )
         ):
             raise NotFoundException("Time não encontrado.")
         membros = await self._membro_repo.listar_por_time(usuario_atual.unidade_id, id)
@@ -205,28 +210,6 @@ class TimeServiceImpl:
         await self._repo.atualizar(time)
         await self._uow.commit()
         return to_response(time)
-
-    async def atualizar_papel(
-        self,
-        usuario_atual: UsuarioAutenticado,
-        id: UUID,
-        usuario_id: UUID,
-        request: AtualizarPapelMembroRequest,
-    ) -> TimeMembroResponse:
-        unidade_id = usuario_atual.unidade_id
-        time = await self._obter_time(unidade_id, id)
-        self._garantir_gestao_time(usuario_atual, time)
-        membro = await self._membro_repo.obter_por_time_e_usuario(unidade_id, id, usuario_id)
-        if membro is None:
-            raise NotFoundException("Membro não encontrado.")
-        if request.papel == PapelTime.KP:
-            membro.marcar_como_kp()
-        else:
-            membro.marcar_como_dev()
-        await self._membro_repo.atualizar(membro)
-        await self._invalidar_sessoes(usuario_id)
-        await self._uow.commit()
-        return membro_to_response(membro)
 
     async def _obter_time(self, unidade_id: UUID, id: UUID) -> Time:
         time = await self._repo.obter_por_id(unidade_id, id)

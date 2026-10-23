@@ -5,7 +5,6 @@ from fastapi import APIRouter, Depends, Query, Response
 from src.api.dependencies import get_time_service, get_usuario_atual
 from src.application.schemas.time import (
     AdicionarMembroRequest,
-    AtualizarPapelMembroRequest,
     CriarTimeRequest,
     TimeMembroResponse,
     TimeResponse,
@@ -90,16 +89,6 @@ async def listar_membros(
 ) -> list[TimeMembroResponse]:
     return await service.listar_membros(usuario_atual, id)
 
-
-@router.patch("/{id}/membros/{usuario_id}", response_model=TimeMembroResponse)
-async def atualizar_papel(
-    id: UUID,
-    usuario_id: UUID,
-    request: AtualizarPapelMembroRequest,
-    service: TimeService = Depends(get_time_service),
-    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
-) -> TimeMembroResponse:
-    return await service.atualizar_papel(usuario_atual, id, usuario_id, request)
 
 
 @router.delete("/{id}/membros/{usuario_id}", status_code=204)

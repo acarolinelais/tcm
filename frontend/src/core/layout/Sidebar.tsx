@@ -85,7 +85,7 @@ export function Sidebar({ perfil }: { perfil: PerfilAtual }) {
             ))}
           </>
         )}
-        {perfil.perfil_codigo !== "ADMIN_UNIDADE" && ((perfil.perfil_codigo === "GERENTE" && perfil.permissoes.includes("times.consultar") && perfil.setores_gerenciados.length > 0) || (perfil.permissoes.includes("times.consultar") && perfil.times.some((time) => time.papel === "kp"))) && (
+        {perfil.perfil_codigo !== "ADMIN_UNIDADE" && ((perfil.perfil_codigo === "GERENTE" && perfil.permissoes.includes("times.consultar") && perfil.setores_gerenciados.length > 0) || (perfil.perfil_codigo === "KP" && perfil.permissoes.includes("times.consultar") && perfil.times.length > 0)) && (
           <NavLink to="/times" className={({ isActive }) => `flex items-center gap-1 rounded-full px-2 py-1 text-sm max-sm:justify-center max-sm:px-0 ${isActive ? "bg-[#EAF0FF]" : "hover:bg-secondary"}`}>
             {({ isActive }) => <>
               <span className="flex h-6 w-6 shrink-0 items-center justify-center"><span className={`h-3 w-3 rounded-full ${isActive ? "h-4 w-4 bg-[#5588F5]" : ""}`} /></span>

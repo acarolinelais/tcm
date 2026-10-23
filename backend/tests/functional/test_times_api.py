@@ -5,7 +5,6 @@ import pytest
 from src.api.dependencies import get_time_service, get_usuario_atual
 from src.application.schemas.time import TimeMembroResponse, TimeResponse
 from src.domain.common.exceptions import ForbiddenException
-from src.domain.common.papel_time import PapelTime
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from tests.functional.conftest import dependency_override
 
@@ -35,7 +34,7 @@ async def test_criar_time_como_admin_retorna_201(api_client):
 
 
 @pytest.mark.asyncio
-async def test_adicionar_membro_e_atualizar_papel_retorna_201_e_200(api_client):
+async def test_adicionar_membro_retorna_associacao_sem_papel(api_client):
     from src.api.main import app
 
     atual = UsuarioAutenticado(uuid4(), uuid4(), True)
@@ -46,15 +45,6 @@ async def test_adicionar_membro_e_atualizar_papel_retorna_201_e_200(api_client):
         unidade_id=atual.unidade_id,
         time_id=time_id,
         usuario_id=usuario_id,
-        papel=PapelTime.DEV,
-        ativo=True,
-    )
-    service.atualizar_papel.return_value = TimeMembroResponse(
-        id=uuid4(),
-        unidade_id=atual.unidade_id,
-        time_id=time_id,
-        usuario_id=usuario_id,
-        papel=PapelTime.KP,
         ativo=True,
     )
     app.dependency_overrides[get_usuario_atual] = dependency_override(atual)
@@ -62,12 +52,8 @@ async def test_adicionar_membro_e_atualizar_papel_retorna_201_e_200(api_client):
     added = await api_client.post(
         f"/api/times/{time_id}/membros", json={"usuario_id": str(usuario_id)}
     )
-    promoted = await api_client.patch(
-        f"/api/times/{time_id}/membros/{usuario_id}", json={"papel": "kp"}
-    )
     assert added.status_code == 201
-    assert promoted.status_code == 200
-    assert promoted.json()["papel"] == "kp"
+    assert "papel" not in added.json()
 
 
 @pytest.mark.asyncio

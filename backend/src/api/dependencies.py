@@ -94,7 +94,7 @@ async def _obter_usuario_atual(
             perfil_nome = "Administrador da unidade"
     membership_rows = (
         await session.execute(
-            select(TimeMembroModel.time_id, TimeMembroModel.papel).where(
+            select(TimeMembroModel.time_id).where(
                 TimeMembroModel.usuario_id == usuario.id,
                 TimeMembroModel.unidade_id == usuario.unidade_id,
                 TimeMembroModel.ativo.is_(True),
@@ -108,7 +108,6 @@ async def _obter_usuario_atual(
         )
     ).all()
     memberships = tuple(row.time_id for row in membership_rows)
-    kp_teams = tuple(row.time_id for row in membership_rows if row.papel == "kp")
     setores_gerenciados: tuple[UUID, ...] = ()
     if perfil_codigo == "GERENTE":
         setores_gerenciados = tuple(
@@ -156,7 +155,6 @@ async def _obter_usuario_atual(
         payload.sessao_id,
         usuario.senha_alteracao_obrigatoria,
         setores_gerenciados,
-        kp_teams,
     )
     if identidade.senha_alteracao_obrigatoria and not permitir_senha_inicial:
         raise ForbiddenException("Altere sua senha inicial para continuar.")

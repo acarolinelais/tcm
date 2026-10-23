@@ -133,9 +133,8 @@ selecionado e controles claros para alterar ações por grupo ou individualmente
 ## Evolução planejada
 
 - A spec 008 detalha o perfil de conta **KP**, atribuído pelo administrador no cadastro ou edição do
-  usuário, com permissões adicionais para gerenciar atividades e tarefas. O papel `KP` do vínculo
-  (`TimeMembro.papel`) continua delimitando em quais times essas permissões podem ser exercidas;
-  possuir o perfil de conta, por si só, não concede acesso a todos os times. A matriz de ações e os
+  usuário, com permissões adicionais para gerenciar atividades e tarefas. A participação ativa da conta nos times delimita onde essas permissões podem ser exercidas; possuir
+  o perfil de conta, por si só, não concede acesso a times dos quais ela não participa. A matriz de ações e os
   códigos de permissão serão definidos nas specs dos módulos de atividades e tarefas.
 
 ## Decisões de UX

@@ -2,7 +2,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from src.domain.common.papel_time import PapelTime
 from src.domain.entities.time import Time
 from src.domain.entities.time_membro import TimeMembro
 
@@ -15,11 +14,6 @@ class CriarTimeRequest(BaseModel):
 
 class AdicionarMembroRequest(BaseModel):
     usuario_id: UUID
-    papel: PapelTime = PapelTime.DEV
-
-
-class AtualizarPapelMembroRequest(BaseModel):
-    papel: PapelTime
 
 
 class TimeResponse(BaseModel):
@@ -39,7 +33,6 @@ class TimeMembroResponse(BaseModel):
     usuario_nome: str | None = None
     usuario_perfil: str | None = None
     usuario_perfil_codigo: str | None = None
-    papel: PapelTime
     ativo: bool
 
 
@@ -68,6 +61,5 @@ def membro_to_response(
         usuario_nome=usuario_nome,
         usuario_perfil=usuario_perfil,
         usuario_perfil_codigo=usuario_perfil_codigo,
-        papel=membro.papel,
         ativo=membro.ativo,
     )

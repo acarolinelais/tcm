@@ -28,10 +28,10 @@ const outroUsuario = {
   responsavel_id: "gerente-2",
 };
 
-function perfilAtual(perfil: "ADMIN_UNIDADE" | "GERENTE" | "USUARIO_PADRAO") {
+function perfilAtual(perfil: "ADMIN_UNIDADE" | "GERENTE" | "USUARIO_PADRAO" | "KP") {
   const admin = perfil === "ADMIN_UNIDADE";
   const gerenteAtual = perfil === "GERENTE";
-  const kp = perfil === "USUARIO_PADRAO";
+  const kp = perfil === "KP";
   return {
     id: admin ? "admin-1" : gerenteAtual ? gerente.id : "kp-1",
     nome: admin ? "Admin" : gerenteAtual ? gerente.nome : "KP",
@@ -39,13 +39,13 @@ function perfilAtual(perfil: "ADMIN_UNIDADE" | "GERENTE" | "USUARIO_PADRAO") {
     unidade_id: "unidade-1",
     unidade_nome: "Unidade",
     perfil_codigo: perfil,
-    perfil: admin ? "Administrador" : "Gerente",
+    perfil: admin ? "Administrador" : gerenteAtual ? "Gerente" : kp ? "KP" : "Usuário padrão",
     permissoes: admin
       ? ["usuarios.consultar", "usuarios.gerenciar", "perfis.gerenciar"]
       : gerenteAtual
         ? ["usuarios.consultar", "usuarios.gerenciar"]
         : ["times.consultar"],
-    times: kp ? [{ id: "time-kp", nome: "Time KP", papel: "kp" }] : [],
+    times: kp ? [{ id: "time-kp", nome: "Time KP" }] : [],
     setores_gerenciados: [],
     time_atual_id: null,
     tem_multiplos_times: false,
@@ -122,12 +122,12 @@ test("admin vê as páginas de Setores e Times com estado vazio padronizado", as
 
 test("KP acessa a área de Times sem receber ações administrativas", async ({ page }) => {
   await prepararSessao(page);
-  await page.route("**/api/auth/me", (route) => route.fulfill({ json: perfilAtual("USUARIO_PADRAO") }));
+  await page.route("**/api/auth/me", (route) => route.fulfill({ json: perfilAtual("KP") }));
   await page.route("**/api/setores?*", (route) => route.fulfill({
     json: { items: [], page: 1, page_size: 100, total_count: 0 },
   }));
   await page.route("**/api/times?*", (route) => route.fulfill({
-    json: { items: [], page: 1, page_size: 10, total_count: 0 },
+    json: { items: [{ id: "time-kp", setor_id: "setor-1", nome: "Time KP", gerente_id: null, ativo: true }], page: 1, page_size: 10, total_count: 1 },
   }));
 
   await page.goto("/times");

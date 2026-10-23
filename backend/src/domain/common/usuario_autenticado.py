@@ -19,7 +19,6 @@ class UsuarioAutenticado:
     sessao_id: UUID | None = None
     senha_alteracao_obrigatoria: bool = False
     setores_gerenciados: tuple[UUID, ...] = ()
-    times_kp: tuple[UUID, ...] = ()
 
     def pode(self, permissao: str) -> bool:
         return self.eh_administrador or permissao in self.permissoes

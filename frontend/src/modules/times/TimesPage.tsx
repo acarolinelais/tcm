@@ -25,7 +25,7 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
   const podeVer = admin || perfil.permissoes.includes("times.consultar");
   const ehGerenteComEscopo = perfil.perfil_codigo === "GERENTE" && perfil.permissoes.includes("times.gerenciar") && perfil.setores_gerenciados.length > 0;
   const podeGerenciar = admin || ehGerenteComEscopo;
-  const podeVisualizarDetalhe = podeGerenciar || perfil.times.some((time) => time.papel === "kp");
+  const podeVisualizarDetalhe = podeGerenciar || (perfil.perfil_codigo === "KP" && perfil.times.length > 0);
   const client = useQueryClient();
   const [pagina, setPagina] = useState(1);
   const [tamanho, setTamanho] = useState(DEFAULT_TABLE_PAGE_SIZE);
@@ -38,7 +38,6 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
   const [errosCriacao, setErrosCriacao] = useState<{ nome?: string; setor?: string }>({});
   const [usuarioId, setUsuarioId] = useState("");
   const [membroParaRemover, setMembroParaRemover] = useState<string | null>(null);
-  const [papel, setPapel] = useState<"dev" | "kp">("dev");
   const setores = useQuery({ queryKey: ["setores", "times"], queryFn: () => setoresApi.listar(1, 100), enabled: podeVer });
   const setoresAtivos = (setores.data?.items ?? []).filter((setor) => setor.ativo);
   const setorUnicoGerenciado = !admin && ehGerenteComEscopo && setoresAtivos.length === 1 ? setoresAtivos[0] : undefined;
@@ -50,8 +49,7 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
   const usuarios = useQuery({ queryKey: ["times", "usuarios-disponiveis"], queryFn: timesApi.usuariosDisponiveis, enabled: podeGerenciar });
   const criar = useMutation({ mutationFn: () => timesApi.criar({ nome: nome.trim(), setor_id: setorSelecionadoParaCriar }), onSuccess: async () => { setCriarAberto(false); setNome(""); setSetorId(""); await client.invalidateQueries({ queryKey: ["times"] }); toast.success(t("teamCreateSuccess")); }, onError: () => toast.error(t("teamCreateError")) });
   const definirAtivo = useMutation({ mutationFn: (input: { id: string; ativo: boolean }) => timesApi.definirAtivo(input.id, input.ativo), onSuccess: async (time) => { await client.invalidateQueries({ queryKey: ["times"] }); setTimeParaInativar(null); toast.success(`${t("team")} ${time.nome} ${time.ativo ? t("activate").toLowerCase() : t("inactivate").toLowerCase()}.`); }, onError: () => toast.error(t("teamStatusError")) });
-  const adicionar = useMutation({ mutationFn: () => timesApi.adicionar(timeAtual!.id, usuarioId.trim(), papel), onSuccess: async () => { setUsuarioId(""); await client.invalidateQueries({ queryKey: ["time-membros", timeAtual?.id] }); toast.success(t("memberAdded")); }, onError: () => toast.error(t("memberAddError")) });
-  const mudarPapel = useMutation({ mutationFn: (input: { usuarioId: string; papel: "dev" | "kp" }) => timesApi.alterarPapel(timeAtual!.id, input.usuarioId, input.papel), onSuccess: async () => { await client.invalidateQueries({ queryKey: ["time-membros", timeAtual?.id] }); toast.success(t("roleUpdated")); }, onError: () => toast.error(t("roleUpdateError")) });
+  const adicionar = useMutation({ mutationFn: () => timesApi.adicionar(timeAtual!.id, usuarioId.trim()), onSuccess: async () => { setUsuarioId(""); await client.invalidateQueries({ queryKey: ["time-membros", timeAtual?.id] }); toast.success(t("memberAdded")); }, onError: () => toast.error(t("memberAddError")) });
   const remover = useMutation({ mutationFn: (id: string) => timesApi.remover(timeAtual!.id, id), onSuccess: async () => { await client.invalidateQueries({ queryKey: ["time-membros", timeAtual?.id] }); toast.success(t("memberRemoved")); }, onError: () => toast.error(t("memberRemoveError")) });
   if (modoAdmin && !admin) return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
   if (!podeVer) return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
@@ -135,15 +133,12 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
               <h3 className="text-sm font-semibold text-foreground">{t("addMemberToTeam")}</h3>
               <p className="mt-1 text-xs text-muted-foreground">{t("addMemberHint")}</p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_120px_auto] sm:items-end">
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
               <label className="block min-w-0 space-y-1.5 text-xs font-medium text-muted-foreground">{t("selectUser")}
                 <select className="h-10 w-full min-w-0 rounded-lg border border-input bg-white px-3 text-sm text-foreground" value={usuarioId} onChange={(e) => setUsuarioId(e.target.value)}>
                   <option value="">{t("selectUser")}</option>
                   {(usuarios.data ?? []).filter((usuario) => usuario.ativo && !(membros.data ?? []).some((membro) => membro.usuario_id === usuario.id && membro.ativo)).map((usuario) => <option key={usuario.id} value={usuario.id}>{usuario.nome} · {usuario.email}</option>)}
                 </select>
-              </label>
-              <label className="block space-y-1.5 text-xs font-medium text-muted-foreground">{t("roleInTeam")}
-                <select className="h-10 w-full rounded-lg border border-input bg-white px-3 text-sm text-foreground" value={papel} onChange={(e) => setPapel(e.target.value as "dev" | "kp")}><option value="dev">{t("dev")}</option><option value="kp">{t("kp")}</option></select>
               </label>
               <Button disabled={!usuarioId || adicionar.isPending} className="h-10">{adicionar.isPending ? t("pleaseWait") : t("add")}</Button>
             </div>
@@ -154,11 +149,12 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
             {membros.isLoading ? <p role="status" className="py-5 text-center text-sm text-muted-foreground">{t("loading")}</p> : (membros.data ?? []).filter((membro) => membro.ativo).length === 0 ? <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">{t("noTeamMembers")}</p> : <div className="space-y-2">
               {(membros.data ?? []).filter((membro) => membro.ativo).map((membro) => {
                 const nome = membro.usuario_nome ?? usuarioNome(membro.usuario_id);
+                const perfilNome = membro.usuario_perfil_codigo
+                  ? t(`catalog.profile.${membro.usuario_perfil_codigo}`, { defaultValue: membro.usuario_perfil ?? "—" })
+                  : membro.usuario_perfil ?? "—";
                 return <div key={membro.id} className="flex items-center gap-3 rounded-xl border border-border bg-white px-3 py-3">
                   <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#EAF0FF] text-sm font-semibold text-primary">{nome.slice(0, 1).toLocaleUpperCase()}</span>
-                  <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-foreground" title={nome}>{nome}</p><p className="mt-0.5 text-xs text-muted-foreground">{membro.papel === "kp" ? t("kp") : t("dev")}</p></div>
-                  <label className="sr-only" htmlFor={`team-member-role-${membro.id}`}>{`${t("roleInTeam")} · ${nome}`}</label>
-                  <select id={`team-member-role-${membro.id}`} className="h-9 rounded-lg border border-input bg-white px-2.5 text-sm" value={membro.papel} onChange={(e) => mudarPapel.mutate({ usuarioId: membro.usuario_id, papel: e.target.value as "dev" | "kp" })}><option value="dev">{t("dev")}</option><option value="kp">{t("kp")}</option></select>
+                  <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-foreground" title={nome}>{nome}</p><p className="mt-0.5 text-xs text-muted-foreground">{perfilNome}</p></div>
                   <Button type="button" variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setMembroParaRemover(membro.usuario_id)}>{t("remove")}</Button>
                 </div>;
               })}
