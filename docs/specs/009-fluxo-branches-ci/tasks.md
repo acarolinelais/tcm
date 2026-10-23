@@ -87,7 +87,7 @@
 
 ## Fase 5: Provas de falha no CI
 
-- [ ] **T11. 🌐 PR de prova com backend, frontend e branch de origem errados**
+- [x] **T11. 🌐 PR de prova com backend, frontend e branch de origem errados**
   - Arquivos: branch descartável `test/prova-ci` com um `assert False` num teste de unidade, um erro de
     lint no frontend e um commit `Feat: Abluble`; PR para a `dev`. Depois, uma branch limpa
     `fix/prova-main` (um commit válido, só em docs) com PR para a `main`
@@ -124,7 +124,7 @@
 
 ## Fase 7: Integração e promoção
 
-- [ ] **T15. 🌐 Integrar o PR da T10 na `dev` com merge commit**
+- [x] **T15. 🌐 Integrar o PR da T10 na `dev` com merge commit**
   - Arquivos: nenhum
   - Cobre: RN-08, CA-01
   - Verificação: `gh run list --branch dev --limit 1` → o workflow do `push` na `dev` verde
