@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, UserRoundX } from "lucide-react";
+import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { Link, useOutletContext, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
@@ -12,7 +12,6 @@ import { Label } from "@/shared/ui/label";
 import { SELECT_EMPTY_VALUE, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyState, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
 import { TableColumnFilter } from "@/shared/ui/table-column-filter";
-import { TableRowActions } from "@/shared/ui/table-row-actions";
 import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
 import { toast } from "@/shared/lib/toast";
 import { setoresApi } from "@/modules/setores/api/setores.api";
@@ -72,7 +71,9 @@ export function TimeDetalhePage({ modoAdmin = false }: { modoAdmin?: boolean }) 
         <h1 className="truncate text-2xl font-medium text-[#3478F6]">{time?.nome ?? t("team")}</h1>
       </div>
       {podeGerenciarMembros && time && <div className="ml-auto flex flex-wrap justify-end gap-2">
-        <Button variant="outline" onClick={() => { setNovoMembroId(""); setAdicionarMembroAberto(true); }}>{t("addMemberToTeam")}</Button>
+        <Button variant="outline" size="icon" aria-label={t("addMemberToTeam")} title={t("addMemberToTeam")} className="size-10" onClick={() => { setNovoMembroId(""); setAdicionarMembroAberto(true); }}>
+          <Plus aria-hidden="true" className="size-4" />
+        </Button>
         <Button variant="outline" onClick={() => { setNomeTime(time.nome); setEditarTimeAberto(true); }}>{t("editTeam")}</Button>
       </div>}
     </header>
@@ -96,7 +97,11 @@ export function TimeDetalhePage({ modoAdmin = false }: { modoAdmin?: boolean }) 
           {membrosPaginados.length > 0 && <TableBody>{membrosPaginados.map((membro) => <TableRow key={membro.id}>
             <TableCell className="font-medium text-foreground">{membro.usuario_nome ?? membro.usuario_id}</TableCell>
             <TableCell className="text-muted-foreground">{perfilLabel(membro)}</TableCell>
-            {podeGerenciarMembros && <TableCell className="text-right"><TableRowActions label={membro.usuario_nome ?? membro.usuario_id} actions={[{ label: t("remove"), icon: UserRoundX, destructive: true, onSelect: () => setMembroParaRemover(membro.usuario_id) }]} /></TableCell>}
+            {podeGerenciarMembros && <TableCell className="text-right">
+              <Button variant="ghost" size="icon" aria-label={`${t("removeTeamMemberTitle")} ${membro.usuario_nome ?? membro.usuario_id}`} title={t("remove")} className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setMembroParaRemover(membro.usuario_id)}>
+                <Trash2 aria-hidden="true" className="size-4" />
+              </Button>
+            </TableCell>}
           </TableRow>)}</TableBody>}
         </Table>
         {!membros.isLoading && membrosFiltrados.length === 0 && <TableEmptyState><div className="text-center"><p role="status">{temFiltro ? t("noTeamResults") : t("noTeamMembers")}</p>{temFiltro && <Button variant="outline" size="sm" className="mt-4" onClick={() => { setPagina(1); setFiltros({}); }}>{t("clearFilters")}</Button>}</div></TableEmptyState>}

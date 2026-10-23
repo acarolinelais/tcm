@@ -261,8 +261,8 @@ export const mockSetoresApi = {
     if (search) sectors = sectors.filter((sector) => sector.nome.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
     return page(sectors, pageNumber, pageSize);
   },
-  criar(nome: string) {
-    return updateDb((db) => { const sector: Setor = { id: id("mock-sector"), unidade_id: db.unidade.id, nome, ativo: true }; db.setores.unshift(sector); return sector; });
+  criar(nome: string, managerId?: string) {
+    return updateDb((db) => { const sector: Setor = { id: id("mock-sector"), unidade_id: db.unidade.id, nome, ativo: true }; db.setores.unshift(sector); if (managerId) db.gerentesSetor.push({ setor_id: sector.id, usuario_id: managerId, ativo: true }); return sector; });
   },
   atualizar(sectorId: string, body: { nome?: string; ativo?: boolean }) {
     return updateDb((db) => { const sector = db.setores.find((item) => item.id === sectorId); if (!sector) throw new Error("Setor não encontrado."); if (body.nome !== undefined) sector.nome = body.nome; if (body.ativo !== undefined) sector.ativo = body.ativo; return sector; });

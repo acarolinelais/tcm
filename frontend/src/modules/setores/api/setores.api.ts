@@ -10,7 +10,7 @@ export const setoresApi = {
   listar: (page = 1, pageSize = 100, ativo?: boolean, busca?: string) => useMock ? Promise.resolve(mockSetoresApi.listar(page, pageSize, ativo, busca)) : httpGet<PagedResult<Setor>>("/api/setores", {
     page, page_size: pageSize, ...(ativo === undefined ? {} : { ativo: String(ativo) }), ...(busca ? { busca } : {}),
   }),
-  criar: (nome: string) => useMock ? Promise.resolve(mockSetoresApi.criar(nome)) : httpPost<Setor>("/api/setores", { nome }),
+  criar: (nome: string, gerente_id?: string) => useMock ? Promise.resolve(mockSetoresApi.criar(nome, gerente_id)) : httpPost<Setor>("/api/setores", { nome, ...(gerente_id ? { gerente_id } : {}) }),
   atualizar: (id: string, body: { nome?: string; ativo?: boolean }) => useMock ? Promise.resolve(mockSetoresApi.atualizar(id, body)) : httpPatchBody<Setor>(`/api/setores/${id}`, body),
   gerentes: (id: string) => useMock ? Promise.resolve(mockSetoresApi.gerentes(id)) : httpGet<SetorGerente[]>(`/api/setores/${id}/gerentes`),
   associar: (id: string, usuario_id: string) => useMock ? Promise.resolve(mockSetoresApi.associar(id, usuario_id)) : httpPost<SetorGerente>(`/api/setores/${id}/gerentes`, { usuario_id }),

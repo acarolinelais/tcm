@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useOutletContext } from "react-router";
-import { Eye, SearchX, UserRoundCheck, UserRoundX, UsersRound } from "lucide-react";
+import { Eye, Plus, SearchX, Trash2, UserRoundCheck, UserRoundX, UsersRound } from "lucide-react";
 
 import type { PerfilAtual } from "@/core/auth/api";
 import { Button } from "@/shared/ui/button";
@@ -158,7 +158,7 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
               <h3 className="text-sm font-semibold text-foreground">{t("addMemberToTeam")}</h3>
               <p className="mt-1 text-xs text-muted-foreground">{t("addMemberHint")}</p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
               <div className="flex min-w-0 flex-col">
                 <Label htmlFor="team-member-user" className="text-xs text-muted-foreground">{t("selectUser")}</Label>
                 <Select value={usuarioId} onValueChange={(value) => setUsuarioId(value === SELECT_EMPTY_VALUE ? "" : value)}>
@@ -172,7 +172,9 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
                 </Select>
                 <p id="team-member-user-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("selectUserHint")}</p>
               </div>
-              <Button disabled={!usuarioId || adicionar.isPending} className="h-10">{adicionar.isPending ? t("pleaseWait") : t("add")}</Button>
+              <Button type="submit" variant="outline" size="icon" aria-label={adicionar.isPending ? t("pleaseWait") : t("add")} title={adicionar.isPending ? t("pleaseWait") : t("add")} disabled={!usuarioId || adicionar.isPending} className="mt-[27px] text-primary hover:bg-primary/10 hover:text-primary">
+                <Plus aria-hidden="true" className="size-4" />
+              </Button>
             </div>
           </form>
 
@@ -187,7 +189,9 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
                 return <div key={membro.id} className="flex items-center gap-3 rounded-xl border border-border bg-white px-3 py-3">
                   <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#EAF0FF] text-sm font-semibold text-primary">{nome.slice(0, 1).toLocaleUpperCase()}</span>
                   <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-foreground" title={nome}>{nome}</p><p className="mt-0.5 text-xs text-muted-foreground">{perfilNome}</p></div>
-                  <Button type="button" variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setMembroParaRemover(membro.usuario_id)}>{t("remove")}</Button>
+                  <Button type="button" variant="ghost" size="icon" aria-label={`${t("removeTeamMemberTitle")} ${nome}`} title={t("remove")} className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setMembroParaRemover(membro.usuario_id)}>
+                    <Trash2 aria-hidden="true" className="size-4" />
+                  </Button>
                 </div>;
               })}
             </div>}
