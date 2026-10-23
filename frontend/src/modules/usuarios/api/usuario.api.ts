@@ -12,6 +12,9 @@ export interface UsuarioFiltros {
   email?: string;
   ativo?: boolean;
   perfil_id?: string;
+  responsavel_id?: string;
+  sem_responsavel?: boolean;
+  setor_id?: string;
 }
 
 export const usuarioApi = {
@@ -21,6 +24,9 @@ export const usuarioApi = {
     if (filtros.email) params.email = filtros.email;
     if (filtros.ativo !== undefined) params.ativo = String(filtros.ativo);
     if (filtros.perfil_id) params.perfil_id = filtros.perfil_id;
+    if (filtros.responsavel_id) params.responsavel_id = filtros.responsavel_id;
+    if (filtros.sem_responsavel) params.sem_responsavel = "true";
+    if (filtros.setor_id) params.setor_id = filtros.setor_id;
     return useMock ? Promise.resolve(mockUsuarioApi.listar(page, pageSize, filtros)) : httpGet<PagedResult<Usuario>>(url, params);
   },
   obter: (id: string) => useMock ? Promise.resolve(mockUsuarioApi.obter(id)) : httpGet<Usuario>(`${url}/${id}`),

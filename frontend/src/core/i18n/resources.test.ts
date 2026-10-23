@@ -21,4 +21,11 @@ describe("translation resources", () => {
     await i18n.changeLanguage("ko");
     expect(formatNumber(1234.5)).toBe("1,234.5");
   });
+
+  it("localizes the KP display name while keeping its stable profile code", () => {
+    expect(resources.en.translation["catalog.profile.KP"]).toBe("Key Person");
+    expect(resources["pt-BR"].translation["catalog.profile.KP"]).toBe("Pessoa-chave");
+    expect(resources.ko.translation["catalog.profile.KP"]).toBe("핵심 담당자");
+    expect(resources.en.translation["catalog.profile.description.KP"]).toBeTruthy();
+  });
 });

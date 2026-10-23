@@ -16,6 +16,9 @@ class UsuarioRepository(RepositoryBase[Usuario], Protocol):
         email: str | None = None,
         ativo: bool | None = None,
         perfil_id: UUID | None = None,
+        responsavel_id: UUID | None = None,
+        sem_responsavel: bool = False,
+        setor_id: UUID | None = None,
     ) -> PagedResult[Usuario]: ...
 
     async def listar_visiveis_filtrado(
@@ -30,6 +33,9 @@ class UsuarioRepository(RepositoryBase[Usuario], Protocol):
         ativo: bool | None = None,
         perfil_id: UUID | None = None,
         responsavel_id: UUID | None = None,
+        filtro_responsavel_id: UUID | None = None,
+        sem_responsavel: bool = False,
+        setor_id: UUID | None = None,
     ) -> PagedResult[Usuario]: ...
 
     async def listar_visiveis(
@@ -65,3 +71,7 @@ class UsuarioRepository(RepositoryBase[Usuario], Protocol):
     async def dados_por_usuarios(
         self, unidade_id: UUID, usuario_ids: tuple[UUID, ...]
     ) -> dict[UUID, tuple[str, str, str | None]]: ...
+
+    async def setores_por_usuarios(
+        self, unidade_id: UUID, usuario_ids: tuple[UUID, ...]
+    ) -> dict[UUID, list[str]]: ...

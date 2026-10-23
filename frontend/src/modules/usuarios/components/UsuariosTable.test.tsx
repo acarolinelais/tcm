@@ -5,7 +5,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { UsuariosTable } from "./UsuariosTable";
 
-function renderTable() {
+const apiMocks = vi.hoisted(() => ({ useUsuariosList: vi.fn(), listarPerfis: vi.fn() }));
+vi.mock("../hooks/useUsuarios", () => ({ useUsuariosList: apiMocks.useUsuariosList }));
+vi.mock("@/modules/perfis/api/perfis.api", () => ({ listarPerfis: apiMocks.listarPerfis }));
+
+function renderTable(props: Partial<React.ComponentProps<typeof UsuariosTable>> = {}) {
   const client = new QueryClient();
   const onPageChange = vi.fn();
   const onFiltroChange = vi.fn();
@@ -22,6 +26,7 @@ function renderTable() {
         onEditar={vi.fn()}
         onNovoUsuario={vi.fn()}
         onLimparFiltros={vi.fn()}
+        {...props}
       />
     </QueryClientProvider>,
   );
@@ -30,27 +35,26 @@ function renderTable() {
 
 describe("UsuariosTable", () => {
   beforeEach(() => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({
-              items: Array.from({ length: 20 }, (_, i) => ({
-                id: String(i),
-                nome: `Usuário ${i}`,
-                email: `u${i}@example.com`,
-                ativo: true,
-                created_at: "2026-01-01T00:00:00Z",
-              })),
-              page: 1,
-              page_size: 20,
-              total_count: 40,
-            }),
-            { status: 200 },
-          ),
-      ),
-    );
+    apiMocks.useUsuariosList.mockReturnValue({
+      data: {
+        items: Array.from({ length: 20 }, (_, i) => ({
+          id: String(i),
+          nome: `Usuário ${i}`,
+          email: `u${i}@example.com`,
+          ativo: true,
+          perfil_id: "custom",
+          created_at: "2026-01-01T00:00:00Z",
+        })),
+        page: 1,
+        page_size: 20,
+        total_count: 40,
+      },
+      isLoading: false,
+    });
+    apiMocks.listarPerfis.mockResolvedValue([
+      { id: "standard", codigo: "USUARIO_PADRAO", nome: "Usuário padrão", descricao: null, permissoes: [] },
+      { id: "kp", codigo: "KP", nome: "Pessoa-chave", descricao: null, permissoes: [] },
+    ]);
   });
 
   it("clicking Next calls onPageChange with the next page", async () => {
@@ -84,5 +88,55 @@ describe("UsuariosTable", () => {
     await user.click(screen.getByRole("button", { name: "Apply" }));
 
     expect(onFiltroChange).toHaveBeenCalledWith("nome", "Ana Silva");
+  });
+
+  it("exibe o perfil atribuído mesmo quando gerente não recebe o catálogo completo", async () => {
+    apiMocks.useUsuariosList.mockReturnValue({
+      data: {
+        items: [{
+          id: "user-1",
+          nome: "Ana",
+          email: "ana@example.com",
+          ativo: true,
+          perfil_id: "custom",
+          perfil_nome: "Auditoria",
+          perfil_codigo: null,
+          created_at: "2026-01-01T00:00:00Z",
+        }],
+        page: 1,
+        page_size: 20,
+        total_count: 1,
+      },
+      isLoading: false,
+    });
+    renderTable({ podeAtribuirPerfilKP: true, podeConsultarPerfil: true });
+
+    expect(await screen.findByRole("row", { name: /Ana ana@example.com Active Auditoria/ })).toBeInTheDocument();
+  });
+
+  it("não exibe o perfil atribuído sem a permissão de consulta", async () => {
+    apiMocks.useUsuariosList.mockReturnValue({
+      data: {
+        items: [{
+          id: "user-1",
+          nome: "Ana",
+          email: "ana@example.com",
+          ativo: true,
+          perfil_id: "custom",
+          perfil_nome: "Auditoria",
+          perfil_codigo: null,
+          created_at: "2026-01-01T00:00:00Z",
+        }],
+        page: 1,
+        page_size: 20,
+        total_count: 1,
+      },
+      isLoading: false,
+    });
+    renderTable({ podeAtribuirPerfilKP: true });
+
+    expect(await screen.findByText("Ana")).toBeInTheDocument();
+    expect(screen.queryByText("Auditoria")).not.toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Profile" })).not.toBeInTheDocument();
   });
 });

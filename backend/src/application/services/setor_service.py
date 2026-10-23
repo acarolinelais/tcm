@@ -38,6 +38,18 @@ class SetorServiceImpl:
             raise ForbiddenException("Apenas administradores da unidade podem criar setores.")
         setor = Setor(usuario_atual.unidade_id, request.nome)
         await self._repo.adicionar(setor)
+        if request.gerente_id is not None:
+            if not self._gerente_repo or not self._usuario_repo:
+                raise RuntimeError("Repositórios de associação não configurados.")
+            if not await self._usuario_repo.gerente_ativo_na_unidade(
+                usuario_atual.unidade_id, request.gerente_id
+            ):
+                raise NotFoundException(
+                    "Usuário ativo com perfil Gerente não encontrado nesta unidade."
+                )
+            associacao = SetorGerente(usuario_atual.unidade_id, setor.id, request.gerente_id)
+            await self._gerente_repo.adicionar(associacao)
+            await self._usuario_repo.invalidar_sessoes(request.gerente_id)
         await self._uow.commit()
         return to_response(setor)
 
@@ -51,9 +63,16 @@ class SetorServiceImpl:
     ) -> PagedResult[SetorResponse]:
         setor_ids = None
         if not usuario_atual.eh_administrador:
-            if usuario_atual.perfil_codigo != "GERENTE":
+            if not usuario_atual.pode("setores.consultar"):
                 raise ForbiddenException("Você não tem permissão para consultar setores.")
-            setor_ids = usuario_atual.setores_gerenciados
+            if usuario_atual.perfil_codigo == "GERENTE":
+                setor_ids = usuario_atual.setores_gerenciados
+            elif usuario_atual.perfil_codigo == "KP":
+                setor_ids = await self._repo.ids_por_times(
+                    usuario_atual.unidade_id, usuario_atual.time_ids
+                )
+            else:
+                raise ForbiddenException("Você não tem permissão para consultar setores.")
         if setor_ids is None and ativo is None and busca is None:
             result = await self._repo.listar_paginado(usuario_atual.unidade_id, page, page_size)
         else:

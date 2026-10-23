@@ -16,7 +16,7 @@ class ModuloPermissoes:
 
 
 MODULOS_PERMISSOES = (
-    ModuloPermissoes("usuarios", "Usuários", 1, ("consultar", "gerenciar")),
+    ModuloPermissoes("usuarios", "Usuários", 1, ("consultar", "perfil.consultar", "gerenciar")),
     ModuloPermissoes("perfis", "Perfis", 2, ("gerenciar",)),
     ModuloPermissoes("setores", "Setores", 3, ("consultar", "gerenciar")),
     ModuloPermissoes("times", "Times", 4, ("consultar", "criar", "gerenciar")),

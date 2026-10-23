@@ -132,7 +132,7 @@ export function Sidebar({
             </>}
           </NavLink>
         )}
-        {perfil.perfil_codigo === "GERENTE" && perfil.permissoes.includes("usuarios.consultar") && (
+        {(perfil.perfil_codigo === "GERENTE" || perfil.perfil_codigo === "KP") && perfil.permissoes.includes("usuarios.consultar") && (
           <NavLink to="/usuarios" aria-label={recolhida ? t("users") : undefined} aria-describedby="sidebar-tooltip-users" className={({ isActive }) => `group relative flex items-center rounded-xl py-2 text-sm ${recolhida ? "w-10 justify-center px-0" : "w-full gap-2 px-2"} ${isActive ? "bg-[#EAF0FF] text-[#3478F6]" : "text-foreground hover:bg-secondary"}`}>
             {({ isActive }) => <><Users aria-hidden="true" className={`size-[18px] shrink-0 ${isActive ? "text-[#3478F6]" : "text-muted-foreground"}`} /><span aria-hidden={recolhida} className={`${transicaoRotulo} ${larguraRotulo}`}>{t("users")}</span><TooltipDescricao id="users" titulo={t("users")} descricao={t("usersDescription")} /></>}
           </NavLink>

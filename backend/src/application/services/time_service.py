@@ -2,6 +2,7 @@ from uuid import UUID
 
 from src.application.schemas.time import (
     AdicionarMembroRequest,
+    AtualizarTimeRequest,
     CriarTimeRequest,
     TimeMembroResponse,
     TimeResponse,
@@ -72,6 +73,16 @@ class TimeServiceImpl:
         await self._uow.commit()
         return to_response(time)
 
+    async def atualizar(
+        self, usuario_atual: UsuarioAutenticado, id: UUID, request: AtualizarTimeRequest
+    ) -> TimeResponse:
+        time = await self._obter_time(usuario_atual.unidade_id, id)
+        self._garantir_gestao_time(usuario_atual, time)
+        time.nome = request.nome
+        await self._repo.atualizar(time)
+        await self._uow.commit()
+        return to_response(time)
+
     async def listar(
         self,
         usuario_atual: UsuarioAutenticado,
@@ -111,7 +122,20 @@ class TimeServiceImpl:
             )
         else:
             result = PagedResult([], page, page_size, 0)
-        return result.map(to_response)
+        nomes_por_ids = getattr(self._setor_repo, "nomes_por_ids", None)
+        nomes_setores = {}
+        if result.items and nomes_por_ids:
+            dados_nomes = await nomes_por_ids(
+                usuario_atual.unidade_id,
+                tuple(dict.fromkeys(time.setor_id for time in result.items)),
+            )
+            if isinstance(dados_nomes, dict):
+                nomes_setores = dados_nomes
+        return result.map(
+            lambda time: to_response(time).model_copy(
+                update={"setor_nome": nomes_setores.get(time.setor_id)}
+            )
+        )
 
     async def adicionar_membro(
         self, usuario_atual: UsuarioAutenticado, id: UUID, request: AdicionarMembroRequest
@@ -179,8 +203,16 @@ class TimeServiceImpl:
         ]
 
     async def listar_usuarios_disponiveis(self, usuario_atual: UsuarioAutenticado):
-        if not usuario_atual.eh_administrador and not (
-            usuario_atual.perfil_codigo == "GERENTE" and usuario_atual.pode("times.gerenciar")
+        if (
+            not usuario_atual.eh_administrador
+            and not (
+                usuario_atual.perfil_codigo == "GERENTE" and usuario_atual.pode("times.gerenciar")
+            )
+            and not (
+                usuario_atual.perfil_codigo == "KP"
+                and usuario_atual.pode("times.gerenciar")
+                and usuario_atual.time_ids
+            )
         ):
             raise ForbiddenException("Você não tem permissão para gerenciar membros dos times.")
         return [
@@ -230,9 +262,18 @@ class TimeServiceImpl:
     @staticmethod
     def _garantir_gestao_time(usuario_atual: UsuarioAutenticado, time: Time) -> None:
         dentro_do_setor = time.setor_id in usuario_atual.setores_gerenciados
-        if not usuario_atual.eh_administrador and not (
-            usuario_atual.perfil_codigo == "GERENTE"
-            and usuario_atual.pode("times.gerenciar")
-            and dentro_do_setor
+        dentro_do_time = time.id in usuario_atual.time_ids
+        if (
+            not usuario_atual.eh_administrador
+            and not (
+                usuario_atual.perfil_codigo == "GERENTE"
+                and usuario_atual.pode("times.gerenciar")
+                and dentro_do_setor
+            )
+            and not (
+                usuario_atual.perfil_codigo == "KP"
+                and usuario_atual.pode("times.gerenciar")
+                and dentro_do_time
+            )
         ):
             raise ForbiddenException("Apenas o gerente do time ou administrador pode alterá-lo.")

@@ -147,8 +147,6 @@ async def definir_permissoes(
     perfil = await session.get(PerfilModel, perfil_id)
     if perfil is None or perfil.unidade_id != usuario.unidade_id:
         raise NotFoundException("Perfil não encontrado.")
-    if perfil.codigo is not None:
-        raise ConflictException("Os perfis padrão do sistema não podem ser alterados.")
     codigos = set(request.permissoes)
     existentes = (
         set(

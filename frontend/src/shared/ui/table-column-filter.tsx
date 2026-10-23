@@ -87,7 +87,7 @@ export function TableColumnFilter({
         aria-label={t("filterBy", { label })}
         aria-haspopup="menu"
         aria-expanded={aberto}
-        className={`inline-flex items-center gap-1.5 text-left text-xs font-semibold uppercase tracking-wide transition-colors ${ativo ? "text-primary" : "text-foreground hover:text-primary"}`}
+        className={`inline-flex items-center gap-1.5 text-left text-sm font-semibold uppercase tracking-wide transition-colors ${ativo ? "text-primary" : "text-foreground hover:text-primary"}`}
         onClick={alternarMenu}
       >
         {label}

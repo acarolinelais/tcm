@@ -44,7 +44,7 @@ export function PerfisPage() {
   const baseline = atual?.permissoes ?? [];
   const dirty = criando
     ? Boolean(nome.trim() || descricao.trim() || marcadas.length)
-    : Boolean(modoEditor === "editar" && atual && !atual.codigo && !mesmosCodigos(baseline, marcadas));
+    : Boolean(modoEditor === "editar" && atual && !mesmosCodigos(baseline, marcadas));
   const blocker = useBlocker(dirty);
 
   const grupos = (() => {
@@ -258,7 +258,7 @@ export function PerfisPage() {
                       perfil={perfil}
                       onVisualizar={() => pedirAcao({ tipo: "perfil", perfil, modo: "visualizar" })}
                       onEditar={() => pedirAcao({ tipo: "perfil", perfil, modo: "editar" })}
-                      podeEditar={!perfil.codigo}
+                      podeEditar
                     />
                   </TableCell>
                 </TableRow>
@@ -328,7 +328,7 @@ export function PerfisPage() {
                         marcadas={marcadas}
                         estado={estado}
                         aberto={aberto}
-                        disabled={Boolean(atual?.codigo) || modoEditor === "visualizar" || mutacaoAtiva}
+                        disabled={modoEditor === "visualizar" || mutacaoAtiva}
                         onToggleOpen={() => alternarGrupo(codigo)}
                         onToggleAll={() => setMarcadas((atuais) => estado === "checked"
                           ? atuais.filter((id) => !ids.includes(id))
@@ -352,7 +352,7 @@ export function PerfisPage() {
                     </p>
                   ) : dirty ? (
                     <p className="text-sm text-muted-foreground">{criando ? t("newProfileNotCreated") : t("pendingChanges")}</p>
-                  ) : atual?.codigo || modoEditor === "visualizar" ? (
+                  ) : modoEditor === "visualizar" ? (
                     <p className="text-sm text-muted-foreground">{t("profileReadOnlyHint")}</p>
                   ) : null}
                 </div>
@@ -365,7 +365,7 @@ export function PerfisPage() {
                       </Button>
                     </>
                   ) : (
-                    <Button type="button" disabled={modoEditor !== "editar" || !dirty || mutacaoAtiva || Boolean(atual?.codigo)} onClick={() => salvar.mutate({ perfilId: selecionado, codigos: marcadas })}>
+                    <Button type="button" disabled={modoEditor !== "editar" || !dirty || mutacaoAtiva} onClick={() => salvar.mutate({ perfilId: selecionado, codigos: marcadas })}>
                       {salvar.isPending ? t("savingChanges") : t("saveChanges")}
                     </Button>
                   )}

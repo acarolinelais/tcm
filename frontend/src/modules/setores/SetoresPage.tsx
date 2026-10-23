@@ -43,19 +43,19 @@ export function SetoresPage() {
   const usuarios = useQuery({ queryKey: ["usuarios", "gerentes", gerenteProfileId], queryFn: () => usuarioApi.listar(1, 100, { perfil_id: gerenteProfileId }), enabled: Boolean(gerenteProfileId) });
   const associados = useQuery({ queryKey: ["setor-gerentes", setorAtual?.id], queryFn: () => setoresApi.gerentes(setorAtual!.id), enabled: Boolean(setorAtual) });
   const nomes = useMemo(() => new Map((usuarios.data?.items ?? []).map((item) => [item.id, item.nome])), [usuarios.data]);
-  const salvar = useMutation({ mutationFn: () => setoresApi.criar(nome.trim()), onSuccess: async () => { setNovo(false); setNome(""); await client.invalidateQueries({ queryKey: ["setores"] }); toast.success(t("sectorCreateSuccess")); }, onError: () => toast.error(t("sectorCreateError")) });
-  const alterar = useMutation({ mutationFn: (input: { id: string; nome?: string; ativo?: boolean }) => setoresApi.atualizar(input.id, { nome: input.nome, ativo: input.ativo }), onSuccess: async () => { await client.invalidateQueries({ queryKey: ["setores"] }); toast.success(t("sectorUpdateSuccess")); }, onError: () => toast.error(t("sectorUpdateError")) });
+  const salvar = useMutation({ mutationFn: () => setoresApi.criar(nome.trim(), gerente || undefined), onSuccess: async () => { setNovo(false); setNome(""); setGerente(""); await client.invalidateQueries({ queryKey: ["setores"] }); toast.success(t("sectorCreateSuccess")); }, onError: () => toast.error(t("sectorCreateError")) });
+  const alterar = useMutation({ mutationFn: (input: { id: string; nome?: string; ativo?: boolean }) => setoresApi.atualizar(input.id, { nome: input.nome, ativo: input.ativo }), onSuccess: async (_setor, input) => { await client.invalidateQueries({ queryKey: ["setores"] }); if (input.nome) setSetorAtual((atual) => atual?.id === input.id ? { ...atual, nome: input.nome! } : atual); toast.success(t("sectorUpdateSuccess")); }, onError: () => toast.error(t("sectorUpdateError")) });
   const vincular = useMutation({ mutationFn: () => setoresApi.associar(setorAtual!.id, gerente), onSuccess: async () => { setGerente(""); await client.invalidateQueries({ queryKey: ["setor-gerentes", setorAtual?.id] }); toast.success(t("associateSuccess")); }, onError: (error) => { const detail = error instanceof ApiError ? error.problem.detail?.toLowerCase() : undefined; toast.error(detail?.includes("já associado") || detail?.includes("already associated") ? t("managerAlreadyAssociated") : t("associationError")); } });
   const desvincular = useMutation({ mutationFn: (id: string) => setoresApi.desassociar(setorAtual!.id, id), onSuccess: async () => { await client.invalidateQueries({ queryKey: ["setor-gerentes", setorAtual?.id] }); toast.success(t("associationRemoveSuccess")); }, onError: () => toast.error(t("associationError")) });
   if (perfil.perfil_codigo !== "ADMIN_UNIDADE") return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
   return <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
-    <header className="mb-7 flex shrink-0 items-center justify-between"><h1 className="text-2xl font-medium text-[#3478F6]">{t("sectors")}</h1><Button onClick={() => { setNome(""); setErroNome(""); setNovo(true); }}>{t("newSector")}</Button></header>
+    <header className="mb-7 flex shrink-0 items-center justify-between"><h1 className="text-2xl font-medium text-[#3478F6]">{t("sectors")}</h1><Button onClick={() => { setNome(""); setGerente(""); setErroNome(""); setNovo(true); }}>{t("newSector")}</Button></header>
     <TableLayout>
-    <Table containerClassName={`min-h-0 ${setores.data?.items.length ? "flex-1 overflow-auto" : "shrink-0 overflow-visible"}`}><TableHeader><TableRow><TableHead><TableColumnFilter label={t("sector")} value={filtros.busca ?? ""} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, busca: value || undefined })); }} placeholder={t("searchSector")} /></TableHead><TableHead><TableColumnFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, ativo: value === "" ? undefined : value === "true" })); }} options={[{ value: "", label: t("all") }, { value: "true", label: t("active") }, { value: "false", label: t("inactive") }]} /></TableHead><TableHead>{t("managers")}</TableHead><TableHead className="text-right">{t("actions")}</TableHead></TableRow></TableHeader>{Boolean(setores.data?.items.length) && <TableBody>
+    <Table containerClassName={`min-h-0 ${setores.data?.items.length ? "flex-1 overflow-auto" : "shrink-0 overflow-visible"}`}><TableHeader><TableRow><TableHead><TableColumnFilter label={t("sector")} value={filtros.busca ?? ""} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, busca: value || undefined })); }} placeholder={t("searchSector")} /></TableHead><TableHead>{t("managers")}</TableHead><TableHead><TableColumnFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, ativo: value === "" ? undefined : value === "true" })); }} options={[{ value: "", label: t("all") }, { value: "true", label: t("active") }, { value: "false", label: t("inactive") }]} /></TableHead><TableHead className="text-right">{t("actions")}</TableHead></TableRow></TableHeader>{Boolean(setores.data?.items.length) && <TableBody>
       {setoresVisiveis.map((setor, index) => <TableRow key={setor.id}>
         <TableCell className="text-base font-medium text-foreground">{setor.nome}</TableCell>
-        <TableCell><Badge variant="secondary" className={setor.ativo ? "rounded-md bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700" : "rounded-md bg-secondary px-2.5 py-1 text-xs text-muted-foreground"}>{setor.ativo ? t("active") : t("inactive")}</Badge></TableCell>
         <TableCell className="text-sm text-muted-foreground">{(gerentesPorSetor[index]?.data ?? []).filter((vinculo) => vinculo.ativo).map((vinculo) => nomes.get(vinculo.usuario_id) ?? vinculo.usuario_id).join(", ") || "—"}</TableCell>
+        <TableCell><Badge variant="secondary" className={setor.ativo ? "rounded-md bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700" : "rounded-md bg-secondary px-2.5 py-1 text-xs text-muted-foreground"}>{setor.ativo ? t("active") : t("inactive")}</Badge></TableCell>
         <TableCell className="text-right"><TableRowActions label={setor.nome} actions={[
           { label: t("editSector"), icon: Pencil, onSelect: () => { setSetorAtual(setor); setNome(setor.nome); } },
           { label: t("manageManagers"), icon: UsersRound, onSelect: () => { setSetorAtual(setor); setNome(setor.nome); } },
@@ -86,22 +86,36 @@ export function SetoresPage() {
           <p className="mt-1.5 text-sm leading-5 text-muted-foreground">{novo ? t("newSectorDescription") : t("manageSectorDescription")}</p>
         </DrawerHeader>
         {novo ? <form noValidate className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => { event.preventDefault(); if (!nome.trim()) { setErroNome(t("requiredField")); return; } setErroNome(""); salvar.mutate(); }}>
-          <div className="flex-1 space-y-6 px-7 py-6">
+          <div className="flex-1 space-y-6 overflow-y-auto px-7 py-6">
             <div className="flex flex-col">
               <Label htmlFor="sector-name">{t("sectorName")}</Label>
               <Input id="sector-name" className="mt-2.5" aria-invalid={Boolean(erroNome)} aria-describedby={erroNome ? "sector-name-hint sector-name-error" : "sector-name-hint"} value={nome} onChange={(e) => { setNome(e.target.value); setErroNome(""); }} maxLength={150} required />
               <p id="sector-name-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("sectorNameHint")}</p>
               {erroNome && <p id="sector-name-error" role="alert" className="mt-1.5 text-sm text-destructive">{erroNome}</p>}
             </div>
+            <div className="flex flex-col">
+              <Label htmlFor="new-sector-manager">{t("selectManager")}</Label>
+              <Select value={gerente} onValueChange={(value) => setGerente(value === SELECT_EMPTY_VALUE ? "" : value)}>
+                <SelectTrigger id="new-sector-manager" aria-describedby="new-sector-manager-hint" className="mt-2.5 h-11 rounded-xl px-3.5">
+                  <SelectValue placeholder={t("selectManager")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={SELECT_EMPTY_VALUE}>{t("noOwner")}</SelectItem>
+                  {(usuarios.data?.items ?? []).filter((usuario) => usuario.ativo).map((usuario) => <SelectItem key={usuario.id} value={usuario.id}>{usuario.nome} · {usuario.email}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p id="new-sector-manager-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("managerSelectHint")}</p>
+            </div>
           </div>
           <div className="flex justify-end border-t border-border px-7 py-5"><div className="flex gap-2"><DrawerClose asChild><Button type="button" variant="outline">{t("cancel")}</Button></DrawerClose><Button disabled={salvar.isPending}>{t("createSector")}</Button></div></div>
-        </form> : setorAtual && <div className="flex-1 space-y-6 overflow-y-auto px-7 py-6">
-          <form className="flex flex-col" onSubmit={(event) => { event.preventDefault(); alterar.mutate({ id: setorAtual.id, nome }); }}>
+        </form> : setorAtual && <form className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => { event.preventDefault(); if (!nome.trim()) { setErroNome(t("requiredField")); return; } setErroNome(""); alterar.mutate({ id: setorAtual.id, nome: nome.trim() }); }}>
+          <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-7 py-6">
+          <div className="flex flex-col">
             <Label htmlFor="sector-edit-name">{t("sectorName")}</Label>
-            <Input id="sector-edit-name" className="mt-2.5" aria-describedby="sector-edit-hint" value={nome || setorAtual.nome} onChange={(e) => setNome(e.target.value)} />
+            <Input id="sector-edit-name" className="mt-2.5" aria-invalid={Boolean(erroNome)} aria-describedby={erroNome ? "sector-edit-hint sector-edit-error" : "sector-edit-hint"} value={nome} onChange={(e) => { setNome(e.target.value); setErroNome(""); }} maxLength={150} required />
             <p id="sector-edit-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("sectorEditHint")}</p>
-            <Button variant="outline" className="mt-4">{t("saveName")}</Button>
-          </form>
+            {erroNome && <p id="sector-edit-error" role="alert" className="mt-1.5 text-sm text-destructive">{erroNome}</p>}
+          </div>
           <div className="flex flex-col">
             <Label htmlFor="sector-manager">{t("selectManager")}</Label>
             <div className="mt-2.5 flex gap-2">
@@ -116,12 +130,19 @@ export function SetoresPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button disabled={!gerente || vincular.isPending} onClick={() => vincular.mutate()}>{t("associate")}</Button>
+              <Button type="button" disabled={!gerente || vincular.isPending} onClick={() => vincular.mutate()}>{t("associate")}</Button>
             </div>
             <p id="sector-manager-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("managerSelectHint")}</p>
           </div>
-          <div className="space-y-2">{(associados.data ?? []).map((item) => <div key={item.usuario_id} className="flex items-center justify-between rounded-xl border border-border px-4 py-3 text-sm"><span>{nomes.get(item.usuario_id) ?? item.usuario_id} {item.ativo ? "" : `· ${t("inactive").toLowerCase()}`}</span>{item.ativo && <Button variant="ghost" size="sm" onClick={() => setGerenteParaRemover(item.usuario_id)}>{t("remove")}</Button>}</div>)}</div>
-        </div>}
+          <div className="space-y-2">{(associados.data ?? []).map((item) => <div key={item.usuario_id} className="flex items-center justify-between rounded-xl border border-border px-4 py-3 text-sm"><span>{nomes.get(item.usuario_id) ?? item.usuario_id} {item.ativo ? "" : `· ${t("inactive").toLowerCase()}`}</span>{item.ativo && <Button type="button" variant="ghost" size="sm" onClick={() => setGerenteParaRemover(item.usuario_id)}>{t("remove")}</Button>}</div>)}</div>
+          </div>
+          <div className="flex shrink-0 justify-end border-t border-border bg-white px-7 py-5">
+            <div className="flex gap-2">
+              <DrawerClose asChild><Button type="button" variant="outline">{t("cancel")}</Button></DrawerClose>
+              <Button type="submit" disabled={alterar.isPending}>{alterar.isPending ? t("saving") : t("save")}</Button>
+            </div>
+          </div>
+        </form>}
       </DrawerContent>
     </Dialog>
     <ConfirmDialog
