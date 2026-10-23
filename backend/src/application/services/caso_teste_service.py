@@ -40,6 +40,14 @@ class CasoTesteServiceImpl:
         self._usuario_repo = usuario_repo
         self._uow = uow
 
+    async def obter(self, usuario_atual: UsuarioAutenticado, caso_id: UUID) -> CasoTesteResponse:
+        self._exigir_permissao(usuario_atual, "test_cases.consultar")
+        caso = await self._caso_repo.obter_por_id(usuario_atual.unidade_id, caso_id)
+        if caso is None:
+            raise NotFoundException("Test Case não encontrado.")
+        await self._obter_projeto_visivel(usuario_atual, caso.projeto_id)
+        return to_response(caso)
+
     async def listar(
         self,
         usuario_atual: UsuarioAutenticado,

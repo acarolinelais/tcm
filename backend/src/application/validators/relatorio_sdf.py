@@ -7,7 +7,6 @@ from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
 from src.application.validators.importacao_projeto import (
     ErroImportacaoPlanilha,
-    PlanilhaProjetoInvalida,
     _normalizar_cabecalho,
     _texto,
 )
@@ -28,12 +27,18 @@ class RelatorioSdfValidado:
     linhas: tuple[LinhaRelatorioSdf, ...]
 
 
+class RelatorioSdfInvalido(ValueError):
+    def __init__(self, erros: tuple[ErroImportacaoPlanilha, ...]) -> None:
+        self.erros = erros
+        super().__init__("O relatório SDF possui dados inválidos.")
+
+
 def validar_relatorio_sdf(conteudo: bytes) -> RelatorioSdfValidado:
     try:
         workbook = load_workbook(BytesIO(conteudo), read_only=True, data_only=True)
         planilha = workbook.active
     except (BadZipFile, InvalidFileException, OSError, ValueError) as erro:
-        raise PlanilhaProjetoInvalida(
+        raise RelatorioSdfInvalido(
             (ErroImportacaoPlanilha(1, "arquivo", "O arquivo não é uma planilha Excel válida."),)
         ) from erro
 
@@ -41,7 +46,7 @@ def validar_relatorio_sdf(conteudo: bytes) -> RelatorioSdfValidado:
     cabecalho = next(linhas, None)
     if cabecalho is None:
         workbook.close()
-        raise PlanilhaProjetoInvalida(
+        raise RelatorioSdfInvalido(
             (ErroImportacaoPlanilha(1, "cabecalho", "A planilha está vazia."),)
         )
     aliases = {
@@ -80,7 +85,7 @@ def validar_relatorio_sdf(conteudo: bytes) -> RelatorioSdfValidado:
         erros.append(ErroImportacaoPlanilha(1, "modelos", "Informe ao menos uma coluna de modelo."))
     if erros:
         workbook.close()
-        raise PlanilhaProjetoInvalida(tuple(erros))
+        raise RelatorioSdfInvalido(tuple(erros))
 
     registros = []
     for numero, valores in enumerate(linhas, start=2):
@@ -121,7 +126,7 @@ def validar_relatorio_sdf(conteudo: bytes) -> RelatorioSdfValidado:
             ErroImportacaoPlanilha(1, "tc id", "O relatório precisa conter execuções válidas.")
         )
     if erros:
-        raise PlanilhaProjetoInvalida(tuple(erros))
+        raise RelatorioSdfInvalido(tuple(erros))
     return RelatorioSdfValidado(tuple(registros))
 
 

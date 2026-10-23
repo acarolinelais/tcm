@@ -7,6 +7,12 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.application.services.caso_teste_service import CasoTesteServiceImpl
+from src.application.services.form_factor_service import FormFactorServiceImpl
+from src.application.services.importacao_projeto_service import ImportacaoProjetoServiceImpl
+from src.application.services.importacao_sdf_service import ImportacaoSdfServiceImpl
+from src.application.services.modelo_dispositivo_service import ModeloDispositivoServiceImpl
+from src.application.services.projeto_service import ProjetoServiceImpl
 from src.application.services.setor_service import SetorServiceImpl
 from src.application.services.time_service import TimeServiceImpl
 from src.application.services.usuario_service import UsuarioServiceImpl
@@ -22,6 +28,17 @@ from src.infrastructure.data.models.time_model import TimeModel
 from src.infrastructure.data.models.usuario_model import UsuarioModel
 from src.infrastructure.data.session import get_session as get_session
 from src.infrastructure.data.unit_of_work import UnitOfWorkImpl
+from src.infrastructure.repositories.caso_teste_repository import CasoTesteRepositoryImpl
+from src.infrastructure.repositories.execucao_sdf_repository import ExecucaoSdfRepositoryImpl
+from src.infrastructure.repositories.importacao_sdf_repository import ImportacaoSdfRepositoryImpl
+from src.infrastructure.repositories.modelo_dispositivo_repository import (
+    ModeloDispositivoRepositoryImpl,
+)
+from src.infrastructure.repositories.projeto_modelo_repository import ProjetoModeloRepositoryImpl
+from src.infrastructure.repositories.projeto_repository import ProjetoRepositoryImpl
+from src.infrastructure.repositories.resultado_form_factor_repository import (
+    ResultadoFormFactorRepositoryImpl,
+)
 from src.infrastructure.repositories.setor_gerente_repository import SetorGerenteRepositoryImpl
 from src.infrastructure.repositories.setor_repository import SetorRepositoryImpl
 from src.infrastructure.repositories.time_membro_repository import TimeMembroRepositoryImpl
@@ -201,4 +218,76 @@ async def get_time_service(session: AsyncSession = Depends(get_session)) -> Time
         UsuarioRepositoryImpl(session),
         UnitOfWorkImpl(session),
         SetorGerenteRepositoryImpl(session),
+    )
+
+
+async def get_projeto_service(session: AsyncSession = Depends(get_session)) -> ProjetoServiceImpl:
+    return ProjetoServiceImpl(
+        ProjetoRepositoryImpl(session),
+        TimeRepositoryImpl(session),
+        ModeloDispositivoRepositoryImpl(session),
+        ProjetoModeloRepositoryImpl(session),
+        UnitOfWorkImpl(session),
+    )
+
+
+async def get_caso_teste_service(
+    session: AsyncSession = Depends(get_session),
+) -> CasoTesteServiceImpl:
+    return CasoTesteServiceImpl(
+        CasoTesteRepositoryImpl(session),
+        ProjetoRepositoryImpl(session),
+        TimeRepositoryImpl(session),
+        TimeMembroRepositoryImpl(session),
+        UsuarioRepositoryImpl(session),
+        UnitOfWorkImpl(session),
+    )
+
+
+async def get_modelo_dispositivo_service(
+    session: AsyncSession = Depends(get_session),
+) -> ModeloDispositivoServiceImpl:
+    return ModeloDispositivoServiceImpl(
+        ModeloDispositivoRepositoryImpl(session), UnitOfWorkImpl(session)
+    )
+
+
+async def get_importacao_projeto_service(
+    session: AsyncSession = Depends(get_session),
+) -> ImportacaoProjetoServiceImpl:
+    return ImportacaoProjetoServiceImpl(
+        ProjetoRepositoryImpl(session),
+        CasoTesteRepositoryImpl(session),
+        TimeRepositoryImpl(session),
+        TimeMembroRepositoryImpl(session),
+        UsuarioRepositoryImpl(session),
+        ModeloDispositivoRepositoryImpl(session),
+        ProjetoModeloRepositoryImpl(session),
+        UnitOfWorkImpl(session),
+    )
+
+
+async def get_importacao_sdf_service(
+    session: AsyncSession = Depends(get_session),
+) -> ImportacaoSdfServiceImpl:
+    return ImportacaoSdfServiceImpl(
+        ProjetoRepositoryImpl(session),
+        TimeRepositoryImpl(session),
+        CasoTesteRepositoryImpl(session),
+        ModeloDispositivoRepositoryImpl(session),
+        ProjetoModeloRepositoryImpl(session),
+        ImportacaoSdfRepositoryImpl(session),
+        ExecucaoSdfRepositoryImpl(session),
+        ResultadoFormFactorRepositoryImpl(session),
+        UnitOfWorkImpl(session),
+    )
+
+
+async def get_form_factor_service(
+    session: AsyncSession = Depends(get_session),
+) -> FormFactorServiceImpl:
+    return FormFactorServiceImpl(
+        ProjetoRepositoryImpl(session),
+        TimeRepositoryImpl(session),
+        ResultadoFormFactorRepositoryImpl(session),
     )

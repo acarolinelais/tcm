@@ -11,6 +11,10 @@ from src.domain.common.usuario_autenticado import UsuarioAutenticado
 
 
 class CasoTesteService(Protocol):
+    async def obter(
+        self, usuario_atual: UsuarioAutenticado, caso_id: UUID
+    ) -> CasoTesteResponse: ...
+
     async def listar(
         self,
         usuario_atual: UsuarioAutenticado,

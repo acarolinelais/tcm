@@ -6,8 +6,11 @@ from scalar_fastapi import get_scalar_api_reference
 
 from src.api.error_handling.handlers import registrar_handlers
 from src.api.routers.auth import router as auth_router
+from src.api.routers.modelos_dispositivo import router as modelos_dispositivo_router
 from src.api.routers.perfis import router as perfis_router
+from src.api.routers.projetos import router as projetos_router
 from src.api.routers.setores import router as setores_router
+from src.api.routers.test_cases import router as test_cases_router
 from src.api.routers.times import router as times_router
 from src.api.routers.usuarios import router as usuarios_router
 from src.infrastructure.data.migrations_runner import aplicar_migrations
@@ -28,6 +31,9 @@ app.include_router(auth_router)
 app.include_router(setores_router)
 app.include_router(times_router)
 app.include_router(perfis_router)
+app.include_router(projetos_router)
+app.include_router(test_cases_router)
+app.include_router(modelos_dispositivo_router)
 
 
 @app.get("/scalar", include_in_schema=False)

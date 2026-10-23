@@ -3,8 +3,7 @@ from io import BytesIO
 
 import pytest
 from openpyxl import Workbook
-from src.application.validators.importacao_projeto import PlanilhaProjetoInvalida
-from src.application.validators.relatorio_sdf import validar_relatorio_sdf
+from src.application.validators.relatorio_sdf import RelatorioSdfInvalido, validar_relatorio_sdf
 
 
 def criar_planilha(linhas):
@@ -46,7 +45,7 @@ def test_rejeita_campo_obrigatorio_vazio(coluna, valor, campo):
         [["TEST ID", "SDF ID", "OneUI", "S27 ULTRA", "TAB S11", "DATE"], linha]
     )
 
-    with pytest.raises(PlanilhaProjetoInvalida) as erro:
+    with pytest.raises(RelatorioSdfInvalido) as erro:
         validar_relatorio_sdf(conteudo)
 
     assert any(item.campo == campo for item in erro.value.erros)
@@ -55,7 +54,7 @@ def test_rejeita_campo_obrigatorio_vazio(coluna, valor, campo):
 def test_rejeita_relatorio_sem_colunas_obrigatorias_ou_modelos():
     conteudo = criar_planilha([["TC ID"], ["Clock_001"]])
 
-    with pytest.raises(PlanilhaProjetoInvalida) as erro:
+    with pytest.raises(RelatorioSdfInvalido) as erro:
         validar_relatorio_sdf(conteudo)
 
     assert {item.campo for item in erro.value.erros} >= {"sdf id", "date", "one ui", "modelos"}
@@ -71,7 +70,7 @@ def test_rejeita_relatorio_sem_colunas_obrigatorias_ou_modelos():
 def test_rejeita_cabecalhos_duplicados_apos_normalizar(cabecalho):
     conteudo = criar_planilha([cabecalho])
 
-    with pytest.raises(PlanilhaProjetoInvalida) as erro:
+    with pytest.raises(RelatorioSdfInvalido) as erro:
         validar_relatorio_sdf(conteudo)
 
     assert any(item.mensagem == "O cabeçalho está duplicado." for item in erro.value.erros)

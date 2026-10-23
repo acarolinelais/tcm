@@ -3,7 +3,11 @@ from datetime import datetime, timedelta
 from uuid import UUID
 
 from src.application.schemas.form_factor import FormFactorResponse, to_response
-from src.domain.common.exceptions import ForbiddenException, NotFoundException
+from src.domain.common.exceptions import (
+    ForbiddenException,
+    InvalidInputException,
+    NotFoundException,
+)
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.interfaces.projeto_repository import ProjetoRepository
 from src.domain.entities.interfaces.resultado_form_factor_repository import (
@@ -65,10 +69,10 @@ def _intervalo_semana_iso(semana: str | None) -> tuple[datetime | None, datetime
     if semana is None:
         return None, None
     if not re.fullmatch(r"\d{4}-W\d{2}", semana):
-        raise ValueError("Semana deve usar o formato ISO YYYY-Www.")
+        raise InvalidInputException("Semana deve usar o formato ISO YYYY-Www.")
     ano, numero = semana.split("-W")
     try:
         inicio_data = datetime.fromisocalendar(int(ano), int(numero), 1)
     except ValueError as erro:
-        raise ValueError("Semana ISO inválida.") from erro
+        raise InvalidInputException("Semana ISO inválida.") from erro
     return inicio_data, inicio_data + timedelta(days=7)

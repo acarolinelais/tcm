@@ -85,19 +85,19 @@
 
 ## Fase 3: API e testes funcionais
 
-- [ ] **T19. Expor API do catálogo de modelos e projetos**
+- [x] **T19. Expor API do catálogo de modelos e projetos**
   - Arquivos: `api/dependencies.py`, routers `modelos_dispositivo.py` e `projetos.py`, `api/main.py`, testes funcionais correspondentes
   - Cobre: CA-01–CA-05, CA-11, CA-18
   - Verificação: `cd backend && uv run pytest tests/functional/test_modelos_dispositivo_api.py tests/functional/test_projetos_api.py` → rotas retornam contratos/status previstos e recusam escopo inválido.
-- [ ] **T20. Expor API de Test Cases e transferência**
+- [x] **T20. Expor API de Test Cases e transferência**
   - Arquivos: router `casos_teste.py`, dependências, `api/main.py`, `tests/functional/test_casos_teste_api.py`
   - Cobre: CA-06–CA-10, CA-13, CA-15–CA-18
   - Verificação: `cd backend && uv run pytest tests/functional/test_casos_teste_api.py` → CRUD autorizado, edição por responsável limitada e transferência troca responsável/limpa backup.
-- [ ] **T21. Expor importação SDF e consulta Form Factor**
+- [x] **T21. Expor importação SDF e consulta Form Factor**
   - Arquivos: router de relatório/Form Factor, dependências, `api/main.py`, `tests/functional/test_form_factor_api.py`
   - Cobre: CA-19, CA-20
   - Verificação: `cd backend && uv run pytest tests/functional/test_form_factor_api.py` → upload autorizado cria lote, filtros consultam histórico e upload inválido/sem permissão não altera dados.
-- [ ] **T22. Cobrir autorização e isolamento por unidade**
+- [x] **T22. Cobrir autorização e isolamento por unidade**
   - Arquivos: `backend/tests/functional/test_projetos_api.py`, `test_casos_teste_api.py`, `test_form_factor_api.py`
   - Cobre: CA-04, CA-18, CA-20
   - Verificação: `cd backend && uv run pytest tests/functional/test_projetos_api.py tests/functional/test_casos_teste_api.py tests/functional/test_form_factor_api.py` → acessos fora do tenant/escopo e sem permissão são recusados.

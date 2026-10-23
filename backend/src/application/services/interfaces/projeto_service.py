@@ -19,6 +19,10 @@ class ProjetoService(Protocol):
         self, usuario_atual: UsuarioAutenticado, page: int, page_size: int
     ) -> PagedResult[ProjetoResponse]: ...
 
+    async def obter(
+        self, usuario_atual: UsuarioAutenticado, projeto_id: UUID
+    ) -> ProjetoResponse: ...
+
     async def atualizar_status(
         self,
         usuario_atual: UsuarioAutenticado,
