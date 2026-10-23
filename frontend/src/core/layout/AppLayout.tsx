@@ -1,5 +1,5 @@
 import { Navigate, Outlet, useLocation } from "react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ApiError } from "@/shared/api/problem-details";
@@ -10,6 +10,7 @@ import { Sidebar } from "./Sidebar";
 import { languageCode, TEMP_LANGUAGE_KEY } from "@/core/i18n";
 
 export function AppLayout() {
+  const [sidebarRecolhida, setSidebarRecolhida] = useState(false);
   const location = useLocation();
   const token = getAccessToken();
   const perfil = usePerfilAtual(Boolean(token));
@@ -38,8 +39,8 @@ export function AppLayout() {
   if (location.pathname === "/trocar-senha") return <Navigate to="/overview" replace />;
 
   return (
-    <div className="box-border grid min-h-screen grid-cols-[clamp(8.75rem,18vw,15rem)_minmax(0,1fr)] grid-rows-[2rem_minmax(0,1fr)] gap-x-[clamp(1rem,5.5vw,2.75rem)] gap-y-4 bg-[#FBFBFB] p-[clamp(0.5rem,1.25vw,1rem)] max-sm:grid-cols-[3.5rem_minmax(0,1fr)]">
-      <Sidebar perfil={perfil.data} />
+    <div className={`box-border grid min-h-screen transition-[grid-template-columns] duration-300 ease-in-out motion-reduce:transition-none ${sidebarRecolhida ? "grid-cols-[4rem_minmax(0,1fr)]" : "grid-cols-[clamp(8.75rem,18vw,15rem)_minmax(0,1fr)] max-sm:grid-cols-[minmax(9rem,35vw)_minmax(0,1fr)]"} grid-rows-[2rem_minmax(0,1fr)] gap-x-[clamp(1rem,5.5vw,2.75rem)] gap-y-4 bg-[#FBFBFB] p-[clamp(0.5rem,1.25vw,1rem)]`}>
+      <Sidebar perfil={perfil.data} recolhida={sidebarRecolhida} onToggle={() => setSidebarRecolhida((recolhida) => !recolhida)} />
       <Navbar perfil={perfil.data} />
       <main className="col-start-2 row-start-2 min-h-0 min-w-0">
         <Outlet context={perfil.data} />

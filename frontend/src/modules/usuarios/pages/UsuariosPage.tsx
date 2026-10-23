@@ -106,6 +106,7 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
         <DrawerContent>
           <DrawerHeader>
             <DrawerTitle>{usuarioEmEdicao ? t("editUser") : t("newUser")}</DrawerTitle>
+            <p className="mt-1.5 text-sm leading-5 text-muted-foreground">{usuarioEmEdicao ? t("editUserDescription") : t("newUserDescription")}</p>
           </DrawerHeader>
           <UsuarioForm
             usuario={usuarioEmEdicao}

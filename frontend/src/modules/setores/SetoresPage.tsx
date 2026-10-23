@@ -7,6 +7,8 @@ import type { PerfilAtual } from "@/core/auth/api";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
+import { Label } from "@/shared/ui/label";
+import { SELECT_EMPTY_VALUE, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyState, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
 import { TableColumnFilter } from "@/shared/ui/table-column-filter";
 import { toast } from "@/shared/lib/toast";
@@ -79,15 +81,45 @@ export function SetoresPage() {
     </TableLayout>
     <Dialog open={novo || Boolean(setorAtual)} onOpenChange={(open) => { if (!open) { setNovo(false); setSetorAtual(null); setNome(""); setErroNome(""); } }}>
       <DrawerContent>
-        <DrawerHeader><DrawerTitle>{novo ? t("newSector") : setorAtual ? `${t("sector")}: ${setorAtual.nome}` : t("managers")}</DrawerTitle></DrawerHeader>
+        <DrawerHeader>
+          <DrawerTitle>{novo ? t("newSector") : setorAtual ? `${t("sector")}: ${setorAtual.nome}` : t("managers")}</DrawerTitle>
+          <p className="mt-1.5 text-sm leading-5 text-muted-foreground">{novo ? t("newSectorDescription") : t("manageSectorDescription")}</p>
+        </DrawerHeader>
         {novo ? <form noValidate className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => { event.preventDefault(); if (!nome.trim()) { setErroNome(t("requiredField")); return; } setErroNome(""); salvar.mutate(); }}>
-          <div className="flex-1 space-y-5 px-7 py-6">
-            <label className="block space-y-2 text-sm font-medium">{t("sectorName")}<Input aria-invalid={Boolean(erroNome)} aria-describedby={erroNome ? "sector-name-error" : undefined} value={nome} onChange={(e) => { setNome(e.target.value); setErroNome(""); }} maxLength={150} required />{erroNome && <p id="sector-name-error" role="alert" className="text-sm text-destructive">{erroNome}</p>}</label>
+          <div className="flex-1 space-y-6 px-7 py-6">
+            <div className="flex flex-col">
+              <Label htmlFor="sector-name">{t("sectorName")}</Label>
+              <Input id="sector-name" className="mt-2.5" aria-invalid={Boolean(erroNome)} aria-describedby={erroNome ? "sector-name-hint sector-name-error" : "sector-name-hint"} value={nome} onChange={(e) => { setNome(e.target.value); setErroNome(""); }} maxLength={150} required />
+              <p id="sector-name-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("sectorNameHint")}</p>
+              {erroNome && <p id="sector-name-error" role="alert" className="mt-1.5 text-sm text-destructive">{erroNome}</p>}
+            </div>
           </div>
           <div className="flex justify-end border-t border-border px-7 py-5"><div className="flex gap-2"><DrawerClose asChild><Button type="button" variant="outline">{t("cancel")}</Button></DrawerClose><Button disabled={salvar.isPending}>{t("createSector")}</Button></div></div>
         </form> : setorAtual && <div className="flex-1 space-y-6 overflow-y-auto px-7 py-6">
-          <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); alterar.mutate({ id: setorAtual.id, nome }); }}><Input aria-label={t("sectorName")} value={nome || setorAtual.nome} onChange={(e) => setNome(e.target.value)} /><Button variant="outline">{t("saveName")}</Button></form>
-          <div className="flex gap-2"><select aria-label={t("selectManager")} className="h-10 min-w-0 flex-1 rounded-md border bg-background px-3 text-sm" value={gerente} onChange={(e) => setGerente(e.target.value)}><option value="">{t("selectManager")}</option>{(usuarios.data?.items ?? []).filter((usuario) => !(associados.data ?? []).some((vinculo) => vinculo.usuario_id === usuario.id && vinculo.ativo)).map((item) => <option key={item.id} value={item.id}>{item.nome} · {item.email}</option>)}</select><Button disabled={!gerente || vincular.isPending} onClick={() => vincular.mutate()}>{t("associate")}</Button></div>
+          <form className="flex flex-col" onSubmit={(event) => { event.preventDefault(); alterar.mutate({ id: setorAtual.id, nome }); }}>
+            <Label htmlFor="sector-edit-name">{t("sectorName")}</Label>
+            <Input id="sector-edit-name" className="mt-2.5" aria-describedby="sector-edit-hint" value={nome || setorAtual.nome} onChange={(e) => setNome(e.target.value)} />
+            <p id="sector-edit-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("sectorEditHint")}</p>
+            <Button variant="outline" className="mt-4">{t("saveName")}</Button>
+          </form>
+          <div className="flex flex-col">
+            <Label htmlFor="sector-manager">{t("selectManager")}</Label>
+            <div className="mt-2.5 flex gap-2">
+              <Select value={gerente} onValueChange={(value) => setGerente(value === SELECT_EMPTY_VALUE ? "" : value)}>
+                <SelectTrigger id="sector-manager" aria-describedby="sector-manager-hint" className="min-w-0 flex-1">
+                  <SelectValue placeholder={t("selectManager")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={SELECT_EMPTY_VALUE}>{t("selectManager")}</SelectItem>
+                  {(usuarios.data?.items ?? []).filter((usuario) => !(associados.data ?? []).some((vinculo) => vinculo.usuario_id === usuario.id && vinculo.ativo)).map((item) => (
+                    <SelectItem key={item.id} value={item.id}>{item.nome} · {item.email}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button disabled={!gerente || vincular.isPending} onClick={() => vincular.mutate()}>{t("associate")}</Button>
+            </div>
+            <p id="sector-manager-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("managerSelectHint")}</p>
+          </div>
           <div className="space-y-2">{(associados.data ?? []).map((item) => <div key={item.usuario_id} className="flex items-center justify-between rounded-xl border border-border px-4 py-3 text-sm"><span>{nomes.get(item.usuario_id) ?? item.usuario_id} {item.ativo ? "" : `· ${t("inactive").toLowerCase()}`}</span>{item.ativo && <Button variant="ghost" size="sm" onClick={() => setGerenteParaRemover(item.usuario_id)}>{t("remove")}</Button>}</div>)}</div>
         </div>}
       </DrawerContent>
