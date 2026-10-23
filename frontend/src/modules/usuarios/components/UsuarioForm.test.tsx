@@ -3,13 +3,17 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { Dialog } from "@/shared/ui/dialog";
 import { UsuarioForm } from "./UsuarioForm";
 
 function renderForm(onSalvo = vi.fn()) {
   const client = new QueryClient();
+  // Na tela o formulário fica dentro de um Dialog (o botão Cancelar usa DrawerClose).
   render(
     <QueryClientProvider client={client}>
-      <UsuarioForm onSalvo={onSalvo} />
+      <Dialog open>
+        <UsuarioForm onSalvo={onSalvo} />
+      </Dialog>
     </QueryClientProvider>,
   );
   return { onSalvo };
