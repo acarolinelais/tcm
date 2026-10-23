@@ -3,6 +3,7 @@ import {
   Building2,
   CalendarDays,
   ChevronDown,
+  FolderKanban,
   Kanban,
   LayoutDashboard,
   PanelLeftClose,
@@ -38,6 +39,9 @@ export function Sidebar({
     { to: "/board", label: t("board"), description: t("boardDescription"), Icon: Kanban },
     { to: "/timeline", label: t("timeline"), description: t("timelineDescription"), Icon: CalendarDays },
   ];
+  if (perfil.permissoes.includes("projetos.consultar")) {
+    itens.push({ to: "/projetos", label: t("myProjects"), description: t("projectsDescription"), Icon: FolderKanban });
+  }
   const itensAdmin = [
     ["/admin/usuarios", t("users"), t("usersDescription"), Users],
     ["/admin/setores", t("sectors"), t("sectorsDescription"), Building2],

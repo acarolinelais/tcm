@@ -152,8 +152,8 @@ export function UsuariosTable({
         {items.length > 0 && <TableBody>
           {items.map((usuario) => (
             <TableRow key={usuario.id}>
-              <TableCell className="text-base font-medium text-foreground">{usuario.nome}</TableCell>
-              <TableCell className="text-base text-muted-foreground">{usuario.email}</TableCell>
+              <TableCell className="font-medium text-foreground">{usuario.nome}</TableCell>
+              <TableCell className="text-muted-foreground">{usuario.email}</TableCell>
               <TableCell>
                 <Badge
                   variant="secondary"

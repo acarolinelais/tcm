@@ -37,6 +37,12 @@ const permissoes: Permissao[] = [
   ["times.criar", "Criar times", "times", "Teams", 3],
   ["times.gerenciar", "Gerenciar membros dos times", "times", "Teams", 3],
   ["perfis.gerenciar", "Gerenciar perfis e permissões", "perfis", "Profiles", 4],
+  ["projetos.consultar", "Consultar projetos", "projetos", "Projects", 5],
+  ["projetos.gerenciar", "Criar e gerenciar projetos", "projetos", "Projects", 5],
+  ["test_cases.consultar", "Consultar Test Cases do time", "test_cases", "Test Cases", 6],
+  ["test_cases.gerenciar", "Gerenciar Test Cases do time", "test_cases", "Test Cases", 6],
+  ["form_factor.consultar", "Consultar resultados Form Factor", "form_factor", "Form Factor", 7],
+  ["form_factor.importar", "Importar resultados SDF", "form_factor", "Form Factor", 7],
 ].map(([id, descricao, codigo, nome, ordem], index) => ({
   id: String(id), descricao: String(descricao), ordem: index + 1,
   modulo: { codigo: String(codigo), nome: String(nome), ordem: Number(ordem) },
@@ -46,8 +52,8 @@ function createSeed(): Database {
   const allPermissions = permissoes.map((item) => item.id);
   const adminProfile: Perfil = { id: "mock-profile-admin", nome: "Administrador", descricao: "Acesso completo à unidade.", codigo: "ADMIN_UNIDADE", permissoes: allPermissions };
   const standardProfile: Perfil = { id: "mock-profile-standard", nome: "Usuário padrão", descricao: "Perfil padrão da unidade.", codigo: "USUARIO_PADRAO", permissoes: ["usuarios.consultar", "setores.consultar", "times.consultar"] };
-  const managerProfile: Perfil = { id: "mock-profile-manager", nome: "Gerente", descricao: "Gerencia pessoas e times do setor.", codigo: "GERENTE", permissoes: ["usuarios.consultar", "usuarios.perfil.consultar", "usuarios.gerenciar", "setores.consultar", "times.consultar", "times.criar", "times.gerenciar"] };
-  const kpProfile: Perfil = { id: "mock-profile-kp", nome: "KP", descricao: "Acompanha atividades dos times associados.", codigo: "KP", permissoes: ["usuarios.consultar", "setores.consultar", "times.consultar", "times.gerenciar"] };
+  const managerProfile: Perfil = { id: "mock-profile-manager", nome: "Gerente", descricao: "Gerencia pessoas e times do setor.", codigo: "GERENTE", permissoes: ["usuarios.consultar", "usuarios.perfil.consultar", "usuarios.gerenciar", "setores.consultar", "times.consultar", "times.criar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar"] };
+  const kpProfile: Perfil = { id: "mock-profile-kp", nome: "KP", descricao: "Acompanha atividades dos times associados.", codigo: "KP", permissoes: ["usuarios.consultar", "setores.consultar", "times.consultar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar"] };
   const developerProfile: Perfil = { id: "mock-profile-developer", nome: "Desenvolvedor", descricao: "Perfil personalizado para demonstração.", codigo: null, permissoes: ["usuarios.consultar", "times.consultar"] };
   const sectors: Setor[] = [
     { id: "mock-sector-engineering", unidade_id: UNIT_ID, nome: "Engenharia", ativo: true },
@@ -63,7 +69,7 @@ function createSeed(): Database {
     { id: "mock-user-inactive", nome: "Rafael Lima", email: "rafael.lima@example.com", ativo: false, perfil_id: standardProfile.id, created_at: "2026-02-10T12:00:00Z" },
   ];
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     unidade: { id: UNIT_ID, nome: "Manaus", ativo: true },
     usuarios: users,
     perfis: [adminProfile, standardProfile, managerProfile, kpProfile, developerProfile],
@@ -90,12 +96,19 @@ function readDb(): Database {
   if (!stored) return writeDb(createSeed());
   try {
     const db = JSON.parse(stored) as Database;
-    if ((db.schemaVersion ?? 1) < 4) {
+    if ((db.schemaVersion ?? 1) < 5) {
       // Align existing demo data once without overriding later permission edits.
       db.perfis.filter((profile) => profile.codigo === "KP").forEach((profile) => {
         profile.permissoes = [...new Set([...profile.permissoes, "usuarios.consultar", "setores.consultar", "times.consultar", "times.gerenciar"])];
       });
-      db.schemaVersion = 4;
+      db.permissoes = permissoes;
+      db.perfis.forEach((profile) => {
+        if (profile.codigo === "ADMIN_UNIDADE") profile.permissoes = permissoes.map((item) => item.id);
+        if (profile.codigo === "GERENTE" || profile.codigo === "KP") {
+          profile.permissoes = [...new Set([...profile.permissoes, "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar"] )];
+        }
+      });
+      db.schemaVersion = 5;
       return writeDb(db);
     }
     return db;

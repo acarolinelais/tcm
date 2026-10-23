@@ -25,10 +25,11 @@ function renovarSessao(): Promise<boolean> {
 
 async function request<T>(path: string, init?: RequestInit, retry = true): Promise<T> {
   const accessToken = getAccessToken();
+  const isFormData = typeof FormData !== "undefined" && init?.body instanceof FormData;
   const response = await fetch(path, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      ...(!isFormData ? { "Content-Type": "application/json" } : {}),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...init?.headers,
     },
@@ -69,6 +70,9 @@ export const httpGet = <T>(url: string, params?: Record<string, string | number>
 
 export const httpPost = <T>(url: string, body: unknown) =>
   request<T>(url, { method: "POST", body: JSON.stringify(body) });
+
+export const httpPostForm = <T>(url: string, body: FormData) =>
+  request<T>(url, { method: "POST", body });
 
 export const httpPut = <T>(url: string, body: unknown) =>
   request<T>(url, { method: "PUT", body: JSON.stringify(body) });

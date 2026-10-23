@@ -75,8 +75,8 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
       {podeGerenciarMembros && <TableHead>{t("members")}</TableHead>}<TableHead><TableColumnFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, ativo: value === "" ? undefined : value === "true" })); }} options={[{ value: "", label: t("all") }, { value: "true", label: t("active") }, { value: "false", label: t("inactive") }]} /></TableHead>{podeVisualizarDetalhe && <TableHead className="text-right">{t("actions")}</TableHead>}
     </TableRow></TableHeader>{Boolean(times.data?.items.length) && <TableBody>
       {timesVisiveis.map((time, index) => <TableRow key={time.id}>
-        <TableCell className="text-base font-medium text-foreground">{time.nome}</TableCell>
-        <TableCell className="text-base text-muted-foreground">{time.setor_nome ?? setorNome(time.setor_id)}</TableCell>
+        <TableCell className="font-medium text-foreground">{time.nome}</TableCell>
+        <TableCell className="text-muted-foreground">{time.setor_nome ?? setorNome(time.setor_id)}</TableCell>
         {podeGerenciarMembros && <TableCell>
           {(() => {
             const integrantes = (membrosPorTime[index]?.data ?? []).filter((membro) => membro.ativo).map((membro) => usuarioNome(membro.usuario_id));

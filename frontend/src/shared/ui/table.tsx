@@ -41,12 +41,22 @@ export function TableBody({ className, ...props }: HTMLAttributes<HTMLTableSecti
   return <tbody className={cn(className)} {...props} />;
 }
 
+const tableEmptyStateClasses = "flex min-h-56 w-full shrink-0 items-center justify-center rounded-2xl border border-[#E3E8F0] bg-[#F7F8FA] text-sm text-muted-foreground";
+
 export function TableEmptyState({ children, className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("flex min-h-0 flex-1 items-center justify-center rounded-2xl bg-secondary/30 text-sm text-muted-foreground", className)}
+      className={cn(tableEmptyStateClasses, className)}
       {...props}
     >
+      {children}
+    </div>
+  );
+}
+
+export function TableEmptyStatePanel({ children, className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cn(tableEmptyStateClasses, className)} {...props}>
       {children}
     </div>
   );
