@@ -25,14 +25,12 @@ export function AppLayout() {
   if (location.pathname === "/trocar-senha") return <Navigate to="/overview" replace />;
 
   return (
-    <div className="flex min-h-screen gap-4 bg-[#FBFBFB] p-4">
+    <div className="box-border grid min-h-screen grid-cols-[clamp(8.75rem,18vw,15rem)_minmax(0,1fr)] grid-rows-[2rem_minmax(0,1fr)] gap-x-[clamp(1rem,5.5vw,2.75rem)] gap-y-4 bg-[#FBFBFB] p-[clamp(0.5rem,1.25vw,1rem)] max-sm:grid-cols-[3.5rem_minmax(0,1fr)]">
       <Sidebar perfil={perfil.data} />
-      <div className="flex flex-1 flex-col gap-4">
-        <Navbar perfil={perfil.data} />
-        <main className="flex-1">
-          <Outlet context={perfil.data} />
-        </main>
-      </div>
+      <Navbar perfil={perfil.data} />
+      <main className="col-start-2 row-start-2 min-h-0 min-w-0">
+        <Outlet context={perfil.data} />
+      </main>
     </div>
   );
 }

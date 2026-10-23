@@ -1,13 +1,15 @@
-import chevronUser from "@/shared/assets/figma/icons/chevron-user.svg";
 import language from "@/shared/assets/figma/icons/language.svg";
 import search from "@/shared/assets/figma/icons/search.svg";
 import type { PerfilAtual } from "@/core/auth/api";
 import { useNavigate } from "react-router";
 import { httpPost } from "@/core/api/http-client";
 import { clearTokens } from "@/core/auth/session";
+import { ChevronDown } from "lucide-react";
+import { useState } from "react";
 
 export function Navbar({ perfil }: { perfil: PerfilAtual }) {
   const navigate = useNavigate();
+  const [menuAberto, setMenuAberto] = useState(false);
   async function sair() {
     try {
       await httpPost<void>("/api/auth/logout", {});
@@ -17,27 +19,35 @@ export function Navbar({ perfil }: { perfil: PerfilAtual }) {
     }
   }
   return (
-    <header className="flex items-center justify-between gap-4">
-      <div className="flex h-10 w-full max-w-xs items-center gap-2 rounded-full border border-border bg-card px-4">
-        <img src={search} alt="" className="h-3.5 w-3.5 opacity-70" />
-        <input
-          type="search"
-          placeholder="Search keyword..."
-          className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-        />
+    <header className="col-span-2 col-start-1 row-start-1 grid h-8 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4">
+      <div aria-hidden="true" />
+      <div className="flex h-8 w-[clamp(18rem,36vw,42rem)] items-center gap-3 rounded-full border border-border/70 bg-white px-4 max-sm:w-[40vw]">
+          <img src={search} alt="" className="h-[18px] w-[18px] shrink-0 opacity-70" />
+          <input
+            type="search"
+            placeholder="Search keyword..."
+            aria-label="Buscar"
+            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          />
       </div>
-      <div className="flex items-center gap-4">
-        <button className="flex items-center gap-1.5 text-sm text-foreground">
-          <img src={language} alt="" className="h-4 w-4" />
+      <div className="flex shrink-0 items-center justify-self-end gap-5">
+        <button type="button" className="flex items-center gap-1.5 text-sm text-foreground">
+          <img src={language} alt="" className="h-5 w-5" />
           English
         </button>
-        <button onClick={sair} title="Sair" className="flex items-center gap-1.5">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#8880F7] text-xs font-medium text-white">
-            {perfil.nome.slice(0, 1).toUpperCase()}
-          </span>
-          <span className="text-sm font-medium">{perfil.nome}</span>
-          <img src={chevronUser} alt="" className="h-[5px] w-[9px]" />
-        </button>
+        <div className="relative">
+          <button type="button" aria-expanded={menuAberto} onClick={() => setMenuAberto(!menuAberto)} title="Menu do usuário" className="flex items-center gap-1.5">
+            <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#8880F7] text-[0px] font-medium text-white">
+              {perfil.nome.slice(0, 1).toUpperCase()}
+            </span>
+            <span className="max-w-40 truncate text-sm font-medium">{perfil.nome.split(" ")[0]}</span>
+            <ChevronDown aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
+          </button>
+          {menuAberto && <div className="absolute right-0 top-10 z-50 min-w-44 rounded-xl border border-border bg-card p-1.5 shadow-lg">
+            <p className="truncate px-2 py-1.5 text-xs text-muted-foreground">{perfil.email}</p>
+            <button onClick={sair} className="w-full rounded-lg px-2 py-1.5 text-left text-xs hover:bg-secondary">Sair</button>
+          </div>}
+        </div>
       </div>
     </header>
   );
