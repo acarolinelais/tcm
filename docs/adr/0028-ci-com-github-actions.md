@@ -18,7 +18,7 @@ Postgres real (`SDF_TEST_DATABASE_URL`).
     `SDF_TEST_DATABASE_URL` definida para os testes de integração não serem pulados.
   - `frontend`: `npm ci`, `npm run lint`, `npm test` e `npm run build`.
   - `convencao` (só em PR): aplica as regras do ADR 0027 (commits, título, nome e origem da branch,
-    spec citada) chamando `scripts/git/convencao.sh`, o mesmo script dos hooks locais (ADR 0029).
+    spec existente) chamando `scripts/git/convencao.sh`, o mesmo script dos hooks locais (ADR 0029).
 - Proteção de branch (ruleset do GitHub) em `main` e `dev`:
   - exige PR;
   - exige os três checks verdes;

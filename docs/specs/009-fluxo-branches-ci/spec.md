@@ -41,8 +41,8 @@ no servidor, e nada entra em `dev` ou `main` sem a verificação automática ver
   leva a correção para a `dev`.
 - RN-04: Mensagens de commit e títulos de pedido seguem `tipo(escopo opcional): descrição`, com os
   mesmos tipos da RN-02. Mensagens automáticas de merge e revert são aceitas.
-- RN-05: Uma spec corresponde a uma branch e a um pedido de merge para a `dev`, e a descrição do pedido
-  cita a pasta da spec.
+- RN-05: Uma spec corresponde a uma branch e a um pedido de merge para a `dev`. O número no nome da
+  branch (`feat/NNN-...`) identifica a spec, que precisa existir.
 - RN-06: Um pedido de merge só pode ser integrado com todas as verificações obrigatórias verdes: backend
   (lint e testes), frontend (lint, testes e build) e convenção (commits, título, nome e origem da branch).
   Aprovação humana é opcional. Enquanto o repositório não suportar bloqueio no servidor (limitação
@@ -75,8 +75,8 @@ no servidor, e nada entra em `dev` ou `main` sem a verificação automática ver
 - **CA-09:** Dado uma branch `hotfix/corrige-login` criada a partir da `main` com commits `fix: ...`,
   quando o pedido para a `main` é aberto, então a verificação de convenção passa. Depois do merge, o
   pedido `main → dev` também passa.
-- **CA-10 (falha):** Dado um pedido de merge de uma branch `feat/NNN-...` sem citar uma pasta de spec
-  que exista, quando a verificação roda, então ela falha e informa o que falta.
+- **CA-10 (falha):** Dado um pedido de merge de uma branch `feat/NNN-...` cuja spec `NNN` não existe,
+  quando a verificação roda, então ela falha e informa a spec que falta.
 - **CA-11:** Dado um pedido `dev → main` verde, quando a pessoa integra, então a mudança entra na `main`
   e a verificação roda de novo sobre a `main`.
 - **CA-12:** Dado a documentação do projeto, quando uma pessoa nova lê o README e o `CLAUDE.md`, então

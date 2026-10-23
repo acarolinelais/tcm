@@ -38,7 +38,7 @@ Não se aplica.
 | `branch <nome>` | `pre-commit`, `pre-push`, CI | recusa `main`/`dev` como destino de commit; aceita `^(tipos\|hotfix)/[a-z0-9][a-z0-9._-]*$`; para `feat/` exige `^feat/[0-9]{3}-` |
 | `pr <base> <head-ref> <base-sha> <head-sha>` | CI | `base=main` exige `head` = `dev` ou `hotfix/*`; `base=dev` exige `head` = `main` ou branch de trabalho válida (não `hotfix/*`); aplica `mensagem` a cada commit de `base-sha..head-sha` que não seja merge |
 | `pr-titulo <titulo>` | CI | mesma regex da mensagem |
-| `pr-spec <head-ref> <corpo>` | CI | se `head-ref` é `feat/NNN-*`, o corpo cita `docs/specs/NNN-` e essa pasta existe |
+| `spec <head-ref>` | CI | se `head-ref` é `feat/NNN-*`, existe uma pasta `docs/specs/NNN-*` |
 
 A falha imprime o item fora do padrão e o formato esperado, e sai com código 1.
 

@@ -33,15 +33,15 @@
   - Cobre: RN-01, RN-02, CA-06, CA-07
   - Verificação: `sh scripts/git/convencao.test.sh` → passam `feat/009-x`, `fix/login`, `hotfix/corrige-login`
     e `docs/adr-0027`; falham `main`, `dev`, `feature/abluble`, `minha-branch`, `feat/sem-numero` e `fix/Maiuscula`
-- [ ] **T05. Subcomandos `pr`, `pr-titulo` e `pr-spec`**
+- [ ] **T05. Subcomandos `pr`, `pr-titulo` e `spec`**
   - Arquivos: `scripts/git/convencao.sh`, `scripts/git/convencao.test.sh` (repositório git temporário com
     commits de exemplo)
   - Cobre: RN-03, RN-05, CA-05, CA-08, CA-09, CA-10
   - Verificação: `sh scripts/git/convencao.test.sh` →
     - passam `pr main dev`, `pr main hotfix/x`, `pr dev main`, `pr dev feat/009-x`, um range com
-      merge commits e `pr-spec feat/009-x` citando `docs/specs/009-fluxo-branches-ci`;
+      merge commits, `spec feat/009-x` (a pasta 009 existe) e `spec fix/x` (não se aplica);
     - falham `pr main feat/009-x`, `pr dev hotfix/x`, um range com `Feat: Abluble` (o SHA aparece na
-      saída), `pr-spec feat/009-x` sem citação e `pr-spec feat/099-x` com spec inexistente
+      saída) e `spec feat/099-x` (spec inexistente)
 
 ## Fase 3: Hooks locais
 
@@ -76,8 +76,8 @@
   - Arquivos: `.github/workflows/ci.yml`, `.github/pull_request_template.md`
   - Cobre: RN-03, RN-04, RN-05, CA-05, CA-08, CA-10
   - Verificação: o job roda só em `pull_request`, primeiro roda `sh scripts/git/convencao.test.sh`
-    (regressão do próprio script) e depois chama `pr`, `pr-titulo` e `pr-spec` com
-    `github.base_ref`, `github.head_ref`, os SHAs e o título/corpo via `env` (nunca interpolados no
+    (regressão do próprio script) e depois chama `pr`, `pr-titulo` e `spec` com
+    `github.base_ref`, `github.head_ref`, os SHAs e o título via `env` (nunca interpolados no
     script). Validação real na T10
 - [ ] **T10. 🌐 Enviar a branch e abrir o PR `feat/009-fluxo-branches-ci → dev`**
   - Arquivos: nenhum
