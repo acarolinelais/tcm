@@ -5,6 +5,7 @@ import { TableColumnFilter } from "@/shared/ui/table-column-filter";
 import { listarPerfis } from "@/modules/perfis/api/perfis.api";
 import { useQuery } from "@tanstack/react-query";
 import { SearchX, UsersRound } from "lucide-react";
+import { usuarioApi } from "../api/usuario.api";
 
 import type { UsuarioFiltros } from "../api/usuario.api";
 import { useUsuariosList } from "../hooks/useUsuarios";
@@ -24,6 +25,7 @@ interface UsuariosTableProps {
   onLimparFiltros: () => void;
   podeGerenciar?: boolean;
   podeAtribuirPerfil?: boolean;
+  usuarioAtualId?: string;
 }
 
 export function UsuariosTable({
@@ -39,12 +41,19 @@ export function UsuariosTable({
   onLimparFiltros,
   podeGerenciar = false,
   podeAtribuirPerfil = false,
+  usuarioAtualId = "",
 }: UsuariosTableProps) {
   const { data, isLoading } = useUsuariosList(page, pageSize, filtros);
   const perfis = useQuery({
     queryKey: ["perfis"],
     queryFn: listarPerfis,
     enabled: podeAtribuirPerfil,
+  });
+  const perfilGerenteId = perfis.data?.find((perfil) => perfil.codigo === "GERENTE")?.id;
+  const gerentes = useQuery({
+    queryKey: ["usuarios", "gerentes", perfilGerenteId],
+    queryFn: () => usuarioApi.listar(1, 100, { perfil_id: perfilGerenteId }),
+    enabled: podeAtribuirPerfil && Boolean(perfilGerenteId),
   });
   const mostrarAcoes = podeGerenciar || podeAtribuirPerfil;
 
@@ -101,6 +110,7 @@ export function UsuariosTable({
                 />
               </TableHead>
             )}
+            {podeAtribuirPerfil && <TableHead>Responsável</TableHead>}
             {mostrarAcoes && <TableHead>Ações</TableHead>}
           </TableRow>
         </TableHeader>
@@ -124,12 +134,17 @@ export function UsuariosTable({
                   {perfis.data?.find((perfil) => perfil.id === usuario.perfil_id)?.nome ?? "—"}
                 </TableCell>
               )}
+              {podeAtribuirPerfil && <TableCell className="text-sm text-muted-foreground">
+                {gerentes.data?.items.find((gerente) => gerente.id === usuario.responsavel_id)?.nome ?? "Sem responsável"}
+              </TableCell>}
               {mostrarAcoes && <TableCell>
                 <UsuarioActionsMenu
                   usuario={usuario}
                   onEditar={onEditar}
                   podeAtribuirPerfil={podeAtribuirPerfil}
-                  podeGerenciar={podeGerenciar}
+                  podeGerenciar={podeGerenciar && (podeAtribuirPerfil || usuario.responsavel_id === usuarioAtualId)}
+                  podeAtribuirResponsavel={podeAtribuirPerfil}
+                  gerentes={gerentes.data?.items ?? []}
                 />
               </TableCell>}
             </TableRow>

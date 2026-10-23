@@ -2,7 +2,7 @@
 
 - **Status:** Implementada (validação pendente)
 - **Data:** 2026-10-22
-- **ADRs relacionados:** 0013, 0014, 0015, 0018, 0019, 0020
+- **ADRs relacionados:** 0013, 0014, 0015, 0018, 0019, 0020, 0023
 
 ## Problema
 
@@ -27,8 +27,9 @@ os demais ao perfil padrão (`USUARIO_PADRAO`), e novas contas recebem o perfil 
 
 Até a integração com a API de autenticação da empresa, novas contas recebem uma senha inicial local
 configurada por `SENHA_INICIAL_USUARIOS`. Somente o hash é persistido. No primeiro login, a API
-permite apenas consultar `/api/auth/me`, sair ou trocar a senha; a senha nova deve ter ao menos 12
-caracteres. A troca invalida as demais sessões e retorna tokens renovados para a sessão atual.
+permite apenas consultar `/api/auth/me`, sair ou trocar a senha. A senha nova deve ser não vazia e
+ter no máximo 128 caracteres. A troca invalida as demais sessões e retorna tokens renovados para a
+sessão atual.
 
 ## Objetivo
 

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Query, Response
 
 from src.api.dependencies import get_usuario_atual, get_usuario_service
 from src.application.schemas.usuario import (
+    AtribuirResponsavelRequest,
     AtualizarUsuarioRequest,
     CriarUsuarioRequest,
     UsuarioResponse,
@@ -76,3 +77,13 @@ async def inativar(
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
     await service.inativar(usuario_atual, id)
+
+
+@router.patch("/{id}/responsavel", response_model=UsuarioResponse)
+async def atribuir_responsavel(
+    id: UUID,
+    request: AtribuirResponsavelRequest,
+    service: UsuarioService = Depends(get_usuario_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.atribuir_responsavel(usuario_atual, id, request.responsavel_id)

@@ -108,6 +108,7 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
         onLimparFiltros={limparFiltros}
         podeGerenciar={podeGerenciar}
         podeAtribuirPerfil={podeAtribuirPerfil}
+        usuarioAtualId={perfil.id}
       />
 
       <Dialog open={podeGerenciar && modalAberto} onOpenChange={setModalAberto}>

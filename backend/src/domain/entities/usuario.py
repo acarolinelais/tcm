@@ -7,12 +7,15 @@ class Usuario(EntidadeTenant):
     NOME_MAX_LENGTH = 150
     EMAIL_MAX_LENGTH = 254
 
-    def __init__(self, unidade_id: UUID, nome: str, email: str) -> None:
+    def __init__(
+        self, unidade_id: UUID, nome: str, email: str, responsavel_id: UUID | None = None
+    ) -> None:
         super().__init__(unidade_id)
         self.atualizar(nome, email)
         self.senha_hash: str | None = None
         self.senha_alteracao_obrigatoria = False
         self.perfil_id: UUID | None = None
+        self.responsavel_id = responsavel_id
         self.auth_version = 0
 
     def atualizar(self, nome: str, email: str) -> None:

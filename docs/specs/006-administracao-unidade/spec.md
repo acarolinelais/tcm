@@ -2,7 +2,7 @@
 
 - **Status:** Aprovada
 - **Data:** 2026-10-23
-- **ADRs relacionados:** 0013, 0018, 0019, 0020, 0021
+- **ADRs relacionados:** 0013, 0018, 0019, 0020, 0021, 0024
 - **Specs relacionadas:** 002, 003, 004, 005
 
 ## Problema
@@ -83,6 +83,17 @@ permissões do perfil e o isolamento da unidade.
 - RN-17: As tabelas de Usuários, Setores, Times e Perfis usam a composição visual universal definida
   na spec 004: espaçamento uniforme, painel de estado vazio cinza claro e arredondado separado do
   cabeçalho, e paginação compartilhada.
+- RN-18: A lista de usuários disponíveis para associação como membros de time não inclui contas com
+  perfil `ADMIN_UNIDADE`.
+- RN-19: Usuário criado por gerente recebe `responsavel_id` igual ao gerente autenticado e o perfil
+  base da unidade identificado pelo código estável `USUARIO_PADRAO`. O gerente não escolhe perfil
+  nesse fluxo, mesmo se enviar `perfil_id` manualmente.
+- RN-20: O gerente responsável pode consultar, editar, ativar e inativar a conta vinculada. Ele não
+  pode alterar o perfil nem a responsabilidade. O backend limita essas ações ao `responsavel_id` do
+  usuário autenticado; pertencer ao mesmo time não concede gestão da conta.
+- RN-21: O administrador pode consultar usuários de toda a unidade e atribuir, transferir ou remover
+  o responsável de uma conta. O responsável atribuído precisa ser gerente ativo da mesma unidade.
+  Contas existentes podem permanecer sem responsável até que o admin faça a associação.
 
 ## Critérios de aceite
 
@@ -137,6 +148,19 @@ permissões do perfil e o isolamento da unidade.
 - **CA-21:** Dado um administrador, quando inativa um time, então o time deixa de compor o escopo
   ativo do setor e seus membros perdem o contexto de acesso ao time, preservando os vínculos. O time
   só pode ser reativado enquanto o setor estiver ativo.
+- **CA-22:** Dado a lista de usuários disponíveis para um time, quando o admin ou gerente autorizado
+  a consulta, então contas com perfil `ADMIN_UNIDADE` não são retornadas.
+- **CA-23:** Dado um gerente com permissão de gestão de usuários, quando cria Carol, então Carol
+  recebe o perfil `USUARIO_PADRAO` da unidade e `responsavel_id` do gerente autenticado, sem aceitar
+  perfil escolhido pelo cliente.
+- **CA-24:** Dado um gerente responsável por Carol, quando consulta, edita ou inativa Carol, então a
+  operação é permitida; quando tenta a mesma operação sobre usuário sem esse vínculo, é recusada.
+- **CA-25:** Dado um administrador, quando atribui ou transfere a responsabilidade de Carol para um
+  gerente ativo da unidade, então o vínculo é persistido; gerente inativo ou de outra unidade é
+  recusado.
+- **CA-26:** Dado um gerente responsável, quando o administrador transfere Carol para outro gerente,
+  então o gerente anterior perde imediatamente acesso de gestão à conta e o novo responsável passa a
+  poder gerenciá-la.
 
 ## Fora de escopo
 
@@ -170,6 +194,8 @@ permissões do perfil e o isolamento da unidade.
   vínculos KP para KP.
 - O admin pode inativar/reabrir times na página administrativa para conseguir resolver a regra de
   inativação de setores; a reativação é recusada quando o setor está inativo.
+- Contas criadas por gerente recebem o perfil-base e passam a ter responsável direto; o administrador
+  pode administrar e transferir esse vínculo.
 
 ## Impacto em regras existentes
 

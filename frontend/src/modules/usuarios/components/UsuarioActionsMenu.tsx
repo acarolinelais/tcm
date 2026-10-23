@@ -1,29 +1,39 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { MoreHorizontal, Pencil, UserRoundCheck, UserRoundX } from "lucide-react";
+import { MoreHorizontal, Pencil, UserRoundCheck, UserRoundX, UserRoundCog } from "lucide-react";
 
 import type { Usuario } from "../model/usuario";
-import { useAtivarUsuario, useInativarUsuario } from "../hooks/useUsuarios";
+import { useAtribuirResponsavel, useAtivarUsuario, useInativarUsuario } from "../hooks/useUsuarios";
 import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
+import { Button } from "@/shared/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { toast } from "@/shared/lib/toast";
 
 export function UsuarioActionsMenu({
   usuario,
   onEditar,
   podeAtribuirPerfil,
   podeGerenciar,
+  podeAtribuirResponsavel,
+  gerentes,
 }: {
   usuario: Usuario;
   onEditar: (usuario: Usuario) => void;
   podeAtribuirPerfil: boolean;
   podeGerenciar: boolean;
+  podeAtribuirResponsavel: boolean;
+  gerentes: Usuario[];
 }) {
   const [aberto, setAberto] = useState(false);
   const [confirmacaoAberta, setConfirmacaoAberta] = useState(false);
+  const [responsavelAberto, setResponsavelAberto] = useState(false);
+  const [responsavelId, setResponsavelId] = useState(usuario.responsavel_id ?? "");
   const [posicao, setPosicao] = useState({ top: 0, right: 8 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const ativar = useAtivarUsuario();
   const inativar = useInativarUsuario();
+  const atribuirResponsavel = useAtribuirResponsavel();
   const pendente = ativar.isPending || inativar.isPending;
 
   useEffect(() => {
@@ -92,6 +102,30 @@ export function UsuarioActionsMenu({
           setConfirmacaoAberta(false);
         }}
       />
+      <Dialog open={responsavelAberto} onOpenChange={setResponsavelAberto}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Responsável por {usuario.nome}</DialogTitle></DialogHeader>
+          <form className="space-y-4" onSubmit={async (event) => {
+            event.preventDefault();
+            try {
+              await atribuirResponsavel.mutateAsync({ id: usuario.id, responsavelId: responsavelId || null });
+              toast.success("Responsável atualizado com sucesso.");
+              setResponsavelAberto(false);
+            } catch {
+              toast.error("Não foi possível atualizar o responsável.");
+            }
+          }}>
+            <label htmlFor={`responsavel-${usuario.id}`} className="block space-y-1.5 text-sm">
+              <span>Gerente responsável</span>
+              <select id={`responsavel-${usuario.id}`} value={responsavelId} onChange={(event) => setResponsavelId(event.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                <option value="">Sem responsável</option>
+                {gerentes.filter((gerente) => gerente.ativo).map((gerente) => <option key={gerente.id} value={gerente.id}>{gerente.nome} · {gerente.email}</option>)}
+              </select>
+            </label>
+            <Button type="submit" disabled={atribuirResponsavel.isPending}>{atribuirResponsavel.isPending ? "Salvando..." : "Salvar"}</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
       <button
         ref={triggerRef}
         type="button"
@@ -122,6 +156,15 @@ export function UsuarioActionsMenu({
           >
             <Pencil aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
             Editar
+          </button>}
+          {podeAtribuirResponsavel && <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-secondary"
+            onClick={() => { setAberto(false); setResponsavelId(usuario.responsavel_id ?? ""); setResponsavelAberto(true); }}
+          >
+            <UserRoundCog aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
+            Alterar responsável
           </button>}
           {podeGerenciar && <button
             type="button"

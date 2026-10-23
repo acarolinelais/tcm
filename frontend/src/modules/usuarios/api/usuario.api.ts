@@ -1,4 +1,4 @@
-import { httpGet, httpPatch, httpPost, httpPut } from "@/core/api/http-client";
+import { httpGet, httpPatch, httpPatchBody, httpPost, httpPut } from "@/core/api/http-client";
 import type { PagedResult } from "@/shared/types/paged-result";
 
 import type { Usuario, UsuarioFormValues } from "../model/usuario";
@@ -26,4 +26,6 @@ export const usuarioApi = {
   atualizar: (id: string, body: UsuarioFormValues) => httpPut<Usuario>(`${url}/${id}`, body),
   ativar: (id: string) => httpPatch<void>(`${url}/${id}/ativar`),
   inativar: (id: string) => httpPatch<void>(`${url}/${id}/inativar`),
+  atribuirResponsavel: (id: string, responsavelId: string | null) =>
+    httpPatchBody<Usuario>(`${url}/${id}/responsavel`, { responsavel_id: responsavelId }),
 };

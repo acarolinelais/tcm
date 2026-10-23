@@ -47,9 +47,12 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
     async def listar_ativos_da_unidade(self, unidade_id: UUID) -> list[Usuario]:
         stmt = (
             select(UsuarioModel)
+            .join(PerfilModel, PerfilModel.id == UsuarioModel.perfil_id)
             .where(
                 UsuarioModel.unidade_id == unidade_id,
                 UsuarioModel.ativo.is_(True),
+                PerfilModel.unidade_id == unidade_id,
+                or_(PerfilModel.codigo.is_(None), PerfilModel.codigo != "ADMIN_UNIDADE"),
             )
             .order_by(UsuarioModel.nome, UsuarioModel.id)
         )
@@ -94,10 +97,18 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
         email: str | None = None,
         ativo: bool | None = None,
         perfil_id: UUID | None = None,
+        responsavel_id: UUID | None = None,
     ) -> PagedResult[Usuario]:
         consultas = [
             select(UsuarioModel.id.label("usuario_id")).where(UsuarioModel.id == usuario_atual_id)
         ]
+        if responsavel_id is not None:
+            consultas.append(
+                select(UsuarioModel.id.label("usuario_id")).where(
+                    UsuarioModel.unidade_id == unidade_id,
+                    UsuarioModel.responsavel_id == responsavel_id,
+                )
+            )
         if time_ids:
             consultas.append(
                 select(TimeMembroModel.usuario_id.label("usuario_id")).where(
@@ -165,10 +176,18 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
         page_size: int,
         time_ids: tuple[UUID, ...],
         usuario_atual_id: UUID,
+        responsavel_id: UUID | None = None,
     ) -> PagedResult[Usuario]:
         consultas = [
             select(UsuarioModel.id.label("usuario_id")).where(UsuarioModel.id == usuario_atual_id)
         ]
+        if responsavel_id is not None:
+            consultas.append(
+                select(UsuarioModel.id.label("usuario_id")).where(
+                    UsuarioModel.unidade_id == unidade_id,
+                    UsuarioModel.responsavel_id == responsavel_id,
+                )
+            )
         if time_ids:
             consultas.append(
                 select(TimeMembroModel.usuario_id.label("usuario_id")).where(
@@ -208,6 +227,19 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
         )
         return (await self.session.execute(stmt)).first() is not None
 
+    async def pertence_a_responsabilidade(
+        self, unidade_id: UUID, usuario_id: UUID, responsavel_id: UUID
+    ) -> bool:
+        stmt = select(UsuarioModel.id).where(
+            UsuarioModel.id == usuario_id,
+            UsuarioModel.unidade_id == unidade_id,
+            UsuarioModel.responsavel_id == responsavel_id,
+        )
+        return (await self.session.execute(stmt)).first() is not None
+
+    async def responsavel_gerente_valido(self, unidade_id: UUID, usuario_id: UUID) -> bool:
+        return await self.gerente_ativo_na_unidade(unidade_id, usuario_id)
+
     async def invalidar_sessoes(self, usuario_id: UUID) -> None:
         await self.session.execute(
             update(UsuarioModel)
@@ -221,6 +253,7 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
         usuario.senha_hash = model.senha_hash
         usuario.senha_alteracao_obrigatoria = model.senha_alteracao_obrigatoria
         usuario.perfil_id = model.perfil_id
+        usuario.responsavel_id = model.responsavel_id
         usuario.auth_version = model.auth_version
         usuario.ativo = model.ativo
         usuario.created_at = model.created_at
@@ -236,6 +269,7 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
             senha_hash=entity.senha_hash,
             senha_alteracao_obrigatoria=entity.senha_alteracao_obrigatoria,
             perfil_id=entity.perfil_id,
+            responsavel_id=entity.responsavel_id,
             auth_version=entity.auth_version,
             ativo=entity.ativo,
             created_at=entity.created_at,

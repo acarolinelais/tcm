@@ -106,3 +106,14 @@ Os fluxos principais de T01–T17 estão implementados no código, incluindo a a
 o perfil `GERENTE`, escopo de time por setor, seleção de perfil no cadastro e as páginas
 administrativas de setores e times. Os testes unitários, funcionais e E2E de T01–T18 ainda precisam
 ser escritos/executados; T19 também está pendente.
+
+## Complemento: responsabilidade de usuários
+
+- [x] **T21. Persistir a responsabilidade direta de usuário** — coluna nullable, FK para `usuarios`,
+  índice e mapeamento domínio/ORM. Cobre RN-19 e RN-21.
+- [x] **T22. Aplicar criação e autorização por responsável** — gerente cria com perfil `USUARIO_PADRAO`
+  e recebe `responsavel_id`; consulta e gestão ficam limitadas às contas sob sua responsabilidade.
+  Cobre RN-19 e RN-20.
+- [x] **T23. Permitir ao admin transferir responsabilidade** — endpoint de transferência/removção com
+  validação de gerente ativo da mesma unidade e ação na lista de usuários. Cobre RN-21.
+- [x] **T24. Registrar decisão e critérios de aceite** — ADR 0024 e atualização desta spec/plan/tasks.

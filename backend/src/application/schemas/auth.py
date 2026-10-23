@@ -22,7 +22,7 @@ class RefreshRequest(BaseModel):
 
 
 class AlterarSenhaRequest(BaseModel):
-    nova_senha: str = Field(min_length=12, max_length=128)
+    nova_senha: str = Field(min_length=1, max_length=128)
 
 
 class PerfilAtualResponse(BaseModel):

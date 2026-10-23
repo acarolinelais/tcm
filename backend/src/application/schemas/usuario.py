@@ -16,12 +16,17 @@ class AtualizarUsuarioRequest(CriarUsuarioRequest):
     pass
 
 
+class AtribuirResponsavelRequest(BaseModel):
+    responsavel_id: UUID | None
+
+
 class UsuarioResponse(BaseModel):
     id: UUID
     nome: str
     email: str
     ativo: bool
     perfil_id: UUID
+    responsavel_id: UUID | None
     created_at: datetime
 
 
@@ -32,5 +37,6 @@ def to_response(u: Usuario) -> UsuarioResponse:
         email=u.email,
         ativo=u.ativo,
         perfil_id=u.perfil_id,
+        responsavel_id=u.responsavel_id,
         created_at=u.created_at,
     )

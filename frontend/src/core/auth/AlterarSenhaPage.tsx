@@ -43,7 +43,7 @@ export function AlterarSenhaPage() {
         <div>
           <h1 className="text-xl font-semibold">Crie sua senha</h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Para continuar, troque a senha inicial por uma senha pessoal com pelo menos 12 caracteres.
+            Para continuar, troque a senha inicial por uma senha pessoal.
           </p>
         </div>
         <div className="space-y-2">
@@ -52,7 +52,6 @@ export function AlterarSenhaPage() {
             id="nova-senha"
             type="password"
             autoComplete="new-password"
-            minLength={12}
             maxLength={128}
             required
             value={novaSenha}
@@ -65,7 +64,6 @@ export function AlterarSenhaPage() {
             id="confirmacao-senha"
             type="password"
             autoComplete="new-password"
-            minLength={12}
             maxLength={128}
             required
             value={confirmacao}

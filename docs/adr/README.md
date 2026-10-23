@@ -30,7 +30,9 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0016](0016-repositorio-atualizar-com-merge.md) | Repositório ganha `atualizar()` via `session.merge()` | Aceito |
 | [0017](0017-filtros-em-endpoints-de-listagem.md) | Filtros explícitos em endpoints de listagem | Aceito |
 | [0018](0018-perfil-administrador-e-perfil-obrigatorio.md) | Perfil administrador da unidade e perfil obrigatório | Aceito |
-| [0019](0019-senha-inicial-e-troca-obrigatoria.md) | Senha inicial local com troca obrigatória | Aceito |
+| [0019](0019-senha-inicial-e-troca-obrigatoria.md) | Senha inicial local com troca obrigatória | Substituído por 0023 |
 | [0020](0020-sessoes-jwt-e-refresh-rotativo.md) | Sessões JWT e refresh token rotativo | Aceito |
 | [0021](0021-escopo-gerente-por-setor.md) | Escopo de gestão de times definido pelo setor | Aceito |
 | [0022](0022-padrao-universal-de-tabelas.md) | Padrão visual universal para tabelas | Aceito |
+| [0023](0023-senha-sem-minimo-de-caracteres.md) | Troca de senha sem mínimo de caracteres | Aceito |
+| [0024](0024-responsavel-por-usuario.md) | Responsável direto por usuários criados por gerente | Aceito |

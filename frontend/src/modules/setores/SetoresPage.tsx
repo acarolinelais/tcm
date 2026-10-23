@@ -68,8 +68,8 @@ export function SetoresPage() {
         </div>;
       })()}
     </TableEmptyState>}
-    </TableLayout>
     <TablePagination page={pagina} pageSize={tamanho} totalCount={setores.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(n) => { setTamanho(n); setPagina(1); }} />
+    </TableLayout>
     <Dialog open={novo || Boolean(setorAtual)} onOpenChange={(open) => { if (!open) { setNovo(false); setSetorAtual(null); setNome(""); } }}><DialogContent><DialogHeader><DialogTitle>{novo ? "Novo setor" : setorAtual ? `Setor: ${setorAtual.nome}` : "Gerentes do setor"}</DialogTitle></DialogHeader>
       {novo ? <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); salvar.mutate(); }}><label className="block space-y-1 text-sm">Nome<Input value={nome} onChange={(e) => setNome(e.target.value)} maxLength={150} required /></label><Button disabled={salvar.isPending}>Criar setor</Button></form> : setorAtual && <div className="space-y-4">
         <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); alterar.mutate({ id: setorAtual.id, nome }); }}><Input aria-label="Nome do setor" value={nome || setorAtual.nome} onChange={(e) => setNome(e.target.value)} /><Button variant="outline">Salvar nome</Button></form>

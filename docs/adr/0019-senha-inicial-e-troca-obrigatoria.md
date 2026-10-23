@@ -1,6 +1,6 @@
 # 0019. Senha inicial local com troca obrigatória
 
-- **Status:** Aceito
+- **Status:** Substituído por [0023](0023-senha-sem-minimo-de-caracteres.md)
 - **Data:** 2026-10-23
 - **ADRs relacionados:** 0014, 0018
 
@@ -14,7 +14,7 @@ que possam entrar no sistema sem cadastrar uma senha pessoal para cada pessoa.
 O backend usa `SENHA_INICIAL_USUARIOS`, uma configuração de ambiente, para criar novas contas. A senha
 é armazenada somente como hash Argon2 e nunca é retornada pela API. A conta recebe a flag
 `senha_alteracao_obrigatoria`; após entrar, a pessoa só pode consultar o próprio perfil, sair ou trocar
-sua senha por outra com pelo menos 12 caracteres.
+sua senha conforme a política registrada no ADR 0023.
 
 A troca atualiza a senha, invalida as outras sessões e emite tokens novos para a sessão atual. As
 requisições protegidas são recusadas até que a troca termine. A autenticação local é temporária e será

@@ -6,6 +6,7 @@ export interface Usuario {
   email: string;
   ativo: boolean;
   perfil_id: string;
+  responsavel_id?: string | null;
   created_at: string;
 }
 

@@ -73,10 +73,12 @@ class UsuarioServiceImpl:
                     email,
                     ativo,
                     perfil_id,
+                    usuario_atual.id,
                 )
             else:
                 result = await self._repo.listar_visiveis(
-                    usuario_atual.unidade_id, page, page_size, escopo, usuario_atual.id
+                    usuario_atual.unidade_id, page, page_size, escopo, usuario_atual.id,
+                    usuario_atual.id,
                 )
         return result.map(to_response)
 
@@ -86,6 +88,8 @@ class UsuarioServiceImpl:
                 usuario_atual.unidade_id,
                 id,
                 tuple(dict.fromkeys((*usuario_atual.times_gerenciados, *usuario_atual.time_ids))),
+            ) and not await self._repo.pertence_a_responsabilidade(
+                usuario_atual.unidade_id, id, usuario_atual.id
             ):
                 raise NotFoundException(f"Usuário {id} não encontrado.")
         return to_response(await self._obter_entidade(usuario_atual.unidade_id, id))
@@ -96,7 +100,10 @@ class UsuarioServiceImpl:
         self._exigir_permissao(usuario_atual, "usuarios.gerenciar")
         await self._garantir_email_unico(request.email, None)
         usuario = Usuario(usuario_atual.unidade_id, request.nome, request.email)
-        if request.perfil_id is None:
+        if not usuario_atual.eh_administrador:
+            usuario.perfil_id = await self._repo.obter_perfil_padrao(usuario_atual.unidade_id)
+            usuario.responsavel_id = usuario_atual.id
+        elif request.perfil_id is None:
             usuario.perfil_id = await self._repo.obter_perfil_padrao(usuario_atual.unidade_id)
         else:
             if not await self._repo.perfil_atribuivel(usuario_atual.unidade_id, request.perfil_id):
@@ -118,6 +125,7 @@ class UsuarioServiceImpl:
     ) -> UsuarioResponse:
         self._exigir_permissao(usuario_atual, "usuarios.gerenciar")
         usuario = await self._obter_entidade(usuario_atual.unidade_id, id)
+        await self._exigir_responsavel_ou_admin(usuario_atual, id)
         if Usuario.normalizar_email(request.email) != usuario.email:
             await self._garantir_email_unico(request.email, id)
         usuario.atualizar(request.nome, request.email)
@@ -129,6 +137,7 @@ class UsuarioServiceImpl:
     async def ativar(self, usuario_atual: UsuarioAutenticado, id: UUID) -> None:
         self._exigir_permissao(usuario_atual, "usuarios.gerenciar")
         usuario = await self._obter_entidade(usuario_atual.unidade_id, id)
+        await self._exigir_responsavel_ou_admin(usuario_atual, id)
         usuario.ativar()
         usuario.auth_version += 1
         await self._repo.atualizar(usuario)
@@ -137,10 +146,39 @@ class UsuarioServiceImpl:
     async def inativar(self, usuario_atual: UsuarioAutenticado, id: UUID) -> None:
         self._exigir_permissao(usuario_atual, "usuarios.gerenciar")
         usuario = await self._obter_entidade(usuario_atual.unidade_id, id)
+        await self._exigir_responsavel_ou_admin(usuario_atual, id)
         usuario.inativar()
         usuario.auth_version += 1
         await self._repo.atualizar(usuario)
         await self._uow.commit()
+
+    async def atribuir_responsavel(
+        self, usuario_atual: UsuarioAutenticado, id: UUID, responsavel_id: UUID | None
+    ) -> UsuarioResponse:
+        if not usuario_atual.eh_administrador:
+            raise ForbiddenException("Apenas o administrador pode atribuir responsáveis.")
+        usuario = await self._obter_entidade(usuario_atual.unidade_id, id)
+        if responsavel_id == usuario.id:
+            raise ConflictException("Um gerente não pode ser responsável pela própria conta.")
+        if responsavel_id is not None and not await self._repo.responsavel_gerente_valido(
+            usuario_atual.unidade_id, responsavel_id
+        ):
+            raise NotFoundException("Gerente ativo não encontrado nesta unidade.")
+        usuario.responsavel_id = responsavel_id
+        usuario.auth_version += 1
+        await self._repo.atualizar(usuario)
+        await self._uow.commit()
+        return to_response(usuario)
+
+    async def _exigir_responsavel_ou_admin(
+        self, usuario_atual: UsuarioAutenticado, usuario_id: UUID
+    ) -> None:
+        if usuario_atual.eh_administrador:
+            return
+        if not await self._repo.pertence_a_responsabilidade(
+            usuario_atual.unidade_id, usuario_id, usuario_atual.id
+        ):
+            raise NotFoundException(f"Usuário {usuario_id} não encontrado.")
 
     async def _obter_entidade(self, unidade_id: UUID, id: UUID) -> Usuario:
         usuario = await self._repo.obter_por_id(unidade_id, id)

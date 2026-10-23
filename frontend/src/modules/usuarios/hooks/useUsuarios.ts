@@ -42,3 +42,12 @@ export function useInativarUsuario() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["usuarios"] }),
   });
 }
+
+export function useAtribuirResponsavel() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, responsavelId }: { id: string; responsavelId: string | null }) =>
+      usuarioApi.atribuirResponsavel(id, responsavelId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["usuarios"] }),
+  });
+}

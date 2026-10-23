@@ -2,7 +2,7 @@
 
 - **Spec:** [spec.md](spec.md)
 - **ADRs aplicados:** 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0013, 0017, 0018, 0019, 0020, 0021, 0022
-- **ADRs novos propostos:** nenhum
+- **ADRs novos propostos:** 0024 (responsabilidade de usuários criados por gerente)
 
 ## Abordagem
 
@@ -21,6 +21,7 @@ gestão de usuários.
 |---|---|---|---|
 | `SetorGerente` | `id`, `unidade_id`, `setor_id`, `usuario_id`, `ativo`, timestamps | UUID, UUID, UUID, UUID, bool, datetime | Associação por unidade; par setor/usuário único; desassociar/inativar mantém histórico |
 | `Perfil` | `codigo=GERENTE` | string estável | Seed por unidade, somente leitura; permissões `times.consultar`, `times.criar`, `times.gerenciar`; atribuível |
+| `Usuario` | `responsavel_id` | UUID opcional, FK para `usuarios.id` | Gerente que criou/responde pela conta; null para contas sem atribuição; admin pode transferir |
 | `Setor` | `ativo` | bool existente | Inativação bloqueada se existir time ativo; ao inativar, desativa associações ativas |
 | `Time` | `gerente_id` | UUID opcional existente | Responsável principal; não participa do cálculo de autorização |
 | `TimeMembro` | `papel` | enum/string existente | `KP` define escopo de KP na página de times; não vira perfil de conta |
@@ -36,6 +37,12 @@ provisionamento de unidades, quando existir, também deverá criar os três perf
 ou associação gerente-setor incrementam `auth_version` do usuário afetado e invalidam suas sessões,
 conforme spec 003/ADR 0020.
 
+O gerente recebe também `usuarios.consultar` e `usuarios.gerenciar`, mas o escopo dessas permissões
+é limitado aos usuários cujo `responsavel_id` corresponde ao gerente autenticado. Ao criar uma conta,
+o backend define esse vínculo e usa o perfil de código estável `USUARIO_PADRAO`; qualquer perfil
+enviado por um não-admin é ignorado. O administrador pode transferir ou remover o responsável e
+atribuir somente gerente ativo da mesma unidade.
+
 ## Contrato da API
 
 | Verbo | Rota | Request/query | Sucesso | Erros principais |
@@ -47,6 +54,7 @@ conforme spec 003/ADR 0020.
 | POST | `/api/setores/{id}/gerentes` | `{ usuario_id }` | 201 associação ativa | 401, 403, 404, 409, 422 |
 | DELETE | `/api/setores/{id}/gerentes/{usuario_id}` | — | 204, associação inativada | 401, 403, 404 |
 | POST | `/api/usuarios` | `{ nome, email, perfil_id? }` | 201; perfil padrão se omitido | 401, 403, 404, 409, 422 |
+| PATCH | `/api/usuarios/{id}/responsavel` | `{ responsavel_id: UUID | null }` (somente admin) | 200 `UsuarioResponse` | 401, 403, 404 |
 | GET | `/api/times` | filtros e paginação atuais | Admin: unidade; gerente: setores ativos; KP: vínculos KP; membro: escopo já permitido | 401, 403, 422 |
 | GET | `/api/times/usuarios-disponiveis` | — | Usuários ativos da unidade para gestão de membros, apenas admin/gerente | 401, 403 |
 | GET | `/api/times/{id}/membros` | — | Membros ativos do time no escopo de admin, gerente associado ou KP | 401, 403, 404 |
@@ -78,8 +86,9 @@ consultar times em que não possui associação KP.
 - `time_service.py`, repositórios e schemas de times — gerir por setor ativo, delimitar consultas de
   gerente/KP; ao admin permitir definir como principal somente gerente ativo associado ao setor; e
   adicionar remoção/inativação de membro.
-- `usuario.py`, `usuario_service.py`, schemas e router — aceitar `perfil_id` opcional na criação,
-  validar perfil da unidade e impedir atribuição do perfil `ADMIN_UNIDADE` pela criação comum.
+- `usuario.py`, `usuario_service.py`, schemas, router e migration — persistir `responsavel_id`, dar
+  escopo de gerenciamento ao responsável, validar perfil padrão na criação pelo gerente e permitir
+  ao admin transferir/remover a responsabilidade.
 - Testes unitários/funcionais — isolamento tenant, perfil seedado, escopo, revogação imediata, setor
   com times ativos, fluxos de usuário e membership.
 
@@ -113,6 +122,10 @@ consultar times em que não possui associação KP.
 | CA-10 | Funcional | Mudanças de acesso invalidam sessão conforme mecanismo existente |
 | CA-11, CA-17 | API/componente/E2E | Escopos e permissões governam a área Times, menu e ações |
 | CA-12 | API/componente | Admin consulta todos os recursos da unidade com paginação |
+| CA-23 a CA-26 | Funcional/componente | gerente cria conta padrão sob responsabilidade própria; admin transfere vínculo; dono antigo perde acesso |
+
+O endpoint `PATCH /api/usuarios/{id}/responsavel` e a coluna `usuarios.responsavel_id` seguem o
+ADR 0024.
 
 ## Riscos e decisões
 

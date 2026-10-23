@@ -93,6 +93,11 @@ export function Sidebar({ perfil }: { perfil: PerfilAtual }) {
             </>}
           </NavLink>
         )}
+        {perfil.perfil_codigo === "GERENTE" && perfil.permissoes.includes("usuarios.consultar") && (
+          <NavLink to="/usuarios" className={({ isActive }) => `flex items-center gap-1 rounded-full px-2 py-1 text-sm max-sm:justify-center max-sm:px-0 ${isActive ? "bg-[#EAF0FF]" : "hover:bg-secondary"}`}>
+            {({ isActive }) => <><span className="flex h-6 w-6 shrink-0 items-center justify-center"><span className={`h-3 w-3 rounded-full ${isActive ? "h-4 w-4 bg-[#5588F5]" : ""}`} /></span><span className="max-sm:hidden">Usuários</span></>}
+          </NavLink>
+        )}
       </nav>
       <div className="mt-auto pt-6">
         <p className="px-2 pb-2 text-[9px] font-medium uppercase tracking-[0.08em] text-muted-foreground max-sm:hidden">Suporte</p>
