@@ -128,7 +128,7 @@
   - Arquivos: nenhum
   - Cobre: RN-08, CA-01
   - Verificação: `gh run list --branch dev --limit 1` → o workflow do `push` na `dev` verde
-- [ ] **T16. 🌐 PR `dev → main`, integrar e conferir a `main`**
+- [x] **T16. 🌐 PR `dev → main`, integrar e conferir a `main`**
   - Arquivos: nenhum
   - Cobre: RN-03, CA-11
   - Verificação: `convencao` verde no PR. Depois do merge, `gh run list --branch main --limit 1` → verde

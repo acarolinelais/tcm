@@ -1,6 +1,6 @@
 # 009. Fluxo de branches e verificação automática: Spec
 
-- **Status:** Aprovada
+- **Status:** Concluída
 - **Data:** 2026-10-23
 - **ADRs relacionados:** 0002, 0010, 0011, 0027, 0028, 0029
 

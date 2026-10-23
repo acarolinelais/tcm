@@ -105,6 +105,8 @@ espera falha 'pr dev <- hotfix/x' pr dev hotfix/x "$base" "$valido"
 espera falha 'pr dev <- branch fora do padrão' pr dev feature/abluble "$base" "$valido"
 espera falha 'pr com commit Feat: Abluble' pr dev fix/abluble "$valido" "$invalido"
 saida_contem 'commit inválido aparece com o SHA' "$sha_invalido Feat: Abluble"
+espera falha 'pr com SHA inexistente (git log falha)' pr dev feat/009-x "$base" 0000000000000000000000000000000000000000
+espera ok 'pr com range vazio' pr dev feat/009-x "$valido" "$valido"
 
 echo '# hooks'
 git init -q --bare "$TMP/remoto.git"
