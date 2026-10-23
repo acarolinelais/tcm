@@ -74,5 +74,9 @@ pessoa pode fazer sobre essa estrutura.
 - Telas de login e de gestão de setor/time no frontend — esta spec cobre só o backend; o frontend entra
   numa spec seguinte, depois que a API existir.
 
+> **Evolução do escopo:** a exclusão de refresh token e troca de senha descreve o v1 desta spec.
+> O ciclo atual de sessões e tokens foi definido na spec 003 e no ADR 0020; a senha inicial e a troca
+> obrigatória no primeiro acesso estão no ADR 0019. A integração corporativa continua pendente.
+
 ## Dúvidas em aberto
 - Nenhuma crítica no momento; detalhes de formato de senha/token ficam para o `plan.md`.

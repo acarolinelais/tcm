@@ -21,6 +21,10 @@ class RefreshRequest(BaseModel):
     refresh_token: str = Field(min_length=32)
 
 
+class AlterarSenhaRequest(BaseModel):
+    nova_senha: str = Field(min_length=12, max_length=128)
+
+
 class PerfilAtualResponse(BaseModel):
     id: UUID
     nome: str
@@ -33,3 +37,4 @@ class PerfilAtualResponse(BaseModel):
     times: list[dict[str, str]]
     time_atual_id: UUID | None
     tem_multiplos_times: bool
+    senha_alteracao_obrigatoria: bool

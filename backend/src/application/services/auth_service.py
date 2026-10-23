@@ -4,10 +4,10 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.schemas.auth import LoginRequest, RefreshRequest, TokenResponse
+from src.application.schemas.auth import AlterarSenhaRequest, LoginRequest, RefreshRequest, TokenResponse
 from src.domain.common.exceptions import CredenciaisInvalidasException
 from src.domain.entities.interfaces.autenticador import Autenticador
 from src.domain.entities.interfaces.usuario_repository import UsuarioRepository
@@ -18,6 +18,7 @@ from src.infrastructure.data.models.time_membro_model import TimeMembroModel
 from src.infrastructure.data.models.time_model import TimeModel
 from src.infrastructure.data.models.usuario_model import UsuarioModel
 from src.infrastructure.security.jwt import ACCESS_TOKEN_MINUTES, REFRESH_TOKEN_DAYS
+from src.infrastructure.security.senha_hasher import hash_senha
 
 
 class AuthServiceImpl:
@@ -84,6 +85,7 @@ class AuthServiceImpl:
         if (
             usuario_model is None
             or not usuario_model.ativo
+            or usuario_model.senha_alteracao_obrigatoria
             or usuario_model.auth_version != sessao.auth_version
         ):
             sessao.revoked_at = datetime.now(UTC).replace(tzinfo=None)
@@ -111,6 +113,55 @@ class AuthServiceImpl:
         if sessao is not None and sessao.revoked_at is None:
             sessao.revoked_at = datetime.now(UTC).replace(tzinfo=None)
             await self._session.commit()
+
+    async def alterar_senha_inicial(
+        self, usuario_id: UUID, sessao_id: UUID, request: AlterarSenhaRequest
+    ) -> TokenResponse:
+        if self._session is None:
+            raise CredenciaisInvalidasException("Credenciais inválidas.")
+        agora = datetime.now(UTC).replace(tzinfo=None)
+        sessao = await self._session.get(AuthSessaoModel, sessao_id)
+        usuario_model = await self._session.get(UsuarioModel, usuario_id)
+        if (
+            sessao is None
+            or sessao.usuario_id != usuario_id
+            or sessao.revoked_at is not None
+            or sessao.expires_at <= agora
+            or usuario_model is None
+            or not usuario_model.ativo
+            or not usuario_model.senha_alteracao_obrigatoria
+            or usuario_model.auth_version != sessao.auth_version
+        ):
+            raise CredenciaisInvalidasException("Credenciais inválidas.")
+
+        usuario_model.senha_hash = hash_senha(request.nova_senha)
+        usuario_model.senha_alteracao_obrigatoria = False
+        usuario_model.auth_version += 1
+        await self._session.execute(
+            update(AuthSessaoModel)
+            .where(
+                AuthSessaoModel.usuario_id == usuario_id,
+                AuthSessaoModel.id != sessao_id,
+                AuthSessaoModel.revoked_at.is_(None),
+            )
+            .values(revoked_at=agora)
+        )
+        novo_refresh = secrets.token_urlsafe(48)
+        sessao.auth_version = usuario_model.auth_version
+        sessao.refresh_hash = self._hash(novo_refresh)
+        sessao.expires_at = agora + timedelta(days=REFRESH_TOKEN_DAYS)
+        usuario = await self._usuario_repo.obter_por_id(usuario_model.unidade_id, usuario_id)
+        if usuario is None:
+            raise CredenciaisInvalidasException("Credenciais inválidas.")
+        perfil, times = await self._contexto_usuario(usuario_id, usuario_model.unidade_id)
+        await self._session.commit()
+        return TokenResponse(
+            access_token=self._emitir_access(
+                usuario, perfil, times, sessao_id, usuario_model.auth_version
+            ),
+            refresh_token=novo_refresh,
+            expires_in=ACCESS_TOKEN_MINUTES * 60,
+        )
 
     async def _contexto_usuario(self, usuario_id: UUID, unidade_id: UUID) -> tuple[str, list[UUID]]:
         if self._session is None:

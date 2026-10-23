@@ -1,7 +1,7 @@
 # 004. Listagem filtrável de usuários: Plan
 
 - **Spec:** [spec.md](spec.md)
-- **ADRs aplicados:** 0004, 0006, 0008, 0009, 0013, 0017
+- **ADRs aplicados:** 0004, 0006, 0008, 0009, 0013, 0017, 0018
 - **ADRs novos propostos:** nenhum
 
 ## Abordagem

@@ -1,6 +1,6 @@
 # 0015. Autorização e papéis (RBAC)
 
-- **Status:** Aceito
+- **Status:** Substituído por 0018 (papel administrativo e permissões vinculadas a perfis)
 - **Data:** 2026-10-22
 
 ## Contexto

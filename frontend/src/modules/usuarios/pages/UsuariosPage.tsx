@@ -38,7 +38,9 @@ export function UsuariosPage() {
 
   function aoSalvar() {
     setModalAberto(false);
-    toast.success(usuarioEmEdicao ? "Usuário atualizado." : "Usuário cadastrado.");
+    toast.success(usuarioEmEdicao
+      ? "Usuário atualizado."
+      : "Usuário cadastrado. Informe a senha inicial configurada; a troca será exigida no primeiro acesso.");
   }
 
   function alterarFiltro(campo: "nome" | "email" | "ativo" | "perfil", valor: string) {

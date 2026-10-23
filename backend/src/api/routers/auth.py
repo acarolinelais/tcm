@@ -2,14 +2,20 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies import get_auth_service, get_session, get_usuario_atual
+from src.api.dependencies import (
+    get_auth_service,
+    get_session,
+    get_usuario_atual_para_troca_senha,
+)
 from src.application.schemas.auth import (
+    AlterarSenhaRequest,
     LoginRequest,
     PerfilAtualResponse,
     RefreshRequest,
     TokenResponse,
 )
 from src.application.services.auth_service import AuthServiceImpl
+from src.domain.common.exceptions import ForbiddenException
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.infrastructure.data.models.time_membro_model import TimeMembroModel
 from src.infrastructure.data.models.time_model import TimeModel
@@ -34,16 +40,27 @@ async def refresh(
 
 @router.post("/logout", status_code=204)
 async def logout(
-    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual_para_troca_senha),
     service: AuthServiceImpl = Depends(get_auth_service),
 ):
     if usuario_atual.sessao_id is not None:
         await service.logout(usuario_atual.sessao_id)
 
 
+@router.post("/trocar-senha", response_model=TokenResponse)
+async def trocar_senha(
+    request: AlterarSenhaRequest,
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual_para_troca_senha),
+    service: AuthServiceImpl = Depends(get_auth_service),
+) -> TokenResponse:
+    if not usuario_atual.senha_alteracao_obrigatoria or usuario_atual.sessao_id is None:
+        raise ForbiddenException("A troca inicial de senha não é necessária.")
+    return await service.alterar_senha_inicial(usuario_atual.id, usuario_atual.sessao_id, request)
+
+
 @router.get("/me", response_model=PerfilAtualResponse)
 async def perfil_atual(
-    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual_para_troca_senha),
     session: AsyncSession = Depends(get_session),
 ) -> PerfilAtualResponse:
     rows = (
@@ -92,4 +109,5 @@ async def perfil_atual(
         times=times,
         time_atual_id=usuario_atual.time_atual_id,
         tem_multiplos_times=len(times) > 1,
+        senha_alteracao_obrigatoria=usuario_atual.senha_alteracao_obrigatoria,
     )

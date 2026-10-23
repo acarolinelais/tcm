@@ -11,6 +11,7 @@ class Usuario(EntidadeTenant):
         super().__init__(unidade_id)
         self.atualizar(nome, email)
         self.senha_hash: str | None = None
+        self.senha_alteracao_obrigatoria = False
         self.perfil_id: UUID | None = None
         self.auth_version = 0
 

@@ -29,3 +29,6 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0015](0015-autorizacao-papeis-rbac.md) | Autorização e papéis (RBAC) | Aceito |
 | [0016](0016-repositorio-atualizar-com-merge.md) | Repositório ganha `atualizar()` via `session.merge()` | Aceito |
 | [0017](0017-filtros-em-endpoints-de-listagem.md) | Filtros explícitos em endpoints de listagem | Aceito |
+| [0018](0018-perfil-administrador-e-perfil-obrigatorio.md) | Perfil administrador da unidade e perfil obrigatório | Aceito |
+| [0019](0019-senha-inicial-e-troca-obrigatoria.md) | Senha inicial local com troca obrigatória | Aceito |
+| [0020](0020-sessoes-jwt-e-refresh-rotativo.md) | Sessões JWT e refresh token rotativo | Aceito |

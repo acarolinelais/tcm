@@ -16,6 +16,7 @@ class UsuarioModel(Base):
     nome: Mapped[str] = mapped_column(String(Usuario.NOME_MAX_LENGTH))
     email: Mapped[str] = mapped_column(String(Usuario.EMAIL_MAX_LENGTH))
     senha_hash: Mapped[str | None] = mapped_column(String(255))
+    senha_alteracao_obrigatoria: Mapped[bool] = mapped_column(default=False, server_default="false")
     perfil_id: Mapped[UUID] = mapped_column(ForeignKey("perfis.id"), nullable=False)
     auth_version: Mapped[int] = mapped_column(default=0, server_default="0")
     ativo: Mapped[bool] = mapped_column(default=True)

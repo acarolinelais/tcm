@@ -8,6 +8,7 @@ from src.domain.common.exceptions import (
     CredenciaisInvalidasException,
     ForbiddenException,
     NotFoundException,
+    ServiceUnavailableException,
 )
 
 MEDIA_TYPE = "application/problem+json"
@@ -48,6 +49,18 @@ async def handle_forbidden(request: Request, exc: ForbiddenException) -> JSONRes
     return _response(ProblemDetails(title="Acesso negado.", status=status.HTTP_403_FORBIDDEN))
 
 
+async def handle_service_unavailable(
+    request: Request, exc: ServiceUnavailableException
+) -> JSONResponse:
+    return _response(
+        ProblemDetails(
+            title="Serviço temporariamente indisponível.",
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        )
+    )
+
+
 async def handle_invalid_credentials(
     request: Request, exc: CredenciaisInvalidasException
 ) -> JSONResponse:
@@ -64,5 +77,6 @@ def registrar_handlers(app: FastAPI) -> None:
     app.add_exception_handler(NotFoundException, handle_not_found)
     app.add_exception_handler(ConflictException, handle_conflict)
     app.add_exception_handler(ForbiddenException, handle_forbidden)
+    app.add_exception_handler(ServiceUnavailableException, handle_service_unavailable)
     app.add_exception_handler(CredenciaisInvalidasException, handle_invalid_credentials)
     app.add_exception_handler(Exception, handle_unexpected)

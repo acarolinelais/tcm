@@ -1,6 +1,6 @@
 # 0014. Autenticação com JWT
 
-- **Status:** Aceito
+- **Status:** Substituído por 0020 (ciclo de vida das sessões e tokens)
 - **Data:** 2026-10-22
 
 ## Contexto

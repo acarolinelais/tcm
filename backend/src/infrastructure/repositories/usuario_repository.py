@@ -185,6 +185,7 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
         usuario = Usuario(model.unidade_id, model.nome, model.email)
         usuario.id = model.id
         usuario.senha_hash = model.senha_hash
+        usuario.senha_alteracao_obrigatoria = model.senha_alteracao_obrigatoria
         usuario.perfil_id = model.perfil_id
         usuario.auth_version = model.auth_version
         usuario.ativo = model.ativo
@@ -199,6 +200,7 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
             nome=entity.nome,
             email=entity.email,
             senha_hash=entity.senha_hash,
+            senha_alteracao_obrigatoria=entity.senha_alteracao_obrigatoria,
             perfil_id=entity.perfil_id,
             auth_version=entity.auth_version,
             ativo=entity.ativo,

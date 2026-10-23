@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from "react-router";
+import { Navigate, Outlet, useLocation } from "react-router";
 
 import { ApiError } from "@/shared/api/problem-details";
 import { clearTokens, getAccessToken } from "@/core/auth/session";
@@ -7,6 +7,7 @@ import { Navbar } from "./Navbar";
 import { Sidebar } from "./Sidebar";
 
 export function AppLayout() {
+  const location = useLocation();
   const token = getAccessToken();
   const perfil = usePerfilAtual(Boolean(token));
   if (!token) return <Navigate to="/login" replace />;
@@ -16,6 +17,12 @@ export function AppLayout() {
     return <Navigate to="/login" replace />;
   }
   if (!perfil.data) return <div role="alert" className="p-8 text-sm">Não foi possível carregar seu perfil.</div>;
+  if (perfil.data.senha_alteracao_obrigatoria) {
+    return location.pathname === "/trocar-senha"
+      ? <Outlet context={perfil.data} />
+      : <Navigate to="/trocar-senha" replace />;
+  }
+  if (location.pathname === "/trocar-senha") return <Navigate to="/overview" replace />;
 
   return (
     <div className="flex min-h-screen gap-4 bg-[#FBFBFB] p-4">

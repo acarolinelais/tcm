@@ -1,4 +1,5 @@
 from datetime import datetime
+from collections.abc import Callable
 from uuid import UUID
 
 from src.application.schemas.usuario import (
@@ -7,7 +8,12 @@ from src.application.schemas.usuario import (
     UsuarioResponse,
     to_response,
 )
-from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
+from src.domain.common.exceptions import (
+    ConflictException,
+    ForbiddenException,
+    NotFoundException,
+    ServiceUnavailableException,
+)
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.interfaces.unit_of_work import UnitOfWork
@@ -16,9 +22,17 @@ from src.domain.entities.usuario import Usuario
 
 
 class UsuarioServiceImpl:
-    def __init__(self, repo: UsuarioRepository, uow: UnitOfWork) -> None:
+    def __init__(
+        self,
+        repo: UsuarioRepository,
+        uow: UnitOfWork,
+        senha_inicial: str | None = None,
+        hash_senha: Callable[[str], str] | None = None,
+    ) -> None:
         self._repo = repo
         self._uow = uow
+        self._senha_inicial = senha_inicial
+        self._hash_senha = hash_senha
 
     async def listar(
         self,
@@ -85,6 +99,12 @@ class UsuarioServiceImpl:
         await self._garantir_email_unico(request.email, None)
         usuario = Usuario(usuario_atual.unidade_id, request.nome, request.email)
         usuario.perfil_id = await self._repo.obter_perfil_padrao(usuario_atual.unidade_id)
+        if not self._senha_inicial or self._hash_senha is None:
+            raise ServiceUnavailableException(
+                "Configure SENHA_INICIAL_USUARIOS antes de cadastrar usuários."
+            )
+        usuario.definir_senha_hash(self._hash_senha(self._senha_inicial))
+        usuario.senha_alteracao_obrigatoria = True
         usuario.created_at = datetime.now()
         await self._repo.adicionar(usuario)
         await self._uow.commit()

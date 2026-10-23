@@ -1,3 +1,4 @@
+import os
 from datetime import UTC, datetime
 
 from fastapi import Depends
@@ -9,7 +10,7 @@ from src.application.services.auth_service import AuthServiceImpl
 from src.application.services.setor_service import SetorServiceImpl
 from src.application.services.time_service import TimeServiceImpl
 from src.application.services.usuario_service import UsuarioServiceImpl
-from src.domain.common.exceptions import CredenciaisInvalidasException
+from src.domain.common.exceptions import CredenciaisInvalidasException, ForbiddenException
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.infrastructure.data.models.auth_sessao_model import AuthSessaoModel
 from src.infrastructure.data.models.perfil_model import PerfilModel
@@ -25,6 +26,7 @@ from src.infrastructure.repositories.time_repository import TimeRepositoryImpl
 from src.infrastructure.repositories.usuario_repository import UsuarioRepositoryImpl
 from src.infrastructure.security.autenticador_local import AutenticadorLocal
 from src.infrastructure.security.jwt import criar_token, decodificar_token
+from src.infrastructure.security.senha_hasher import hash_senha
 
 bearer = HTTPBearer(auto_error=False)
 
@@ -32,6 +34,22 @@ bearer = HTTPBearer(auto_error=False)
 async def get_usuario_atual(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
     session: AsyncSession = Depends(get_session),
+) -> UsuarioAutenticado:
+    return await _obter_usuario_atual(credentials, session, permitir_senha_inicial=False)
+
+
+async def get_usuario_atual_para_troca_senha(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+    session: AsyncSession = Depends(get_session),
+) -> UsuarioAutenticado:
+    return await _obter_usuario_atual(credentials, session, permitir_senha_inicial=True)
+
+
+async def _obter_usuario_atual(
+    credentials: HTTPAuthorizationCredentials | None,
+    session: AsyncSession,
+    *,
+    permitir_senha_inicial: bool,
 ) -> UsuarioAutenticado:
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise CredenciaisInvalidasException("Credenciais inválidas.")
@@ -98,7 +116,7 @@ async def get_usuario_atual(
     )
     if managed:
         permissoes = frozenset({*permissoes, "times.criar", "times.gerenciar"})
-    return UsuarioAutenticado(
+    identidade = UsuarioAutenticado(
         usuario.id,
         usuario.unidade_id,
         perfil_codigo,
@@ -110,13 +128,22 @@ async def get_usuario_atual(
         tuple(managed),
         payload.time_id,
         payload.sessao_id,
+        usuario.senha_alteracao_obrigatoria,
     )
+    if identidade.senha_alteracao_obrigatoria and not permitir_senha_inicial:
+        raise ForbiddenException("Altere sua senha inicial para continuar.")
+    return identidade
 
 
 async def get_usuario_service(session: AsyncSession = Depends(get_session)) -> UsuarioServiceImpl:
     repo = UsuarioRepositoryImpl(session)
     uow = UnitOfWorkImpl(session)
-    return UsuarioServiceImpl(repo, uow)
+    return UsuarioServiceImpl(
+        repo,
+        uow,
+        os.environ.get("SENHA_INICIAL_USUARIOS"),
+        hash_senha,
+    )
 
 
 def exigir_permissao(usuario: UsuarioAutenticado, permissao: str) -> None:

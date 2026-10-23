@@ -2,7 +2,7 @@
 
 - **Status:** Implementada (validação pendente)
 - **Data:** 2026-10-22
-- **ADRs relacionados:** 0013, 0014, 0015
+- **ADRs relacionados:** 0013, 0014, 0015, 0018, 0019, 0020
 
 ## Problema
 
@@ -24,6 +24,11 @@ as permissões seedadas e escopo administrativo total. Esse perfil é protegido 
 atribuição pela interface. `admin_unidade` não é armazenado como coluna, claim JWT ou campo da API.
 Todo usuário deve ter um perfil: a migração associa administradores existentes ao perfil de sistema e
 os demais ao perfil padrão (`USUARIO_PADRAO`), e novas contas recebem o perfil padrão da unidade.
+
+Até a integração com a API de autenticação da empresa, novas contas recebem uma senha inicial local
+configurada por `SENHA_INICIAL_USUARIOS`. Somente o hash é persistido. No primeiro login, a API
+permite apenas consultar `/api/auth/me`, sair ou trocar a senha; a senha nova deve ter ao menos 12
+caracteres. A troca invalida as demais sessões e retorna tokens renovados para a sessão atual.
 
 ## Objetivo
 
@@ -80,6 +85,8 @@ invalidação imediata das sessões após alterações de acesso.
   repositório e deve ser rejeitada quando ausente ou abaixo do requisito mínimo definido no plano.
 - RN-12: `usuarios.perfil_id` é obrigatório. A listagem não possui estado nem filtro “sem perfil”; o
   nome do perfil pode ser resolvido pelo identificador retornado e pela listagem de perfis.
+- RN-13: Contas criadas com a senha inicial configurada devem trocar a senha antes de acessar outros
+  recursos. Essa autenticação local é temporária até a integração corporativa.
 
 ## Critérios de aceite
 

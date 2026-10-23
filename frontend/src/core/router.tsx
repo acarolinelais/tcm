@@ -5,6 +5,7 @@ import { EmBreve } from "@/core/layout/EmBreve";
 import { overviewRoutes } from "@/modules/overview";
 import { usuariosRoutes } from "@/modules/usuarios";
 import { LoginPage } from "@/core/auth/LoginPage";
+import { AlterarSenhaPage } from "@/core/auth/AlterarSenhaPage";
 import { PerfisPage } from "@/modules/perfis/PerfisPage";
 
 export const router = createBrowserRouter([
@@ -14,6 +15,7 @@ export const router = createBrowserRouter([
     element: <AppLayout />,
     children: [
       { index: true, element: <Navigate to="/overview" replace /> },
+      { path: "trocar-senha", element: <AlterarSenhaPage /> },
       ...overviewRoutes,
       { path: "board", element: <EmBreve titulo="Board" /> },
       { path: "timeline", element: <EmBreve titulo="Timeline" /> },
