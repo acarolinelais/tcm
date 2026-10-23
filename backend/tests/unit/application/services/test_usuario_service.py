@@ -41,7 +41,9 @@ async def test_criar_usuario_valido_chama_adicionar_e_commit(service, repo, uow,
     assert resposta.email == "ana@example.com"
 
 
-async def test_atualizar_usuario_valido_retorna_response_atualizado(service, repo, uow, usuario_atual):
+async def test_atualizar_usuario_valido_retorna_response_atualizado(
+    service, repo, uow, usuario_atual
+):
     usuario = Usuario(usuario_atual.unidade_id, "Ana", "ana@example.com")
     usuario.created_at = datetime.now()  # simula entidade já persistida, vinda do repositório
     repo.obter_por_id.return_value = usuario
@@ -72,7 +74,9 @@ async def test_obter_usuario_inexistente_levanta_notfound_falha(service, repo, u
         await service.obter(usuario_atual, uuid4())
 
 
-async def test_inativar_usuario_inexistente_levanta_notfound_falha(service, repo, uow, usuario_atual):
+async def test_inativar_usuario_inexistente_levanta_notfound_falha(
+    service, repo, uow, usuario_atual
+):
     repo.obter_por_id.return_value = None
 
     with pytest.raises(NotFoundException):

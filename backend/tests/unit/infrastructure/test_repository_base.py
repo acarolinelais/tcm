@@ -86,4 +86,6 @@ async def test_atualizar_chama_session_merge_com_o_model_mapeado(repo, session):
 
     await repo.atualizar(FakeEntity(id=entidade_id, unidade_id=UNIDADE_ID, valor="b"))
 
-    session.merge.assert_called_once_with(FakeModel(id=entidade_id, unidade_id=UNIDADE_ID, valor="b"))
+    session.merge.assert_called_once_with(
+        FakeModel(id=entidade_id, unidade_id=UNIDADE_ID, valor="b")
+    )

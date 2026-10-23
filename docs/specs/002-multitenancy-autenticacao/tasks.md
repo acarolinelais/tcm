@@ -6,6 +6,13 @@
 > em uma task própria logo depois da implementação. Implementar com a skill `implement-task`, um bloco
 > (fase) por vez.
 
+> Retomada em 2026-10-22: T01–T27 e T29–T42 verificadas por imports, histórico Alembic
+> e testes locais. Suíte completa do backend: 60 testes passando (incluindo arquitetura),
+> com lint sem erros. T28 permanece aberta: a aplicação do schema no Postgres não foi
+> confirmada nesta retomada. A emissão de JWT é injetada no `AuthService` como callable,
+> mantendo a camada application independente da infraestrutura. As permissões de admin
+> e gerente serão adicionadas em T48 e T50; os services novos ainda não estão expostos na API.
+
 ## Fase 1: Base comum nova
 - [x] **T01. Criar `EntidadeTenant`**
   - Arquivos: `backend/src/domain/common/entidade_tenant.py`
@@ -33,115 +40,115 @@
   - Verificação: `uv run pytest backend/tests/unit/infrastructure -q` → verde
 
 ## Fase 2: Entidades novas — domain
-- [ ] **T06. Criar a entidade `Unidade`**
+- [x] **T06. Criar a entidade `Unidade`**
   - Arquivos: `backend/src/domain/entities/unidade.py`
   - Cobre: RN-01
   - Verificação: `uv run python -c "from src.domain.entities.unidade import Unidade"` → sem erro
 
-- [ ] **T07. Criar a interface `UnidadeRepository`**
+- [x] **T07. Criar a interface `UnidadeRepository`**
   - Arquivos: `backend/src/domain/entities/interfaces/unidade_repository.py`
   - Cobre: —
   - Verificação: `uv run python -c "from src.domain.entities.interfaces.unidade_repository import UnidadeRepository"` → sem erro
 
-- [ ] **T08. Criar a entidade `Setor`**
+- [x] **T08. Criar a entidade `Setor`**
   - Arquivos: `backend/src/domain/entities/setor.py`
   - Cobre: RN-02
   - Verificação: `uv run python -c "from src.domain.entities.setor import Setor"` → sem erro
 
-- [ ] **T09. Criar a interface `SetorRepository`**
+- [x] **T09. Criar a interface `SetorRepository`**
   - Arquivos: `backend/src/domain/entities/interfaces/setor_repository.py`
   - Cobre: —
   - Verificação: `uv run python -c "from src.domain.entities.interfaces.setor_repository import SetorRepository"` → sem erro
 
-- [ ] **T10. Teste de unidade da entidade `Setor`**
+- [x] **T10. Teste de unidade da entidade `Setor`**
   - Arquivos: `backend/tests/unit/domain/test_setor.py`
   - Cobre: RN-02
   - Verificação: `uv run pytest backend/tests/unit/domain/test_setor.py -q` → verde
 
-- [ ] **T11. Criar a entidade `Time`**
+- [x] **T11. Criar a entidade `Time`**
   - Arquivos: `backend/src/domain/entities/time.py`
   - Cobre: RN-02, RN-03
   - Verificação: `uv run python -c "from src.domain.entities.time import Time"` → sem erro
 
-- [ ] **T12. Criar a entidade `TimeMembro`**
+- [x] **T12. Criar a entidade `TimeMembro`**
   - Arquivos: `backend/src/domain/entities/time_membro.py`
   - Cobre: RN-02, RN-04
   - Verificação: `uv run python -c "from src.domain.entities.time_membro import TimeMembro"` → sem erro
 
-- [ ] **T13. Criar as interfaces `TimeRepository` e `TimeMembroRepository`**
+- [x] **T13. Criar as interfaces `TimeRepository` e `TimeMembroRepository`**
   - Arquivos: `backend/src/domain/entities/interfaces/time_repository.py`, `backend/src/domain/entities/interfaces/time_membro_repository.py`
   - Cobre: —
   - Verificação: `uv run python -c "from src.domain.entities.interfaces.time_repository import TimeRepository"` → sem erro
 
-- [ ] **T14. Teste de unidade das entidades `Time`/`TimeMembro`**
+- [x] **T14. Teste de unidade das entidades `Time`/`TimeMembro`**
   - Arquivos: `backend/tests/unit/domain/test_time.py`
   - Cobre: RN-03, RN-04
   - Verificação: `uv run pytest backend/tests/unit/domain/test_time.py -q` → verde
 
 ## Fase 3: Retrofit `Usuario` — domain
-- [ ] **T15. Alterar a entidade `Usuario`** (estende `EntidadeTenant`; `+unidade_id`, `+admin_unidade`, `+senha_hash`, `+definir_senha_hash`)
+- [x] **T15. Alterar a entidade `Usuario`** (estende `EntidadeTenant`; `+unidade_id`, `+admin_unidade`, `+senha_hash`, `+definir_senha_hash`)
   - Arquivos: `backend/src/domain/entities/usuario.py`
   - Cobre: RN-01, RN-06
   - Verificação: `uv run python -c "from src.domain.entities.usuario import Usuario"` → sem erro
 
-- [ ] **T16. Atualizar o teste de unidade de `Usuario`** (construtor agora pede `unidade_id`)
+- [x] **T16. Atualizar o teste de unidade de `Usuario`** (construtor agora pede `unidade_id`)
   - Arquivos: `backend/tests/unit/domain/test_usuario.py`
   - Cobre: RN-01
   - Verificação: `uv run pytest backend/tests/unit/domain/test_usuario.py -q` → verde
 
-- [ ] **T17. Alterar `UsuarioRepository`** (`+ obter_por_email`)
+- [x] **T17. Alterar `UsuarioRepository`** (`+ obter_por_email`)
   - Arquivos: `backend/src/domain/entities/interfaces/usuario_repository.py`
   - Cobre: —
   - Verificação: `uv run python -c "from src.domain.entities.interfaces.usuario_repository import UsuarioRepository"` → sem erro
 
 ## Fase 4: Infraestrutura — models e repositórios
-- [ ] **T18. Criar `UnidadeModel`**
+- [x] **T18. Criar `UnidadeModel`**
   - Arquivos: `backend/src/infrastructure/data/models/unidade_model.py`
   - Cobre: —
   - Verificação: `uv run python -c "from src.infrastructure.data.models.unidade_model import UnidadeModel"` → sem erro
 
-- [ ] **T19. Criar `UnidadeRepositoryImpl`**
+- [x] **T19. Criar `UnidadeRepositoryImpl`**
   - Arquivos: `backend/src/infrastructure/repositories/unidade_repository.py`
   - Cobre: —
   - Verificação: `uv run python -c "from src.infrastructure.repositories.unidade_repository import UnidadeRepositoryImpl"` → sem erro
 
-- [ ] **T20. Criar `SetorModel`**
+- [x] **T20. Criar `SetorModel`**
   - Arquivos: `backend/src/infrastructure/data/models/setor_model.py`
   - Cobre: —
   - Verificação: `uv run python -c "from src.infrastructure.data.models.setor_model import SetorModel"` → sem erro
 
-- [ ] **T21. Criar `SetorRepositoryImpl`**
+- [x] **T21. Criar `SetorRepositoryImpl`**
   - Arquivos: `backend/src/infrastructure/repositories/setor_repository.py`
   - Cobre: —
   - Verificação: `uv run python -c "from src.infrastructure.repositories.setor_repository import SetorRepositoryImpl"` → sem erro
 
-- [ ] **T22. Criar `TimeModel` e `TimeMembroModel`**
+- [x] **T22. Criar `TimeModel` e `TimeMembroModel`**
   - Arquivos: `backend/src/infrastructure/data/models/time_model.py`, `backend/src/infrastructure/data/models/time_membro_model.py`
   - Cobre: —
   - Verificação: `uv run python -c "from src.infrastructure.data.models.time_model import TimeModel; from src.infrastructure.data.models.time_membro_model import TimeMembroModel"` → sem erro
 
-- [ ] **T23. Criar `TimeRepositoryImpl` e `TimeMembroRepositoryImpl`**
+- [x] **T23. Criar `TimeRepositoryImpl` e `TimeMembroRepositoryImpl`**
   - Arquivos: `backend/src/infrastructure/repositories/time_repository.py`, `backend/src/infrastructure/repositories/time_membro_repository.py`
   - Cobre: —
   - Verificação: `uv run python -c "from src.infrastructure.repositories.time_repository import TimeRepositoryImpl"` → sem erro
 
-- [ ] **T24. Alterar `UsuarioModel`** (`+unidade_id`, `+admin_unidade`, `+senha_hash`)
+- [x] **T24. Alterar `UsuarioModel`** (`+unidade_id`, `+admin_unidade`, `+senha_hash`)
   - Arquivos: `backend/src/infrastructure/data/models/usuario_model.py`
   - Cobre: —
   - Verificação: `uv run python -c "from src.infrastructure.data.models.usuario_model import UsuarioModel"` → sem erro
 
-- [ ] **T25. Alterar `UsuarioRepositoryImpl`** (filtro por `unidade_id`, `+ obter_por_email`)
+- [x] **T25. Alterar `UsuarioRepositoryImpl`** (filtro por `unidade_id`, `+ obter_por_email`)
   - Arquivos: `backend/src/infrastructure/repositories/usuario_repository.py`
   - Cobre: —
   - Verificação: `uv run python -c "from src.infrastructure.repositories.usuario_repository import UsuarioRepositoryImpl"` → sem erro
 
-- [ ] **T26. Teste de unidade de `obter_por_email`**
+- [x] **T26. Teste de unidade de `obter_por_email`**
   - Arquivos: `backend/tests/unit/infrastructure/test_usuario_repository.py`
   - Cobre: —
   - Verificação: `uv run pytest backend/tests/unit/infrastructure/test_usuario_repository.py -q` → verde
 
 ## Fase 5: Migration de schema
-- [ ] **T27. Escrever a migration do schema novo** (tabelas `unidades`, `setores`, `times`, `time_membros`; altera `usuarios`)
+- [x] **T27. Escrever a migration do schema novo** (tabelas `unidades`, `setores`, `times`, `time_membros`; altera `usuarios`)
   - Arquivos: migration em `backend/src/infrastructure/data/migrations/versions/`
   - Cobre: —
   - Verificação: `uv run alembic history` reconhece a revisão
@@ -152,73 +159,73 @@
   - Verificação: `uv run alembic upgrade head` → sem erro; `\d unidades`, `\d setores`, `\d times`, `\d time_membros`, `\d usuarios` conferem com o `plan.md`
 
 ## Fase 6: Segurança
-- [ ] **T29. Criar `senha_hasher` (Argon2) com teste**
+- [x] **T29. Criar `senha_hasher` (Argon2) com teste**
   - Arquivos: `backend/src/infrastructure/security/senha_hasher.py`, `backend/tests/unit/infrastructure/test_senha_hasher.py`
   - Cobre: RN-06
   - Verificação: `uv run pytest backend/tests/unit/infrastructure/test_senha_hasher.py -q` → verde
 
-- [ ] **T30. Criar `jwt.py` (criar/decodificar token) com teste**
+- [x] **T30. Criar `jwt.py` (criar/decodificar token) com teste**
   - Arquivos: `backend/src/infrastructure/security/jwt.py`, `backend/tests/unit/infrastructure/test_jwt.py`
   - Cobre: —
   - Verificação: `uv run pytest backend/tests/unit/infrastructure/test_jwt.py -q` → verde
 
-- [ ] **T31. Criar a interface `Autenticador`**
+- [x] **T31. Criar a interface `Autenticador`**
   - Arquivos: `backend/src/domain/entities/interfaces/autenticador.py`
   - Cobre: —
   - Verificação: `uv run python -c "from src.domain.entities.interfaces.autenticador import Autenticador"` → sem erro
 
-- [ ] **T32. Criar `AutenticadorLocal` com teste**
+- [x] **T32. Criar `AutenticadorLocal` com teste**
   - Arquivos: `backend/src/infrastructure/security/autenticador_local.py`, `backend/tests/unit/infrastructure/test_autenticador_local.py`
   - Cobre: CA-01, CA-02 (falha)
   - Verificação: `uv run pytest backend/tests/unit/infrastructure/test_autenticador_local.py -q` → verde
 
 ## Fase 7: Application — schemas e services
-- [ ] **T33. Criar os schemas de `Setor`**
+- [x] **T33. Criar os schemas de `Setor`**
   - Arquivos: `backend/src/application/schemas/setor.py`
   - Cobre: —
   - Verificação: `uv run python -c "from src.application.schemas.setor import CriarSetorRequest, to_response"` → sem erro
 
-- [ ] **T34. Implementar `SetorService`** (criar, listar — sem checagem de papel ainda)
+- [x] **T34. Implementar `SetorService`** (criar, listar — sem checagem de papel ainda)
   - Arquivos: `backend/src/application/services/interfaces/setor_service.py`, `backend/src/application/services/setor_service.py`
   - Cobre: —
   - Verificação: `uv run python -c "from src.application.services.setor_service import SetorServiceImpl"` → sem erro
 
-- [ ] **T35. Teste de unidade do `SetorService` — sucesso**
+- [x] **T35. Teste de unidade do `SetorService` — sucesso**
   - Arquivos: `backend/tests/unit/application/services/test_setor_service.py`
   - Cobre: CA-04
   - Verificação: `uv run pytest backend/tests/unit/application/services/test_setor_service.py -q` → verde
 
-- [ ] **T36. Criar os schemas de `Time`** (criar time, adicionar membro, atualizar papel)
+- [x] **T36. Criar os schemas de `Time`** (criar time, adicionar membro, atualizar papel)
   - Arquivos: `backend/src/application/schemas/time.py`
   - Cobre: —
   - Verificação: `uv run python -c "from src.application.schemas.time import CriarTimeRequest, AdicionarMembroRequest"` → sem erro
 
-- [ ] **T37. Implementar `TimeService`** (criar time, listar, adicionar membro, atualizar papel — sem checagem de papel ainda)
+- [x] **T37. Implementar `TimeService`** (criar time, listar, adicionar membro, atualizar papel — sem checagem de papel ainda)
   - Arquivos: `backend/src/application/services/interfaces/time_service.py`, `backend/src/application/services/time_service.py`
   - Cobre: —
   - Verificação: `uv run python -c "from src.application.services.time_service import TimeServiceImpl"` → sem erro
 
-- [ ] **T38. Teste de unidade do `TimeService` — sucesso**
+- [x] **T38. Teste de unidade do `TimeService` — sucesso**
   - Arquivos: `backend/tests/unit/application/services/test_time_service.py`
   - Cobre: CA-06, CA-07, CA-09
   - Verificação: `uv run pytest backend/tests/unit/application/services/test_time_service.py -q` → verde
 
-- [ ] **T39. Alterar `UsuarioServiceImpl`** (`listar`/`obter` passam a receber `unidade_id`)
+- [x] **T39. Alterar `UsuarioServiceImpl`** (`listar`/`obter` passam a receber `unidade_id`)
   - Arquivos: `backend/src/application/services/usuario_service.py`, `backend/src/application/services/interfaces/usuario_service.py`
   - Cobre: —
   - Verificação: `uv run python -c "from src.application.services.usuario_service import UsuarioServiceImpl"` → sem erro
 
-- [ ] **T40. Atualizar os testes de unidade do `UsuarioService`** (passar `unidade_id` nos mocks)
+- [x] **T40. Atualizar os testes de unidade do `UsuarioService`** (passar `unidade_id` nos mocks)
   - Arquivos: `backend/tests/unit/application/services/test_usuario_service.py`
   - Cobre: —
   - Verificação: `uv run pytest backend/tests/unit/application/services/test_usuario_service.py -q` → verde
 
-- [ ] **T41. Criar os schemas de `auth`**
+- [x] **T41. Criar os schemas de `auth`**
   - Arquivos: `backend/src/application/schemas/auth.py`
   - Cobre: —
   - Verificação: `uv run python -c "from src.application.schemas.auth import LoginRequest, TokenResponse"` → sem erro
 
-- [ ] **T42. Implementar `AuthService` com testes de sucesso e falha**
+- [x] **T42. Implementar `AuthService` com testes de sucesso e falha**
   - Arquivos: `backend/src/application/services/interfaces/auth_service.py`, `backend/src/application/services/auth_service.py`, `backend/tests/unit/application/services/test_auth_service.py`
   - Cobre: CA-01, CA-02 (falha)
   - Verificação: `uv run pytest backend/tests/unit/application/services/test_auth_service.py -q` → verde
@@ -312,4 +319,7 @@
   - Verificação: `uv run pytest backend/tests/integration/test_bootstrap.py -q` → verde
 
 ## Backlog
-- ...
+- Ao validar T28, conferir a existência de usuários antigos: a migration adiciona
+  `usuarios.unidade_id` obrigatório sem preencher registros existentes e pode falhar em banco populado.
+- Ao integrar a autenticação na API, validar claims ausentes ou malformados no decoder JWT:
+  hoje a construção de `TokenPayload` pode levantar `KeyError`/`ValueError` em vez de recusar o token.

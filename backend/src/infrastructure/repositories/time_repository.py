@@ -1,3 +1,8 @@
+from uuid import UUID
+
+from sqlalchemy import func, select
+
+from src.domain.common.paged_result import PagedResult
 from src.domain.entities.time import Time
 from src.infrastructure.data.models.time_model import TimeModel
 from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
@@ -5,6 +10,26 @@ from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
 
 class TimeRepositoryImpl(RepositoryBaseImpl[Time, TimeModel]):
     model = TimeModel
+
+    async def listar_paginado(
+        self, unidade_id: UUID, page: int, page_size: int, setor_id: UUID | None = None
+    ) -> PagedResult[Time]:
+        if setor_id is None:
+            return await super().listar_paginado(unidade_id, page, page_size)
+        filtro = (TimeModel.unidade_id == unidade_id, TimeModel.setor_id == setor_id)
+        total = (
+            await self.session.execute(select(func.count()).select_from(TimeModel).where(*filtro))
+        ).scalar_one()
+        models = (
+            (
+                await self.session.execute(
+                    select(TimeModel).where(*filtro).offset((page - 1) * page_size).limit(page_size)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        return PagedResult([self._to_entity(m) for m in models], page, page_size, total)
 
     def _to_entity(self, model: TimeModel) -> Time:
         time = Time(model.unidade_id, model.setor_id, model.nome, model.gerente_id)
