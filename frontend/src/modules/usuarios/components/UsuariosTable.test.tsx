@@ -8,6 +8,7 @@ import { UsuariosTable } from "./UsuariosTable";
 function renderTable() {
   const client = new QueryClient();
   const onPageChange = vi.fn();
+  const onFiltroChange = vi.fn();
   render(
     <QueryClientProvider client={client}>
       <UsuariosTable
@@ -15,7 +16,7 @@ function renderTable() {
         pageSize={20}
         pageSizeOptions={[10, 20]}
         filtros={{}}
-        onFiltroChange={vi.fn()}
+        onFiltroChange={onFiltroChange}
         onPageChange={onPageChange}
         onPageSizeChange={vi.fn()}
         onEditar={vi.fn()}
@@ -24,7 +25,7 @@ function renderTable() {
       />
     </QueryClientProvider>,
   );
-  return { onPageChange };
+  return { onPageChange, onFiltroChange };
 }
 
 describe("UsuariosTable", () => {
@@ -60,5 +61,28 @@ describe("UsuariosTable", () => {
     await user.click(screen.getByRole("button", { name: /próxima/i }));
 
     expect(onPageChange).toHaveBeenCalledWith(2);
+  });
+
+  it("selecionar o status no cabeçalho aplica o filtro correspondente", async () => {
+    const { onFiltroChange } = renderTable();
+    const user = userEvent.setup();
+
+    await screen.findByText("Usuário 0");
+    await user.click(screen.getByRole("button", { name: "Filtrar por Status" }));
+    await user.click(screen.getByRole("menuitemradio", { name: "Inativo" }));
+
+    expect(onFiltroChange).toHaveBeenCalledWith("ativo", "false");
+  });
+
+  it("aplicar texto no cabeçalho envia o termo sem espaços excedentes", async () => {
+    const { onFiltroChange } = renderTable();
+    const user = userEvent.setup();
+
+    await screen.findByText("Usuário 0");
+    await user.click(screen.getByRole("button", { name: "Filtrar por Usuário" }));
+    await user.type(screen.getByPlaceholderText("Buscar por nome"), "  Ana Silva  ");
+    await user.click(screen.getByRole("button", { name: "Aplicar" }));
+
+    expect(onFiltroChange).toHaveBeenCalledWith("nome", "Ana Silva");
   });
 });

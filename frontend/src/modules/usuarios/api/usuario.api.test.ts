@@ -17,6 +17,18 @@ describe("usuarioApi", () => {
     expect(url).toBe("/api/usuarios?page=2&page_size=10");
   });
 
+  it("serializa todos os filtros como query params opcionais", async () => {
+    await usuarioApi.listar(1, 10, {
+      nome: "ana",
+      email: "example.com",
+      ativo: false,
+      perfil_id: "perfil-123",
+    });
+
+    const [url] = vi.mocked(fetch).mock.calls[0];
+    expect(url).toBe("/api/usuarios?page=1&page_size=10&nome=ana&email=example.com&ativo=false&perfil_id=perfil-123");
+  });
+
   it("criar chama POST /api/usuarios com o corpo serializado", async () => {
     await usuarioApi.criar({ nome: "Ana", email: "ana@example.com" });
 

@@ -22,10 +22,14 @@
 - [x] **T05. Mostrar estado vazio contextual na área da tabela**
   - Arquivos: `frontend/src/modules/usuarios/components/UsuariosTable.tsx`
   - Cobre: CA-10
-- [ ] **T06. Validar filtros, escopo e estados da tabela**
+- [x] **T06. Validar filtros, escopo e estados da tabela**
   - Arquivos: testes unitários/funcionais de usuários e tabela
   - Cobre: CA-01 a CA-09
-  - Verificação: `cd backend && uv run pytest` e `cd frontend && npm test` → suítes concluídas sem falhas
+  - Verificação: `cd backend && uv run pytest tests/unit/infrastructure/test_usuario_repository.py tests/unit/application/services/test_usuario_filtros_service.py tests/functional/test_usuarios_filtros_api.py -q` → 13 passaram; `cd frontend && npm test -- --run` → 18 passaram
 - [x] **T07. Tornar obrigatório o perfil do usuário e substituir o booleano administrativo**
   - Arquivos: migração, autorização, autenticação e gestão de usuários/perfis
   - Cobre: ADR 0018; perfis `ADMIN_UNIDADE` e `USUARIO_PADRAO`
+
+> A suíte completa do backend foi executada, mas ainda falha em testes anteriores fora do escopo
+> dos critérios desta spec (arquitetura/auth, setor, times, usuário e JWT). Os testes específicos de
+> filtros, isolamento, validação e interface passaram.

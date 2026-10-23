@@ -1,6 +1,6 @@
 # 004. Listagem filtrável de usuários: Spec
 
-- **Status:** Em andamento
+- **Status:** Concluída
 - **Data:** 2026-10-23
 - **ADRs relacionados:** 0004, 0006, 0008, 0009, 0013, 0017
 
