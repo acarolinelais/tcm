@@ -52,9 +52,11 @@ atividades e tarefas serão adicionadas junto com os módulos correspondentes.
   sua responsabilidade. O gerente não pode atribuir outros perfis nem alterar o responsável.
 - RN-10: O nome de exibição do perfil KP é traduzido para inglês, português e coreano. A tradução não
   altera o código estável `KP` nem nomes de perfis personalizados.
-- RN-11: O gerente pode visualizar o nome e o código do perfil atribuído às contas dentro do escopo
-  que já pode consultar. Essa leitura não libera o catálogo completo de permissões nem a administração
-  de perfis; as opções de atribuição continuam limitadas a KP e `USUARIO_PADRAO`.
+- RN-11: `usuarios.perfil.consultar` permite visualizar o nome e o código do perfil atribuído às
+  contas que a pessoa já pode consultar, incluindo usuários sob responsabilidade do gerente e
+  usuários dos times no seu escopo. A permissão não amplia esse escopo, não libera o catálogo de
+  permissões nem a administração de perfis; as opções de atribuição do gerente continuam limitadas a
+  KP e `USUARIO_PADRAO`. O perfil seedado `GERENTE` recebe essa permissão inicialmente.
 
 ## Critérios de aceite
 
@@ -81,9 +83,9 @@ atividades e tarefas serão adicionadas junto com os módulos correspondentes.
 - **CA-10:** Dado um gerente atribuindo ou removendo KP, quando o usuário está sob sua
   responsabilidade, então pode escolher KP ou `USUARIO_PADRAO`; para usuário fora desse escopo ou
   para qualquer outro perfil, o backend recusa a operação.
-- **CA-11:** Dado um gerente consultando usuários dentro do seu escopo, quando a lista é exibida,
-  então vê o nome do perfil atualmente atribuído sem acessar o catálogo de permissões ou alterar
-  perfis que não pode atribuir.
+- **CA-11:** Dado um gerente com `usuarios.perfil.consultar`, quando consulta usuários sob sua
+  responsabilidade ou dentro do escopo dos seus times, então vê o nome do perfil atribuído; sem essa
+  permissão, a resposta omite nome e código do perfil. Em ambos os casos, o escopo da lista não muda.
 
 ## Fora de escopo
 

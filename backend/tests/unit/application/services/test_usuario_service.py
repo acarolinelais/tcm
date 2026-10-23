@@ -38,7 +38,9 @@ def gerente_atual():
         id=uuid4(),
         unidade_id=uuid4(),
         perfil_codigo="GERENTE",
-        permissoes=frozenset({"usuarios.consultar", "usuarios.gerenciar"}),
+        permissoes=frozenset(
+            {"usuarios.consultar", "usuarios.perfil.consultar", "usuarios.gerenciar"}
+        ),
     )
 
 
@@ -291,4 +293,25 @@ async def test_listagem_vazia_nao_busca_metadados_de_perfil(service, repo, geren
     resposta = await service.listar(gerente_atual, 1, 20)
 
     assert resposta.items == []
+    repo.dados_por_usuarios.assert_not_awaited()
+
+
+async def test_gerente_sem_permissao_de_consultar_perfil_nao_recebe_metadados(
+    service, repo, gerente_atual
+):
+    usuario = Usuario(gerente_atual.unidade_id, "Carol", "carol@example.com")
+    usuario.perfil_id = uuid4()
+    usuario.created_at = datetime.now()
+    repo.listar_visiveis.return_value = PagedResult([usuario], 1, 20, 1)
+    gerente_sem_permissao = UsuarioAutenticado(
+        gerente_atual.id,
+        gerente_atual.unidade_id,
+        perfil_codigo="GERENTE",
+        permissoes=frozenset({"usuarios.consultar", "usuarios.gerenciar"}),
+    )
+
+    resposta = await service.listar(gerente_sem_permissao, 1, 20)
+
+    assert resposta.items[0].perfil_nome is None
+    assert resposta.items[0].perfil_codigo is None
     repo.dados_por_usuarios.assert_not_awaited()

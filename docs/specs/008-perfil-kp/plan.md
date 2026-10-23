@@ -41,8 +41,9 @@ ainda não cria unidades em runtime; seed para unidades futuras será definido n
 | PUT | `/api/perfis/{id}/permissoes` | `{ permissoes }` | Qualquer perfil da unidade atualizado por pessoa com `perfis.gerenciar`; invalida sessões das contas associadas | 401, 403, 404 |
 
 `GET /api/usuarios` inclui o nome e o código do perfil nas linhas já autorizadas para consulta. Para
-gerentes, esses dados vêm somente dos usuários no escopo retornado pela listagem; o catálogo de perfis
-e permissões continua limitado conforme a regra de atribuição.
+gerentes, essa projeção exige `usuarios.perfil.consultar` e usa somente os usuários no escopo retornado
+pela listagem. O perfil `GERENTE` recebe a permissão no seed; o catálogo de perfis e permissões
+continua limitado conforme a regra de atribuição.
 
 A API de membros de times recebe e retorna somente a associação da pessoa; não aceita nem retorna um
 papel no time. A remoção de membros continua na rota existente. Os endpoints de tarefas e sua matriz
@@ -56,8 +57,8 @@ de permissões pertencem às specs desses módulos.
   criação de unidades em runtime.
 - `backend/src/application/services/usuario_service.py` e
   `backend/src/infrastructure/repositories/usuario_repository.py` — permitir ao gerente escolher KP
-  ou padrão ao criar uma conta sob sua responsabilidade e incluir metadados mínimos do perfil nas
-  linhas autorizadas da listagem de usuários.
+  ou padrão ao criar uma conta sob sua responsabilidade e incluir metadados mínimos do perfil somente
+  quando a permissão `usuarios.perfil.consultar` está presente nas linhas autorizadas.
 - `backend/src/api/routers/perfis.py` — permitir atribuição por admin em toda unidade e por gerente
   apenas aos seus usuários responsáveis, limitado a KP/padrão; manter isolamento e invalidar sessões.
 - `backend/src/application/catalogos/permissoes.py` — nenhuma permissão provisória de tarefas nesta

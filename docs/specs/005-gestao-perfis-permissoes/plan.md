@@ -42,7 +42,7 @@ continua substituindo o conjunto inteiro e incrementando `auth_version` dos usu�
 
 | Controller | Permissões existentes |
 |---|---|
-| Usuários (`usuarios`) | `usuarios.consultar`, `usuarios.gerenciar` |
+| Usuários (`usuarios`) | `usuarios.consultar`, `usuarios.perfil.consultar`, `usuarios.gerenciar` |
 | Perfis (`perfis`) | `perfis.gerenciar` |
 | Setores (`setores`) | `setores.consultar`, `setores.gerenciar` |
 | Times (`times`) | `times.consultar`, `times.criar`, `times.gerenciar` |

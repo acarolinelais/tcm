@@ -28,6 +28,7 @@ interface Database {
 
 const permissoes: Permissao[] = [
   ["usuarios.consultar", "Consultar usuários", "usuarios", "Users", 1],
+  ["usuarios.perfil.consultar", "Consultar perfil atribuído a usuários no escopo permitido", "usuarios", "Users", 1],
   ["usuarios.gerenciar", "Criar e alterar usuários", "usuarios", "Users", 1],
   ["setores.consultar", "Consultar setores", "setores", "Sectors", 2],
   ["setores.gerenciar", "Criar e alterar setores", "setores", "Sectors", 2],
@@ -44,7 +45,7 @@ function createSeed(): Database {
   const allPermissions = permissoes.map((item) => item.id);
   const adminProfile: Perfil = { id: "mock-profile-admin", nome: "Administrador", descricao: "Acesso completo à unidade.", codigo: "ADMIN_UNIDADE", permissoes: allPermissions };
   const standardProfile: Perfil = { id: "mock-profile-standard", nome: "Usuário padrão", descricao: "Perfil padrão da unidade.", codigo: "USUARIO_PADRAO", permissoes: ["usuarios.consultar", "setores.consultar", "times.consultar"] };
-  const managerProfile: Perfil = { id: "mock-profile-manager", nome: "Gerente", descricao: "Gerencia pessoas e times do setor.", codigo: "GERENTE", permissoes: ["usuarios.consultar", "usuarios.gerenciar", "setores.consultar", "times.consultar", "times.criar", "times.gerenciar"] };
+  const managerProfile: Perfil = { id: "mock-profile-manager", nome: "Gerente", descricao: "Gerencia pessoas e times do setor.", codigo: "GERENTE", permissoes: ["usuarios.consultar", "usuarios.perfil.consultar", "usuarios.gerenciar", "setores.consultar", "times.consultar", "times.criar", "times.gerenciar"] };
   const kpProfile: Perfil = { id: "mock-profile-kp", nome: "KP", descricao: "Acompanha atividades dos times associados.", codigo: "KP", permissoes: ["times.consultar"] };
   const developerProfile: Perfil = { id: "mock-profile-developer", nome: "Desenvolvedor", descricao: "Perfil personalizado para demonstração.", codigo: null, permissoes: ["usuarios.consultar", "times.consultar"] };
   const sectors: Setor[] = [

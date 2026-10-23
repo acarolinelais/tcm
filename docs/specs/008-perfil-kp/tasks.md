@@ -89,3 +89,8 @@ validam as ações de KP nesses módulos futuros.
   - Cobre: RN-11, CA-11
   - Verificação: testes de serviço e componentes confirmam que gerente vê o nome do perfil de contas
     no escopo, mas recebe apenas KP/padrão como opções de atribuição
+- [x] **T16. Exigir permissão explícita para consultar perfil atribuído a usuários do escopo**
+  - Arquivos: catálogo e migration de permissões, serviço/listagem de usuários e tabela
+  - Cobre: RN-11, CA-11
+  - Verificação: sem `usuarios.perfil.consultar`, a API omite nome/código e a interface não exibe a
+    coluna; com a permissão, gerente continua limitado aos usuários já autorizados

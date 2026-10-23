@@ -85,7 +85,7 @@ async def test_gerente_consulta_perfil_atual_dos_usuarios_listados(api_client):
         uuid4(),
         uuid4(),
         perfil_codigo="GERENTE",
-        permissoes=frozenset({"usuarios.consultar"}),
+        permissoes=frozenset({"usuarios.consultar", "usuarios.perfil.consultar"}),
     )
     usuario_id, perfil_id = uuid4(), uuid4()
     service = AsyncMock()

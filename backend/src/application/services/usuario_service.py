@@ -85,11 +85,12 @@ class UsuarioServiceImpl:
                     usuario_atual.id,
                     usuario_atual.id,
                 )
+        pode_consultar_perfil = "usuarios.perfil.consultar" in usuario_atual.permissoes
         perfil_por_usuario = (
             await self._repo.dados_por_usuarios(
                 usuario_atual.unidade_id, tuple(usuario.id for usuario in result.items)
             )
-            if result.items
+            if pode_consultar_perfil and result.items
             else {}
         )
         items = []

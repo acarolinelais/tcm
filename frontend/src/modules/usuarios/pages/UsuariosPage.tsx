@@ -21,6 +21,7 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
   const podeGerenciar = ehAdmin || perfil.permissoes.includes("usuarios.gerenciar");
   const podeAtribuirPerfil = ehAdmin || perfil.permissoes.includes("perfis.gerenciar");
   const podeAtribuirPerfilKP = ehGerente;
+  const podeConsultarPerfilUsuario = perfil.permissoes.includes("usuarios.perfil.consultar");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const [filtros, setFiltros] = useState<UsuarioFiltros>({});
@@ -99,6 +100,7 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
         podeGerenciar={podeGerenciar}
         podeAtribuirPerfil={podeAtribuirPerfil}
         podeAtribuirPerfilKP={podeAtribuirPerfilKP}
+        podeConsultarPerfil={podeConsultarPerfilUsuario}
         usuarioAtualId={perfil.id}
       />
 

@@ -50,6 +50,16 @@ async def test_migration_cria_unidade_manaus_com_admin():
             assert admin.senha_hash is not None
             assert admin.idioma_preferido == "en"
             assert PasswordHasher().verify(admin.senha_hash, os.environ["BOOTSTRAP_ADMIN_SENHA"])
+            permissoes_admin = set(
+                (
+                    await session.execute(
+                        select(PerfilPermissaoModel.permissao_id).where(
+                            PerfilPermissaoModel.perfil_id == perfil.id
+                        )
+                    )
+                ).scalars()
+            )
+            assert "usuarios.perfil.consultar" in permissoes_admin
     finally:
         await engine.dispose()
 
@@ -74,6 +84,7 @@ async def test_migration_seed_gerente_e_responsavel_usuario():
             )
             assert {
                 "usuarios.consultar",
+                "usuarios.perfil.consultar",
                 "usuarios.gerenciar",
                 "times.consultar",
                 "times.criar",

@@ -109,8 +109,34 @@ describe("UsuariosTable", () => {
       },
       isLoading: false,
     });
-    renderTable({ podeAtribuirPerfilKP: true });
+    renderTable({ podeAtribuirPerfilKP: true, podeConsultarPerfil: true });
 
     expect(await screen.findByRole("row", { name: /Ana ana@example.com Active Auditoria/ })).toBeInTheDocument();
+  });
+
+  it("não exibe o perfil atribuído sem a permissão de consulta", async () => {
+    apiMocks.useUsuariosList.mockReturnValue({
+      data: {
+        items: [{
+          id: "user-1",
+          nome: "Ana",
+          email: "ana@example.com",
+          ativo: true,
+          perfil_id: "custom",
+          perfil_nome: "Auditoria",
+          perfil_codigo: null,
+          created_at: "2026-01-01T00:00:00Z",
+        }],
+        page: 1,
+        page_size: 20,
+        total_count: 1,
+      },
+      isLoading: false,
+    });
+    renderTable({ podeAtribuirPerfilKP: true });
+
+    expect(await screen.findByText("Ana")).toBeInTheDocument();
+    expect(screen.queryByText("Auditoria")).not.toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Profile" })).not.toBeInTheDocument();
   });
 });

@@ -27,6 +27,7 @@ interface UsuariosTableProps {
   podeGerenciar?: boolean;
   podeAtribuirPerfil?: boolean;
   podeAtribuirPerfilKP?: boolean;
+  podeConsultarPerfil?: boolean;
   usuarioAtualId?: string;
 }
 
@@ -44,6 +45,7 @@ export function UsuariosTable({
   podeGerenciar = false,
   podeAtribuirPerfil = false,
   podeAtribuirPerfilKP = false,
+  podeConsultarPerfil = false,
   usuarioAtualId = "",
 }: UsuariosTableProps) {
   const { t } = useTranslation();
@@ -101,17 +103,19 @@ export function UsuariosTable({
                 ]}
               />
             </TableHead>
-            {(podeAtribuirPerfil || podeAtribuirPerfilKP) && (
+            {podeConsultarPerfil && (
               <TableHead>
-                <TableColumnFilter
-                  label={t("profile")}
-                  value={filtros.perfil_id ?? ""}
-                  onChange={(valor) => onFiltroChange("perfil", valor)}
-                  options={[
-                    { value: "", label: t("all") },
-                    ...(perfis.data ?? []).map((perfil) => ({ value: perfil.id, label: perfil.codigo ? t(`catalog.profile.${perfil.codigo}`, { defaultValue: perfil.nome }) : perfil.nome })),
-                  ]}
-                />
+                {(podeAtribuirPerfil || podeAtribuirPerfilKP) ? (
+                  <TableColumnFilter
+                    label={t("profile")}
+                    value={filtros.perfil_id ?? ""}
+                    onChange={(valor) => onFiltroChange("perfil", valor)}
+                    options={[
+                      { value: "", label: t("all") },
+                      ...(perfis.data ?? []).map((perfil) => ({ value: perfil.id, label: perfil.codigo ? t(`catalog.profile.${perfil.codigo}`, { defaultValue: perfil.nome }) : perfil.nome })),
+                    ]}
+                  />
+                ) : t("profile")}
               </TableHead>
             )}
             {podeAtribuirPerfil && <TableHead>{t("owner")}</TableHead>}
@@ -133,7 +137,7 @@ export function UsuariosTable({
                   {usuario.ativo ? t("active") : t("inactive")}
                 </Badge>
               </TableCell>
-              {(podeAtribuirPerfil || podeAtribuirPerfilKP) && (
+              {podeConsultarPerfil && (
                 <TableCell className="text-sm text-muted-foreground">
                   {(() => {
                     const perfil = perfis.data?.find((item) => item.id === usuario.perfil_id);

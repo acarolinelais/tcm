@@ -84,10 +84,14 @@ invalidação imediata das sessões após alterações de acesso.
   a checagem atual de permissões no backend.
 - RN-11: A chave JWT é configuração de ambiente, não pode ter um valor de produção versionado no
   repositório e deve ser rejeitada quando ausente ou abaixo do requisito mínimo definido no plano.
-- RN-12: `usuarios.perfil_id` é obrigatório. A listagem não possui estado nem filtro “sem perfil”; o
-  nome do perfil pode ser resolvido pelo identificador retornado e pela listagem de perfis.
+- RN-12: `usuarios.perfil_id` é obrigatório. A API só devolve nome e código do perfil atribuído na
+  listagem quando a pessoa tem `usuarios.perfil.consultar`; essa permissão não amplia a lista de
+  usuários autorizada por `usuarios.consultar`.
 - RN-13: Contas criadas com a senha inicial configurada devem trocar a senha antes de acessar outros
   recursos. Essa autenticação local é temporária até a integração corporativa.
+- RN-14: `usuarios.perfil.consultar` permite ver o perfil atualmente atribuído apenas para usuários
+  que a pessoa já pode consultar. A permissão não permite listar o catálogo de perfis, consultar suas
+  permissões nem atribuir ou gerenciar perfis.
 
 ## Critérios de aceite
 

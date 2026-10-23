@@ -16,6 +16,10 @@ async def test_catalogo_de_permissoes_inclui_metadados_e_ordem(api_client):
     unidade_id = uuid4()
     usuario = UsuarioAutenticado(uuid4(), unidade_id, "ADMIN_UNIDADE")
     rows = [
+        SimpleNamespace(
+            id="usuarios.perfil.consultar",
+            descricao="Consultar perfil atribuído a usuários no escopo permitido",
+        ),
         SimpleNamespace(id="times.gerenciar", descricao="Gerenciar times"),
         SimpleNamespace(id="usuarios.consultar", descricao="Consultar usuários"),
         SimpleNamespace(id="usuarios.gerenciar", descricao="Gerenciar usuários"),
@@ -31,7 +35,8 @@ async def test_catalogo_de_permissoes_inclui_metadados_e_ordem(api_client):
     assert response.status_code == 200
     assert [(item["id"], item["ordem"]) for item in response.json()] == [
         ("usuarios.consultar", 1),
-        ("usuarios.gerenciar", 2),
+        ("usuarios.perfil.consultar", 2),
+        ("usuarios.gerenciar", 3),
         ("times.gerenciar", 3),
     ]
     assert response.json()[0]["modulo"] == {"codigo": "usuarios", "nome": "Usuários", "ordem": 1}
