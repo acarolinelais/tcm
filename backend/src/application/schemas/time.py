@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.domain.entities.time import Time
 from src.domain.entities.time_membro import TimeMembro
@@ -13,6 +13,8 @@ class CriarTimeRequest(BaseModel):
 
 
 class AdicionarMembroRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     usuario_id: UUID
 
 

@@ -6,21 +6,32 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Dialog } from "@/shared/ui/dialog";
 import { UsuarioForm } from "./UsuarioForm";
 
-function renderForm(onSalvo = vi.fn()) {
+const perfilApi = vi.hoisted(() => ({ listarPerfis: vi.fn(), atribuirPerfil: vi.fn() }));
+vi.mock("@/modules/perfis/api/perfis.api", () => perfilApi);
+
+const profiles = [
+  { id: "default", nome: "Usuário padrão", descricao: null, codigo: "USUARIO_PADRAO", permissoes: [] },
+  { id: "kp", nome: "Ponto focal", descricao: null, codigo: "KP", permissoes: [] },
+  { id: "manager", nome: "Gerente", descricao: null, codigo: "GERENTE", permissoes: [] },
+  { id: "custom", nome: "Auditoria", descricao: null, codigo: null, permissoes: [] },
+];
+
+function renderForm(onSalvo = vi.fn(), props: Partial<React.ComponentProps<typeof UsuarioForm>> = {}) {
   const client = new QueryClient();
   // Na tela o formulário fica dentro de um Dialog (o botão Cancelar usa DrawerClose).
-  render(
+  const { container } = render(
     <QueryClientProvider client={client}>
       <Dialog open>
-        <UsuarioForm onSalvo={onSalvo} />
+        <UsuarioForm onSalvo={onSalvo} {...props} />
       </Dialog>
     </QueryClientProvider>,
   );
-  return { onSalvo };
+  return { onSalvo, container };
 }
 
 describe("UsuarioForm", () => {
   beforeEach(() => {
+    perfilApi.listarPerfis.mockResolvedValue(profiles);
     vi.stubGlobal(
       "fetch",
       vi.fn(
@@ -58,5 +69,23 @@ describe("UsuarioForm", () => {
 
     expect(await screen.findByText("Name is required.")).toBeInTheDocument();
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("admin pode atribuir KP e perfis personalizados ao criar usuário", async () => {
+    const { container } = renderForm(vi.fn(), { podeAtribuirPerfil: true });
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Profile" })).not.toBeDisabled());
+    const options = [...container.querySelectorAll("select option")].map((option) => option.textContent);
+    expect(options).toContain("Key Person");
+    expect(options).toContain("Auditoria");
+  });
+
+  it("gerente pode escolher KP e usuário padrão, mas não perfis administrativos", async () => {
+    const { container } = renderForm(vi.fn(), { podeAtribuirPerfilKP: true });
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Profile" })).not.toBeDisabled());
+    const options = [...container.querySelectorAll("select option")].map((option) => option.textContent);
+    expect(options).toContain("Key Person");
+    expect(options).toContain("Standard user");
+    expect(options).not.toContain("Gerente");
+    expect(options).not.toContain("Auditoria");
   });
 });

@@ -69,12 +69,13 @@ async def test_criar_perfil_sem_permissao_retorna_403_sem_persistir(api_client):
 
 
 @pytest.mark.asyncio
-async def test_nao_permite_alterar_perfil_de_sistema(api_client):
+@pytest.mark.parametrize("codigo", ["ADMIN_UNIDADE", "KP"])
+async def test_nao_permite_alterar_perfil_de_sistema(api_client, codigo):
     from src.api.main import app
 
     unidade_id = uuid4()
     usuario = UsuarioAutenticado(uuid4(), unidade_id, "ADMIN_UNIDADE")
-    perfil = SimpleNamespace(id=uuid4(), unidade_id=unidade_id, codigo="ADMIN_UNIDADE")
+    perfil = SimpleNamespace(id=uuid4(), unidade_id=unidade_id, codigo=codigo)
     session = AsyncMock()
     session.get.return_value = perfil
     app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
@@ -106,6 +107,137 @@ async def test_perfil_de_outra_unidade_nao_pode_ser_alterado(api_client):
 
     assert response.status_code == 404
     session.execute.assert_not_awaited()
+    session.commit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("perfil_codigo", "codigo_atribuido"),
+    [("ADMIN_UNIDADE", "COORDENACAO"), ("GERENTE", "KP")],
+)
+async def test_admin_ou_gerente_responsavel_pode_atribuir_perfil_permitido(
+    api_client, perfil_codigo, codigo_atribuido
+):
+    from src.api.main import app
+
+    unidade_id, usuario_id, perfil_kp_id = uuid4(), uuid4(), uuid4()
+    atual_id = uuid4()
+    permissoes = frozenset({"usuarios.gerenciar"}) if perfil_codigo == "GERENTE" else frozenset()
+    atual = UsuarioAutenticado(
+        atual_id, unidade_id, perfil_codigo=perfil_codigo, permissoes=permissoes
+    )
+    usuario = SimpleNamespace(
+        id=usuario_id,
+        unidade_id=unidade_id,
+        perfil_id=uuid4(),
+        responsavel_id=atual_id if perfil_codigo == "GERENTE" else None,
+        auth_version=4,
+    )
+    perfil_kp = SimpleNamespace(id=perfil_kp_id, unidade_id=unidade_id, codigo=codigo_atribuido)
+    perfil_atual = SimpleNamespace(
+        id=usuario.perfil_id, unidade_id=unidade_id, codigo="USUARIO_PADRAO"
+    )
+    session = AsyncMock()
+    session.get.side_effect = [usuario, perfil_kp, perfil_atual]
+    app.dependency_overrides[get_usuario_atual] = dependency_override(atual)
+    app.dependency_overrides[get_session] = dependency_override(session)
+
+    response = await api_client.patch(
+        f"/api/perfis/usuarios/{usuario_id}", json={"perfil_id": str(perfil_kp_id)}
+    )
+
+    assert response.status_code == 204
+    assert usuario.perfil_id == perfil_kp_id
+    assert usuario.auth_version == 5
+    session.execute.assert_not_awaited()
+    session.add.assert_not_called()
+    session.delete.assert_not_awaited()
+    session.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_gerente_nao_pode_atribuir_perfil_alem_de_kp_ou_padrao(api_client):
+    from src.api.main import app
+
+    unidade_id, usuario_id = uuid4(), uuid4()
+    gerente_id = uuid4()
+    gerente = UsuarioAutenticado(
+        gerente_id,
+        unidade_id,
+        perfil_codigo="GERENTE",
+        permissoes=frozenset({"usuarios.gerenciar"}),
+    )
+    usuario = SimpleNamespace(
+        id=usuario_id,
+        unidade_id=unidade_id,
+        perfil_id=uuid4(),
+        responsavel_id=gerente_id,
+        auth_version=1,
+    )
+    perfil = SimpleNamespace(id=uuid4(), unidade_id=unidade_id, codigo="DESENVOLVEDOR")
+    session = AsyncMock()
+    session.get.side_effect = [usuario, perfil]
+    app.dependency_overrides[get_usuario_atual] = dependency_override(gerente)
+    app.dependency_overrides[get_session] = dependency_override(session)
+
+    response = await api_client.patch(
+        f"/api/perfis/usuarios/{usuario_id}", json={"perfil_id": str(perfil.id)}
+    )
+
+    assert response.status_code == 403
+    assert usuario.auth_version == 1
+    session.commit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_gerente_nao_altera_perfil_de_usuario_fora_da_responsabilidade(api_client):
+    from src.api.main import app
+
+    unidade_id = uuid4()
+    gerente = UsuarioAutenticado(
+        uuid4(),
+        unidade_id,
+        perfil_codigo="GERENTE",
+        permissoes=frozenset({"usuarios.gerenciar"}),
+    )
+    usuario = SimpleNamespace(
+        id=uuid4(), unidade_id=unidade_id, responsavel_id=uuid4(), auth_version=1
+    )
+    session = AsyncMock()
+    session.get.return_value = usuario
+    app.dependency_overrides[get_usuario_atual] = dependency_override(gerente)
+    app.dependency_overrides[get_session] = dependency_override(session)
+
+    response = await api_client.patch(
+        f"/api/perfis/usuarios/{usuario.id}", json={"perfil_id": str(uuid4())}
+    )
+
+    assert response.status_code == 404
+    session.get.assert_awaited_once()
+    session.commit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_perfil_de_outra_unidade_nao_pode_ser_atribuido(api_client):
+    from src.api.main import app
+
+    unidade_id, usuario_id = uuid4(), uuid4()
+    admin = UsuarioAutenticado(uuid4(), unidade_id, "ADMIN_UNIDADE")
+    usuario = SimpleNamespace(
+        id=usuario_id, unidade_id=unidade_id, perfil_id=uuid4(), auth_version=1
+    )
+    perfil = SimpleNamespace(id=uuid4(), unidade_id=uuid4(), codigo="KP")
+    session = AsyncMock()
+    session.get.side_effect = [usuario, perfil]
+    app.dependency_overrides[get_usuario_atual] = dependency_override(admin)
+    app.dependency_overrides[get_session] = dependency_override(session)
+
+    response = await api_client.patch(
+        f"/api/perfis/usuarios/{usuario_id}", json={"perfil_id": str(perfil.id)}
+    )
+
+    assert response.status_code == 404
+    assert usuario.auth_version == 1
     session.commit.assert_not_awaited()
 
 

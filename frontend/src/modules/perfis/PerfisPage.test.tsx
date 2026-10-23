@@ -121,15 +121,18 @@ describe("PerfisPage", () => {
     expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
   });
 
-  it("exibe permissões do perfil de sistema sem permitir edição", async () => {
+  it.each([
+    ["ADMIN_UNIDADE", "Administrador"],
+    ["KP", "Ponto focal"],
+  ])("exibe permissões do perfil de sistema %s sem permitir edição", async (codigo, nome) => {
     api.listarPerfis.mockResolvedValue([
-      { id: "sys", nome: "Administrador", descricao: null, codigo: "ADMIN_UNIDADE", permissoes: ["usuarios.consultar"] },
+      { id: "sys", nome, descricao: null, codigo, permissoes: ["usuarios.consultar"] },
     ]);
     renderPage();
 
     const user = userEvent.setup();
     await screen.findByRole("table");
-    await abrirPerfil(user, "Administrador");
+    await abrirPerfil(user, nome);
     expect(await screen.findByText("System protected")).toBeInTheDocument();
     await abrirGrupo(user, "Users");
     expect(screen.getByLabelText("View users in the allowed scope")).toBeDisabled();

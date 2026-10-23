@@ -116,6 +116,37 @@ async def test_gerente_cria_usuario_kp_vinculado_a_si_mesmo(service, repo, uow, 
     uow.commit.assert_awaited_once()
 
 
+async def test_admin_cria_usuario_com_perfil_da_unidade(service, repo, uow, usuario_atual):
+    perfil_id = uuid4()
+    repo.perfil_atribuivel.return_value = True
+
+    response = await service.criar(
+        usuario_atual,
+        CriarUsuarioRequest(nome="Carol", email="carol@example.com", perfil_id=perfil_id),
+    )
+
+    criado = repo.adicionar.await_args.args[0]
+    assert criado.perfil_id == perfil_id
+    assert response.perfil_id == perfil_id
+    repo.perfil_atribuivel.assert_awaited_once_with(usuario_atual.unidade_id, perfil_id)
+    uow.commit.assert_awaited_once()
+
+
+async def test_admin_nao_cria_usuario_com_perfil_de_outra_unidade_falha(
+    service, repo, uow, usuario_atual
+):
+    repo.perfil_atribuivel.return_value = False
+
+    with pytest.raises(NotFoundException):
+        await service.criar(
+            usuario_atual,
+            CriarUsuarioRequest(nome="Carol", email="carol@example.com", perfil_id=uuid4()),
+        )
+
+    repo.adicionar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
 async def test_gerente_nao_cria_usuario_com_perfil_fora_de_kp_ou_padrao_falha(
     service, repo, uow, gerente_atual
 ):
