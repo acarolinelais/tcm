@@ -190,9 +190,10 @@ export const mockUsuarioApi = {
     db.times.filter((team) => managedSectorIds.has(team.setor_id)).forEach((team) => currentTeamIds.add(team.id));
     let users = profile?.codigo === "ADMIN_UNIDADE"
       ? [...db.usuarios]
-      : db.usuarios.filter((user) => user.id === currentUser?.id ||
+      : db.usuarios.filter((user) => profileFor(db, user)?.codigo !== "ADMIN_UNIDADE" && (
+        user.id === currentUser?.id ||
         (profile?.codigo === "GERENTE" && user.responsavel_id === currentUser?.id) ||
-        db.membrosTime.some((member) => member.usuario_id === user.id && member.ativo && currentTeamIds.has(member.time_id)));
+        db.membrosTime.some((member) => member.usuario_id === user.id && member.ativo && currentTeamIds.has(member.time_id))));
     if (filters.nome) users = users.filter((user) => user.nome.toLocaleLowerCase().includes(filters.nome!.toLocaleLowerCase()));
     if (filters.email) users = users.filter((user) => user.email.toLocaleLowerCase().includes(filters.email!.toLocaleLowerCase()));
     if (filters.ativo !== undefined) users = users.filter((user) => user.ativo === filters.ativo);
@@ -204,14 +205,21 @@ export const mockUsuarioApi = {
       const team = db.times.find((item) => item.id === member.time_id && item.ativo);
       return team?.setor_id === filters.setor_id;
     }));
-    const withSectors = users.map((user) => ({
-      ...user,
-      setores: [...new Set(db.membrosTime.filter((member) => member.usuario_id === user.id && member.ativo)
-        .map((member) => db.times.find((team) => team.id === member.time_id && team.ativo)?.setor_id)
-        .filter((sectorId): sectorId is string => Boolean(sectorId))
-        .map((sectorId) => db.setores.find((sector) => sector.id === sectorId && sector.ativo)?.nome)
-        .filter((sectorName): sectorName is string => Boolean(sectorName)))],
-    }));
+    const withSectors = users.map((user) => {
+      const sectorIds = new Set([
+        ...db.membrosTime.filter((member) => member.usuario_id === user.id && member.ativo)
+          .map((member) => db.times.find((team) => team.id === member.time_id && team.ativo)?.setor_id)
+          .filter((sectorId): sectorId is string => Boolean(sectorId)),
+        ...db.gerentesSetor.filter((manager) => manager.usuario_id === user.id && manager.ativo)
+          .map((manager) => manager.setor_id),
+      ]);
+      return {
+        ...user,
+        setores: [...sectorIds]
+          .map((sectorId) => db.setores.find((sector) => sector.id === sectorId && sector.ativo)?.nome)
+          .filter((sectorName): sectorName is string => Boolean(sectorName)),
+      };
+    });
     return page(withSectors, pageNumber, pageSize);
   },
   obter(userId: string) {
