@@ -13,6 +13,7 @@ import { Badge } from "@/shared/ui/badge";
 import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyStatePanel, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
 import { MultiSelectCombobox } from "@/shared/ui/multi-select-combobox";
 import { toast } from "@/shared/lib/toast";
+import { ApiError } from "@/shared/api/problem-details";
 import { timesApi } from "@/modules/times/api/times.api";
 import { modelosDispositivoApi, projetosApi, type Projeto, type StatusProjeto } from "./api/projetos.api";
 
@@ -41,6 +42,7 @@ export function ProjetosPage() {
   const [oneUi, setOneUi] = useState("");
   const [modelosIds, setModelosIds] = useState<string[]>([]);
   const [arquivo, setArquivo] = useState<File | null>(null);
+  const [errosImportacao, setErrosImportacao] = useState<{ campo: string; mensagem: string }[]>([]);
   const [arrastando, setArrastando] = useState(false);
   const inputArquivo = useRef<HTMLInputElement>(null);
 
@@ -49,18 +51,25 @@ export function ProjetosPage() {
   const nomeTime = useMemo(() => Object.fromEntries(timesDisponiveis.map((time) => [time.id, time.nome])), [timesDisponiveis]);
   const queryMutation = useMutation({
     mutationFn: async () => {
-      if (modo === "manual") return projetosApi.criar({ time_id: timeId, app: app.trim(), one_ui: oneUi.trim(), modelos_ids: modelosIds });
+      if (modo === "manual") return { projeto: await projetosApi.criar({ time_id: timeId, app: app.trim(), one_ui: oneUi.trim(), modelos_ids: modelosIds }), quantidade_casos: 0 };
       if (!arquivo) throw new Error(t("projectFileRequired"));
       const result = await projetosApi.importar(arquivo, timeId, modelosIds, app, oneUi);
-      return "projeto" in result ? result.projeto : result;
+      return "projeto" in result ? result : { projeto: result, quantidade_casos: 0 };
     },
-    onSuccess: async () => {
+    onSuccess: async (result) => {
       await client.invalidateQueries({ queryKey: ["projetos"] });
       setCriacaoAberta(false);
       limparFormulario();
-      toast.success(t("projectCreateSuccess"));
+      toast.success(modo === "planilha" ? t("projectImportSuccess", { name: result.projeto.nome, count: result.quantidade_casos }) : t("projectCreateSuccess"));
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : t("projectCreateError")),
+    onError: (error) => {
+      if (modo === "planilha" && error instanceof ApiError && error.problem.errors?.length) {
+        setErrosImportacao(error.problem.errors);
+        toast.error(t("projectImportValidationError"));
+        return;
+      }
+      toast.error(error instanceof Error ? error.message : t("projectCreateError"));
+    },
   });
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: StatusProjeto }) => projetosApi.atualizarStatus(id, status),
@@ -70,11 +79,12 @@ export function ProjetosPage() {
   });
 
   function limparFormulario() {
-    setTimeId(""); setApp(""); setOneUi(""); setModelosIds([]); setArquivo(null); setModo("planilha");
+    setTimeId(""); setApp(""); setOneUi(""); setModelosIds([]); setArquivo(null); setErrosImportacao([]); setModo("planilha");
   }
   function selecionarArquivo(file?: File) {
     if (!file) return;
     if (!/\.xlsx?$/i.test(file.name)) { toast.error(t("projectFileTypeError")); return; }
+    setErrosImportacao([]);
     setArquivo(file);
   }
   function statusLabel(status: StatusProjeto) {
@@ -120,6 +130,7 @@ export function ProjetosPage() {
             </button> : <div className="flex items-center gap-4 rounded-2xl border border-border p-5"><FileSpreadsheet aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{arquivo.name}</p><p className="mt-1 text-xs text-muted-foreground">{(arquivo.size / 1024 / 1024).toFixed(2)} MB</p></div><Button type="button" variant="outline" size="icon" aria-label={t("removeFile")} onClick={() => setArquivo(null)}><X aria-hidden="true" className="size-4" /></Button></div>}
             <input ref={inputArquivo} className="sr-only" type="file" accept={extensoesAceitas} onChange={(event) => { selecionarArquivo(event.target.files?.[0]); event.target.value = ""; }} />
             <div className="mt-3 space-y-1 text-xs leading-5 text-muted-foreground"><p>{t("spreadsheetSizeNotice")}</p><p>{t("projectSpreadsheetTemplateHint")}</p></div>
+            {errosImportacao.length > 0 && <div role="alert" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4"><h2 className="text-sm font-semibold text-destructive">{t("projectImportValidationError")}</h2><ul className="mt-2 space-y-1 text-sm text-destructive">{errosImportacao.map((erro, index) => <li key={`${erro.campo}-${index}`}>{erro.campo}: {erro.mensagem}</li>)}</ul></div>}
             {isMock && arquivo && <div className="mt-5 grid gap-5 rounded-2xl border border-border p-5 sm:grid-cols-2"><div><Label htmlFor="project-import-app">{t("app")}</Label><Input id="project-import-app" value={app} onChange={(event) => setApp(event.target.value)} className="mt-2" placeholder={t("appPlaceholder")} /><p className="mt-1.5 text-xs text-muted-foreground">{t("mockSpreadsheetHint")}</p></div><div><Label htmlFor="project-import-oneui">{t("oneUi")}</Label><Input id="project-import-oneui" value={oneUi} onChange={(event) => setOneUi(event.target.value)} className="mt-2" placeholder="9.5" /></div></div>}
           </section> : <section className="rounded-2xl border border-border bg-white p-5 sm:p-7"><div className="mb-6"><h2 className="text-base font-semibold">{t("projectDetails")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("projectNameFormulaHint")}</p></div><div className="grid gap-5 sm:grid-cols-2"><div><Label htmlFor="project-app">{t("app")}</Label><Input id="project-app" value={app} onChange={(event) => setApp(event.target.value)} className="mt-2" placeholder={t("appPlaceholder")} maxLength={80} /></div><div><Label htmlFor="project-oneui">{t("oneUi")}</Label><Input id="project-oneui" value={oneUi} onChange={(event) => setOneUi(event.target.value)} className="mt-2" placeholder="9.5" maxLength={40} /></div></div><p className="mt-3 text-sm text-muted-foreground">{app.trim() && oneUi.trim() ? `${t("projectNamePreview")}: ${app.trim()} ${oneUi.trim()}` : t("projectNamePreviewHint")}</p></section>}
 

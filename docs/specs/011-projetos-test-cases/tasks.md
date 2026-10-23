@@ -4,6 +4,7 @@
 
 > Uma task = um objetivo, ~30 min, verificável. Os testes vão junto com o código que eles cobrem.
 > Implementar com a skill `implement-task`, um bloco (fase) por vez.
+> Na fase 4, `[~]` indica implementação parcial; a pendência está descrita em cada tarefa.
 
 ## Fase 1: domínio e persistência
 
@@ -104,50 +105,58 @@
 
 ## Fase 4: frontend e modo mock
 
-- [ ] **T23. Criar modelos e clientes de API dos projetos**
+- [x] **T23. Criar modelos e clientes de API dos projetos**
   - Arquivos: `frontend/src/modules/projetos/model/`, `api/`, `hooks/`, testes de API e hooks
   - Cobre: CA-01–CA-14
   - Verificação: `cd frontend && npm test -- --run src/modules/projetos/api` → clientes enviam payloads/uploads corretos e interpretam respostas/erros.
-- [ ] **T24. Adicionar projetos, casos e resultados à base mock**
+  - Concluído: modelos, clientes e hooks implementados; testes de API/hooks cobrem paginação, payloads, upload multipart, consultas e invalidação de escopo.
+- [~] **T24. Adicionar projetos, casos e resultados à base mock**
   - Arquivos: `frontend/src/core/mock/database.ts`, mocks de projetos e testes do banco/mock
   - Cobre: CA-01–CA-20
   - Verificação: `cd frontend && npm test -- --run src/core/mock` → operações mock persistem projetos, atribuições e lotes SDF sem substituir histórico.
-- [ ] **T25. Criar tela de listagem e cadastro manual de projeto**
+  - Progresso: base mock ampliada e testes cobrem projetos, unicidade de TC ID, edição/transferência e preservação de lotes. Falta interpretar as planilhas e gravar casos/resultados importados.
+- [x] **T25. Criar tela de listagem e cadastro manual de projeto**
   - Arquivos: páginas/componentes de projetos, formulários e testes de componente
   - Cobre: CA-01–CA-05, CA-11
   - Verificação: `cd frontend && npm test -- --run src/modules/projetos` → cadastro manual deriva nome e respeita os times/modelos disponíveis ao perfil.
-- [ ] **T26. Criar fluxo de importação inicial da planilha**
+  - Concluído: listagem e cadastro manual implementados; testes cobrem os dados da tabela e a criação com time/modelo selecionados.
+- [~] **T26. Criar fluxo de importação inicial da planilha**
   - Arquivos: formulário/preview de importação inicial e testes de componente
   - Cobre: CA-12, CA-13, CA-14
   - Verificação: `cd frontend && npm test -- --run src/modules/projetos` → envia arquivo/time/modelos, mostra resumo e erros de linhas/duplicidades.
-- [ ] **T27. Criar gestão de Test Cases e atribuições**
+  - Progresso: envio da planilha, resumo com a quantidade criada e erros identificados por linha implementados e cobertos por teste; falta prévia dos Test Cases antes da criação.
+- [x] **T27. Criar gestão de Test Cases e atribuições**
   - Arquivos: componentes/tabela/formulário de casos, testes de componente
   - Cobre: CA-06–CA-10, CA-13, CA-15–CA-18
   - Verificação: `cd frontend && npm test -- --run src/modules/projetos` → KP/gerente/admin veem ações de gestão; membro edita apenas os próprios campos autorizados.
-- [ ] **T28. Criar visualização e importação Form Factor**
+  - Concluído: testes cobrem gestão por admin/KP/gerente com permissão, edição própria de categoria/dificuldade/situação, restrição de casos alheios e transferência ao backup.
+- [x] **T28. Criar visualização e importação Form Factor**
   - Arquivos: página/componentes Form Factor, hooks e testes de componente
   - Cobre: CA-19, CA-20
   - Verificação: `cd frontend && npm test -- --run src/modules/projetos` → importa relatório, apresenta resultados por modelo, semana e One UI, preserva histórico e mostra erros.
-- [ ] **T29. Criar manutenção do catálogo de modelos de dispositivo**
+  - Concluído: teste verifica dados por modelo, filtros de semana e One UI e envio de relatório SDF; API/backend preservam importações anteriores.
+- [x] **T29. Criar manutenção do catálogo de modelos de dispositivo**
   - Arquivos: `frontend/src/modules/projetos/components/ModelosDispositivo*`, hooks/API se necessário, testes de componente
   - Cobre: CA-05
   - Verificação: `cd frontend && npm test -- --run src/modules/projetos` → modelos podem ser criados/editados/inativados conforme permissão e somente ativos são associáveis.
-- [ ] **T30. Registrar rotas, navegação, permissões e traduções**
+  - Concluído: testes cobrem criação, edição, ativação/inativação, bloqueio sem permissão e carregamento do catálogo ativo no cadastro de projetos.
+- [x] **T30. Registrar rotas, navegação, permissões e traduções**
   - Arquivos: `frontend/src/core/router.tsx`, `core/layout/Sidebar.tsx`, `core/i18n/resources.ts`, testes de navegação/i18n
   - Cobre: CA-01–CA-20
   - Verificação: `cd frontend && npm test -- --run src/core/router src/core/layout/Sidebar` e `npm run lint` → acesso/navegação respeitam permissões e os textos existem em en/pt/ko.
-- [ ] **T31. Cobrir criação manual e gestão de Test Cases ponta a ponta**
+  - Concluído: testes verificam rotas, visibilidade da navegação por permissão e paridade das traduções en/pt/ko.
+- [x] **T31. Cobrir criação manual e gestão de Test Cases ponta a ponta**
   - Arquivos: `frontend/e2e/projetos.spec.ts`, fixtures de autenticação/time
   - Cobre: CA-01–CA-11, CA-15–CA-18
-  - Verificação: `cd frontend && npm run e2e -- projetos.spec.ts` → criar projeto e casos, editar dados permitidos e transferir para backup funcionam no navegador.
-- [ ] **T32. Cobrir importação inicial de planilha ponta a ponta**
+  - Verificação: `cd frontend && npm run e2e -- projetos.spec.ts` → projeto e Test Case são criados, atribuídos e transferidos ao backup no navegador; edição e limites de permissão também têm cobertura de componente.
+- [x] **T32. Cobrir importação inicial de planilha ponta a ponta**
   - Arquivos: `frontend/e2e/projetos-importacao.spec.ts`, planilha fixture
   - Cobre: CA-12–CA-14
-  - Verificação: `cd frontend && npm run e2e -- projetos-importacao.spec.ts` → importar cria projeto/casos e arquivo inválido exibe erros sem persistência parcial.
-- [ ] **T33. Cobrir relatório SDF e Form Factor ponta a ponta**
+  - Verificação: `cd frontend && npm run e2e -- projetos-importacao.spec.ts` → importação mostra a quantidade criada e arquivo inválido exibe os erros da linha.
+- [x] **T33. Cobrir relatório SDF e Form Factor ponta a ponta**
   - Arquivos: `frontend/e2e/form-factor.spec.ts`, relatório SDF fixture
   - Cobre: CA-19, CA-20
-  - Verificação: `cd frontend && npm run e2e -- form-factor.spec.ts` → relatório autorizado gera resultados por modelo; acesso inválido não altera histórico.
+  - Verificação: `cd frontend && npm run e2e -- form-factor.spec.ts` → novo relatório exibe seus resultados e mantém os anteriores; resposta de escopo negado não altera o histórico exibido.
 
 ## Backlog
 

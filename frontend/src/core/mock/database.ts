@@ -70,7 +70,7 @@ function createSeed(): Database {
   const standardProfile: Perfil = { id: "mock-profile-standard", nome: "Usuário padrão", descricao: "Perfil padrão da unidade.", codigo: "USUARIO_PADRAO", permissoes: ["usuarios.consultar", "setores.consultar", "times.consultar"] };
   const managerProfile: Perfil = { id: "mock-profile-manager", nome: "Gerente", descricao: "Gerencia pessoas e times do setor.", codigo: "GERENTE", permissoes: ["usuarios.consultar", "usuarios.perfil.consultar", "usuarios.gerenciar", "setores.consultar", "times.consultar", "times.criar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar"] };
   const kpProfile: Perfil = { id: "mock-profile-kp", nome: "KP", descricao: "Acompanha atividades dos times associados.", codigo: "KP", permissoes: ["usuarios.consultar", "setores.consultar", "times.consultar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar"] };
-  const developerProfile: Perfil = { id: "mock-profile-developer", nome: "Desenvolvedor", descricao: "Perfil personalizado para demonstração.", codigo: null, permissoes: ["usuarios.consultar", "times.consultar"] };
+  const developerProfile: Perfil = { id: "mock-profile-developer", nome: "Desenvolvedor", descricao: "Perfil personalizado para demonstração.", codigo: null, permissoes: ["usuarios.consultar", "times.consultar", "projetos.consultar", "test_cases.consultar"] };
   const sectors: Setor[] = [
     { id: "mock-sector-engineering", unidade_id: UNIT_ID, nome: "Engenharia", ativo: true },
     { id: "mock-sector-operations", unidade_id: UNIT_ID, nome: "Operações", ativo: true },
@@ -543,6 +543,7 @@ export const mockCasosTesteApi = {
   },
   transferirParaBackup(caseId: string) {
     const { db, user } = mockProfile();
+    requireMockPermission("test_cases.consultar");
     const { testCase } = getMockCase(db, caseId);
     if (testCase.responsavel_id !== user.id || !testCase.backup_id) throw new Error("O Test Case não pode ser transferido para o backup.");
     testCase.responsavel_id = testCase.backup_id;
