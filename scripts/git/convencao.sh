@@ -6,6 +6,7 @@
 # Uso:
 #   convencao.sh mensagem <arquivo>                     # commit-msg
 #   convencao.sh branch <nome>                          # branch de trabalho onde se commita
+#   convencao.sh push <ref-local> <ref-remota>          # uma linha do stdin do pre-push
 #   convencao.sh pr <base> <head> <base-sha> <head-sha> # origem do PR e commits do range
 #   convencao.sh pr-titulo <titulo>
 #   convencao.sh spec <head>                            # feat/NNN-... exige docs/specs/NNN-*
@@ -38,6 +39,13 @@ valida_branch() {
   esac
   printf '%s\n' "$1" | grep -Eq "^($TIPOS|hotfix)/[a-z0-9][a-z0-9._-]*$" ||
     falha "Branch '$1' fora do padrão." "$FORMATO_BRANCH"
+}
+
+valida_push() {
+  case "$2" in
+    refs/heads/main | refs/heads/dev) falha "Push direto para '${2#refs/heads/}' não é permitido. Abra um PR." ;;
+    refs/heads/*) [ "$1" = "(delete)" ] || valida_branch "${2#refs/heads/}" ;;
+  esac
 }
 
 valida_origem_pr() {
@@ -83,11 +91,12 @@ case "$comando" in
     assunto=$(sed -n '/^#/!{p;q;}' "$1")
     mensagem_valida "$assunto" || falha "Mensagem fora do padrão: '$assunto'" "$FORMATO_MENSAGEM" ;;
   branch) valida_branch "$1" ;;
+  push) valida_push "$1" "$2" ;;
   pr)
     valida_origem_pr "$1" "$2"
     valida_commits "$3" "$4" ;;
   pr-titulo)
     mensagem_valida "$1" || falha "Título do PR fora do padrão: '$1'" "$FORMATO_MENSAGEM" ;;
   spec) valida_spec "$1" ;;
-  *) falha "Uso: $0 {mensagem|branch|pr|pr-titulo|spec} ..." ;;
+  *) falha "Uso: $0 {mensagem|branch|push|pr|pr-titulo|spec} ..." ;;
 esac

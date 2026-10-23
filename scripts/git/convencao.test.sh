@@ -7,11 +7,11 @@ TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 erros=0
 
-# espera <ok|falha> <descrição> <args de convencao.sh...>
-espera() {
+# confere <ok|falha> <descrição> <comando...>
+confere() {
   esperado=$1 descricao=$2
   shift 2
-  if sh "$SCRIPT" "$@" >"$TMP/saida" 2>&1; then obtido=ok; else obtido=falha; fi
+  if "$@" >"$TMP/saida" 2>&1; then obtido=ok; else obtido=falha; fi
   if [ "$obtido" = "$esperado" ]; then
     printf 'ok    %s\n' "$descricao"
   else
@@ -21,7 +21,14 @@ espera() {
   fi
 }
 
-# saida_contem <descrição> <texto>: confere a saída do último `espera`
+# espera <ok|falha> <descrição> <args de convencao.sh...>
+espera() {
+  e=$1 d=$2
+  shift 2
+  confere "$e" "$d" sh "$SCRIPT" "$@"
+}
+
+# saida_contem <descrição> <texto>: confere a saída do último `confere`/`espera`
 saida_contem() {
   if grep -qF "$2" "$TMP/saida"; then
     printf 'ok    %s\n' "$1"
@@ -54,6 +61,10 @@ for b in feat/009-x fix/login hotfix/corrige-login docs/adr-0027; do espera ok "
 for b in main dev feature/abluble minha-branch feat/sem-numero fix/Maiuscula; do
   espera falha "branch $b" branch "$b"
 done
+
+echo '# push'
+espera falha 'push apagando a main' push '(delete)' refs/heads/main
+espera ok 'push de tag (não se aplica)' push refs/tags/v1 refs/tags/v1
 
 echo '# pr-titulo'
 espera ok 'pr-titulo válido' pr-titulo 'feat(ci): adiciona workflow'
@@ -94,6 +105,27 @@ espera falha 'pr dev <- hotfix/x' pr dev hotfix/x "$base" "$valido"
 espera falha 'pr dev <- branch fora do padrão' pr dev feature/abluble "$base" "$valido"
 espera falha 'pr com commit Feat: Abluble' pr dev fix/abluble "$valido" "$invalido"
 saida_contem 'commit inválido aparece com o SHA' "$sha_invalido Feat: Abluble"
+
+echo '# hooks'
+git init -q --bare "$TMP/remoto.git"
+git config core.hooksPath "$(dirname "$SCRIPT")/../../.githooks"
+git remote add origin "$TMP/remoto.git"
+git switch -q main
+confere falha 'pre-commit recusa commit na main' git commit -q --allow-empty -m 'chore: x'
+git switch -q -c dev
+confere falha 'pre-commit recusa commit na dev' git commit -q --allow-empty -m 'chore: x'
+git switch -q -c feature/abluble
+confere falha 'pre-commit recusa branch fora do padrão' git commit -q --allow-empty -m 'chore: x'
+git switch -q -c chore/teste
+confere falha 'commit-msg recusa "Feat: x"' git commit -q --allow-empty -m 'Feat: x'
+saida_contem 'recusa vem do commit-msg' 'Mensagem fora do padrão'
+confere ok 'commit "chore: x" em chore/teste' git commit -q --allow-empty -m 'chore: x'
+confere falha 'pre-push recusa push para a main' git push -q origin HEAD:main
+saida_contem 'recusa vem do pre-push' "Push direto para 'main'"
+confere falha 'pre-push recusa push para a dev' git push -q origin HEAD:dev
+confere falha 'pre-push recusa branch remota fora do padrão' git push -q origin HEAD:minha-branch
+confere ok 'pre-push aceita chore/teste' git push -q origin chore/teste
+confere ok 'pre-push aceita apagar branch de trabalho' git push -q origin --delete chore/teste
 
 echo
 if [ "$erros" -eq 0 ]; then echo 'Todos os casos passaram.'; else echo "$erros caso(s) falharam."; exit 1; fi

@@ -45,7 +45,7 @@
 
 ## Fase 3: Hooks locais
 
-- [ ] **T06. Hooks `pre-commit`, `commit-msg` e `pre-push`**
+- [x] **T06. Hooks `pre-commit`, `commit-msg` e `pre-push`**
   - Arquivos: `.githooks/pre-commit`, `.githooks/commit-msg`, `.githooks/pre-push` (só chamam o script);
     casos dos hooks em `scripts/git/convencao.test.sh` (repositório temporário com `core.hooksPath`)
   - Cobre: RN-07, CA-05, CA-06, CA-07

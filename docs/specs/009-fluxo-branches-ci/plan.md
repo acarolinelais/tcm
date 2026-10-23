@@ -36,6 +36,7 @@ Não se aplica.
 |---|---|---|
 | `mensagem <arquivo>` | `commit-msg` | 1ª linha casa com `^(feat\|fix\|docs\|chore\|refactor\|test\|style\|perf\|ci\|build)(\([a-z0-9._-]+\))?!?: .+` ou começa com `Merge ` / `Revert ` |
 | `branch <nome>` | `pre-commit`, `pre-push`, CI | recusa `main`/`dev` como destino de commit; aceita `^(tipos\|hotfix)/[a-z0-9][a-z0-9._-]*$`; para `feat/` exige `^feat/[0-9]{3}-` |
+| `push <ref-local> <ref-remota>` | `pre-push` | recusa `main`/`dev` como destino (inclusive exclusão); aplica `branch` à ref remota, exceto ao apagar uma branch de trabalho |
 | `pr <base> <head-ref> <base-sha> <head-sha>` | CI | `base=main` exige `head` = `dev` ou `hotfix/*`; `base=dev` exige `head` = `main` ou branch de trabalho válida (não `hotfix/*`); aplica `mensagem` a cada commit de `base-sha..head-sha` que não seja merge |
 | `pr-titulo <titulo>` | CI | mesma regex da mensagem |
 | `spec <head-ref>` | CI | se `head-ref` é `feat/NNN-*`, existe uma pasta `docs/specs/NNN-*` |
