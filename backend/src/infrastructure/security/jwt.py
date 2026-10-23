@@ -89,7 +89,6 @@ def decodificar_token(token: str) -> TokenPayload | None:
                     "unidade_id",
                     "admin_unidade",
                     "tem_multiplos_times",
-                    "time_id",
                     "ver",
                     "iss",
                     "aud",
