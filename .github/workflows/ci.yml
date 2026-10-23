@@ -35,6 +35,10 @@ jobs:
     env:
       # Sem esta variável os testes de integração são pulados.
       SDF_TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/sdf_manager
+      # O banco do CI começa vazio: as migrations rodam antes do pytest (ADR 0012), com a mesma
+      # senha de bootstrap que os testes assumem (tests/integration/test_bootstrap.py).
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/sdf_manager
+      BOOTSTRAP_ADMIN_SENHA: mude-esta-senha
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -44,6 +48,7 @@ jobs:
       - run: uv sync --locked
       - run: uv run ruff check .
       - run: uv run ruff format --check .
+      - run: uv run alembic upgrade head
       - run: uv run pytest
 
   frontend:
