@@ -24,6 +24,11 @@ Documentação em PT-BR. Termos de domínio no código em português; termos té
 | `react-crud` | Criar ou alterar uma feature CRUD no frontend |
 | `study-log` | Ao concluir uma task ou spec: registrar o que foi aprendido |
 | `ui-density` | Revisar/reajustar proporção e densidade de uma tela React (cards, ícones, tipografia, espaçamento), principalmente depois de portar um design do Figma |
+| `better-*` e `interface-review` | Regras de interface com valores exatos: `better-ui`, `better-typography`, `better-colors`, `better-accessibility`, `better-layout`, `better-writing`; `better-interface` orquestra todas; `interface-review` revisa só o diff (o usuário invoca). Origem e licença no `ORIGEM.md` de cada pasta |
+| `impeccable`, `emil-design-eng`, `apple-design` | Critério de design, polimento de UI e movimento (as `better-*` dão os valores exatos; estas, o gosto) |
+| `web-design-guidelines`, `vercel-react-best-practices` | Revisão de UI contra guidelines e performance de React |
+| `tailwind-v4` | Convenções do Tailwind v4 (`@theme`, migração da v3, classes dinâmicas) |
+| `adversarial-review` | Revisão cética de um diff: tenta quebrar e só reporta o que sobrevive à refutação |
 | `caveman` | Respostas enxutas no chat para economizar tokens (`/caveman` liga, "stop caveman" desliga). Código, commits, docs e ADRs continuam em texto normal. Origem e licença em `.claude/skills/caveman/ORIGEM.md` |
 
 ## Skills globais e quando usar
