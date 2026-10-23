@@ -10,7 +10,7 @@ import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Select, SelectContent, SelectItem, SelectValue, SELECT_EMPTY_VALUE, SelectTrigger } from "@/shared/ui/select";
 import { Badge } from "@/shared/ui/badge";
-import { Table, TableBody, TableCell, TableEmptyStatePanel, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyStatePanel, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
 import { toast } from "@/shared/lib/toast";
 import { timesApi } from "@/modules/times/api/times.api";
 import { projetosApi, type Projeto, type StatusProjeto } from "./api/projetos.api";
@@ -27,7 +27,9 @@ export function ProjetosPage() {
   const admin = perfil.perfil_codigo === "ADMIN_UNIDADE";
   const podeConsultar = admin || perfil.permissoes.includes("projetos.consultar");
   const podeGerenciar = admin || perfil.permissoes.includes("projetos.gerenciar");
-  const projetos = useQuery({ queryKey: ["projetos"], queryFn: () => projetosApi.listar() });
+  const [pagina, setPagina] = useState(1);
+  const [tamanhoPagina, setTamanhoPagina] = useState(DEFAULT_TABLE_PAGE_SIZE);
+  const projetos = useQuery({ queryKey: ["projetos", pagina, tamanhoPagina], queryFn: () => projetosApi.listar(pagina, tamanhoPagina) });
   const times = useQuery({ queryKey: ["projetos-times"], queryFn: () => timesApi.listar(1, 100, { ativo: true }), enabled: podeGerenciar });
   const modelos = useQuery({ queryKey: ["projetos-modelos"], queryFn: () => projetosApi.listarModelos(), enabled: podeGerenciar });
   const client = useQueryClient();
@@ -88,7 +90,7 @@ export function ProjetosPage() {
         <div><h1 className="text-2xl font-medium text-[#3478F6]">{t("myProjects")}</h1><p className="mt-1 text-sm text-muted-foreground">{t("projectsDescription")}</p></div>
         {podeGerenciar && <Button onClick={() => { limparFormulario(); setCriacaoAberta(true); }}><Plus className="size-4" />{t("newProject")}</Button>}
       </header>
-      <div className="flex min-h-0 flex-1 flex-col overflow-auto">
+      <TableLayout className="overflow-auto">
         {projetos.isLoading ? <div role="status" className="p-8 text-center text-sm text-muted-foreground">{t("loadingProjects")}</div> : projetos.isError ? <div role="alert" className="p-8 text-center text-sm text-destructive">{t("projectsLoadError")}</div> : <Table>
           <colgroup><col style={{ width: "19%" }} /><col style={{ width: "12%" }} /><col style={{ width: "11%" }} /><col style={{ width: "24%" }} /><col style={{ width: "15%" }} /><col style={{ width: "19%" }} /></colgroup>
           <TableHeader><TableRow><TableHead>{t("project")}</TableHead><TableHead>{t("team")}</TableHead><TableHead>{t("app")}</TableHead><TableHead>{t("oneUi")}</TableHead><TableHead>{t("status")}</TableHead><TableHead>{t("createdAt")}</TableHead></TableRow></TableHeader>
@@ -99,7 +101,8 @@ export function ProjetosPage() {
             </TableEmptyStatePanel></TableCell></TableRow>
           </>}</TableBody>
         </Table>}
-      </div>
+        <TablePagination page={pagina} pageSize={tamanhoPagina} totalCount={projetos.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
+      </TableLayout>
     </> : <>
       <header className="mb-8 flex shrink-0 items-start gap-4">
         <Button variant="outline" size="icon" aria-label={t("backToProjects")} onClick={() => { setCriacaoAberta(false); limparFormulario(); }}><ArrowLeft className="size-4" /></Button>

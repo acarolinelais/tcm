@@ -73,7 +73,7 @@ export function SetoresPage() {
           <p className="mx-auto mt-1.5 max-w-xs text-sm leading-6 text-muted-foreground">
             {temFiltro ? t("noSectorResults") : t("noSectorHint")}
           </p>
-          {temFiltro ? <Button variant="outline" size="sm" className="mt-5" onClick={() => { setPagina(1); setFiltros({}); }}>{t("clearFilters")}</Button> : <Button size="sm" className="mt-5" onClick={() => setNovo(true)}>{t("createFirstSector")}</Button>}
+          {temFiltro && <Button variant="outline" size="sm" className="mt-5" onClick={() => { setPagina(1); setFiltros({}); }}>{t("clearFilters")}</Button>}
         </div>;
       })()}
     </TableEmptyState>}

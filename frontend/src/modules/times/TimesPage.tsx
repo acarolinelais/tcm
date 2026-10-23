@@ -107,7 +107,7 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
         <p className="mx-auto mt-1.5 max-w-xs text-sm leading-6 text-muted-foreground">
           {Object.values(filtros).some((value) => value !== undefined && value !== "") ? t("noTeamResults") : t("noTeamHint")}
         </p>
-        {Object.values(filtros).some((value) => value !== undefined && value !== "") ? <Button variant="outline" size="sm" className="mt-5" onClick={() => { setPagina(1); setFiltros({}); }}>{t("clearFilters")}</Button> : podeGerenciar && <Button size="sm" className="mt-5" onClick={() => setCriarAberto(true)}>{t("createFirstTeam")}</Button>}
+        {Object.values(filtros).some((value) => value !== undefined && value !== "") && <Button variant="outline" size="sm" className="mt-5" onClick={() => { setPagina(1); setFiltros({}); }}>{t("clearFilters")}</Button>}
       </div>}
     </TableEmptyState>}
     <TablePagination page={pagina} pageSize={tamanho} totalCount={times.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(n) => { setTamanho(n); setPagina(1); }} />
