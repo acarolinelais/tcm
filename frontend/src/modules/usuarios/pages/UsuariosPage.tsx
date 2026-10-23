@@ -34,11 +34,15 @@ export function UsuariosPage() {
     setModalAberto(true);
   }
 
-  function aoSalvar() {
+  function aoSalvar(usuarioSalvo: Usuario) {
     setModalAberto(false);
-    toast.success(usuarioEmEdicao
-      ? "Usuário atualizado."
-      : "Usuário cadastrado. Informe a senha inicial configurada; a troca será exigida no primeiro acesso.");
+    if (usuarioEmEdicao) {
+      toast.success(`Usuário ${usuarioSalvo.nome} foi atualizado com sucesso.`);
+      return;
+    }
+    toast.success(`Usuário ${usuarioSalvo.nome} foi cadastrado com sucesso.`, {
+      description: "Informe a senha inicial configurada; a troca será exigida no primeiro acesso.",
+    });
   }
 
   function alterarFiltro(campo: "nome" | "email" | "ativo" | "perfil", valor: string) {
