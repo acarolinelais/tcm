@@ -1,8 +1,7 @@
 # 006. Administração da unidade: Plan
 
 - **Spec:** [spec.md](spec.md)
-- **ADRs aplicados:** 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0013, 0017, 0018, 0019, 0020, 0021, 0022
-- **ADRs novos propostos:** 0024 (responsabilidade de usuários criados por gerente)
+- **ADRs aplicados:** 0003, 0004, 0005, 0006, 0007, 0008, 0009, 0010, 0013, 0017, 0018, 0019, 0020, 0021, 0022, 0024
 
 ## Abordagem
 
@@ -20,7 +19,7 @@ gestão de usuários.
 | Entidade | Campo | Tipo | Regras |
 |---|---|---|---|
 | `SetorGerente` | `id`, `unidade_id`, `setor_id`, `usuario_id`, `ativo`, timestamps | UUID, UUID, UUID, UUID, bool, datetime | Associação por unidade; par setor/usuário único; desassociar/inativar mantém histórico |
-| `Perfil` | `codigo=GERENTE` | string estável | Seed por unidade, somente leitura; permissões `times.consultar`, `times.criar`, `times.gerenciar`; atribuível |
+| `Perfil` | `codigo=GERENTE` | string estável | Seed por unidade, somente leitura; permissões de gestão de times e usuários responsáveis; atribuível |
 | `Usuario` | `responsavel_id` | UUID opcional, FK para `usuarios.id` | Gerente que criou/responde pela conta; null para contas sem atribuição; admin pode transferir |
 | `Setor` | `ativo` | bool existente | Inativação bloqueada se existir time ativo; ao inativar, desativa associações ativas |
 | `Time` | `gerente_id` | UUID opcional existente | Responsável principal; não participa do cálculo de autorização |
@@ -31,13 +30,14 @@ e services validam que setor e usuário pertencem à mesma unidade, que setor e 
 que o perfil do usuário é `GERENTE`. A relação é persistida com `ativo`; uma nova associação para o
 mesmo par reativa o registro existente, sem duplicá-lo. Reativar o setor não reativa os vínculos.
 
-A migration cria `GERENTE` para cada unidade existente com as três permissões de times. O fluxo de
+A migration cria `GERENTE` para cada unidade existente com `usuarios.consultar`,
+`usuarios.gerenciar`, `times.consultar`, `times.criar` e `times.gerenciar`. O fluxo de
 provisionamento de unidades, quando existir, também deverá criar os três perfis de sistema
 (`ADMIN_UNIDADE`, `USUARIO_PADRAO`, `GERENTE`) com as permissões correspondentes. Mudanças de perfil
 ou associação gerente-setor incrementam `auth_version` do usuário afetado e invalidam suas sessões,
 conforme spec 003/ADR 0020.
 
-O gerente recebe também `usuarios.consultar` e `usuarios.gerenciar`, mas o escopo dessas permissões
+O perfil de gerente recebe `usuarios.consultar` e `usuarios.gerenciar`, mas o escopo dessas permissões
 é limitado aos usuários cujo `responsavel_id` corresponde ao gerente autenticado. Ao criar uma conta,
 o backend define esse vínculo e usa o perfil de código estável `USUARIO_PADRAO`; qualquer perfil
 enviado por um não-admin é ignorado. O administrador pode transferir ou remover o responsável e
@@ -81,7 +81,7 @@ consultar times em que não possui associação KP.
 - `domain/entities/setor.py`, interfaces, `application/schemas/setor.py`, `setor_service.py` e
   `api/routers/setores.py` — atualizar setor, ativar/inativar, bloquear inativação com times ativos,
   listar filtros e administrar associações de gerentes.
-- `application/services/auth_service.py`, `domain/common/usuario_autenticado.py` e dependências —
+- `infrastructure/services/auth_service.py`, `domain/common/usuario_autenticado.py` e dependências —
   carregar escopos atuais de setor e não confiar em claim antiga para autorização.
 - `time_service.py`, repositórios e schemas de times — gerir por setor ativo, delimitar consultas de
   gerente/KP; ao admin permitir definir como principal somente gerente ativo associado ao setor; e

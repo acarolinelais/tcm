@@ -14,7 +14,7 @@ from src.application.schemas.auth import (
     RefreshRequest,
     TokenResponse,
 )
-from src.application.services.auth_service import AuthServiceImpl
+from src.application.services.interfaces.auth_service import AuthService
 from src.domain.common.exceptions import ForbiddenException
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.infrastructure.data.models.setor_gerente_model import SetorGerenteModel
@@ -28,14 +28,14 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 @router.post("/login", response_model=TokenResponse)
 async def login(
-    request: LoginRequest, service: AuthServiceImpl = Depends(get_auth_service)
+    request: LoginRequest, service: AuthService = Depends(get_auth_service)
 ) -> TokenResponse:
     return await service.login(request)
 
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh(
-    request: RefreshRequest, service: AuthServiceImpl = Depends(get_auth_service)
+    request: RefreshRequest, service: AuthService = Depends(get_auth_service)
 ) -> TokenResponse:
     return await service.renovar(request)
 
@@ -43,7 +43,7 @@ async def refresh(
 @router.post("/logout", status_code=204)
 async def logout(
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual_para_troca_senha),
-    service: AuthServiceImpl = Depends(get_auth_service),
+    service: AuthService = Depends(get_auth_service),
 ):
     if usuario_atual.sessao_id is not None:
         await service.logout(usuario_atual.sessao_id)
@@ -53,7 +53,7 @@ async def logout(
 async def trocar_senha(
     request: AlterarSenhaRequest,
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual_para_troca_senha),
-    service: AuthServiceImpl = Depends(get_auth_service),
+    service: AuthService = Depends(get_auth_service),
 ) -> TokenResponse:
     if not usuario_atual.senha_alteracao_obrigatoria or usuario_atual.sessao_id is None:
         raise ForbiddenException("A troca inicial de senha não é necessária.")

@@ -19,7 +19,7 @@ from src.domain.entities.time_membro import TimeMembro
 @pytest.fixture
 def contexto():
     repo, setores, membros, usuarios, uow = [AsyncMock() for _ in range(5)]
-    atual = UsuarioAutenticado(uuid4(), uuid4(), True)
+    atual = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
     time = Time(atual.unidade_id, uuid4(), "Backend", atual.id)
     repo.obter_por_id.return_value = time
     membros.obter_por_time_e_usuario.return_value = None
@@ -58,7 +58,9 @@ async def test_listar_times_repassa_unidade_setor_e_paginacao(contexto, filtrar)
     setor_id = time.setor_id if filtrar else None
     repo.listar_paginado.return_value = PagedResult([time], 1, 10, 1)
     resposta = await service.listar(atual, 1, 10, setor_id)
-    repo.listar_paginado.assert_awaited_once_with(atual.unidade_id, 1, 10, setor_id)
+    repo.listar_paginado.assert_awaited_once_with(
+        atual.unidade_id, 1, 10, setor_id, None, None
+    )
     assert resposta.items[0].id == time.id
     assert resposta.total_count == 1
     uow.commit.assert_not_awaited()
@@ -125,7 +127,7 @@ async def test_atualizar_papel_membro_inexistente_falha_sem_commit(contexto):
 
 async def test_adicionar_membro_time_de_terceiro_falha_sem_commit(contexto):
     service, _, _, membros, _, uow, atual, time = contexto
-    gerente_alheio = UsuarioAutenticado(uuid4(), atual.unidade_id, False)
+    gerente_alheio = UsuarioAutenticado(uuid4(), atual.unidade_id, "USUARIO_PADRAO")
     with pytest.raises(ForbiddenException):
         await service.adicionar_membro(
             gerente_alheio, time.id, AdicionarMembroRequest(usuario_id=uuid4())

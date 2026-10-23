@@ -30,7 +30,7 @@ ser registradas em ADR antes de serem introduzidas.
 | 003 | Perfis, permissões e ciclo de vida do JWT | Implementada (validação pendente) |
 | 004 | Listagem filtrável de usuários e padronização de tabela | Concluída |
 | 005 | Gestão de perfis e permissões por módulo | Aprovada |
-| 006 | Administração da unidade (usuários, setores, gerentes e times) | Aprovada |
+| 006 | Administração da unidade (usuários, setores, gerentes e times) | Concluída |
 
 > O repositório tem a governança (ADRs, skills, templates) pronta. A spec `001-fundacao` cria a
 > infraestrutura comum dos dois lados e a primeira entidade de referência. As demais specs de contexto

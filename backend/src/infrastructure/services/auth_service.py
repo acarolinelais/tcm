@@ -6,7 +6,6 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from src.application.schemas.auth import (
     AlterarSenhaRequest,
     LoginRequest,

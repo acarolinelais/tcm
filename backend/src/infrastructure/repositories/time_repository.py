@@ -35,7 +35,11 @@ class TimeRepositoryImpl(RepositoryBaseImpl[Time, TimeModel]):
         models = (
             (
                 await self.session.execute(
-                    select(TimeModel).where(*filtros).order_by(TimeModel.nome, TimeModel.id).offset((page - 1) * page_size).limit(page_size)
+                    select(TimeModel)
+                    .where(*filtros)
+                    .order_by(TimeModel.nome, TimeModel.id)
+                    .offset((page - 1) * page_size)
+                    .limit(page_size)
                 )
             )
             .scalars()

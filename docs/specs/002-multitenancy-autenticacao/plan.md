@@ -93,7 +93,7 @@ ProblemDetails (nova exceção `ForbiddenException`).
 **Application:**
 - `application/schemas/auth.py` — `LoginRequest`, `TokenResponse`
 - `application/schemas/setor.py`, `application/schemas/time.py` — requests/responses
-- `application/services/interfaces/auth_service.py` + `application/services/auth_service.py`
+- `application/services/interfaces/auth_service.py` + `infrastructure/services/auth_service.py`
 - `application/services/interfaces/setor_service.py` + `application/services/setor_service.py`
 - `application/services/interfaces/time_service.py` + `application/services/time_service.py`
   (times + membros: adicionar/atualizar papel)

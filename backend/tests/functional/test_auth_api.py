@@ -18,7 +18,12 @@ async def test_login_credenciais_validas_retorna_token(api_client):
         "/api/auth/login", json={"email": "admin@sdfmanager.com", "senha": "senha"}
     )
     assert response.status_code == 200
-    assert response.json() == {"access_token": "jwt-valido", "token_type": "bearer"}
+    assert response.json() == {
+        "access_token": "jwt-valido",
+        "refresh_token": "",
+        "expires_in": 900,
+        "token_type": "bearer",
+    }
 
 
 @pytest.mark.asyncio

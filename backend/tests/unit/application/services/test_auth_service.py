@@ -3,9 +3,9 @@ from uuid import uuid4
 
 import pytest
 from src.application.schemas.auth import LoginRequest
-from src.application.services.auth_service import AuthServiceImpl
 from src.domain.common.exceptions import CredenciaisInvalidasException
 from src.domain.entities.usuario import Usuario
+from src.infrastructure.services.auth_service import AuthServiceImpl
 
 
 @pytest.fixture

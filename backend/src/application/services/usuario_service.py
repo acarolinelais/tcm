@@ -44,6 +44,7 @@ class UsuarioServiceImpl:
         ativo: bool | None = None,
         perfil_id: UUID | None = None,
     ) -> PagedResult[UsuarioResponse]:
+        self._exigir_permissao(usuario_atual, "usuarios.consultar")
         tem_filtros = any((nome, email, ativo is not None, perfil_id))
         if usuario_atual.eh_administrador:
             if tem_filtros:
@@ -83,6 +84,7 @@ class UsuarioServiceImpl:
         return result.map(to_response)
 
     async def obter(self, usuario_atual: UsuarioAutenticado, id: UUID) -> UsuarioResponse:
+        self._exigir_permissao(usuario_atual, "usuarios.consultar")
         if not usuario_atual.eh_administrador:
             if id != usuario_atual.id and not await self._repo.pertence_a_escopo(
                 usuario_atual.unidade_id,

@@ -223,7 +223,7 @@
   - Verificação: `uv run python -c "from src.application.schemas.auth import LoginRequest, TokenResponse"` → sem erro
 
 - [x] **T42. Implementar `AuthService` com testes de sucesso e falha**
-  - Arquivos: `backend/src/application/services/interfaces/auth_service.py`, `backend/src/application/services/auth_service.py`, `backend/tests/unit/application/services/test_auth_service.py`
+  - Arquivos: `backend/src/application/services/interfaces/auth_service.py`, `backend/src/infrastructure/services/auth_service.py`, `backend/tests/unit/application/services/test_auth_service.py`
   - Cobre: CA-01, CA-02 (falha)
   - Verificação: `uv run pytest backend/tests/unit/application/services/test_auth_service.py -q` → verde
 

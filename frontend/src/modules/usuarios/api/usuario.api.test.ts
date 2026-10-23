@@ -45,4 +45,16 @@ describe("usuarioApi", () => {
     expect(url).toBe("/api/usuarios/123/inativar");
     expect(init?.method).toBe("PATCH");
   });
+
+  it("atribuir responsável envia o gerente para o endpoint do usuário", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ id: "123" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await usuarioApi.atribuirResponsavel("123", "gerente-1");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/usuarios/123/responsavel", expect.objectContaining({
+      method: "PATCH",
+      body: JSON.stringify({ responsavel_id: "gerente-1" }),
+    }));
+  });
 });

@@ -1,6 +1,6 @@
 # 006. Administração da unidade: Spec
 
-- **Status:** Aprovada
+- **Status:** Concluída
 - **Data:** 2026-10-23
 - **ADRs relacionados:** 0013, 0018, 0019, 0020, 0021, 0024
 - **Specs relacionadas:** 002, 003, 004, 005
@@ -40,8 +40,9 @@ permissões do perfil e o isolamento da unidade.
   responsabilidade de gerente são conceitos separados: o perfil concede permissões e a associação
   a setores define o escopo organizacional em que elas podem ser exercidas.
 - RN-03a: O perfil de sistema **Gerente** é seedado, protegido contra edição e atribuível pelo
-  administrador. Ele concede `times.consultar`, `times.criar` e `times.gerenciar`; a associação
-  ativa a setor restringe essas permissões aos times daquele setor.
+  administrador. Ele concede `usuarios.consultar`, `usuarios.gerenciar`, `times.consultar`,
+  `times.criar` e `times.gerenciar`; o vínculo direto de responsabilidade restringe a gestão de
+  contas, e a associação ativa a setor restringe a gestão de times.
 - RN-04: A administração permite criar, editar, inativar e consultar setores da unidade. Um setor
   com times ativos não pode ser inativado. Ao inativar um setor sem times ativos, as associações de
   gerentes a ele também são inativadas. Reativar o setor não reativa associações antigas; o admin
@@ -54,8 +55,8 @@ permissões do perfil e o isolamento da unidade.
 - RN-07: O backend valida que usuário, setor, time e associação pertencem à mesma unidade e que o
   gerente tem o escopo necessário para a operação.
 - RN-08: Gerentes podem administrar os times nos setores associados, incluindo a gestão de membros
-  e papéis desses membros, dentro do escopo autorizado. O gerente não administra usuários, setores,
-  perfis ou times de setores não associados.
+  e papéis desses membros, dentro do escopo autorizado. Fora das contas sob sua responsabilidade,
+  o gerente não administra usuários, setores, perfis ou times de setores não associados.
 - RN-09: Quando um gerente é desassociado de um setor, perde imediatamente o acesso de gestão a
   todos os times daquele setor, mesmo que o campo legado `Time.gerente_id` ainda o referencie.
 - RN-10: `Time.gerente_id` identifica o responsável principal pelo time, mas não concede autorização
@@ -66,11 +67,13 @@ permissões do perfil e o isolamento da unidade.
 - RN-12: A administração não concede permissões implícitas por esconder ou exibir controles no
   frontend; cada operação continua protegida no backend.
 - RN-13: A pessoa administradora usa uma área dedicada para consultar e administrar usuários,
-  setores e times de toda a unidade, em páginas separadas. Gerentes e KP usam a área de Times;
-  páginas e opções de navegação aparecem conforme permissões efetivas e mostram somente os recursos
-  dentro dos escopos autorizados.
+  setores, times e perfis da unidade, em páginas separadas. Gerentes e KP usam a área de Times;
+  gerentes com `usuarios.consultar` acessam a gestão das próprias contas responsáveis. Páginas e
+  opções de navegação aparecem conforme permissões efetivas e mostram somente os recursos dentro dos
+  escopos autorizados.
 - RN-13a: O sidebar do administrador apresenta um grupo expansível **Administração**, com links para
-  Usuários, Setores e Times. Esse grupo não aparece para usuários sem perfil `ADMIN_UNIDADE`.
+  Usuários, Setores, Times e Perfis e permissões. Esse grupo não aparece para usuários sem perfil
+  `ADMIN_UNIDADE`.
 - RN-14: KP continua sendo um papel por vínculo de membro com time (`TimeMembro.papel`); não é um
   perfil de conta. Gerentes e KP usam a mesma área de Times: gerente vê/gerencia times dos setores
   associados; KP vê/atua somente nos times em que tem esse papel. A navegação e as ações também
@@ -101,9 +104,9 @@ permissões do perfil e o isolamento da unidade.
 
 - **CA-01:** Dado um administrador da unidade, quando acessa a área administrativa, então pode
   consultar os setores, usuários e times da própria unidade.
-- **CA-02 (falha):** Dado um usuário sem perfil `ADMIN_UNIDADE`, quando acessa a área ou tenta uma
-  operação administrativa diretamente na API, então recebe acesso negado e nenhuma alteração é
-  persistida.
+- **CA-02 (falha):** Dado um usuário sem perfil `ADMIN_UNIDADE`, quando acessa as páginas ou tenta
+  operações da área `/admin` diretamente na API, então recebe acesso negado e nenhuma alteração é
+  persistida. O acesso de gerente às próprias contas segue CA-23 e CA-24.
 - **CA-03:** Dado um administrador, quando cria um setor, então o setor aparece na listagem da mesma
   unidade.
 - **CA-04:** Dado um administrador, quando edita ou inativa um setor da própria unidade, então os
@@ -143,8 +146,8 @@ permissões do perfil e o isolamento da unidade.
   não recebe acesso de gestão de times nem a opção de Times no sidebar; após associação ativa, vê
   somente o escopo associado.
 - **CA-20:** Dado um administrador da unidade, quando consulta o sidebar, então vê o grupo
-  expansível Administração e seus links para Usuários, Setores e Times; usuários sem perfil
-  `ADMIN_UNIDADE` não veem esse grupo.
+  expansível Administração e seus links para Usuários, Setores, Times e Perfis e permissões; usuários
+  sem perfil `ADMIN_UNIDADE` não veem esse grupo.
 - **CA-21:** Dado um administrador, quando inativa um time, então o time deixa de compor o escopo
   ativo do setor e seus membros perdem o contexto de acesso ao time, preservando os vínculos. O time
   só pode ser reativado enquanto o setor estiver ativo.
@@ -196,14 +199,12 @@ permissões do perfil e o isolamento da unidade.
   inativação de setores; a reativação é recusada quando o setor está inativo.
 - Contas criadas por gerente recebem o perfil-base e passam a ter responsável direto; o administrador
   pode administrar e transferir esse vínculo.
+- A tela de usuários do gerente não expõe ações para contas que não estejam sob sua responsabilidade.
 
 ## Impacto em regras existentes
 
-A RN-05 e as decisões registradas na spec 003 e no ADR 0013 descrevem a associação inicial de um
-gerente a um time existente. Esta spec propõe substituir essa etapa por associação direta ao setor,
-com escopo para gerir os times daquele setor. Antes da aprovação, atualizar a spec 003 e avaliar um
-ADR para registrar a nova relação e seu escopo. O perfil de sistema Gerente concede permissões de
-times, mas só a associação ativa ao setor define o escopo. O papel de KP permanece por time,
-conforme o modelo atual. `Time.gerente_id` permanece como responsável principal, sem conceder
-autorização; essa autorização requer permissão adequada e associação ativa ao setor. KP e gerente
-usam a mesma área de Times com escopos distintos.
+A associação gerente-setor substitui o uso de `Time.gerente_id` como fonte de autorização. O campo
+continua indicando o responsável principal, enquanto as permissões do perfil e o vínculo ativo ao
+setor delimitam o escopo. O papel de KP permanece por time. A decisão está registrada no ADR 0021 e
+a responsabilidade direta de contas criadas por gerente no ADR 0024; a implementação e as validações
+desta spec foram concluídas.

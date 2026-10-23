@@ -99,7 +99,13 @@ class TimeServiceImpl:
             )
         elif usuario_atual.times_kp:
             result = await self._repo.listar_visiveis(
-                usuario_atual.unidade_id, page, page_size, usuario_atual.times_kp, setor_id, ativo, busca
+                usuario_atual.unidade_id,
+                page,
+                page_size,
+                usuario_atual.times_kp,
+                setor_id,
+                ativo,
+                busca,
             )
         else:
             result = PagedResult([], page, page_size, 0)

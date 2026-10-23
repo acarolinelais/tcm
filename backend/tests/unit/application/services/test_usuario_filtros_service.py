@@ -40,6 +40,7 @@ async def test_listar_encaminha_filtros_sem_ampliar_escopo(administrador):
         repo.listar_visiveis_filtrado.assert_not_awaited()
     else:
         repo.listar_visiveis_filtrado.assert_awaited_once_with(
-            unidade_id, 2, 10, (time_id,), usuario_id, "Ana", "example.com", False, perfil_id
+            unidade_id, 2, 10, (time_id,), usuario_id, "Ana", "example.com", False, perfil_id,
+            usuario_id,
         )
         repo.listar_filtrado.assert_not_awaited()

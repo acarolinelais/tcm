@@ -7,7 +7,6 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.services.auth_service import AuthServiceImpl
 from src.application.services.setor_service import SetorServiceImpl
 from src.application.services.time_service import TimeServiceImpl
 from src.application.services.usuario_service import UsuarioServiceImpl
@@ -31,6 +30,7 @@ from src.infrastructure.repositories.usuario_repository import UsuarioRepository
 from src.infrastructure.security.autenticador_local import AutenticadorLocal
 from src.infrastructure.security.jwt import criar_token, decodificar_token
 from src.infrastructure.security.senha_hasher import hash_senha
+from src.infrastructure.services.auth_service import AuthServiceImpl
 
 bearer = HTTPBearer(auto_error=False)
 

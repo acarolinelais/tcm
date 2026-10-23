@@ -12,7 +12,8 @@ def test_criar_usuario_fica_ativo_por_padrao_com_email_normalizado():
     assert usuario.nome == "Ana"
     assert usuario.email == "ana@example.com"
     assert usuario.ativo is True
-    assert usuario.admin_unidade is False
+    assert usuario.perfil_id is None
+    assert usuario.responsavel_id is None
     assert usuario.senha_hash is None
 
 

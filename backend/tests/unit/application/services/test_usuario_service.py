@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 from src.application.schemas.usuario import AtualizarUsuarioRequest, CriarUsuarioRequest
 from src.application.services.usuario_service import UsuarioServiceImpl
-from src.domain.common.exceptions import ConflictException, NotFoundException
+from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.usuario import Usuario
 
@@ -22,12 +22,23 @@ def uow():
 
 @pytest.fixture
 def service(repo, uow):
-    return UsuarioServiceImpl(repo, uow)
+    repo.obter_perfil_padrao.return_value = uuid4()
+    return UsuarioServiceImpl(repo, uow, "senha-inicial", lambda senha: f"hash:{senha}")
 
 
 @pytest.fixture
 def usuario_atual():
-    return UsuarioAutenticado(id=uuid4(), unidade_id=uuid4(), admin_unidade=True)
+    return UsuarioAutenticado(id=uuid4(), unidade_id=uuid4(), perfil_codigo="ADMIN_UNIDADE")
+
+
+@pytest.fixture
+def gerente_atual():
+    return UsuarioAutenticado(
+        id=uuid4(),
+        unidade_id=uuid4(),
+        perfil_codigo="GERENTE",
+        permissoes=frozenset({"usuarios.consultar", "usuarios.gerenciar"}),
+    )
 
 
 async def test_criar_usuario_valido_chama_adicionar_e_commit(service, repo, uow, usuario_atual):
@@ -45,6 +56,7 @@ async def test_atualizar_usuario_valido_retorna_response_atualizado(
     service, repo, uow, usuario_atual
 ):
     usuario = Usuario(usuario_atual.unidade_id, "Ana", "ana@example.com")
+    usuario.perfil_id = uuid4()
     usuario.created_at = datetime.now()  # simula entidade já persistida, vinda do repositório
     repo.obter_por_id.return_value = usuario
     request = AtualizarUsuarioRequest(nome="Ana Paula", email="ana@example.com")
@@ -83,3 +95,130 @@ async def test_inativar_usuario_inexistente_levanta_notfound_falha(
         await service.inativar(usuario_atual, uuid4())
 
     uow.commit.assert_not_called()
+
+
+async def test_gerente_cria_usuario_padrao_vinculado_a_si_mesmo_ignorando_perfil(
+    service, repo, uow, gerente_atual
+):
+    perfil_solicitado = uuid4()
+    perfil_padrao = repo.obter_perfil_padrao.return_value
+
+    response = await service.criar(
+        gerente_atual,
+        CriarUsuarioRequest(nome="Carol", email="carol@example.com", perfil_id=perfil_solicitado),
+    )
+
+    criado = repo.adicionar.await_args.args[0]
+    assert criado.perfil_id == perfil_padrao
+    assert criado.responsavel_id == gerente_atual.id
+    assert criado.senha_hash == "hash:senha-inicial"
+    assert response.perfil_id == perfil_padrao
+    assert response.responsavel_id == gerente_atual.id
+    repo.perfil_atribuivel.assert_not_awaited()
+    uow.commit.assert_awaited_once()
+
+
+async def test_gerente_edita_usuario_sob_sua_responsabilidade(service, repo, uow, gerente_atual):
+    carol = Usuario(gerente_atual.unidade_id, "Carol", "carol@example.com")
+    carol.perfil_id = uuid4()
+    carol.created_at = datetime.now()
+    carol.responsavel_id = gerente_atual.id
+    repo.obter_por_id.return_value = carol
+    repo.pertence_a_responsabilidade.return_value = True
+
+    response = await service.atualizar(
+        gerente_atual,
+        carol.id,
+        AtualizarUsuarioRequest(nome="Carol Silva", email="carol@example.com"),
+    )
+
+    assert response.nome == "Carol Silva"
+    repo.atualizar.assert_awaited_once_with(carol)
+    uow.commit.assert_awaited_once()
+
+
+async def test_gerente_consulta_usuario_sob_sua_responsabilidade(service, repo, gerente_atual):
+    carol = Usuario(gerente_atual.unidade_id, "Carol", "carol@example.com")
+    carol.perfil_id = uuid4()
+    carol.created_at = datetime.now()
+    carol.responsavel_id = gerente_atual.id
+    repo.pertence_a_escopo.return_value = False
+    repo.pertence_a_responsabilidade.return_value = True
+    repo.obter_por_id.return_value = carol
+
+    response = await service.obter(gerente_atual, carol.id)
+
+    assert response.id == carol.id
+    repo.pertence_a_responsabilidade.assert_awaited_once_with(
+        gerente_atual.unidade_id, carol.id, gerente_atual.id
+    )
+
+
+async def test_gerente_inativa_usuario_sob_sua_responsabilidade(service, repo, uow, gerente_atual):
+    carol = Usuario(gerente_atual.unidade_id, "Carol", "carol@example.com")
+    carol.responsavel_id = gerente_atual.id
+    repo.obter_por_id.return_value = carol
+    repo.pertence_a_responsabilidade.return_value = True
+
+    await service.inativar(gerente_atual, carol.id)
+
+    assert carol.ativo is False
+    repo.atualizar.assert_awaited_once_with(carol)
+    uow.commit.assert_awaited_once()
+
+
+async def test_gerente_nao_edita_usuario_de_outro_responsavel(service, repo, uow, gerente_atual):
+    carol = Usuario(gerente_atual.unidade_id, "Carol", "carol@example.com")
+    repo.obter_por_id.return_value = carol
+    repo.pertence_a_responsabilidade.return_value = False
+
+    with pytest.raises(NotFoundException):
+        await service.atualizar(
+            gerente_atual,
+            carol.id,
+            AtualizarUsuarioRequest(nome="Carol Silva", email="carol@example.com"),
+        )
+
+    repo.atualizar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+async def test_admin_transfere_responsabilidade_para_gerente_ativo(
+    service, repo, uow, usuario_atual
+):
+    carol = Usuario(usuario_atual.unidade_id, "Carol", "carol@example.com")
+    carol.perfil_id = uuid4()
+    carol.created_at = datetime.now()
+    novo_gerente_id = uuid4()
+    repo.obter_por_id.return_value = carol
+    repo.responsavel_gerente_valido.return_value = True
+
+    response = await service.atribuir_responsavel(usuario_atual, carol.id, novo_gerente_id)
+
+    assert response.responsavel_id == novo_gerente_id
+    repo.atualizar.assert_awaited_once_with(carol)
+    uow.commit.assert_awaited_once()
+
+
+async def test_admin_nao_transfere_para_gerente_inativo_ou_de_outra_unidade(
+    service, repo, uow, usuario_atual
+):
+    carol = Usuario(usuario_atual.unidade_id, "Carol", "carol@example.com")
+    repo.obter_por_id.return_value = carol
+    repo.responsavel_gerente_valido.return_value = False
+
+    with pytest.raises(NotFoundException):
+        await service.atribuir_responsavel(usuario_atual, carol.id, uuid4())
+
+    repo.atualizar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+async def test_usuario_sem_permissao_nao_consulta_listagem(service, repo):
+    usuario = UsuarioAutenticado(uuid4(), uuid4(), perfil_codigo="USUARIO_PADRAO")
+
+    with pytest.raises(ForbiddenException):
+        await service.listar(usuario, 1, 10)
+
+    repo.listar_visiveis.assert_not_awaited()
+    repo.listar_visiveis_filtrado.assert_not_awaited()

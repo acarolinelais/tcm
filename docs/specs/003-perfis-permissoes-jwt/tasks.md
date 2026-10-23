@@ -26,7 +26,7 @@
   - Arquivos: `backend/src/infrastructure/security/jwt.py`, modelos e migrations
   - Cobre: CA-09, CA-10, CA-11
 - [x] **T07. Implementar refresh token rotativo e logout/revogação**
-  - Arquivos: `backend/src/application/services/auth_service.py`, `backend/src/api/routers/auth.py`
+  - Arquivos: `backend/src/infrastructure/services/auth_service.py`, `backend/src/api/routers/auth.py`
   - Cobre: CA-10, CA-13
 - [x] **T08. Invalidar sessões após mudanças em conta, perfil e vínculos**
   - Arquivos: services de usuários, perfis e times

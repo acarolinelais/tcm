@@ -87,6 +87,8 @@ export function UsuarioActionsMenu({
     ativar.mutate(usuario.id);
   }
 
+  if (!podeGerenciar && !podeAtribuirPerfil && !podeAtribuirResponsavel) return null;
+
   return (
     <>
       <ConfirmDialog

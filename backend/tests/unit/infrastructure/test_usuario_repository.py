@@ -100,3 +100,31 @@ async def test_listar_visiveis_filtrado_preserva_unidade_e_escopo_de_times(repo,
         assert "usuarios.ativo IS true" in sql
     assert "time_membros" in sql_itens
     assert "UNION" in sql_itens
+
+
+async def test_listar_visiveis_filtrado_inclui_responsabilidade_direta_no_escopo(repo, session):
+    unidade_id, gerente_id = uuid4(), uuid4()
+    session.execute.side_effect = resultado_consulta(1, [])
+
+    await repo.listar_visiveis_filtrado(
+        unidade_id, 1, 10, (), gerente_id, responsavel_id=gerente_id
+    )
+
+    query_contagem, query_itens = [call.args[0] for call in session.execute.call_args_list]
+    sql_contagem = str(query_contagem.compile(dialect=postgresql.dialect()))
+    sql_itens = str(query_itens.compile(dialect=postgresql.dialect()))
+    for sql in (sql_contagem, sql_itens):
+        assert "usuarios.unidade_id" in sql
+        assert "usuarios.responsavel_id" in sql
+        assert "UNION" in sql
+
+
+async def test_responsavel_gerente_valido_restringe_unidade_ativo_e_perfil(repo, session):
+    session.execute.return_value.first.return_value = (uuid4(),)
+
+    assert await repo.responsavel_gerente_valido(uuid4(), uuid4()) is True
+
+    sql = str(session.execute.call_args.args[0].compile(dialect=postgresql.dialect()))
+    assert "usuarios.unidade_id" in sql
+    assert "usuarios.ativo IS true" in sql
+    assert "perfis.codigo =" in sql

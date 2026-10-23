@@ -15,6 +15,8 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from src.api.main import app
+from src.infrastructure.data.models.perfil_model import PerfilModel
+from src.infrastructure.data.models.permissao_model import PerfilPermissaoModel
 from src.infrastructure.data.models.unidade_model import UnidadeModel
 from src.infrastructure.data.models.usuario_model import UsuarioModel
 
@@ -30,18 +32,49 @@ async def test_migration_cria_unidade_manaus_com_admin():
     try:
         async with async_sessionmaker(engine)() as session:
             result = await session.execute(
-                select(UnidadeModel, UsuarioModel)
+                select(UnidadeModel, UsuarioModel, PerfilModel)
                 .join(UsuarioModel, UsuarioModel.unidade_id == UnidadeModel.id)
+                .join(PerfilModel, PerfilModel.id == UsuarioModel.perfil_id)
                 .where(
                     UnidadeModel.nome == "Manaus",
                     UsuarioModel.email == "admin@sdfmanager.com",
                 )
             )
-            unidade, admin = result.one()
+            unidade, admin, perfil = result.one()
             assert unidade.nome == "Manaus"
-            assert admin.admin_unidade is True
+            assert perfil.codigo == "ADMIN_UNIDADE"
             assert admin.senha_hash is not None
             assert PasswordHasher().verify(admin.senha_hash, os.environ["BOOTSTRAP_ADMIN_SENHA"])
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_migration_seed_gerente_e_responsavel_usuario():
+    engine = create_async_engine(os.environ["SDF_TEST_DATABASE_URL"])
+    try:
+        async with async_sessionmaker(engine)() as session:
+            gerente = await session.scalar(
+                select(PerfilModel).where(PerfilModel.codigo == "GERENTE")
+            )
+            assert gerente is not None
+            permissoes = set(
+                (
+                    await session.execute(
+                        select(PerfilPermissaoModel.permissao_id).where(
+                            PerfilPermissaoModel.perfil_id == gerente.id
+                        )
+                    )
+                ).scalars()
+            )
+            assert {
+                "usuarios.consultar",
+                "usuarios.gerenciar",
+                "times.consultar",
+                "times.criar",
+                "times.gerenciar",
+            } <= permissoes
+            assert await session.scalar(select(UsuarioModel.responsavel_id).limit(1)) is None
     finally:
         await engine.dispose()
 
