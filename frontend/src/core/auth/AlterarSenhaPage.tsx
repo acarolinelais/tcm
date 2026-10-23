@@ -13,6 +13,7 @@ export function AlterarSenhaPage() {
   const [novaSenha, setNovaSenha] = useState("");
   const [confirmacao, setConfirmacao] = useState("");
   const [erro, setErro] = useState("");
+  const [errosCampos, setErrosCampos] = useState<{ novaSenha?: string; confirmacao?: string }>({});
   const [salvando, setSalvando] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -21,10 +22,18 @@ export function AlterarSenhaPage() {
   async function enviar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErro("");
-    if (novaSenha !== confirmacao) {
-      setErro(t("passwordsMismatch"));
+    const novosErros: typeof errosCampos = {};
+    if (!novaSenha) novosErros.novaSenha = t("passwordRequired");
+    if (!confirmacao) novosErros.confirmacao = t("passwordRequired");
+    if (Object.keys(novosErros).length) {
+      setErrosCampos(novosErros);
       return;
     }
+    if (novaSenha !== confirmacao) {
+      setErrosCampos({ confirmacao: t("passwordsMismatch") });
+      return;
+    }
+    setErrosCampos({});
     setSalvando(true);
     try {
       await alterarSenhaInicial(novaSenha);
@@ -41,7 +50,7 @@ export function AlterarSenhaPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#FBFBFB] p-4">
-      <form onSubmit={enviar} className="w-full max-w-md space-y-5 rounded-2xl border border-border bg-card p-6">
+      <form noValidate onSubmit={enviar} className="w-full max-w-md space-y-5 rounded-2xl border border-border bg-card p-6">
         <div>
           <h1 className="text-xl font-semibold">{t("createPassword")}</h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -56,9 +65,12 @@ export function AlterarSenhaPage() {
             autoComplete="new-password"
             maxLength={128}
             required
+            aria-invalid={Boolean(errosCampos.novaSenha)}
+            aria-describedby={errosCampos.novaSenha ? "nova-senha-error" : undefined}
             value={novaSenha}
-            onChange={(event) => setNovaSenha(event.target.value)}
+            onChange={(event) => { setNovaSenha(event.target.value); setErrosCampos((errors) => ({ ...errors, novaSenha: undefined })); }}
           />
+          {errosCampos.novaSenha && <p id="nova-senha-error" role="alert" className="text-sm text-destructive">{errosCampos.novaSenha}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="confirmacao-senha">{t("confirmPassword")}</Label>
@@ -68,9 +80,12 @@ export function AlterarSenhaPage() {
             autoComplete="new-password"
             maxLength={128}
             required
+            aria-invalid={Boolean(errosCampos.confirmacao)}
+            aria-describedby={errosCampos.confirmacao ? "confirmacao-senha-error" : undefined}
             value={confirmacao}
-            onChange={(event) => setConfirmacao(event.target.value)}
+            onChange={(event) => { setConfirmacao(event.target.value); setErrosCampos((errors) => ({ ...errors, confirmacao: undefined })); }}
           />
+          {errosCampos.confirmacao && <p id="confirmacao-senha-error" role="alert" className="text-sm text-destructive">{errosCampos.confirmacao}</p>}
         </div>
         {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}
         <Button type="submit" className="w-full" disabled={salvando}>

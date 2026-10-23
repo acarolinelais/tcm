@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { NavLink, useBlocker } from "react-router";
+import { useBlocker } from "react-router";
 
 import { usePerfilAtual } from "@/core/auth/usePerfilAtual";
 import { ApiError } from "@/shared/api/problem-details";
@@ -28,6 +28,7 @@ export function PerfisPage() {
   const [pagina, setPagina] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const [nome, setNome] = useState("");
+  const [erroNome, setErroNome] = useState("");
   const [descricao, setDescricao] = useState("");
   const [selecionado, setSelecionado] = useState("");
   const [marcadas, setMarcadas] = useState<string[]>([]);
@@ -77,6 +78,7 @@ export function PerfisPage() {
       setSelecionado(novo.id);
       setMarcadas(novo.permissoes);
       setNome("");
+      setErroNome("");
       setDescricao("");
       await queryClient.invalidateQueries({ queryKey: ["perfis"] });
     },
@@ -99,6 +101,7 @@ export function PerfisPage() {
     setModoEditor("editar");
     setSelecionado("");
     setNome("");
+    setErroNome("");
     setDescricao("");
     setMarcadas([]);
     setGruposAbertos(new Set());
@@ -214,22 +217,13 @@ export function PerfisPage() {
   const labelDescartar = acaoPendente?.tipo === "cancelar" ? t("discardDraft") : t("discardAndContinue");
 
   return (
-    <section className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:rounded-[52px] sm:px-11 sm:py-10">
+    <section className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
       <header className="mb-7 flex shrink-0 flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-medium leading-8 text-[#3478F6]">{t("profileTitle")}</h1>
         </div>
         {!criando && <Button onClick={() => pedirAcao({ tipo: "novo" })} className="h-10 rounded-lg px-5 text-sm">{t("newProfile")}</Button>}
       </header>
-
-      <nav aria-label={t("profilesSection")} className="mb-8 flex shrink-0 items-center gap-6 border-b border-border">
-        <NavLink to="/usuarios" className="px-1 pb-2 text-lg text-muted-foreground transition-colors hover:text-foreground">
-          {t("users")}
-        </NavLink>
-        <span aria-current="page" className="border-b-2 border-[#3478F6] px-1 pb-2 text-lg font-medium text-[#3478F6]">
-          {t("profileTitle")}
-        </span>
-      </nav>
 
       {!criando && modoEditor === null ? (
         <TableLayout>
@@ -282,7 +276,8 @@ export function PerfisPage() {
                       <div className="grid gap-3 sm:grid-cols-2">
                         <label className="block space-y-1.5 text-sm">
                           <span className="font-medium">{t("profileName")} <span className="text-destructive" aria-hidden="true">*</span></span>
-                          <input autoFocus required maxLength={100} value={nome} onChange={(event) => setNome(event.target.value)} placeholder={t("profileExample")} className="w-full rounded-lg border border-border bg-background px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-primary" />
+                          <input autoFocus required aria-invalid={Boolean(erroNome)} aria-describedby={erroNome ? "profile-name-error" : undefined} maxLength={100} value={nome} onChange={(event) => { setNome(event.target.value); setErroNome(""); }} placeholder={t("profileExample")} className="w-full rounded-lg border border-border bg-background px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-primary aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive" />
+                          {erroNome && <p id="profile-name-error" role="alert" className="text-sm text-destructive">{erroNome}</p>}
                         </label>
                         <label className="block space-y-1.5 text-sm">
                           <span className="font-medium">{t("description")} <span className="text-muted-foreground">({t("optional")})</span></span>
@@ -354,7 +349,7 @@ export function PerfisPage() {
                   {criando ? (
                     <>
                       <Button type="button" variant="outline" disabled={mutacaoAtiva} onClick={() => pedirAcao({ tipo: "cancelar" })}>{t("cancel")}</Button>
-                      <Button type="button" disabled={mutacaoAtiva || !nome.trim()} onClick={() => criar.mutate({ nome: nome.trim(), descricao: descricao.trim(), permissoes: marcadas })}>
+                      <Button type="button" disabled={mutacaoAtiva} onClick={() => { if (!nome.trim()) { setErroNome(t("requiredField")); return; } criar.mutate({ nome: nome.trim(), descricao: descricao.trim(), permissoes: marcadas }); }}>
                         {criar.isPending ? t("creatingProfile") : t("createProfile")}
                       </Button>
                     </>

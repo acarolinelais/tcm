@@ -60,6 +60,25 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
         models = (await self.session.execute(stmt)).scalars().all()
         return [self._to_entity(model) for model in models]
 
+    async def dados_por_usuarios(
+        self, unidade_id: UUID, usuario_ids: tuple[UUID, ...]
+    ) -> dict[UUID, tuple[str, str, str | None]]:
+        if not usuario_ids:
+            return {}
+        stmt = (
+            select(UsuarioModel.id, UsuarioModel.nome, PerfilModel.nome, PerfilModel.codigo)
+            .join(PerfilModel, PerfilModel.id == UsuarioModel.perfil_id)
+            .where(
+                UsuarioModel.unidade_id == unidade_id,
+                UsuarioModel.id.in_(usuario_ids),
+                PerfilModel.unidade_id == unidade_id,
+            )
+        )
+        return {
+            usuario_id: (usuario_nome, perfil_nome, perfil_codigo)
+            for usuario_id, usuario_nome, perfil_nome, perfil_codigo in (await self.session.execute(stmt)).all()
+        }
+
     async def listar_filtrado(
         self,
         unidade_id: UUID,

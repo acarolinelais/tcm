@@ -159,9 +159,18 @@ class TimeServiceImpl:
             and id not in usuario_atual.times_kp
         ):
             raise NotFoundException("Time não encontrado.")
+        membros = await self._membro_repo.listar_por_time(usuario_atual.unidade_id, id)
+        dados_usuario = await self._usuario_repo.dados_por_usuarios(
+            usuario_atual.unidade_id, tuple(m.usuario_id for m in membros)
+        )
         return [
-            membro_to_response(m)
-            for m in await self._membro_repo.listar_por_time(usuario_atual.unidade_id, id)
+            membro_to_response(
+                m,
+                dados_usuario.get(m.usuario_id, (None, None, None))[0],
+                dados_usuario.get(m.usuario_id, (None, None, None))[1],
+                dados_usuario.get(m.usuario_id, (None, None, None))[2],
+            )
+            for m in membros
         ]
 
     async def listar_usuarios_disponiveis(self, usuario_atual: UsuarioAutenticado):

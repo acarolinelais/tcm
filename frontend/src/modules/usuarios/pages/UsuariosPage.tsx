@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { NavLink, useOutletContext } from "react-router";
+import { useOutletContext } from "react-router";
 
 import { Button } from "@/shared/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { Dialog, DrawerContent, DrawerHeader, DrawerTitle } from "@/shared/ui/dialog";
 import { toast } from "@/shared/lib/toast";
 
 import { UsuarioForm } from "../components/UsuarioForm";
@@ -69,7 +69,7 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:rounded-[52px] sm:px-11 sm:py-10">
+    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
       <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-medium leading-8 text-[#3478F6]">{t("users")}</h1>
@@ -80,20 +80,6 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
           </Button>
         )}
       </div>
-      <nav aria-label={t("profilesSection")} className="mb-8 flex items-center gap-6 border-b border-border">
-        <span className="border-b-2 border-[#3478F6] px-1 pb-2 text-lg font-medium text-[#3478F6]">
-          {t("users")}
-        </span>
-        {(ehAdmin || perfil.permissoes.includes("perfis.gerenciar")) && (
-          <NavLink
-            to="/perfis"
-            className="px-1 pb-2 text-lg text-muted-foreground transition-colors hover:text-foreground"
-          >
-            {t("profiles")}
-          </NavLink>
-        )}
-      </nav>
-
       <UsuariosTable
         page={page}
         pageSize={pageSize}
@@ -114,12 +100,12 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
       />
 
       <Dialog open={podeGerenciar && modalAberto} onOpenChange={setModalAberto}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{usuarioEmEdicao ? t("editUser") : t("newUser")}</DialogTitle>
-          </DialogHeader>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>{usuarioEmEdicao ? t("editUser") : t("newUser")}</DrawerTitle>
+          </DrawerHeader>
           <UsuarioForm usuario={usuarioEmEdicao} onSalvo={aoSalvar} podeGerenciar={podeGerenciar} podeAtribuirPerfil={podeAtribuirPerfil} />
-        </DialogContent>
+        </DrawerContent>
       </Dialog>
     </div>
   );

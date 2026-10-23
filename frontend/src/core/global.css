@@ -51,3 +51,51 @@ body {
     "Segoe UI",
     sans-serif;
 }
+
+@keyframes dialog-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dialog-enter {
+  from { opacity: 0; scale: 0.98; }
+  to { opacity: 1; scale: 1; }
+}
+
+.dialog-overlay[data-state="open"] {
+  animation: dialog-fade-in 160ms ease-out;
+}
+
+.dialog-content[data-state="open"] {
+  animation: dialog-enter 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes drawer-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes drawer-enter {
+  from { opacity: 0.8; transform: translateX(1rem); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.drawer-overlay[data-state="open"] {
+  animation: drawer-overlay-in 160ms ease-out;
+}
+
+.drawer-content[data-state="open"] {
+  animation: drawer-enter 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog-overlay[data-state="open"],
+  .dialog-content[data-state="open"] {
+    animation: none;
+  }
+
+  .drawer-overlay[data-state="open"],
+  .drawer-content[data-state="open"] {
+    animation: none;
+  }
+}

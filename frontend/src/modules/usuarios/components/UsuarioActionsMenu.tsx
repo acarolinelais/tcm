@@ -6,7 +6,7 @@ import type { Usuario } from "../model/usuario";
 import { useAtribuirResponsavel, useAtivarUsuario, useInativarUsuario } from "../hooks/useUsuarios";
 import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
 import { Button } from "@/shared/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { Dialog, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from "@/shared/ui/dialog";
 import { toast } from "@/shared/lib/toast";
 import { useTranslation } from "react-i18next";
 
@@ -107,9 +107,9 @@ export function UsuarioActionsMenu({
         }}
       />
       <Dialog open={responsavelAberto} onOpenChange={setResponsavelAberto}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>{t("ownerFor", { name: usuario.nome })}</DialogTitle></DialogHeader>
-          <form className="space-y-4" onSubmit={async (event) => {
+        <DrawerContent>
+          <DrawerHeader><DrawerTitle>{t("ownerFor", { name: usuario.nome })}</DrawerTitle></DrawerHeader>
+          <form className="flex min-h-0 flex-1 flex-col" onSubmit={async (event) => {
             event.preventDefault();
             try {
               await atribuirResponsavel.mutateAsync({ id: usuario.id, responsavelId: responsavelId || null });
@@ -119,16 +119,23 @@ export function UsuarioActionsMenu({
               toast.error(t("ownerUpdateError"));
             }
           }}>
-            <label htmlFor={`responsavel-${usuario.id}`} className="block space-y-1.5 text-sm">
-              <span>{t("managerOwner")}</span>
-              <select id={`responsavel-${usuario.id}`} value={responsavelId} onChange={(event) => setResponsavelId(event.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                <option value="">{t("noOwner")}</option>
-                {gerentes.filter((gerente) => gerente.ativo).map((gerente) => <option key={gerente.id} value={gerente.id}>{gerente.nome} · {gerente.email}</option>)}
-              </select>
-            </label>
-            <Button type="submit" disabled={atribuirResponsavel.isPending}>{atribuirResponsavel.isPending ? t("saving") : t("save")}</Button>
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-7 py-6">
+              <label htmlFor={`responsavel-${usuario.id}`} className="block space-y-2 text-sm font-medium">
+                <span>{t("managerOwner")}</span>
+                <select id={`responsavel-${usuario.id}`} value={responsavelId} onChange={(event) => setResponsavelId(event.target.value)} className="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <option value="">{t("noOwner")}</option>
+                  {gerentes.filter((gerente) => gerente.ativo).map((gerente) => <option key={gerente.id} value={gerente.id}>{gerente.nome} · {gerente.email}</option>)}
+                </select>
+              </label>
+            </div>
+            <div className="flex shrink-0 justify-end border-t border-border bg-white px-7 py-5">
+              <div className="flex gap-2">
+                <DrawerClose asChild><Button type="button" variant="outline">{t("cancel")}</Button></DrawerClose>
+                <Button type="submit" disabled={atribuirResponsavel.isPending}>{atribuirResponsavel.isPending ? t("saving") : t("save")}</Button>
+              </div>
+            </div>
           </form>
-        </DialogContent>
+        </DrawerContent>
       </Dialog>
       <button
         ref={triggerRef}

@@ -36,6 +36,9 @@ class TimeMembroResponse(BaseModel):
     unidade_id: UUID
     time_id: UUID
     usuario_id: UUID
+    usuario_nome: str | None = None
+    usuario_perfil: str | None = None
+    usuario_perfil_codigo: str | None = None
     papel: PapelTime
     ativo: bool
 
@@ -51,12 +54,20 @@ def to_response(time: Time) -> TimeResponse:
     )
 
 
-def membro_to_response(membro: TimeMembro) -> TimeMembroResponse:
+def membro_to_response(
+    membro: TimeMembro,
+    usuario_nome: str | None = None,
+    usuario_perfil: str | None = None,
+    usuario_perfil_codigo: str | None = None,
+) -> TimeMembroResponse:
     return TimeMembroResponse(
         id=membro.id,
         unidade_id=membro.unidade_id,
         time_id=membro.time_id,
         usuario_id=membro.usuario_id,
+        usuario_nome=usuario_nome,
+        usuario_perfil=usuario_perfil,
+        usuario_perfil_codigo=usuario_perfil_codigo,
         papel=membro.papel,
         ativo=membro.ativo,
     )

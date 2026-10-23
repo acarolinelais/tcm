@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ApiError } from "@/shared/api/problem-details";
 import { Button } from "@/shared/ui/button";
+import { DrawerClose } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { toast } from "@/shared/lib/toast";
@@ -75,21 +76,22 @@ export function UsuarioForm({ usuario, onSalvo, podeGerenciar = true, podeAtribu
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="space-y-1.5">
-        <Label htmlFor="nome">{t("name")}</Label>
-        <Input id="nome" readOnly={!podeGerenciar} {...register("nome")} />
-        {errors.nome && <p className="text-sm text-destructive">{errors.nome.message}</p>}
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="email">{t("email")}</Label>
-        <Input id="email" type="email" readOnly={!podeGerenciar} {...register("email")} />
-        {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
-      </div>
-      {podeAtribuirPerfil && (
-        <div className="space-y-1.5">
-          <Label htmlFor="perfil-usuario">{t("profile")}</Label>
-          <select
+    <form noValidate onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
+      <div className="flex-1 space-y-5 overflow-y-auto px-7 py-6">
+        <div className="space-y-2">
+          <Label htmlFor="nome">{t("name")}</Label>
+          <Input id="nome" aria-invalid={Boolean(errors.nome)} readOnly={!podeGerenciar} {...register("nome")} />
+          {errors.nome && <p className="text-sm text-destructive">{errors.nome.message}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="email">{t("email")}</Label>
+          <Input id="email" type="email" aria-invalid={Boolean(errors.email)} readOnly={!podeGerenciar} {...register("email")} />
+          {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+        </div>
+        {podeAtribuirPerfil && (
+          <div className="space-y-2">
+            <Label htmlFor="perfil-usuario">{t("profile")}</Label>
+            <select
             id="perfil-usuario"
             aria-label={t("userProfile")}
             value={usuario ? perfilSelecionado : undefined}
@@ -100,17 +102,23 @@ export function UsuarioForm({ usuario, onSalvo, podeGerenciar = true, podeAtribu
             }}
             disabled={perfis.isLoading || isPending || Boolean(usuario && perfis.data?.find((perfil) => perfil.id === usuario.perfil_id)?.codigo === "ADMIN_UNIDADE")}
             className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {!usuario && <option value="">{t("standardUser")}</option>}
-            {perfis.data?.filter((perfil) => perfil.codigo !== "ADMIN_UNIDADE" || perfil.id === usuario?.perfil_id)
-              .map((perfil) => <option key={perfil.id} value={perfil.id}>{perfil.codigo ? t(`catalog.profile.${perfil.codigo}`, { defaultValue: perfil.nome }) : perfil.nome}</option>)}
-          </select>
-          {perfis.isError && <p role="alert" className="text-sm text-destructive">{t("profilesLoadError")}</p>}
+            >
+              {!usuario && <option value="">{t("standardUser")}</option>}
+              {perfis.data?.filter((perfil) => perfil.codigo !== "ADMIN_UNIDADE" || perfil.id === usuario?.perfil_id)
+                .map((perfil) => <option key={perfil.id} value={perfil.id}>{perfil.codigo ? t(`catalog.profile.${perfil.codigo}`, { defaultValue: perfil.nome }) : perfil.nome}</option>)}
+            </select>
+            {perfis.isError && <p role="alert" className="text-sm text-destructive">{t("profilesLoadError")}</p>}
+          </div>
+        )}
+      </div>
+      <div className="flex shrink-0 justify-end border-t border-border bg-white px-7 py-5">
+        <div className="flex gap-2">
+          <DrawerClose asChild><Button type="button" variant="outline">{t("cancel")}</Button></DrawerClose>
+          <Button type="submit" disabled={isPending || !podeGerenciar && perfilSelecionado === usuario?.perfil_id}>
+            {isPending ? t("saving") : t("save")}
+          </Button>
         </div>
-      )}
-      <Button type="submit" disabled={isPending || !podeGerenciar && perfilSelecionado === usuario?.perfil_id}>
-        {isPending ? t("saving") : t("save")}
-      </Button>
+      </div>
     </form>
   );
 }

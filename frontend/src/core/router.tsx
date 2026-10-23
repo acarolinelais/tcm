@@ -9,6 +9,7 @@ import { AlterarSenhaPage } from "@/core/auth/AlterarSenhaPage";
 import { PerfisPage } from "@/modules/perfis/PerfisPage";
 import { SetoresPage } from "@/modules/setores/SetoresPage";
 import { TimesPage } from "@/modules/times/TimesPage";
+import { TimeDetalhePage } from "@/modules/times/TimeDetalhePage";
 import { UsuariosPage } from "@/modules/usuarios/pages/UsuariosPage";
 
 export const router = createBrowserRouter([
@@ -28,7 +29,9 @@ export const router = createBrowserRouter([
       { path: "admin/usuarios", element: <UsuariosPage modoAdmin /> },
       { path: "admin/setores", element: <SetoresPage /> },
       { path: "admin/times", element: <TimesPage modoAdmin /> },
+      { path: "admin/times/:timeId", element: <TimeDetalhePage modoAdmin /> },
       { path: "times", element: <TimesPage /> },
+      { path: "times/:timeId", element: <TimeDetalhePage /> },
     ],
   },
 ]);
