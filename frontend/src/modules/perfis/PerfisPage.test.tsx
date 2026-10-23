@@ -40,8 +40,8 @@ async function abrirGrupo(user: ReturnType<typeof userEvent.setup>, nome: string
   await user.click(screen.getByRole("button", { name: new RegExp(nome) }));
 }
 
-async function abrirPerfil(user: ReturnType<typeof userEvent.setup>, nome: string, acao = "Visualizar permissões") {
-  await user.click(screen.getByRole("button", { name: `Ações para ${nome}` }));
+async function abrirPerfil(user: ReturnType<typeof userEvent.setup>, nome: string, acao = "View permissions") {
+  await user.click(screen.getByRole("button", { name: `Actions for ${nome}` }));
   await user.click(screen.getByRole("menuitem", { name: acao }));
 }
 
@@ -61,27 +61,27 @@ describe("PerfisPage", () => {
     expect(await screen.findByRole("table")).toBeInTheDocument();
     const user = userEvent.setup();
     await abrirPerfil(user, "Operação");
-    expect(await screen.findByRole("region", { name: "Permissões de Usuários" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Permissões de Tarefas futuras" })).toBeInTheDocument();
-    expect(screen.queryByLabelText("Consultar usuários")).not.toBeVisible();
-    expect(screen.getByText(/1 de 2 selecionadas/)).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Permissions for Users" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Permissions for Tarefas futuras" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("View users in the allowed scope")).not.toBeVisible();
+    expect(screen.getByText(/1 of 2 selected/)).toBeInTheDocument();
     expect(screen.queryByText("usuarios.consultar")).not.toBeInTheDocument();
-    await abrirGrupo(user, "Usuários");
-    expect(screen.getByLabelText("Consultar usuários")).toBeChecked();
-    expect(screen.getByLabelText("Gerenciar usuários")).not.toBeChecked();
+    await abrirGrupo(user, "Users");
+    expect(screen.getByLabelText("View users in the allowed scope")).toBeChecked();
+    expect(screen.getByLabelText("Create and edit users")).not.toBeChecked();
   });
 
   it("permite selecionar todas e comunica estado parcial do grupo", async () => {
     renderPage();
     const user = userEvent.setup();
     await screen.findByRole("table");
-    await abrirPerfil(user, "Operação", "Editar permissões");
-    const grupo = await screen.findByRole("region", { name: "Permissões de Usuários" });
-    const selecionarModulo = within(grupo).getByLabelText(/Selecionar todas as permissões de Usuários/);
+    await abrirPerfil(user, "Operação", "Edit permissions");
+    const grupo = await screen.findByRole("region", { name: "Permissions for Users" });
+    const selecionarModulo = within(grupo).getByLabelText(/Select all permissions for Users/);
 
     expect(selecionarModulo).toHaveAttribute("aria-checked", "mixed");
     await user.click(selecionarModulo);
-    expect(screen.getByLabelText("Gerenciar usuários")).toBeChecked();
+    expect(screen.getByLabelText("Create and edit users")).toBeChecked();
     expect(selecionarModulo).toBeChecked();
   });
 
@@ -89,20 +89,20 @@ describe("PerfisPage", () => {
     renderPage();
     const user = userEvent.setup();
     await screen.findByRole("table");
-    await abrirPerfil(user, "Operação", "Editar permissões");
-    await abrirGrupo(user, "Usuários");
-    await user.click(screen.getByLabelText("Consultar usuários"));
-    await user.click(screen.getByRole("button", { name: "← Perfis" }));
+    await abrirPerfil(user, "Operação", "Edit permissions");
+    await abrirGrupo(user, "Users");
+    await user.click(screen.getByLabelText("View users in the allowed scope"));
+    await user.click(screen.getByRole("button", { name: "← Profiles and permissions" }));
 
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("Alterações não salvas")).toBeInTheDocument();
-    await user.click(within(dialog).getByRole("button", { name: "Permanecer" }));
-    expect(screen.getByLabelText("Consultar usuários")).not.toBeChecked();
-    expect(screen.getByText("Alterações não salvas")).toBeInTheDocument();
+    expect(within(dialog).getByText("Unsaved changes")).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Stay" }));
+    expect(screen.getByLabelText("View users in the allowed scope")).not.toBeChecked();
+    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
     expect(api.salvarPermissoes).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: "← Perfis" }));
-    await user.click(screen.getByRole("button", { name: "Descartar e continuar" }));
-    await abrirPerfil(user, "Leitura", "Editar permissões");
+    await user.click(screen.getByRole("button", { name: "← Profiles and permissions" }));
+    await user.click(screen.getByRole("button", { name: "Discard and continue" }));
+    await abrirPerfil(user, "Leitura", "Edit permissions");
   });
 
   it("envia o conjunto completo e mantém o rascunho quando a gravação falha", async () => {
@@ -110,15 +110,15 @@ describe("PerfisPage", () => {
     renderPage();
     const user = userEvent.setup();
     await screen.findByRole("table");
-    await abrirPerfil(user, "Operação", "Editar permissões");
-    await abrirGrupo(user, "Usuários");
-    await user.click(screen.getByLabelText("Gerenciar usuários"));
-    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+    await abrirPerfil(user, "Operação", "Edit permissions");
+    await abrirGrupo(user, "Users");
+    await user.click(screen.getByLabelText("Create and edit users"));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
 
-    expect(await screen.findByText(/rascunho foi preservado/i)).toBeInTheDocument();
+    expect(await screen.findByText(/draft has been preserved/i)).toBeInTheDocument();
     expect(api.salvarPermissoes).toHaveBeenCalledWith("p1", ["usuarios.consultar", "usuarios.gerenciar"]);
-    expect(screen.getByLabelText("Gerenciar usuários")).toBeChecked();
-    expect(screen.getByText("Alterações não salvas")).toBeInTheDocument();
+    expect(screen.getByLabelText("Create and edit users")).toBeChecked();
+    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
   });
 
   it("exibe permissões do perfil de sistema sem permitir edição", async () => {
@@ -130,10 +130,10 @@ describe("PerfisPage", () => {
     const user = userEvent.setup();
     await screen.findByRole("table");
     await abrirPerfil(user, "Administrador");
-    expect(await screen.findByText("Protegido pelo sistema")).toBeInTheDocument();
-    await abrirGrupo(user, "Usuários");
-    expect(screen.getByLabelText("Consultar usuários")).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Salvar alterações" })).toBeDisabled();
+    expect(await screen.findByText("System protected")).toBeInTheDocument();
+    await abrirGrupo(user, "Users");
+    expect(screen.getByLabelText("View users in the allowed scope")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
   });
 
   it("mantém os campos quando o backend informa conflito ao criar perfil", async () => {
@@ -141,12 +141,12 @@ describe("PerfisPage", () => {
     renderPage();
     const user = userEvent.setup();
     await screen.findByRole("table");
-    await user.click(screen.getByRole("button", { name: "Novo perfil" }));
-    await user.type(screen.getByLabelText(/Nome do perfil/), "Operação");
-    await user.click(screen.getByRole("button", { name: "Criar perfil" }));
+    await user.click(screen.getByRole("button", { name: "New profile" }));
+    await user.type(screen.getByLabelText(/Profile name/), "Operação");
+    await user.click(screen.getByRole("button", { name: "Create profile" }));
 
-    expect(await screen.findByText("Já existe um perfil com esse nome. Escolha outro nome.")).toBeInTheDocument();
-    expect(screen.getByLabelText(/Nome do perfil/)).toHaveValue("Operação");
+    expect(await screen.findByText("A profile with this name already exists. Choose another name.")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Profile name/)).toHaveValue("Operação");
   });
 
   it("seleciona o perfil recém-criado para configurar permissões", async () => {
@@ -156,16 +156,16 @@ describe("PerfisPage", () => {
     renderPage();
     const user = userEvent.setup();
     await screen.findByRole("table");
-    await user.click(screen.getByRole("button", { name: "Novo perfil" }));
-    await user.type(screen.getByLabelText(/Nome do perfil/), "Auditoria");
-    await user.type(screen.getByLabelText(/Descrição/), "Consulta");
-    await abrirGrupo(user, "Usuários");
-    await user.click(screen.getByLabelText("Gerenciar usuários"));
-    await user.click(screen.getByRole("button", { name: "Criar perfil" }));
+    await user.click(screen.getByRole("button", { name: "New profile" }));
+    await user.type(screen.getByLabelText(/Profile name/), "Auditoria");
+    await user.type(screen.getByLabelText(/Description/), "Consulta");
+    await abrirGrupo(user, "Users");
+    await user.click(screen.getByLabelText("Create and edit users"));
+    await user.click(screen.getByRole("button", { name: "Create profile" }));
 
     expect(api.criarPerfil).toHaveBeenCalledWith("Auditoria", "Consulta", ["usuarios.gerenciar"]);
     expect(await screen.findByRole("heading", { name: "Auditoria" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Gerenciar usuários")).toBeChecked();
+    expect(screen.getByLabelText("Create and edit users")).toBeChecked();
     expect(screen.getByRole("heading", { name: "Auditoria" })).toBeInTheDocument();
   });
 });

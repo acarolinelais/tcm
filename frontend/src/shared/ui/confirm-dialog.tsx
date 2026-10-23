@@ -1,6 +1,7 @@
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { useTranslation } from "react-i18next";
 
 export interface ConfirmDialogProps {
   open: boolean;
@@ -19,12 +20,13 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   description,
-  confirmLabel = "Confirmar",
-  cancelLabel = "Cancelar",
+  confirmLabel,
+  cancelLabel,
   variant = "default",
   onConfirm,
   isPending = false,
 }: ConfirmDialogProps) {
+  const { t } = useTranslation();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -41,7 +43,7 @@ export function ConfirmDialog({
             disabled={isPending}
             onClick={() => onOpenChange(false)}
           >
-            {cancelLabel}
+            {cancelLabel ?? t("cancel")}
           </Button>
           <Button
             type="button"
@@ -49,7 +51,7 @@ export function ConfirmDialog({
             disabled={isPending}
             onClick={onConfirm}
           >
-            {isPending ? "Aguarde..." : confirmLabel}
+            {isPending ? t("pleaseWait") : confirmLabel ?? t("confirm")}
           </Button>
         </div>
       </DialogContent>

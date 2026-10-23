@@ -2,6 +2,7 @@ from uuid import UUID
 
 from sqlalchemy import func, or_, select, union, update
 
+from src.domain.common.idioma_preferido import IdiomaPreferido
 from src.domain.common.paged_result import PagedResult
 from src.domain.entities.usuario import Usuario
 from src.infrastructure.data.models.perfil_model import PerfilModel
@@ -255,6 +256,7 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
         usuario.perfil_id = model.perfil_id
         usuario.responsavel_id = model.responsavel_id
         usuario.auth_version = model.auth_version
+        usuario.definir_idioma_preferido(IdiomaPreferido(model.idioma_preferido or "en"))
         usuario.ativo = model.ativo
         usuario.created_at = model.created_at
         usuario.updated_at = model.updated_at
@@ -271,6 +273,7 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
             perfil_id=entity.perfil_id,
             responsavel_id=entity.responsavel_id,
             auth_version=entity.auth_version,
+            idioma_preferido=entity.idioma_preferido.value,
             ativo=entity.ativo,
             created_at=entity.created_at,
             updated_at=entity.updated_at,

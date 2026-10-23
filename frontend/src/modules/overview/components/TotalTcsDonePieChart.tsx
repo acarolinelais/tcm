@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import type { StatusBreakdown } from "../model/overview";
+import { useTranslation } from "react-i18next";
 
 const SIZE = 140;
 const STROKE = 16;
@@ -16,11 +17,12 @@ interface Segment {
 
 export function TotalTcsDonePieChart({ breakdown }: { breakdown: StatusBreakdown }) {
   const [hover, setHover] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   const segments: Segment[] = [
-    { key: "completed", label: "Completed", pct: breakdown.completedPct, color: "#5588F5" },
-    { key: "todo", label: "To Do", pct: breakdown.todoPct, color: "#C9DAFF" },
-    { key: "inProgress", label: "In Progress", pct: breakdown.inProgressPct, color: "#B9C4E8" },
+    { key: "completed", label: t("completed"), pct: breakdown.completedPct, color: "#5588F5" },
+    { key: "todo", label: t("toDo"), pct: breakdown.todoPct, color: "#C9DAFF" },
+    { key: "inProgress", label: t("inProgress"), pct: breakdown.inProgressPct, color: "#B9C4E8" },
   ];
 
   let acc = 0;
@@ -35,7 +37,7 @@ export function TotalTcsDonePieChart({ breakdown }: { breakdown: StatusBreakdown
 
   return (
     <div className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card p-5">
-      <h2 className="self-start text-sm font-semibold text-foreground">Total TCs Done</h2>
+      <h2 className="self-start text-sm font-semibold text-foreground">{t("totalTcsDone")}</h2>
       <div className="relative h-[140px] w-[140px]">
         <svg
           width={SIZE}
@@ -43,7 +45,7 @@ export function TotalTcsDonePieChart({ breakdown }: { breakdown: StatusBreakdown
           viewBox={`0 0 ${SIZE} ${SIZE}`}
           className="-rotate-90"
           role="img"
-          aria-label="Gráfico de rosca com o percentual de casos de teste concluídos"
+          aria-label={t("doughnutChartLabel")}
         >
           <circle cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} fill="none" stroke="#F2F2F2" strokeWidth={STROKE} />
           {arcs.map((s) => (

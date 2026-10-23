@@ -4,20 +4,22 @@ import { TotalTcsDonePieChart } from "../components/TotalTcsDonePieChart";
 import { useOverview } from "../hooks/useOverview";
 import { useOutletContext } from "react-router";
 import type { PerfilAtual } from "@/core/auth/api";
+import { useTranslation } from "react-i18next";
 
 export function OverviewPage() {
   const perfil = useOutletContext<PerfilAtual>();
+  const { t } = useTranslation();
   const { data, isLoading } = useOverview();
 
   if (isLoading || !data) {
-    return <p className="text-sm text-muted-foreground">Carregando...</p>;
+    return <p className="text-sm text-muted-foreground">{t("loading")}</p>;
   }
 
   return (
     <div className="space-y-4">
       <OverviewHeroCard stats={data.stats} userName={perfil.nome} title={perfil.perfil_codigo === "ADMIN_UNIDADE"
-        ? `Administrador da unidade ${perfil.unidade_nome}`
-        : perfil.perfil || "Visão geral"} />
+        ? t("adminUnitTitle", { name: perfil.unidade_nome })
+        : perfil.perfil_codigo ? t(`catalog.profile.${perfil.perfil_codigo}`, { defaultValue: perfil.perfil ?? t("overview") }) : perfil.perfil || t("overview")} />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[300px_1fr]">
         <TotalTcsDonePieChart breakdown={data.statusBreakdown} />
         <TeamPerformanceChart

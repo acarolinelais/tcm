@@ -11,12 +11,14 @@ import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyState, 
 import { criarPerfil, listarPerfis, listarPermissoes, salvarPermissoes } from "./api/perfis.api";
 import type { Perfil, Permissao } from "./api/perfis.api";
 import { PerfilAcoesMenu } from "./PerfilAcoesMenu";
+import { useTranslation } from "react-i18next";
 
 type ModoEditor = "visualizar" | "editar";
 type AcaoPendente = { tipo: "perfil"; perfil: Perfil; modo: ModoEditor } | { tipo: "novo" } | { tipo: "cancelar" } | { tipo: "lista" };
 type CriacaoPerfil = { nome: string; descricao: string; permissoes: string[] };
 
 export function PerfisPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const perfilAtual = usePerfilAtual();
   const perfis = useQuery({ queryKey: ["perfis"], queryFn: listarPerfis });
@@ -45,7 +47,7 @@ export function PerfisPage() {
     const porCodigo = new Map<string, { nome: string; ordem: number; itens: Permissao[] }>();
     for (const permissao of permissoes.data ?? []) {
       const grupo = porCodigo.get(permissao.modulo.codigo) ?? {
-        nome: permissao.modulo.nome,
+        nome: t(`catalog.module.${permissao.modulo.codigo}`, { defaultValue: permissao.modulo.nome }),
         ordem: permissao.modulo.ordem,
         itens: [],
       };
@@ -188,44 +190,44 @@ export function PerfisPage() {
 
   if (perfilAtual.data && perfilAtual.data.perfil_codigo !== "ADMIN_UNIDADE" &&
     !perfilAtual.data.permissoes.includes("perfis.gerenciar")) {
-    return <p role="alert" className="p-6 text-sm">Você não tem permissão para gerenciar perfis.</p>;
+    return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
   }
   if (perfis.isLoading || permissoes.isLoading) {
-    return <p className="p-6 text-sm text-muted-foreground">Carregando perfis...</p>;
+    return <p className="p-6 text-sm text-muted-foreground">{t("loading")}</p>;
   }
   if (perfis.error instanceof ApiError && perfis.error.problem.status === 403) {
-    return <p role="alert" className="p-6 text-sm">Você não tem permissão para gerenciar perfis.</p>;
+    return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
   }
   if (perfis.error || permissoes.error) {
-    return <p role="alert" className="p-6 text-sm text-destructive">Não foi possível carregar perfis e permissões.</p>;
+    return <p role="alert" className="p-6 text-sm text-destructive">{t("profilesLoadError")}</p>;
   }
 
   const mutacaoAtiva = criar.isPending || salvar.isPending;
   const listaPerfis = perfis.data ?? [];
   const perfisPaginados = listaPerfis.slice((pagina - 1) * itensPorPagina, pagina * itensPorPagina);
   const erroGravacao = criando ? criar.error : salvar.error;
-  const titleDialog = criando ? "Perfil ainda não criado" : "Alterações não salvas";
+  const titleDialog = criando ? t("profileDraftTitle") : t("unsavedChanges");
   const textoDialog = criando
-    ? "Este perfil e suas permissões ainda estão só neste rascunho. Como deseja continuar?"
-    : "Você alterou as permissões deste perfil. Como deseja continuar?";
-  const labelSalvarEContinuar = criando ? "Criar e continuar" : "Salvar e continuar";
-  const labelDescartar = acaoPendente?.tipo === "cancelar" ? "Descartar rascunho" : "Descartar e continuar";
+    ? t("profileDraftHint")
+    : t("unsavedPermissionsHint");
+  const labelSalvarEContinuar = criando ? t("createAndContinue") : t("saveAndContinue");
+  const labelDescartar = acaoPendente?.tipo === "cancelar" ? t("discardDraft") : t("discardAndContinue");
 
   return (
     <section className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:rounded-[52px] sm:px-11 sm:py-10">
       <header className="mb-7 flex shrink-0 flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-medium leading-8 text-[#3478F6]">Perfis e permissões</h1>
+          <h1 className="text-2xl font-medium leading-8 text-[#3478F6]">{t("profileTitle")}</h1>
         </div>
-        {!criando && <Button onClick={() => pedirAcao({ tipo: "novo" })} className="h-10 rounded-lg px-5 text-sm">Novo perfil</Button>}
+        {!criando && <Button onClick={() => pedirAcao({ tipo: "novo" })} className="h-10 rounded-lg px-5 text-sm">{t("newProfile")}</Button>}
       </header>
 
-      <nav aria-label="Seções de gerenciamento" className="mb-8 flex shrink-0 items-center gap-6 border-b border-border">
+      <nav aria-label={t("profilesSection")} className="mb-8 flex shrink-0 items-center gap-6 border-b border-border">
         <NavLink to="/usuarios" className="px-1 pb-2 text-lg text-muted-foreground transition-colors hover:text-foreground">
-          Usuários
+          {t("users")}
         </NavLink>
         <span aria-current="page" className="border-b-2 border-[#3478F6] px-1 pb-2 text-lg font-medium text-[#3478F6]">
-          Perfis e permissões
+          {t("profileTitle")}
         </span>
       </nav>
 
@@ -234,20 +236,20 @@ export function PerfisPage() {
           <Table containerClassName={perfisPaginados.length > 0 ? "min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
             <TableHeader>
               <TableRow>
-                <TableHead>Perfil</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Permissões</TableHead>
-                <TableHead className="w-20 text-center">Ações</TableHead>
+                <TableHead>{t("profileColumn")}</TableHead>
+                <TableHead>{t("description")}</TableHead>
+                <TableHead>{t("type")}</TableHead>
+                <TableHead>{t("permissions")}</TableHead>
+                <TableHead className="w-20 text-center">{t("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             {perfisPaginados.length > 0 && <TableBody>
               {perfisPaginados.map((perfil) => (
                 <TableRow key={perfil.id}>
-                  <TableCell className="font-medium">{perfil.nome}</TableCell>
+                  <TableCell className="font-medium">{perfil.codigo ? t(`catalog.profile.${perfil.codigo}`, { defaultValue: perfil.nome }) : perfil.nome}</TableCell>
                   <TableCell className="text-muted-foreground">{perfil.descricao || "—"}</TableCell>
-                  <TableCell>{perfil.codigo ? "Sistema · protegido" : "Unidade"}</TableCell>
-                  <TableCell>{perfil.permissoes.length}</TableCell>
+                  <TableCell>{perfil.codigo ? t("protectedBySystem") : t("unitProfile")}</TableCell>
+                  <TableCell>{t("permissionCount", { count: perfil.permissoes.length })}</TableCell>
                   <TableCell className="text-center">
                     <PerfilAcoesMenu
                       perfil={perfil}
@@ -262,14 +264,14 @@ export function PerfisPage() {
           </Table>
           {(perfis.data ?? []).length === 0 && (
             <TableEmptyState className="p-8 text-center">
-              <div role="status"><h2 className="font-semibold">Nenhum perfil cadastrado</h2><p className="mt-1 text-sm text-muted-foreground">Crie um perfil para organizar os acessos da unidade.</p></div>
+              <div role="status"><h2 className="font-semibold">{t("noProfiles")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("noProfilesHint")}</p></div>
             </TableEmptyState>
           )}
           <TablePagination page={pagina} pageSize={itensPorPagina} totalCount={listaPerfis.length} onPageChange={setPagina} onPageSizeChange={(quantidade) => { setItensPorPagina(quantidade); setPagina(1); }} />
         </TableLayout>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
-          <Button type="button" variant="ghost" className="w-fit px-2" onClick={() => pedirAcao({ tipo: "lista" })}>← Perfis</Button>
+          <Button type="button" variant="ghost" className="w-fit px-2" onClick={() => pedirAcao({ tipo: "lista" })}>← {t("profiles")}</Button>
           <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card">
           {criando || atual ? (
             <>
@@ -279,28 +281,30 @@ export function PerfisPage() {
                     {criando ? (
                       <div className="grid gap-3 sm:grid-cols-2">
                         <label className="block space-y-1.5 text-sm">
-                          <span className="font-medium">Nome do perfil <span className="text-destructive" aria-hidden="true">*</span></span>
-                          <input autoFocus required maxLength={100} value={nome} onChange={(event) => setNome(event.target.value)} placeholder="Ex.: Coordenação de equipe" className="w-full rounded-lg border border-border bg-background px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-primary" />
+                          <span className="font-medium">{t("profileName")} <span className="text-destructive" aria-hidden="true">*</span></span>
+                          <input autoFocus required maxLength={100} value={nome} onChange={(event) => setNome(event.target.value)} placeholder={t("profileExample")} className="w-full rounded-lg border border-border bg-background px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-primary" />
                         </label>
                         <label className="block space-y-1.5 text-sm">
-                          <span className="font-medium">Descrição <span className="text-muted-foreground">(opcional)</span></span>
-                          <input maxLength={300} value={descricao} onChange={(event) => setDescricao(event.target.value)} placeholder="Descreva para que este perfil será usado" className="w-full rounded-lg border border-border bg-background px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-primary" />
+                          <span className="font-medium">{t("description")} <span className="text-muted-foreground">({t("optional")})</span></span>
+                          <input maxLength={300} value={descricao} onChange={(event) => setDescricao(event.target.value)} placeholder={t("profileDescriptionHint")} className="w-full rounded-lg border border-border bg-background px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-primary" />
                         </label>
                       </div>
                     ) : (
                       <>
                         <div className="flex flex-wrap items-center gap-2">
-                          <h2 className="text-lg font-semibold">{atual?.nome}</h2>
-                        {atual?.codigo && <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium">Protegido pelo sistema</span>}
-                        {modoEditor === "visualizar" && <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium">Somente leitura</span>}
+                        <h2 className="text-lg font-semibold">{atual?.codigo ? t(`catalog.profile.${atual.codigo}`, { defaultValue: atual.nome }) : atual?.nome}</h2>
+                        {atual?.codigo && <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium">{t("protectedBySystem")}</span>}
+                        {modoEditor === "visualizar" && <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium">{t("readOnly")}</span>}
                         </div>
-                        <p className="mt-1 text-sm text-muted-foreground">{atual?.descricao || "Sem descrição"}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{atual?.codigo
+                          ? t(`catalog.profile.description.${atual.codigo}`, { defaultValue: atual.descricao || t("noDescription") })
+                          : atual?.descricao || t("noDescription")}</p>
                       </>
                     )}
-                    {criando && <p className="mt-3 text-sm text-muted-foreground">Escolha as ações que este perfil poderá executar.</p>}
-                    {!criando && atual?.codigo && <p className="mt-2 text-sm text-muted-foreground">As permissões deste perfil são definidas pelo sistema e não podem ser alteradas.</p>}
+                    {criando && <p className="mt-3 text-sm text-muted-foreground">{t("profileActionsHint")}</p>}
+                    {!criando && atual?.codigo && <p className="mt-2 text-sm text-muted-foreground">{t("systemPermissionsHint")}</p>}
                   </div>
-                  {!criando && dirty && <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-900">Alterações não salvas</span>}
+                  {!criando && dirty && <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-900">{t("unsavedChanges")}</span>}
                 </div>
 
                 <div className="space-y-3">
@@ -337,26 +341,26 @@ export function PerfisPage() {
                   {erroGravacao ? (
                     <p role="alert" className="text-sm text-destructive">
                       {criando && erroGravacao instanceof ApiError && erroGravacao.problem.status === 409
-                        ? "Já existe um perfil com esse nome. Escolha outro nome."
-                        : "Não foi possível salvar. Seu rascunho foi preservado."}
+                        ? t("profileConflict")
+                        : t("saveDraftError")}
                     </p>
                   ) : dirty ? (
-                    <p className="text-sm text-muted-foreground">{criando ? "Novo perfil ainda não criado" : "Você tem alterações não salvas"}</p>
+                    <p className="text-sm text-muted-foreground">{criando ? t("newProfileNotCreated") : t("pendingChanges")}</p>
                   ) : atual?.codigo || modoEditor === "visualizar" ? (
-                    <p className="text-sm text-muted-foreground">Perfil somente para consulta</p>
+                    <p className="text-sm text-muted-foreground">{t("profileReadOnlyHint")}</p>
                   ) : null}
                 </div>
                 <div className="flex shrink-0 gap-2">
                   {criando ? (
                     <>
-                      <Button type="button" variant="outline" disabled={mutacaoAtiva} onClick={() => pedirAcao({ tipo: "cancelar" })}>Cancelar</Button>
+                      <Button type="button" variant="outline" disabled={mutacaoAtiva} onClick={() => pedirAcao({ tipo: "cancelar" })}>{t("cancel")}</Button>
                       <Button type="button" disabled={mutacaoAtiva || !nome.trim()} onClick={() => criar.mutate({ nome: nome.trim(), descricao: descricao.trim(), permissoes: marcadas })}>
-                        {criar.isPending ? "Criando..." : "Criar perfil"}
+                        {criar.isPending ? t("creatingProfile") : t("createProfile")}
                       </Button>
                     </>
                   ) : (
                     <Button type="button" disabled={modoEditor !== "editar" || !dirty || mutacaoAtiva || Boolean(atual?.codigo)} onClick={() => salvar.mutate({ perfilId: selecionado, codigos: marcadas })}>
-                      {salvar.isPending ? "Salvando..." : "Salvar alterações"}
+                      {salvar.isPending ? t("savingChanges") : t("saveChanges")}
                     </Button>
                   )}
                 </div>
@@ -365,9 +369,9 @@ export function PerfisPage() {
           ) : (
             <div className="flex min-h-64 flex-1 items-center justify-center p-8 text-center">
               <div className="max-w-sm">
-                <h2 className="font-semibold">Selecione um perfil</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Escolha um perfil da lista para revisar as permissões ou crie um novo.</p>
-                <Button className="mt-4" onClick={() => pedirAcao({ tipo: "novo" })}>Novo perfil</Button>
+                <h2 className="font-semibold">{t("selectProfile")}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{t("selectProfileHint")}</p>
+                <Button className="mt-4" onClick={() => pedirAcao({ tipo: "novo" })}>{t("newProfile")}</Button>
               </div>
             </div>
           )}
@@ -381,9 +385,9 @@ export function PerfisPage() {
             <DialogTitle>{titleDialog}</DialogTitle>
             <p className="text-sm text-muted-foreground">{textoDialog}</p>
           </DialogHeader>
-          {erroGravacao && <p role="alert" className="mb-3 text-sm text-destructive">Não foi possível salvar. O rascunho foi preservado.</p>}
+          {erroGravacao && <p role="alert" className="mb-3 text-sm text-destructive">{t("draftNotSaved")}</p>}
           <div className="flex flex-wrap justify-end gap-2">
-            <Button type="button" variant="outline" disabled={mutacaoAtiva} onClick={cancelarMudanca}>Permanecer</Button>
+            <Button type="button" variant="outline" disabled={mutacaoAtiva} onClick={cancelarMudanca}>{t("stay")}</Button>
             <Button type="button" variant="outline" disabled={mutacaoAtiva} onClick={() => concluirMudanca(false)}>{labelDescartar}</Button>
             <Button type="button" disabled={mutacaoAtiva || criando && !nome.trim()} onClick={() => concluirMudanca(true)}>{labelSalvarEContinuar}</Button>
           </div>
@@ -407,6 +411,7 @@ type PermissionGroupProps = {
 };
 
 function PermissionGroup({ codigo, nome, itens, marcadas, estado, aberto, disabled, onToggleOpen, onToggleAll, onToggle }: PermissionGroupProps) {
+  const { t } = useTranslation();
   const ref = useRef<HTMLInputElement>(null);
   const panelId = `permissions-${codigo}`;
   const selecionadas = itens.filter((item) => marcadas.includes(item.id));
@@ -415,15 +420,15 @@ function PermissionGroup({ codigo, nome, itens, marcadas, estado, aberto, disabl
   }, [estado]);
 
   return (
-    <section aria-label={`Permissões de ${nome}`} className="overflow-hidden rounded-xl border border-border bg-card">
+    <section aria-label={t("profilePermissionLabel", { name: nome })} className="overflow-hidden rounded-xl border border-border bg-card">
       <div className="flex min-w-0 items-center gap-3 px-3 py-3 sm:px-4">
         <button type="button" aria-expanded={aberto} aria-controls={panelId} onClick={onToggleOpen} className="flex min-w-0 flex-1 items-center gap-3 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-primary">
           {aberto ? <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" /> : <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />}
           <span className="min-w-0 flex-1">
             <span className="block font-medium">{nome}</span>
             <span className="block truncate text-xs text-muted-foreground">
-              {selecionadas.length} de {itens.length} selecionadas
-              {selecionadas.length > 0 && ` · ${selecionadas.slice(0, 2).map((item) => item.descricao).join(", ")}${selecionadas.length > 2 ? ` e mais ${selecionadas.length - 2}` : ""}`}
+              {t("allSelected", { selected: selecionadas.length, total: itens.length })}
+              {selecionadas.length > 0 && ` · ${selecionadas.slice(0, 2).map((item) => t(`catalog.permission.${item.id}`, { defaultValue: item.descricao })).join(", ")}${selecionadas.length > 2 ? ` ${t("morePermissions", { count: selecionadas.length - 2 })}` : ""}`}
             </span>
           </span>
         </button>
@@ -434,18 +439,18 @@ function PermissionGroup({ codigo, nome, itens, marcadas, estado, aberto, disabl
             checked={estado === "checked"}
             disabled={disabled}
             aria-checked={estado === "indeterminate" ? "mixed" : estado === "checked"}
-            aria-label={`Selecionar todas as permissões de ${nome}`}
+            aria-label={t("selectAllPermissions", { name: nome })}
             onChange={onToggleAll}
             className="size-4 accent-primary"
           />
-          <span className="hidden sm:inline">Todas</span>
+          <span className="hidden sm:inline">{t("all")}</span>
         </label>
       </div>
       <div id={panelId} hidden={!aberto} className="grid gap-2 border-t border-border bg-muted/20 p-3 sm:grid-cols-2 sm:p-4">
           {itens.map((item) => (
             <label key={item.id} className={`flex min-w-0 items-start gap-3 rounded-lg border border-border bg-card p-3 text-sm ${disabled ? "opacity-70" : "hover:border-primary/40"}`}>
-              <input type="checkbox" aria-label={item.descricao} checked={marcadas.includes(item.id)} disabled={disabled} onChange={(event) => onToggle(item.id, event.target.checked)} className="mt-0.5 size-4 shrink-0 accent-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" />
-              <span className="min-w-0 font-medium leading-5">{item.descricao}</span>
+              <input type="checkbox" aria-label={t(`catalog.permission.${item.id}`, { defaultValue: item.descricao })} checked={marcadas.includes(item.id)} disabled={disabled} onChange={(event) => onToggle(item.id, event.target.checked)} className="mt-0.5 size-4 shrink-0 accent-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" />
+              <span className="min-w-0 font-medium leading-5">{t(`catalog.permission.${item.id}`, { defaultValue: item.descricao })}</span>
             </label>
           ))}
       </div>

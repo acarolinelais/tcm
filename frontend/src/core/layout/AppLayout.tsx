@@ -1,22 +1,35 @@
 import { Navigate, Outlet, useLocation } from "react-router";
+import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 import { ApiError } from "@/shared/api/problem-details";
 import { clearTokens, getAccessToken } from "@/core/auth/session";
 import { usePerfilAtual } from "@/core/auth/usePerfilAtual";
 import { Navbar } from "./Navbar";
 import { Sidebar } from "./Sidebar";
+import { languageCode, TEMP_LANGUAGE_KEY } from "@/core/i18n";
 
 export function AppLayout() {
   const location = useLocation();
   const token = getAccessToken();
   const perfil = usePerfilAtual(Boolean(token));
+  const { i18n } = useTranslation();
+  const idiomaConta = perfil.data ? languageCode(perfil.data.idioma_preferido) : undefined;
+  const sincronizandoIdioma = Boolean(idiomaConta && i18n.resolvedLanguage !== idiomaConta);
+  useEffect(() => {
+    if (!perfil.data) return;
+    const idioma = languageCode(perfil.data.idioma_preferido);
+    window.sessionStorage.removeItem(TEMP_LANGUAGE_KEY);
+    if (i18n.resolvedLanguage !== idioma) void i18n.changeLanguage(idioma);
+  }, [i18n, perfil.data]);
   if (!token) return <Navigate to="/login" replace />;
-  if (perfil.isLoading) return <div className="p-8 text-sm text-muted-foreground">Carregando perfil...</div>;
+  if (perfil.isLoading) return <div className="p-8 text-sm text-muted-foreground">{i18n.t("loadingProfile")}</div>;
+  if (sincronizandoIdioma) return <div className="p-8 text-sm text-muted-foreground">{i18n.t("loadingProfile")}</div>;
   if (perfil.error instanceof ApiError && perfil.error.problem.status === 401) {
     clearTokens();
     return <Navigate to="/login" replace />;
   }
-  if (!perfil.data) return <div role="alert" className="p-8 text-sm">Não foi possível carregar seu perfil.</div>;
+  if (!perfil.data) return <div role="alert" className="p-8 text-sm">{i18n.t("profileLoadError")}</div>;
   if (perfil.data.senha_alteracao_obrigatoria) {
     return location.pathname === "/trocar-senha"
       ? <Outlet context={perfil.data} />

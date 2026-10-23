@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MoreHorizontal, type LucideIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface TableRowAction {
   label: string;
@@ -11,6 +12,7 @@ interface TableRowAction {
 }
 
 export function TableRowActions({ label, actions }: { label: string; actions: TableRowAction[] }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ top: 0, right: 8 });
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -54,7 +56,7 @@ export function TableRowActions({ label, actions }: { label: string; actions: Ta
     <button
       ref={triggerRef}
       type="button"
-      aria-label={`Ações para ${label}`}
+      aria-label={t("rowActionsFor", { label })}
       aria-haspopup="menu"
       aria-expanded={open}
       onClick={() => setOpen((value) => !value)}
@@ -63,7 +65,7 @@ export function TableRowActions({ label, actions }: { label: string; actions: Ta
       <MoreHorizontal aria-hidden="true" className="size-5" />
     </button>
     {open && createPortal(
-      <div ref={menuRef} role="menu" aria-label={`Ações para ${label}`} style={{ position: "fixed", top: position.top, right: position.right }} className="z-50 min-w-48 rounded-xl border border-border bg-card p-1 shadow-lg">
+      <div ref={menuRef} role="menu" aria-label={t("rowActionsFor", { label })} style={{ position: "fixed", top: position.top, right: position.right }} className="z-50 min-w-48 rounded-xl border border-border bg-card p-1 shadow-lg">
         {actions.map(({ label: actionLabel, icon: Icon, onSelect, destructive, disabled }) => <button
           key={actionLabel}
           type="button"

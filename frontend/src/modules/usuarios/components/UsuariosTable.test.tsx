@@ -53,12 +53,12 @@ describe("UsuariosTable", () => {
     );
   });
 
-  it("clicar em Próxima dispara onPageChange com a próxima página", async () => {
+  it("clicking Next calls onPageChange with the next page", async () => {
     const { onPageChange } = renderTable();
     const user = userEvent.setup();
 
     await screen.findByText("Usuário 0");
-    await user.click(screen.getByRole("button", { name: /próxima/i }));
+    await user.click(screen.getByRole("button", { name: /next page/i }));
 
     expect(onPageChange).toHaveBeenCalledWith(2);
   });
@@ -68,8 +68,8 @@ describe("UsuariosTable", () => {
     const user = userEvent.setup();
 
     await screen.findByText("Usuário 0");
-    await user.click(screen.getByRole("button", { name: "Filtrar por Status" }));
-    await user.click(screen.getByRole("menuitemradio", { name: "Inativo" }));
+    await user.click(screen.getByRole("button", { name: "Filter by Status" }));
+    await user.click(screen.getByRole("menuitemradio", { name: "Inactive" }));
 
     expect(onFiltroChange).toHaveBeenCalledWith("ativo", "false");
   });
@@ -79,9 +79,9 @@ describe("UsuariosTable", () => {
     const user = userEvent.setup();
 
     await screen.findByText("Usuário 0");
-    await user.click(screen.getByRole("button", { name: "Filtrar por Usuário" }));
-    await user.type(screen.getByPlaceholderText("Buscar por nome"), "  Ana Silva  ");
-    await user.click(screen.getByRole("button", { name: "Aplicar" }));
+    await user.click(screen.getByRole("button", { name: "Filter by User" }));
+    await user.type(screen.getByPlaceholderText("Search by name"), "  Ana Silva  ");
+    await user.click(screen.getByRole("button", { name: "Apply" }));
 
     expect(onFiltroChange).toHaveBeenCalledWith("nome", "Ana Silva");
   });

@@ -1,8 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { ApiError } from "@/shared/api/problem-details";
 import { login } from "./api";
+import { useTranslation } from "react-i18next";
+import { LanguageSelector } from "@/core/i18n/LanguageSelector";
 
 export function LoginPage() {
   const [email, setEmail] = useState("");
@@ -10,6 +13,8 @@ export function LoginPage() {
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   async function enviar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -17,14 +22,16 @@ export function LoginPage() {
     setCarregando(true);
     try {
       await login(email, senha);
+      // A troca de conta precisa descartar dados em cache da sessão anterior.
+      queryClient.clear();
       navigate("/", { replace: true });
     } catch (error) {
       if (error instanceof ApiError && error.problem.status === 401) {
-        setErro("E-mail ou senha inválidos.");
+        setErro(t("invalidCredentials"));
       } else if (error instanceof ApiError && error.problem.status >= 500) {
-        setErro("A API encontrou um erro ao autenticar. Tente novamente em instantes.");
+        setErro(t("authError"));
       } else {
-        setErro("Não foi possível conectar à API. Verifique se o backend está ativo.");
+        setErro(t("connectionError"));
       }
     } finally {
       setCarregando(false);
@@ -33,22 +40,23 @@ export function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#FBFBFB] p-4">
+      <div className="absolute right-5 top-5"><LanguageSelector /></div>
       <form onSubmit={enviar} className="w-full max-w-sm space-y-4 rounded-2xl border border-border bg-card p-6">
         <div>
-          <h1 className="text-xl font-semibold">Entrar no SDF Control</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Use sua conta da unidade.</p>
+          <h1 className="text-xl font-semibold">{t("loginTitle")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("loginHint")}</p>
         </div>
         <label className="block space-y-1 text-sm">
-          <span>E-mail</span>
+          <span>{t("email")}</span>
           <input required type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} className="w-full rounded-lg border border-border bg-background px-3 py-2" />
         </label>
         <label className="block space-y-1 text-sm">
-          <span>Senha</span>
+          <span>{t("password")}</span>
           <input required type="password" autoComplete="current-password" value={senha} onChange={(event) => setSenha(event.target.value)} className="w-full rounded-lg border border-border bg-background px-3 py-2" />
         </label>
         {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}
         <button disabled={carregando} className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60">
-          {carregando ? "Entrando…" : "Entrar"}
+          {carregando ? t("signingIn") : t("signIn")}
         </button>
       </form>
     </main>

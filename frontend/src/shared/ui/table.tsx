@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
+import { useTranslation } from "react-i18next";
 
 export const DEFAULT_TABLE_PAGE_SIZE = 10;
 export const TABLE_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
@@ -89,6 +90,7 @@ export function TablePagination({
   onPageSizeChange,
   className,
 }: TablePaginationProps) {
+  const { t } = useTranslation();
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   return (
@@ -98,7 +100,7 @@ export function TablePagination({
           variant="ghost"
           size="icon"
           className="h-8 w-8 rounded-lg"
-          aria-label="Página anterior"
+          aria-label={t("previousPage")}
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
         >
@@ -111,7 +113,7 @@ export function TablePagination({
           variant="ghost"
           size="icon"
           className="h-8 w-8 rounded-lg"
-          aria-label="Próxima página"
+          aria-label={t("nextPage")}
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
         >
@@ -119,9 +121,9 @@ export function TablePagination({
         </Button>
       </div>
       <label className="flex items-center gap-3 text-xs text-muted-foreground">
-        Itens por página
+        {t("itemsPerPage")}
         <select
-          aria-label="Quantidade de itens por página"
+          aria-label={t("pageSize")}
           value={pageSize}
           onChange={(event) => onPageSizeChange(Number(event.target.value))}
           className="h-8 rounded-lg border border-border bg-background px-2 text-xs text-foreground"

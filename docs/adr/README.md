@@ -36,3 +36,4 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0022](0022-padrao-universal-de-tabelas.md) | Padrão visual universal para tabelas | Aceito |
 | [0023](0023-senha-sem-minimo-de-caracteres.md) | Troca de senha sem mínimo de caracteres | Aceito |
 | [0024](0024-responsavel-por-usuario.md) | Responsável direto por usuários criados por gerente | Aceito |
+| [0025](0025-idioma-preferido-por-conta.md) | Idioma preferido por conta | Aceito |

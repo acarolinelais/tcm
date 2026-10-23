@@ -8,11 +8,12 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.application.schemas.auth import (
     AlterarSenhaRequest,
+    AtualizarPreferenciasRequest,
     LoginRequest,
     RefreshRequest,
     TokenResponse,
 )
-from src.domain.common.exceptions import CredenciaisInvalidasException
+from src.domain.common.exceptions import CredenciaisInvalidasException, NotFoundException
 from src.domain.entities.interfaces.autenticador import Autenticador
 from src.domain.entities.interfaces.usuario_repository import UsuarioRepository
 from src.domain.entities.usuario import Usuario
@@ -119,6 +120,18 @@ class AuthServiceImpl:
         if sessao is not None and sessao.revoked_at is None:
             sessao.revoked_at = datetime.now(UTC).replace(tzinfo=None)
             await self._session.commit()
+
+    async def atualizar_preferencias(
+        self, unidade_id: UUID, usuario_id: UUID, request: AtualizarPreferenciasRequest
+    ) -> None:
+        usuario = await self._usuario_repo.obter_por_id(unidade_id, usuario_id)
+        if usuario is None:
+            raise NotFoundException("Usuário não encontrado.")
+        usuario.definir_idioma_preferido(request.idioma_preferido)
+        await self._usuario_repo.atualizar(usuario)
+        if self._session is None:
+            raise RuntimeError("Sessão de banco não configurada.")
+        await self._session.commit()
 
     async def alterar_senha_inicial(
         self, usuario_id: UUID, sessao_id: UUID, request: AlterarSenhaRequest

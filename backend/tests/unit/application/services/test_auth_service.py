@@ -2,8 +2,9 @@ from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
 
 import pytest
-from src.application.schemas.auth import LoginRequest
-from src.domain.common.exceptions import CredenciaisInvalidasException
+from src.application.schemas.auth import AtualizarPreferenciasRequest, LoginRequest
+from src.domain.common.exceptions import CredenciaisInvalidasException, NotFoundException
+from src.domain.common.idioma_preferido import IdiomaPreferido
 from src.domain.entities.usuario import Usuario
 from src.infrastructure.services.auth_service import AuthServiceImpl
 
@@ -53,3 +54,36 @@ async def test_login_invalido_recusa_com_mensagem_generica_sem_emitir_token(cont
     criar_token.assert_not_called()
     if motivo == "credenciais":
         repo.obter_por_email.assert_not_awaited()
+
+
+async def test_atualizar_preferencias_persiste_idioma_na_conta():
+    unidade_id = uuid4()
+    usuario = Usuario(unidade_id, "Ana", "ana@example.com")
+    usuario_repo = AsyncMock()
+    usuario_repo.obter_por_id.return_value = usuario
+    session = AsyncMock()
+    service = AuthServiceImpl(
+        AsyncMock(), usuario_repo, Mock(return_value="token-assinado"), session
+    )
+    request = AtualizarPreferenciasRequest(idioma_preferido="pt-BR")
+
+    await service.atualizar_preferencias(unidade_id, usuario.id, request)
+
+    assert usuario.idioma_preferido == IdiomaPreferido.PORTUGUES_BR
+    usuario_repo.atualizar.assert_awaited_once_with(usuario)
+    session.commit.assert_awaited_once_with()
+
+
+async def test_atualizar_preferencias_nao_altera_usuario_de_outra_unidade():
+    usuario_repo = AsyncMock()
+    usuario_repo.obter_por_id.return_value = None
+    session = AsyncMock()
+    service = AuthServiceImpl(AsyncMock(), usuario_repo, Mock(), session)
+
+    with pytest.raises(NotFoundException, match="Usuário não encontrado"):
+        await service.atualizar_preferencias(
+            uuid4(), uuid4(), AtualizarPreferenciasRequest(idioma_preferido="ko")
+        )
+
+    usuario_repo.atualizar.assert_not_awaited()
+    session.commit.assert_not_awaited()

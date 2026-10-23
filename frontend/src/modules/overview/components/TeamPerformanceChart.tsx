@@ -1,6 +1,8 @@
 import { useState } from "react";
 
 import type { TeamPerformancePoint } from "../model/overview";
+import { useTranslation } from "react-i18next";
+import { localeForLanguage } from "@/core/i18n";
 
 const WIDTH = 941;
 const HEIGHT = 90;
@@ -24,6 +26,9 @@ export function TeamPerformanceChart({
   currentPct: number;
 }) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const { t, i18n } = useTranslation();
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const locale = localeForLanguage(i18n.resolvedLanguage ?? "en");
 
   const max = Math.max(...points.map((p) => p.value));
   const stepX = WIDTH / (points.length - 1);
@@ -33,7 +38,7 @@ export function TeamPerformanceChart({
   return (
     <div className="rounded-3xl border border-border bg-card p-5">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-foreground">My Team Performance</h2>
+        <h2 className="text-sm font-semibold text-foreground">{t("teamPerformance")}</h2>
         <span className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground shadow-sm">
           {hovered ? `${hovered.value}%` : `${currentPct}%`}
         </span>
@@ -43,7 +48,7 @@ export function TeamPerformanceChart({
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         className="overflow-visible"
         role="img"
-        aria-label="Gráfico de linha com a performance mensal do time"
+        aria-label={t("lineChartLabel")}
       >
         <path
           d={path}
@@ -82,7 +87,10 @@ export function TeamPerformanceChart({
       <div className="mt-1.5 flex justify-between text-xs text-muted-foreground">
         {points.map((p, i) => (
           <span key={p.month} className={hoverIndex === i ? "font-medium" : undefined}>
-            {p.month}
+            {(() => {
+              const index = monthNames.indexOf(p.month);
+              return index < 0 ? p.month : new Intl.DateTimeFormat(locale, { month: "short" }).format(new Date(2025, index, 1));
+            })()}
           </span>
         ))}
       </div>

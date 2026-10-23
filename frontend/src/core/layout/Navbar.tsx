@@ -1,4 +1,3 @@
-import language from "@/shared/assets/figma/icons/language.svg";
 import search from "@/shared/assets/figma/icons/search.svg";
 import type { PerfilAtual } from "@/core/auth/api";
 import { useNavigate } from "react-router";
@@ -6,8 +5,11 @@ import { httpPost } from "@/core/api/http-client";
 import { clearTokens } from "@/core/auth/session";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { LanguageSelector } from "@/core/i18n/LanguageSelector";
 
 export function Navbar({ perfil }: { perfil: PerfilAtual }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [menuAberto, setMenuAberto] = useState(false);
   async function sair() {
@@ -25,18 +27,15 @@ export function Navbar({ perfil }: { perfil: PerfilAtual }) {
           <img src={search} alt="" className="h-[18px] w-[18px] shrink-0 opacity-70" />
           <input
             type="search"
-            placeholder="Search keyword..."
-            aria-label="Buscar"
+            placeholder={t("search")}
+            aria-label={t("searchLabel")}
             className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
           />
       </div>
       <div className="flex shrink-0 items-center justify-self-end gap-5">
-        <button type="button" className="flex items-center gap-1.5 text-sm text-foreground">
-          <img src={language} alt="" className="h-5 w-5" />
-          English
-        </button>
+        <LanguageSelector perfil={perfil} />
         <div className="relative">
-          <button type="button" aria-expanded={menuAberto} onClick={() => setMenuAberto(!menuAberto)} title="Menu do usuário" className="flex items-center gap-1.5">
+          <button type="button" aria-expanded={menuAberto} onClick={() => setMenuAberto(!menuAberto)} title={t("userMenu")} className="flex items-center gap-1.5">
             <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#8880F7] text-[0px] font-medium text-white">
               {perfil.nome.slice(0, 1).toUpperCase()}
             </span>
@@ -45,7 +44,7 @@ export function Navbar({ perfil }: { perfil: PerfilAtual }) {
           </button>
           {menuAberto && <div className="absolute right-0 top-10 z-50 min-w-44 rounded-xl border border-border bg-card p-1.5 shadow-lg">
             <p className="truncate px-2 py-1.5 text-xs text-muted-foreground">{perfil.email}</p>
-            <button onClick={sair} className="w-full rounded-lg px-2 py-1.5 text-left text-xs hover:bg-secondary">Sair</button>
+            <button onClick={sair} className="w-full rounded-lg px-2 py-1.5 text-left text-xs hover:bg-secondary">{t("logout")}</button>
           </div>}
         </div>
       </div>

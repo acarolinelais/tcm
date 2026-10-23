@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Eye, MoreHorizontal, Pencil } from "lucide-react";
 
 import type { Perfil } from "./api/perfis.api";
+import { useTranslation } from "react-i18next";
 
 export function PerfilAcoesMenu({
   perfil,
@@ -15,6 +16,7 @@ export function PerfilAcoesMenu({
   onEditar: () => void;
   podeEditar: boolean;
 }) {
+  const { t } = useTranslation();
   const [aberto, setAberto] = useState(false);
   const [posicao, setPosicao] = useState({ top: 0, right: 8 });
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -60,7 +62,7 @@ export function PerfilAcoesMenu({
       <button
         ref={triggerRef}
         type="button"
-        aria-label={`Ações para ${perfil.nome}`}
+        aria-label={t("rowActionsFor", { label: perfil.nome })}
         aria-haspopup="menu"
         aria-expanded={aberto}
         onClick={() => setAberto((valor) => !valor)}
@@ -69,12 +71,12 @@ export function PerfilAcoesMenu({
         <MoreHorizontal aria-hidden="true" className="size-5" />
       </button>
       {aberto && createPortal(
-        <div ref={menuRef} role="menu" aria-label={`Ações para ${perfil.nome}`} style={{ position: "fixed", top: posicao.top, right: posicao.right }} className="z-50 min-w-48 rounded-xl border border-border bg-card p-1 shadow-lg">
+        <div ref={menuRef} role="menu" aria-label={t("rowActionsFor", { label: perfil.nome })} style={{ position: "fixed", top: posicao.top, right: posicao.right }} className="z-50 min-w-48 rounded-xl border border-border bg-card p-1 shadow-lg">
           <button type="button" role="menuitem" onClick={() => executar(onVisualizar)} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm hover:bg-secondary">
-            <Eye aria-hidden="true" className="size-4 text-muted-foreground" /> Visualizar permissões
+            <Eye aria-hidden="true" className="size-4 text-muted-foreground" /> {t("viewPermissions")}
           </button>
           {podeEditar && <button type="button" role="menuitem" onClick={() => executar(onEditar)} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm hover:bg-secondary">
-            <Pencil aria-hidden="true" className="size-4 text-muted-foreground" /> Editar permissões
+            <Pencil aria-hidden="true" className="size-4 text-muted-foreground" /> {t("editPermissions")}
           </button>}
         </div>,
         document.body,

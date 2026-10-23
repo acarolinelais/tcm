@@ -4,8 +4,10 @@ import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
 
 import { useAtivarUsuario, useInativarUsuario } from "../hooks/useUsuarios";
 import type { Usuario } from "../model/usuario";
+import { useTranslation } from "react-i18next";
 
 export function UsuarioToggleAtivo({ usuario }: { usuario: Usuario }) {
+  const { t } = useTranslation();
   const [confirmacaoAberta, setConfirmacaoAberta] = useState(false);
   const ativar = useAtivarUsuario();
   const inativar = useInativarUsuario();
@@ -19,14 +21,14 @@ export function UsuarioToggleAtivo({ usuario }: { usuario: Usuario }) {
           disabled={inativar.isPending}
           onClick={() => setConfirmacaoAberta(true)}
         >
-          Inativar
+          {t("inactivate")}
         </Button>
         <ConfirmDialog
           open={confirmacaoAberta}
           onOpenChange={setConfirmacaoAberta}
-          title="Inativar usuário?"
-          description={`Tem certeza que deseja inativar o usuário “${usuario.nome}”?`}
-          confirmLabel="Inativar usuário"
+          title={t("deactivateUserQuestion")}
+          description={t("deactivateUserDescription", { name: usuario.nome })}
+          confirmLabel={t("deactivateUser")}
           variant="destructive"
           isPending={inativar.isPending}
           onConfirm={() => {
@@ -45,7 +47,7 @@ export function UsuarioToggleAtivo({ usuario }: { usuario: Usuario }) {
       disabled={ativar.isPending}
       onClick={() => ativar.mutate(usuario.id)}
     >
-      Ativar
+      {t("activate")}
     </Button>
   );
 }

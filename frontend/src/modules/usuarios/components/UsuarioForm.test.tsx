@@ -39,9 +39,9 @@ describe("UsuarioForm", () => {
     const { onSalvo } = renderForm();
     const user = userEvent.setup();
 
-    await user.type(screen.getByLabelText("Nome"), "Ana");
-    await user.type(screen.getByLabelText("E-mail"), "ana@example.com");
-    await user.click(screen.getByRole("button", { name: /salvar/i }));
+    await user.type(screen.getByLabelText("Name"), "Ana");
+    await user.type(screen.getByLabelText("Email"), "ana@example.com");
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(onSalvo).toHaveBeenCalled());
   });
@@ -50,9 +50,9 @@ describe("UsuarioForm", () => {
     renderForm();
     const user = userEvent.setup();
 
-    await user.click(screen.getByRole("button", { name: /salvar/i }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(await screen.findByText("O nome é obrigatório.")).toBeInTheDocument();
+    expect(await screen.findByText("Name is required.")).toBeInTheDocument();
     expect(fetch).not.toHaveBeenCalled();
   });
 });

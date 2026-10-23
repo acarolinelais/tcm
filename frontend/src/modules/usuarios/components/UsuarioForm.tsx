@@ -10,8 +10,9 @@ import { Label } from "@/shared/ui/label";
 import { toast } from "@/shared/lib/toast";
 
 import { useAtualizarUsuario, useCriarUsuario } from "../hooks/useUsuarios";
-import { type Usuario, type UsuarioFormValues, usuarioFormSchema } from "../model/usuario";
+import { createUsuarioFormSchema, type Usuario, type UsuarioFormValues } from "../model/usuario";
 import { listarPerfis, atribuirPerfil } from "@/modules/perfis/api/perfis.api";
+import { useTranslation } from "react-i18next";
 
 interface UsuarioFormProps {
   usuario?: Usuario;
@@ -21,6 +22,7 @@ interface UsuarioFormProps {
 }
 
 export function UsuarioForm({ usuario, onSalvo, podeGerenciar = true, podeAtribuirPerfil = false }: UsuarioFormProps) {
+  const { t } = useTranslation();
   const criar = useCriarUsuario();
   const atualizar = useAtualizarUsuario();
   const queryClient = useQueryClient();
@@ -32,7 +34,7 @@ export function UsuarioForm({ usuario, onSalvo, podeGerenciar = true, podeAtribu
     setError,
     formState: { errors, isSubmitting },
   } = useForm<UsuarioFormValues>({
-    resolver: zodResolver(usuarioFormSchema),
+    resolver: zodResolver(createUsuarioFormSchema(t)),
     defaultValues: { nome: usuario?.nome ?? "", email: usuario?.email ?? "", perfil_id: usuario?.perfil_id ?? "" },
   });
 
@@ -61,13 +63,13 @@ export function UsuarioForm({ usuario, onSalvo, podeGerenciar = true, podeAtribu
         let aplicado = false;
         for (const campoErro of error.problem.errors ?? []) {
           if (campoErro.campo === "nome" || campoErro.campo === "email") {
-            setError(campoErro.campo, { message: campoErro.mensagem });
+            setError(campoErro.campo, { message: t(campoErro.campo === "nome" ? "invalidName" : "emailInUse") });
             aplicado = true;
           }
         }
-        if (!aplicado) toast.error(error.problem.detail ?? error.problem.title);
+        if (!aplicado) toast.error(t("userSaveError"));
       } else {
-        toast.error("Não foi possível salvar o usuário.");
+        toast.error(t("userSaveError"));
       }
     }
   }
@@ -75,21 +77,21 @@ export function UsuarioForm({ usuario, onSalvo, podeGerenciar = true, podeAtribu
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-1.5">
-        <Label htmlFor="nome">Nome</Label>
+        <Label htmlFor="nome">{t("name")}</Label>
         <Input id="nome" readOnly={!podeGerenciar} {...register("nome")} />
         {errors.nome && <p className="text-sm text-destructive">{errors.nome.message}</p>}
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="email">E-mail</Label>
+        <Label htmlFor="email">{t("email")}</Label>
         <Input id="email" type="email" readOnly={!podeGerenciar} {...register("email")} />
         {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
       </div>
       {podeAtribuirPerfil && (
         <div className="space-y-1.5">
-          <Label htmlFor="perfil-usuario">Perfil</Label>
+          <Label htmlFor="perfil-usuario">{t("profile")}</Label>
           <select
             id="perfil-usuario"
-            aria-label="Perfil do usuário"
+            aria-label={t("userProfile")}
             value={usuario ? perfilSelecionado : undefined}
             {...(!usuario ? register("perfil_id") : {})}
             onChange={(event) => {
@@ -99,15 +101,15 @@ export function UsuarioForm({ usuario, onSalvo, podeGerenciar = true, podeAtribu
             disabled={perfis.isLoading || isPending || Boolean(usuario && perfis.data?.find((perfil) => perfil.id === usuario.perfil_id)?.codigo === "ADMIN_UNIDADE")}
             className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {!usuario && <option value="">Usuário padrão</option>}
+            {!usuario && <option value="">{t("standardUser")}</option>}
             {perfis.data?.filter((perfil) => perfil.codigo !== "ADMIN_UNIDADE" || perfil.id === usuario?.perfil_id)
-              .map((perfil) => <option key={perfil.id} value={perfil.id}>{perfil.nome}</option>)}
+              .map((perfil) => <option key={perfil.id} value={perfil.id}>{perfil.codigo ? t(`catalog.profile.${perfil.codigo}`, { defaultValue: perfil.nome }) : perfil.nome}</option>)}
           </select>
-          {perfis.isError && <p role="alert" className="text-sm text-destructive">Não foi possível carregar os perfis.</p>}
+          {perfis.isError && <p role="alert" className="text-sm text-destructive">{t("profilesLoadError")}</p>}
         </div>
       )}
       <Button type="submit" disabled={isPending || !podeGerenciar && perfilSelecionado === usuario?.perfil_id}>
-        {isPending ? "Salvando..." : "Salvar"}
+        {isPending ? t("saving") : t("save")}
       </Button>
     </form>
   );

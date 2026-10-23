@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { toast } from "@/shared/lib/toast";
+import { useTranslation } from "react-i18next";
 
 export function UsuarioActionsMenu({
   usuario,
@@ -24,6 +25,7 @@ export function UsuarioActionsMenu({
   podeAtribuirResponsavel: boolean;
   gerentes: Usuario[];
 }) {
+  const { t } = useTranslation();
   const [aberto, setAberto] = useState(false);
   const [confirmacaoAberta, setConfirmacaoAberta] = useState(false);
   const [responsavelAberto, setResponsavelAberto] = useState(false);
@@ -94,9 +96,9 @@ export function UsuarioActionsMenu({
       <ConfirmDialog
         open={confirmacaoAberta}
         onOpenChange={setConfirmacaoAberta}
-        title="Inativar usuário?"
-        description={`Tem certeza que deseja inativar o usuário “${usuario.nome}”?`}
-        confirmLabel="Inativar usuário"
+        title={t("deactivateUserQuestion")}
+        description={t("deactivateUserDescription", { name: usuario.nome })}
+        confirmLabel={t("deactivateUser")}
         variant="destructive"
         isPending={inativar.isPending}
         onConfirm={() => {
@@ -106,32 +108,32 @@ export function UsuarioActionsMenu({
       />
       <Dialog open={responsavelAberto} onOpenChange={setResponsavelAberto}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Responsável por {usuario.nome}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("ownerFor", { name: usuario.nome })}</DialogTitle></DialogHeader>
           <form className="space-y-4" onSubmit={async (event) => {
             event.preventDefault();
             try {
               await atribuirResponsavel.mutateAsync({ id: usuario.id, responsavelId: responsavelId || null });
-              toast.success("Responsável atualizado com sucesso.");
+              toast.success(t("ownerUpdated"));
               setResponsavelAberto(false);
             } catch {
-              toast.error("Não foi possível atualizar o responsável.");
+              toast.error(t("ownerUpdateError"));
             }
           }}>
             <label htmlFor={`responsavel-${usuario.id}`} className="block space-y-1.5 text-sm">
-              <span>Gerente responsável</span>
+              <span>{t("managerOwner")}</span>
               <select id={`responsavel-${usuario.id}`} value={responsavelId} onChange={(event) => setResponsavelId(event.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                <option value="">Sem responsável</option>
+                <option value="">{t("noOwner")}</option>
                 {gerentes.filter((gerente) => gerente.ativo).map((gerente) => <option key={gerente.id} value={gerente.id}>{gerente.nome} · {gerente.email}</option>)}
               </select>
             </label>
-            <Button type="submit" disabled={atribuirResponsavel.isPending}>{atribuirResponsavel.isPending ? "Salvando..." : "Salvar"}</Button>
+            <Button type="submit" disabled={atribuirResponsavel.isPending}>{atribuirResponsavel.isPending ? t("saving") : t("save")}</Button>
           </form>
         </DialogContent>
       </Dialog>
       <button
         ref={triggerRef}
         type="button"
-        aria-label={`Ações para ${usuario.nome}`}
+        aria-label={t("rowActionsFor", { label: usuario.nome })}
         aria-haspopup="menu"
         aria-expanded={aberto}
         className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -143,7 +145,7 @@ export function UsuarioActionsMenu({
         <div
           ref={menuRef}
           role="menu"
-          aria-label={`Ações para ${usuario.nome}`}
+          aria-label={t("rowActionsFor", { label: usuario.nome })}
           style={{ position: "fixed", top: posicao.top, right: posicao.right }}
           className="z-50 min-w-40 rounded-xl border border-border bg-card p-1 shadow-lg"
         >
@@ -157,7 +159,7 @@ export function UsuarioActionsMenu({
             }}
           >
             <Pencil aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
-            Editar
+            {t("edit")}
           </button>}
           {podeAtribuirResponsavel && <button
             type="button"
@@ -166,7 +168,7 @@ export function UsuarioActionsMenu({
             onClick={() => { setAberto(false); setResponsavelId(usuario.responsavel_id ?? ""); setResponsavelAberto(true); }}
           >
             <UserRoundCog aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
-            Alterar responsável
+            {t("changeOwner")}
           </button>}
           {podeGerenciar && <button
             type="button"
@@ -178,7 +180,7 @@ export function UsuarioActionsMenu({
             {usuario.ativo
               ? <UserRoundX aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
               : <UserRoundCheck aria-hidden="true" className="h-4 w-4 text-muted-foreground" />}
-            {usuario.ativo ? "Inativar" : "Ativar"}
+            {usuario.ativo ? t("inactivate") : t("activate")}
           </button>}
         </div>,
         document.body,

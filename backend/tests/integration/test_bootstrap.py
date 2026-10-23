@@ -44,6 +44,7 @@ async def test_migration_cria_unidade_manaus_com_admin():
             assert unidade.nome == "Manaus"
             assert perfil.codigo == "ADMIN_UNIDADE"
             assert admin.senha_hash is not None
+            assert admin.idioma_preferido == "en"
             assert PasswordHasher().verify(admin.senha_hash, os.environ["BOOTSTRAP_ADMIN_SENHA"])
     finally:
         await engine.dispose()
@@ -95,3 +96,12 @@ async def test_admin_bootstrap_real_consegue_fazer_login():
     assert response.status_code == 200
     assert response.json()["token_type"] == "bearer"
     assert response.json()["access_token"]
+    async with AsyncClient(
+        transport=ASGITransport(app=app, raise_app_exceptions=False), base_url="http://test"
+    ) as client:
+        perfil = await client.get(
+            "/api/auth/me",
+            headers={"Authorization": f"Bearer {response.json()['access_token']}"},
+        )
+    assert perfil.status_code == 200
+    assert perfil.json()["idioma_preferido"] == "en"

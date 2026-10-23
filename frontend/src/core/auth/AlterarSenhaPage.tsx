@@ -7,6 +7,7 @@ import { ApiError } from "@/shared/api/problem-details";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
+import { useTranslation } from "react-i18next";
 
 export function AlterarSenhaPage() {
   const [novaSenha, setNovaSenha] = useState("");
@@ -15,12 +16,13 @@ export function AlterarSenhaPage() {
   const [salvando, setSalvando] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   async function enviar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErro("");
     if (novaSenha !== confirmacao) {
-      setErro("As senhas não coincidem.");
+      setErro(t("passwordsMismatch"));
       return;
     }
     setSalvando(true);
@@ -30,8 +32,8 @@ export function AlterarSenhaPage() {
       navigate("/overview", { replace: true });
     } catch (error) {
       setErro(error instanceof ApiError
-        ? error.problem.detail ?? "Não foi possível alterar sua senha."
-        : "Não foi possível conectar à API.");
+        ? t("passwordChangeError")
+        : t("connectionError"));
     } finally {
       setSalvando(false);
     }
@@ -41,13 +43,13 @@ export function AlterarSenhaPage() {
     <main className="flex min-h-screen items-center justify-center bg-[#FBFBFB] p-4">
       <form onSubmit={enviar} className="w-full max-w-md space-y-5 rounded-2xl border border-border bg-card p-6">
         <div>
-          <h1 className="text-xl font-semibold">Crie sua senha</h1>
+          <h1 className="text-xl font-semibold">{t("createPassword")}</h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Para continuar, troque a senha inicial por uma senha pessoal.
+            {t("initialPasswordHint")}
           </p>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="nova-senha">Nova senha</Label>
+          <Label htmlFor="nova-senha">{t("newPassword")}</Label>
           <Input
             id="nova-senha"
             type="password"
@@ -59,7 +61,7 @@ export function AlterarSenhaPage() {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="confirmacao-senha">Confirme a nova senha</Label>
+          <Label htmlFor="confirmacao-senha">{t("confirmPassword")}</Label>
           <Input
             id="confirmacao-senha"
             type="password"
@@ -72,7 +74,7 @@ export function AlterarSenhaPage() {
         </div>
         {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}
         <Button type="submit" className="w-full" disabled={salvando}>
-          {salvando ? "Salvando..." : "Salvar senha"}
+          {salvando ? t("saving") : t("savePassword")}
         </Button>
       </form>
     </main>

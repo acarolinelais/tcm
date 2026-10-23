@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, Filter, Search, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export interface TableFilterOption {
   value: string;
@@ -21,6 +22,7 @@ export function TableColumnFilter({
   options?: TableFilterOption[];
   placeholder?: string;
 }) {
+  const { t } = useTranslation();
   const [aberto, setAberto] = useState(false);
   const [rascunho, setRascunho] = useState(value);
   const [posicao, setPosicao] = useState({ top: 0, right: 8 });
@@ -82,7 +84,7 @@ export function TableColumnFilter({
       <button
         ref={triggerRef}
         type="button"
-        aria-label={`Filtrar por ${label}`}
+        aria-label={t("filterBy", { label })}
         aria-haspopup="menu"
         aria-expanded={aberto}
         className={`inline-flex items-center gap-1.5 text-left text-xs font-semibold uppercase tracking-wide transition-colors ${ativo ? "text-primary" : "text-foreground hover:text-primary"}`}
@@ -95,7 +97,7 @@ export function TableColumnFilter({
         <div
           ref={menuRef}
           role="menu"
-          aria-label={`Filtro: ${label}`}
+          aria-label={t("filter", { label })}
           style={{ position: "fixed", top: posicao.top, right: posicao.right }}
           className="z-50 min-w-48 rounded-xl border border-border bg-card p-1.5 shadow-lg"
         >
@@ -125,11 +127,11 @@ export function TableColumnFilter({
                   autoFocus
                   value={rascunho}
                   onChange={(event) => setRascunho(event.target.value)}
-                  placeholder={placeholder ?? `Filtrar ${label.toLowerCase()}`}
+                  placeholder={placeholder ?? t("filterPlaceholder", { label })}
                   className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 />
                 {rascunho && (
-                  <button type="button" aria-label="Limpar texto" onClick={() => setRascunho("")}>
+                  <button type="button" aria-label={t("clearText")} onClick={() => setRascunho("")}>
                     <X aria-hidden="true" className="h-3.5 w-3.5 text-muted-foreground" />
                   </button>
                 )}
@@ -144,10 +146,10 @@ export function TableColumnFilter({
                     setAberto(false);
                   }}
                 >
-                  Limpar
+                  {t("clearFilters")}
                 </button>
                 <button type="submit" className="rounded-lg bg-primary px-3 py-1.5 text-xs text-primary-foreground">
-                  Aplicar
+                  {t("apply")}
                 </button>
               </div>
             </form>

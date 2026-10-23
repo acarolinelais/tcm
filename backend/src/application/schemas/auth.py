@@ -2,6 +2,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
+from src.domain.common.idioma_preferido import IdiomaPreferido
 from src.domain.entities.usuario import Usuario
 
 
@@ -25,6 +26,14 @@ class AlterarSenhaRequest(BaseModel):
     nova_senha: str = Field(min_length=1, max_length=128)
 
 
+class AtualizarPreferenciasRequest(BaseModel):
+    idioma_preferido: IdiomaPreferido
+
+
+class PreferenciasResponse(BaseModel):
+    idioma_preferido: IdiomaPreferido
+
+
 class PerfilAtualResponse(BaseModel):
     id: UUID
     nome: str
@@ -39,3 +48,4 @@ class PerfilAtualResponse(BaseModel):
     time_atual_id: UUID | None
     tem_multiplos_times: bool
     senha_alteracao_obrigatoria: bool
+    idioma_preferido: IdiomaPreferido

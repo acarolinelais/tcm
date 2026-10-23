@@ -9,8 +9,10 @@ from src.api.dependencies import (
 )
 from src.application.schemas.auth import (
     AlterarSenhaRequest,
+    AtualizarPreferenciasRequest,
     LoginRequest,
     PerfilAtualResponse,
+    PreferenciasResponse,
     RefreshRequest,
     TokenResponse,
 )
@@ -22,6 +24,7 @@ from src.infrastructure.data.models.setor_model import SetorModel
 from src.infrastructure.data.models.time_membro_model import TimeMembroModel
 from src.infrastructure.data.models.time_model import TimeModel
 from src.infrastructure.data.models.unidade_model import UnidadeModel
+from src.infrastructure.data.models.usuario_model import UsuarioModel
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -58,6 +61,18 @@ async def trocar_senha(
     if not usuario_atual.senha_alteracao_obrigatoria or usuario_atual.sessao_id is None:
         raise ForbiddenException("A troca inicial de senha não é necessária.")
     return await service.alterar_senha_inicial(usuario_atual.id, usuario_atual.sessao_id, request)
+
+
+@router.patch("/preferencias", response_model=PreferenciasResponse)
+async def atualizar_preferencias(
+    request: AtualizarPreferenciasRequest,
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual_para_troca_senha),
+    service: AuthService = Depends(get_auth_service),
+) -> PreferenciasResponse:
+    await service.atualizar_preferencias(
+        usuario_atual.unidade_id, usuario_atual.id, request
+    )
+    return PreferenciasResponse(idioma_preferido=request.idioma_preferido)
 
 
 @router.get("/me", response_model=PerfilAtualResponse)
@@ -102,6 +117,12 @@ async def perfil_atual(
     unidade_nome = await session.scalar(
         select(UnidadeModel.nome).where(UnidadeModel.id == usuario_atual.unidade_id)
     )
+    idioma_preferido = await session.scalar(
+        select(UsuarioModel.idioma_preferido).where(
+            UsuarioModel.id == usuario_atual.id,
+            UsuarioModel.unidade_id == usuario_atual.unidade_id,
+        )
+    )
     existentes = {time["id"] for time in times}
     times.extend(
         {"id": str(row.id), "nome": row.nome, "papel": "gerente"}
@@ -122,4 +143,5 @@ async def perfil_atual(
         time_atual_id=usuario_atual.time_atual_id,
         tem_multiplos_times=len(times) > 1,
         senha_alteracao_obrigatoria=usuario_atual.senha_alteracao_obrigatoria,
+        idioma_preferido=idioma_preferido or "en",
     )
