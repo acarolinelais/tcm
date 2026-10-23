@@ -10,7 +10,18 @@ function renderTable() {
   const onPageChange = vi.fn();
   render(
     <QueryClientProvider client={client}>
-      <UsuariosTable page={1} pageSize={20} onPageChange={onPageChange} onEditar={vi.fn()} />
+      <UsuariosTable
+        page={1}
+        pageSize={20}
+        pageSizeOptions={[10, 20]}
+        filtros={{}}
+        onFiltroChange={vi.fn()}
+        onPageChange={onPageChange}
+        onPageSizeChange={vi.fn()}
+        onEditar={vi.fn()}
+        onNovoUsuario={vi.fn()}
+        onLimparFiltros={vi.fn()}
+      />
     </QueryClientProvider>,
   );
   return { onPageChange };

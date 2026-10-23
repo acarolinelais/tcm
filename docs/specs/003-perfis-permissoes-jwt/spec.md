@@ -133,7 +133,8 @@ invalidação imediata das sessões após alterações de acesso.
   detalhada quando a entidade Task entrar no projeto.
 - Criar telas de login e de gestão de usuários, setores e times; esta spec define contratos e regras
   que essas telas poderão consumir. O cadastro e a vinculação de perfis e permissões fazem parte do
-  escopo desta spec.
+  escopo desta spec; o detalhamento da tela agrupada por módulo está na
+  [spec 005](../005-gestao-perfis-permissoes/spec.md).
 - Integrar o login à API corporativa.
 - Construir permissões diferentes por cliente/tenant, fora do catálogo de permissões administrado pela
   unidade.

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { IdCard, MoreHorizontal, Pencil, UserRoundCheck, UserRoundX } from "lucide-react";
+import { MoreHorizontal, Pencil, UserRoundCheck, UserRoundX } from "lucide-react";
 
 import type { Usuario } from "../model/usuario";
 import { useAtivarUsuario, useInativarUsuario } from "../hooks/useUsuarios";
@@ -9,13 +9,11 @@ import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
 export function UsuarioActionsMenu({
   usuario,
   onEditar,
-  onEditarPerfil,
   podeAtribuirPerfil,
   podeGerenciar,
 }: {
   usuario: Usuario;
   onEditar: (usuario: Usuario) => void;
-  onEditarPerfil: (usuario: Usuario) => void;
   podeAtribuirPerfil: boolean;
   podeGerenciar: boolean;
 }) {
@@ -113,7 +111,7 @@ export function UsuarioActionsMenu({
           style={{ position: "fixed", top: posicao.top, right: posicao.right }}
           className="z-50 min-w-40 rounded-xl border border-border bg-card p-1 shadow-lg"
         >
-          {podeGerenciar && <button
+          {(podeGerenciar || podeAtribuirPerfil) && <button
             type="button"
             role="menuitem"
             className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-secondary"
@@ -124,18 +122,6 @@ export function UsuarioActionsMenu({
           >
             <Pencil aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
             Editar
-          </button>}
-          {podeAtribuirPerfil && <button
-            type="button"
-            role="menuitem"
-            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-secondary"
-            onClick={() => {
-              setAberto(false);
-              onEditarPerfil(usuario);
-            }}
-          >
-            <IdCard aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
-            Alterar perfil
           </button>}
           {podeGerenciar && <button
             type="button"

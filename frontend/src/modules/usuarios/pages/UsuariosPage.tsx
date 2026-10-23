@@ -9,7 +9,6 @@ import { UsuarioForm } from "../components/UsuarioForm";
 import { UsuariosTable } from "../components/UsuariosTable";
 import type { Usuario } from "../model/usuario";
 import type { PerfilAtual } from "@/core/auth/api";
-import { UsuarioPerfilSelect } from "@/modules/perfis/UsuarioPerfilSelect";
 import type { UsuarioFiltros } from "../api/usuario.api";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
@@ -24,7 +23,6 @@ export function UsuariosPage() {
   const [filtros, setFiltros] = useState<UsuarioFiltros>({});
   const [modalAberto, setModalAberto] = useState(false);
   const [usuarioEmEdicao, setUsuarioEmEdicao] = useState<Usuario | undefined>();
-  const [usuarioPerfilEmEdicao, setUsuarioPerfilEmEdicao] = useState<Usuario | undefined>();
 
   function abrirCriar() {
     setUsuarioEmEdicao(undefined);
@@ -102,7 +100,6 @@ export function UsuariosPage() {
           setPage(1);
         }}
         onEditar={abrirEditar}
-        onEditarPerfil={setUsuarioPerfilEmEdicao}
         onNovoUsuario={abrirCriar}
         onLimparFiltros={limparFiltros}
         podeGerenciar={podeGerenciar}
@@ -114,27 +111,7 @@ export function UsuariosPage() {
           <DialogHeader>
             <DialogTitle>{usuarioEmEdicao ? "Editar usuário" : "Novo usuário"}</DialogTitle>
           </DialogHeader>
-          <UsuarioForm usuario={usuarioEmEdicao} onSalvo={aoSalvar} />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={podeAtribuirPerfil && Boolean(usuarioPerfilEmEdicao)}
-        onOpenChange={(aberto) => !aberto && setUsuarioPerfilEmEdicao(undefined)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Alterar perfil</DialogTitle>
-          </DialogHeader>
-          {usuarioPerfilEmEdicao && (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">{usuarioPerfilEmEdicao.nome}</p>
-              <UsuarioPerfilSelect
-                usuarioId={usuarioPerfilEmEdicao.id}
-                perfilId={usuarioPerfilEmEdicao.perfil_id}
-              />
-            </div>
-          )}
+          <UsuarioForm usuario={usuarioEmEdicao} onSalvo={aoSalvar} podeGerenciar={podeGerenciar} podeAtribuirPerfil={podeAtribuirPerfil} />
         </DialogContent>
       </Dialog>
     </div>

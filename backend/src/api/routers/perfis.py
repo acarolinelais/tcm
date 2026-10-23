@@ -2,14 +2,17 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy import delete, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import exigir_permissao, get_session, get_usuario_atual
+from src.application.catalogos.permissoes import metadados_permissao
 from src.application.schemas.perfil import (
     AtribuirPerfilRequest,
     CriarPerfilRequest,
     DefinirPermissoesRequest,
     PerfilResponse,
+    PermissaoResponse,
 )
 from src.domain.common.exceptions import ConflictException, NotFoundException
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
@@ -20,16 +23,25 @@ from src.infrastructure.data.models.usuario_model import UsuarioModel
 router = APIRouter(prefix="/api/perfis", tags=["perfis"])
 
 
-@router.get("/permissoes", response_model=list[dict[str, str]])
+@router.get("/permissoes", response_model=list[PermissaoResponse])
 async def listar_permissoes(
     usuario: UsuarioAutenticado = Depends(get_usuario_atual),
     session: AsyncSession = Depends(get_session),
 ):
     exigir_permissao(usuario, "perfis.gerenciar")
-    rows = (
-        (await session.execute(select(PermissaoModel).order_by(PermissaoModel.id))).scalars().all()
-    )
-    return [{"id": row.id, "descricao": row.descricao} for row in rows]
+    rows = (await session.execute(select(PermissaoModel))).scalars().all()
+    catalogo = []
+    for row in rows:
+        modulo, ordem = metadados_permissao(row.id)
+        catalogo.append(
+            PermissaoResponse(
+                id=row.id,
+                descricao=row.descricao,
+                modulo={"codigo": modulo.codigo, "nome": modulo.nome, "ordem": modulo.ordem},
+                ordem=ordem,
+            )
+        )
+    return sorted(catalogo, key=lambda item: (item.modulo.ordem, item.ordem, item.id))
 
 
 @router.get("", response_model=list[PerfilResponse])
@@ -64,7 +76,11 @@ async def listar_perfis(
         )
         saida.append(
             PerfilResponse(
-                id=perfil.id, nome=perfil.nome, descricao=perfil.descricao, permissoes=list(codigos), codigo=perfil.codigo
+                id=perfil.id,
+                nome=perfil.nome,
+                descricao=perfil.descricao,
+                permissoes=list(codigos),
+                codigo=perfil.codigo,
             )
         )
     return saida
@@ -89,9 +105,41 @@ async def criar_perfil(
     perfil = PerfilModel(
         id=uuid4(), unidade_id=usuario.unidade_id, nome=request.nome, descricao=request.descricao
     )
-    session.add(perfil)
-    await session.commit()
-    return PerfilResponse(id=perfil.id, nome=perfil.nome, descricao=perfil.descricao, permissoes=[])
+    codigos = set(request.permissoes)
+    existentes = (
+        set(
+            (await session.execute(select(PermissaoModel.id).where(PermissaoModel.id.in_(codigos))))
+            .scalars()
+            .all()
+        )
+        if codigos
+        else set()
+    )
+    if codigos != existentes:
+        raise NotFoundException("Uma ou mais permissões não existem.")
+
+    try:
+        session.add(perfil)
+        session.add_all(
+            [
+                PerfilPermissaoModel(perfil_id=perfil.id, permissao_id=code)
+                for code in sorted(codigos)
+            ]
+        )
+        await session.commit()
+    except IntegrityError as exc:
+        await session.rollback()
+        raise ConflictException("Já existe um perfil com este nome.") from exc
+    except Exception:
+        await session.rollback()
+        raise
+
+    return PerfilResponse(
+        id=perfil.id,
+        nome=perfil.nome,
+        descricao=perfil.descricao,
+        permissoes=sorted(codigos),
+    )
 
 
 @router.put("/{perfil_id}/permissoes", response_model=PerfilResponse)
@@ -132,7 +180,11 @@ async def definir_permissoes(
     )
     await session.commit()
     return PerfilResponse(
-        id=perfil.id, nome=perfil.nome, descricao=perfil.descricao, permissoes=sorted(codigos), codigo=perfil.codigo
+        id=perfil.id,
+        nome=perfil.nome,
+        descricao=perfil.descricao,
+        permissoes=sorted(codigos),
+        codigo=perfil.codigo,
     )
 
 

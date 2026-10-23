@@ -20,7 +20,6 @@ interface UsuariosTableProps {
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
   onEditar: (usuario: Usuario) => void;
-  onEditarPerfil: (usuario: Usuario) => void;
   onNovoUsuario: () => void;
   onLimparFiltros: () => void;
   podeGerenciar?: boolean;
@@ -36,7 +35,6 @@ export function UsuariosTable({
   onPageChange,
   onPageSizeChange,
   onEditar,
-  onEditarPerfil,
   onNovoUsuario,
   onLimparFiltros,
   podeGerenciar = false,
@@ -130,7 +128,6 @@ export function UsuariosTable({
                 <UsuarioActionsMenu
                   usuario={usuario}
                   onEditar={onEditar}
-                  onEditarPerfil={onEditarPerfil}
                   podeAtribuirPerfil={podeAtribuirPerfil}
                   podeGerenciar={podeGerenciar}
                 />
