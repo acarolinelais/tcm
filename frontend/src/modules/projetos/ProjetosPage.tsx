@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, FileSpreadsheet, Plus, UploadCloud, X } from "lucide-react";
-import { useOutletContext } from "react-router";
+import { Link, useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import type { PerfilAtual } from "@/core/auth/api";
@@ -11,9 +11,10 @@ import { Label } from "@/shared/ui/label";
 import { Select, SelectContent, SelectItem, SelectValue, SELECT_EMPTY_VALUE, SelectTrigger } from "@/shared/ui/select";
 import { Badge } from "@/shared/ui/badge";
 import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyStatePanel, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
+import { MultiSelectCombobox } from "@/shared/ui/multi-select-combobox";
 import { toast } from "@/shared/lib/toast";
 import { timesApi } from "@/modules/times/api/times.api";
-import { projetosApi, type Projeto, type StatusProjeto } from "./api/projetos.api";
+import { modelosDispositivoApi, projetosApi, type Projeto, type StatusProjeto } from "./api/projetos.api";
 
 type ModoCriacao = "manual" | "planilha";
 const statusProjeto: StatusProjeto[] = ["Created", "To Do", "InProgress", "Completed", "Canceled"];
@@ -31,7 +32,7 @@ export function ProjetosPage() {
   const [tamanhoPagina, setTamanhoPagina] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const projetos = useQuery({ queryKey: ["projetos", pagina, tamanhoPagina], queryFn: () => projetosApi.listar(pagina, tamanhoPagina) });
   const times = useQuery({ queryKey: ["projetos-times"], queryFn: () => timesApi.listar(1, 100, { ativo: true }), enabled: podeGerenciar });
-  const modelos = useQuery({ queryKey: ["projetos-modelos"], queryFn: () => projetosApi.listarModelos(), enabled: podeGerenciar });
+  const modelos = useQuery({ queryKey: ["modelos-dispositivo", true], queryFn: () => modelosDispositivoApi.listar(1, 100, true), enabled: podeGerenciar });
   const client = useQueryClient();
   const [criacaoAberta, setCriacaoAberta] = useState(false);
   const [modo, setModo] = useState<ModoCriacao>("planilha");
@@ -44,6 +45,7 @@ export function ProjetosPage() {
   const inputArquivo = useRef<HTMLInputElement>(null);
 
   const timesDisponiveis = times.data?.items ?? timesVazios;
+  const opcoesModelos = useMemo(() => (modelos.data?.items ?? []).map((model) => ({ value: model.id, label: model.nome })), [modelos.data?.items]);
   const nomeTime = useMemo(() => Object.fromEntries(timesDisponiveis.map((time) => [time.id, time.nome])), [timesDisponiveis]);
   const queryMutation = useMutation({
     mutationFn: async () => {
@@ -75,9 +77,6 @@ export function ProjetosPage() {
     if (!/\.xlsx?$/i.test(file.name)) { toast.error(t("projectFileTypeError")); return; }
     setArquivo(file);
   }
-  function alternarModelo(id: string) {
-    setModelosIds((selected) => selected.includes(id) ? selected.filter((item) => item !== id) : [...selected, id]);
-  }
   function statusLabel(status: StatusProjeto) {
     const keys: Record<StatusProjeto, string> = { Created: "projectCreated", "To Do": "toDo", InProgress: "inProgress", Completed: "completed", Canceled: "projectCanceled" };
     return t(keys[status]);
@@ -89,7 +88,7 @@ export function ProjetosPage() {
     {!criacaoAberta ? <>
       <header className="mb-7 flex shrink-0 items-center justify-between gap-4">
         <h1 className="text-2xl font-medium text-primary">{t("myProjects")}</h1>
-        {podeGerenciar && <Button onClick={() => { limparFormulario(); setCriacaoAberta(true); }}><Plus aria-hidden="true" className="size-4" />{t("newProject")}</Button>}
+        {podeGerenciar && <div className="flex gap-2"><Button asChild variant="outline"><Link to="/modelos-dispositivo">{t("deviceModels", { defaultValue: "Modelos" })}</Link></Button><Button onClick={() => { limparFormulario(); setCriacaoAberta(true); }}><Plus aria-hidden="true" className="size-4" />{t("newProject")}</Button></div>}
       </header>
       <TableLayout className="overflow-auto">
         {projetos.isLoading ? <div role="status" className="p-8 text-center text-sm text-muted-foreground">{t("loadingProjects")}</div> : projetos.isError ? <div role="alert" className="p-8 text-center text-sm text-destructive">{t("projectsLoadError")}</div> : <Table>
@@ -127,7 +126,15 @@ export function ProjetosPage() {
           {(modo === "manual" || arquivo) && <section className="mt-7 border-t border-border pt-6">
             <h2 className="mb-5 text-base font-semibold">{t("projectSetup")}</h2>
             <div className="grid gap-5 sm:grid-cols-2"><div><Label htmlFor="project-team">{t("team")}</Label><Select value={timeId} onValueChange={(value) => setTimeId(value === SELECT_EMPTY_VALUE ? "" : value)}><SelectTrigger id="project-team" className="mt-2"><SelectValue placeholder={t("selectTeam")} /></SelectTrigger><SelectContent><SelectItem value={SELECT_EMPTY_VALUE}>{t("selectTeam")}</SelectItem>{timesDisponiveis.map((team) => <SelectItem key={team.id} value={team.id}>{team.nome}</SelectItem>)}</SelectContent></Select></div>
-              <fieldset><legend className="text-sm font-medium">{t("deviceModels")}</legend><div className="mt-2 max-h-40 space-y-1 overflow-auto rounded-xl border border-input p-2">{(modelos.data?.items ?? []).map((model) => <label key={model.id} className="flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2 text-sm hover:bg-secondary"><input type="checkbox" className="size-4 accent-primary" checked={modelosIds.includes(model.id)} onChange={() => alternarModelo(model.id)} /><span>{model.nome}</span></label>)}{modelos.isLoading && <p className="px-2 py-3 text-sm text-muted-foreground">{t("loadingDeviceModels")}</p>}{!modelos.isLoading && !modelos.data?.items.length && <p className="px-2 py-3 text-sm text-muted-foreground">{t("noDeviceModels")}</p>}</div></fieldset>
+              <MultiSelectCombobox
+                label={t("deviceModels")}
+                placeholder={t("selectDeviceModels", { defaultValue: "Selecionar modelos" })}
+                options={opcoesModelos}
+                value={modelosIds}
+                onValueChange={setModelosIds}
+                emptyLabel={modelos.isLoading ? t("loadingDeviceModels") : t("noDeviceModels")}
+                removeLabel={(name) => t("removeSelectedModel", { defaultValue: "Remover {{name}}", name })}
+              />
             </div>
           </section>}
         </div>
@@ -139,6 +146,6 @@ export function ProjetosPage() {
 
 function ProjectRow({ project, teamName, canEdit, onStatusChange, statusLabel }: { project: Projeto; teamName?: string; canEdit: boolean; onStatusChange: (status: StatusProjeto) => void; statusLabel: (status: StatusProjeto) => string }) {
   const { t } = useTranslation();
-  return <TableRow><TableCell className="font-medium">{project.nome}</TableCell><TableCell className="text-muted-foreground">{teamName ?? "—"}</TableCell><TableCell className="text-muted-foreground">{project.app}</TableCell><TableCell className="text-muted-foreground">{project.one_ui}</TableCell><TableCell>{canEdit ? <Select value={project.status} onValueChange={(value) => onStatusChange(value as StatusProjeto)}><SelectTrigger aria-label={t("projectStatusFor", { name: project.nome })} className="h-8 w-36 border-0 bg-transparent px-2 hover:bg-secondary"><SelectValue /></SelectTrigger><SelectContent>{statusProjeto.map((status) => <SelectItem key={status} value={status}>{statusLabel(status)}</SelectItem>)}</SelectContent></Select> : <Badge variant="secondary">{statusLabel(project.status)}</Badge>}</TableCell><TableCell className="text-muted-foreground">{project.created_at ? new Date(project.created_at).toLocaleDateString() : "—"}</TableCell></TableRow>;
+  return <TableRow><TableCell className="font-medium"><Link to={`/projetos/${project.id}`} className="text-left hover:text-primary">{project.nome}</Link></TableCell><TableCell className="text-muted-foreground">{teamName ?? "—"}</TableCell><TableCell className="text-muted-foreground">{project.app}</TableCell><TableCell className="text-muted-foreground">{project.one_ui}</TableCell><TableCell>{canEdit ? <Select value={project.status} onValueChange={(value) => onStatusChange(value as StatusProjeto)}><SelectTrigger aria-label={t("projectStatusFor", { name: project.nome })} className="h-8 w-36 border-0 bg-transparent px-2 hover:bg-secondary"><SelectValue /></SelectTrigger><SelectContent>{statusProjeto.map((status) => <SelectItem key={status} value={status}>{statusLabel(status)}</SelectItem>)}</SelectContent></Select> : <Badge variant="secondary">{statusLabel(project.status)}</Badge>}</TableCell><TableCell className="text-muted-foreground">{project.created_at ? new Date(project.created_at).toLocaleDateString() : "—"}</TableCell></TableRow>;
 }
 

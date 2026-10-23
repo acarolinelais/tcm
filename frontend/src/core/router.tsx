@@ -11,7 +11,7 @@ import { SetoresPage } from "@/modules/setores/SetoresPage";
 import { TimesPage } from "@/modules/times/TimesPage";
 import { TimeDetalhePage } from "@/modules/times/TimeDetalhePage";
 import { UsuariosPage } from "@/modules/usuarios/pages/UsuariosPage";
-import { ProjetosPage } from "@/modules/projetos/ProjetosPage";
+import { projetosRoutes } from "@/modules/projetos";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -22,7 +22,7 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/overview" replace /> },
       { path: "trocar-senha", element: <AlterarSenhaPage /> },
       ...overviewRoutes,
-      { path: "projetos", element: <ProjetosPage /> },
+      ...projetosRoutes,
       { path: "board", element: <EmBreve titulo="board" ilustracao="board" /> },
       { path: "timeline", element: <EmBreve titulo="timeline" ilustracao="timeline" /> },
       { path: "documentation", element: <EmBreve titulo="documentation" /> },
