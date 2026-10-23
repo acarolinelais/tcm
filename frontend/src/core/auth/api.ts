@@ -1,4 +1,6 @@
 import { httpGet, httpPatchBody, httpPost } from "@/core/api/http-client";
+import { useMock } from "@/core/config";
+import { mockAuth } from "@/core/mock/database";
 import { saveTokens, type TokenResponse } from "./session";
 
 export interface PerfilAtual {
@@ -19,17 +21,25 @@ export interface PerfilAtual {
 }
 
 export async function login(email: string, senha: string) {
-  const tokens = await httpPost<TokenResponse>("/api/auth/login", { email, senha });
+  const tokens = useMock
+    ? mockAuth.login(email, senha)
+    : await httpPost<TokenResponse>("/api/auth/login", { email, senha });
   saveTokens(tokens);
 }
 
-export const obterPerfilAtual = () => httpGet<PerfilAtual>("/api/auth/me");
+export const obterPerfilAtual = () => useMock
+  ? Promise.resolve(mockAuth.currentUser(sessionStorage.getItem("sdf.access")))
+  : httpGet<PerfilAtual>("/api/auth/me");
 
 export async function alterarSenhaInicial(novaSenha: string) {
-  const tokens = await httpPost<TokenResponse>("/api/auth/trocar-senha", { nova_senha: novaSenha });
+  const tokens = useMock
+    ? mockAuth.changePassword(novaSenha)
+    : await httpPost<TokenResponse>("/api/auth/trocar-senha", { nova_senha: novaSenha });
   saveTokens(tokens);
 }
 
 export async function atualizarIdiomaPreferido(idioma_preferido: PerfilAtual["idioma_preferido"]) {
-  return httpPatchBody<{ idioma_preferido: PerfilAtual["idioma_preferido"] }>("/api/auth/preferencias", { idioma_preferido });
+  return useMock
+    ? Promise.resolve(mockAuth.updateLanguage(idioma_preferido))
+    : httpPatchBody<{ idioma_preferido: PerfilAtual["idioma_preferido"] }>("/api/auth/preferencias", { idioma_preferido });
 }
