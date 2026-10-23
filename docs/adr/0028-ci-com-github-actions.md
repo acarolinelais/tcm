@@ -10,8 +10,12 @@ porque hooks locais podem ser pulados. Os testes de integração e funcionais do
 Postgres real (`SDF_TEST_DATABASE_URL`).
 
 ## Decisão
-- Usamos **GitHub Actions**, num único workflow `.github/workflows/ci.yml`, disparado em `pull_request`
-  para `dev` e `main` e em `push` para `dev` e `main`.
+- Usamos **GitHub Actions** com dois workflows:
+  - `.github/workflows/ci.yml` (`backend` e `frontend`), disparado em `pull_request` e `push` para `dev`
+    e `main`;
+  - `.github/workflows/convencao.yml` (`convencao`), disparado em `pull_request` também quando o PR é
+    editado. Corrigir o título revalida sem rodar backend e frontend de novo (ajuste aprovado em
+    2026-10-23, durante a T09 da spec 009).
 - Três jobs paralelos. Cada um é uma verificação obrigatória:
   - `backend`: `uv sync`, `ruff check`, `ruff format --check` e `pytest`. O pytest inclui os testes de
     arquitetura (import-linter) e roda contra um Postgres em *service container*, com

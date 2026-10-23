@@ -59,12 +59,12 @@
 
 ## Fase 4: CI
 
-- [ ] **T07. Formatar os arquivos do backend acusados pelo `ruff format --check`**
+- [x] **T07. Formatar os arquivos do backend acusados pelo `ruff format --check`**
   - Arquivos: os 8 arquivos listados por `uv run ruff format --check .` (só formatação)
   - Cobre: pré-requisito de CA-01
   - Verificação: `cd backend && uv run ruff format --check . && uv run ruff check .` → `0 files would be
     reformatted` e `All checks passed!` (a suíte completa roda no CI da T10)
-- [ ] **T08. Workflow com os jobs `backend` e `frontend`**
+- [x] **T08. Workflow com os jobs `backend` e `frontend`**
   - Arquivos: `.github/workflows/ci.yml`
   - Cobre: RN-06, RN-08, CA-01
   - Verificação: `backend` com Postgres 18 em *service container* e `SDF_TEST_DATABASE_URL`, `uv sync`,
@@ -72,8 +72,8 @@
     Dispara em `pull_request` e `push` para `dev`/`main`, com `concurrency` cancelando o run anterior
     do mesmo ref e cache de dependências (`setup-uv` com `enable-cache` no `uv.lock`, `setup-node` com
     `cache: npm` no `package-lock.json`). A validação real é na T10
-- [ ] **T09. Job `convencao` e template de PR**
-  - Arquivos: `.github/workflows/ci.yml`, `.github/pull_request_template.md`
+- [x] **T09. Job `convencao` e template de PR**
+  - Arquivos: `.github/workflows/convencao.yml`, `.github/pull_request_template.md`
   - Cobre: RN-03, RN-04, RN-05, CA-05, CA-08, CA-10
   - Verificação: o job roda só em `pull_request`, primeiro roda `sh scripts/git/convencao.test.sh`
     (regressão do próprio script) e depois chama `pr`, `pr-titulo` e `spec` com
@@ -143,3 +143,5 @@
   Alinhar o ADR ou os testes.
 - e2e (Playwright) no CI.
 - Abrir automaticamente o PR `main → dev` depois de um hotfix.
+- Fixar a versão do Node (`frontend/.nvmrc` + `node-version-file` no CI). Hoje o CI usa `lts/*`, que
+  muda sozinho quando sai um LTS novo, e o frontend não declara versão (simplify do bloco 4).

@@ -10,7 +10,8 @@
 As regras do ADR 0027 ficam num só script POSIX, `scripts/git/convencao.sh`, com subcomandos. Esse script
 é chamado pelos hooks locais em `.githooks/` (ADR 0029) e pelo job `convencao` do CI (ADR 0028), então a
 regra é escrita uma vez e vale nos dois lugares. O workflow `.github/workflows/ci.yml` roda `backend`
-(com um Postgres 18 como *service container* e `SDF_TEST_DATABASE_URL`), `frontend` e `convencao`.
+(com um Postgres 18 como *service container* e `SDF_TEST_DATABASE_URL`) e `frontend`; o
+`convencao.yml` roda `convencao`, inclusive quando só o título do PR é editado.
 O ruleset que protegeria `main` e `dev` fica só documentado no roteiro (repositório privado, limitação aceita).
 Por último, o README, o `CLAUDE.md` e a skill `implement-task` ganham o passo a passo do fluxo.
 
@@ -51,7 +52,7 @@ A falha imprime o item fora do padrão e o formato esperado, e sai com código 1
 - `.githooks/pre-commit`, `.githooks/commit-msg` e `.githooks/pre-push`: só chamam o script. O
   `pre-push` lê os refs do stdin e recusa `refs/heads/main` e `refs/heads/dev` como destino.
 - `.gitattributes`: `*.sh` e `.githooks/*` com `eol=lf`, para o CRLF do Windows não quebrar o `sh`.
-- `.github/workflows/ci.yml`: jobs `backend`, `frontend` e `convencao`.
+- `.github/workflows/ci.yml` (jobs `backend` e `frontend`) e `.github/workflows/convencao.yml` (job `convencao`, também em PR editado).
 - `.github/pull_request_template.md`: campos "Spec", "O que muda" e "Como verifiquei".
 
 **Alterados**
