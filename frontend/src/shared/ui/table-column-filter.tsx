@@ -99,7 +99,7 @@ export function TableColumnFilter({
           role="menu"
           aria-label={t("filter", { label })}
           style={{ position: "fixed", top: posicao.top, right: posicao.right }}
-          className="z-50 min-w-48 rounded-xl border border-border bg-card p-1.5 shadow-lg"
+          className="popover-enter z-50 min-w-48 rounded-xl border border-border bg-card p-1.5 shadow-lg"
         >
           {options ? (
             <div className="max-h-72 overflow-y-auto">

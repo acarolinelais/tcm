@@ -166,7 +166,7 @@ function TooltipDescricao({ id, titulo, descricao }: { id: string; titulo: strin
     <span
       id={`sidebar-tooltip-${id}`}
       role="tooltip"
-      className="pointer-events-none invisible absolute left-full top-1/2 z-50 ml-3 w-56 -translate-y-1/2 rounded-xl border border-border bg-card p-3 text-left opacity-0 shadow-lg transition-all duration-150 group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100 motion-reduce:transition-none"
+      className="pointer-events-none invisible absolute left-full top-1/2 z-50 ml-3 w-56 -translate-y-1/2 rounded-xl border border-border bg-card p-3 text-left opacity-0 shadow-lg transition-[opacity,visibility] duration-150 group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100 motion-reduce:transition-none"
     >
       <span className="block text-sm font-medium text-foreground">{titulo}</span>
       <span className="mt-1 block whitespace-normal text-xs leading-5 text-muted-foreground">{descricao}</span>
