@@ -21,6 +21,12 @@
 }
 
 @theme inline {
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.1875rem;
+  --text-2xl: 1.375rem;
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
   --color-card: hsl(var(--card));
@@ -50,6 +56,13 @@ body {
     -apple-system,
     "Segoe UI",
     sans-serif;
+}
+
+[data-sonner-toast] [data-close-button] {
+  left: auto !important;
+  right: 0.5rem !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
 }
 
 @keyframes dialog-fade-in {
