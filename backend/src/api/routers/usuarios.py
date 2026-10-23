@@ -23,12 +23,11 @@ async def listar(
     email: str | None = Query(None, min_length=1, max_length=254),
     ativo: bool | None = Query(None),
     perfil_id: UUID | None = Query(None),
-    sem_perfil: bool = Query(False),
     service: UsuarioService = Depends(get_usuario_service),
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
     return await service.listar(
-        usuario_atual, page, page_size, nome, email, ativo, perfil_id, sem_perfil
+        usuario_atual, page, page_size, nome, email, ativo, perfil_id
     )
 
 

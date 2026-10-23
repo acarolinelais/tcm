@@ -11,7 +11,7 @@ const navItems = [
 ];
 
 export function Sidebar({ perfil }: { perfil: PerfilAtual }) {
-  const itens = perfil.admin_unidade || perfil.permissoes.includes("perfis.gerenciar")
+  const itens = perfil.perfil_codigo === "ADMIN_UNIDADE" || perfil.permissoes.includes("perfis.gerenciar")
     ? [...navItems, { to: "/perfis", label: "Perfis e permissões" }]
     : navItems;
   return (

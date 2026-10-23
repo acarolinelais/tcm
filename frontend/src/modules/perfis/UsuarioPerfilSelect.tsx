@@ -7,25 +7,26 @@ export function UsuarioPerfilSelect({
   perfilId,
 }: {
   usuarioId: string;
-  perfilId: string | null;
+  perfilId: string;
 }) {
   const client = useQueryClient();
   const perfis = useQuery({ queryKey: ["perfis"], queryFn: listarPerfis });
+  const perfilProtegido = perfis.data?.find((perfil) => perfil.id === perfilId)?.codigo === "ADMIN_UNIDADE";
   const atribuir = useMutation({
-    mutationFn: (value: string | null) => atribuirPerfil(usuarioId, value),
+    mutationFn: (value: string) => atribuirPerfil(usuarioId, value),
     onSuccess: () => client.invalidateQueries({ queryKey: ["usuarios"] }),
   });
 
   return (
     <select
       aria-label="Perfil do usuário"
-      disabled={perfis.isLoading || atribuir.isPending}
-      value={perfilId ?? ""}
-      onChange={(event) => atribuir.mutate(event.target.value || null)}
+      disabled={perfis.isLoading || atribuir.isPending || perfilProtegido}
+      value={perfilId}
+      onChange={(event) => atribuir.mutate(event.target.value)}
       className="max-w-40 rounded-md border border-border bg-background px-2 py-1 text-sm"
     >
-      <option value="">Sem perfil</option>
-      {perfis.data?.map((perfil) => <option key={perfil.id} value={perfil.id}>{perfil.nome}</option>)}
+      {perfis.data?.filter((perfil) => perfil.codigo !== "ADMIN_UNIDADE" || perfil.id === perfilId)
+        .map((perfil) => <option key={perfil.id} value={perfil.id}>{perfil.nome}</option>)}
     </select>
   );
 }

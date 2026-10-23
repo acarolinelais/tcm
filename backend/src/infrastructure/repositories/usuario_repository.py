@@ -6,11 +6,21 @@ from src.domain.common.paged_result import PagedResult
 from src.domain.entities.usuario import Usuario
 from src.infrastructure.data.models.time_membro_model import TimeMembroModel
 from src.infrastructure.data.models.usuario_model import UsuarioModel
+from src.infrastructure.data.models.perfil_model import PerfilModel
 from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
 
 
 class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
     model = UsuarioModel
+
+    async def obter_perfil_padrao(self, unidade_id: UUID) -> UUID:
+        stmt = select(PerfilModel.id).where(
+            PerfilModel.unidade_id == unidade_id, PerfilModel.codigo == "USUARIO_PADRAO"
+        )
+        perfil_id = (await self.session.execute(stmt)).scalar_one_or_none()
+        if perfil_id is None:
+            raise RuntimeError("Perfil padrão da unidade não foi inicializado.")
+        return perfil_id
 
     async def listar_filtrado(
         self,
@@ -21,9 +31,8 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
         email: str | None = None,
         ativo: bool | None = None,
         perfil_id: UUID | None = None,
-        sem_perfil: bool = False,
     ) -> PagedResult[Usuario]:
-        filtros = self._filtros(nome, email, ativo, perfil_id, sem_perfil)
+        filtros = self._filtros(nome, email, ativo, perfil_id)
         filtros.insert(0, UsuarioModel.unidade_id == unidade_id)
         total = (
             await self.session.execute(
@@ -51,7 +60,6 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
         email: str | None = None,
         ativo: bool | None = None,
         perfil_id: UUID | None = None,
-        sem_perfil: bool = False,
     ) -> PagedResult[Usuario]:
         consultas = [
             select(UsuarioModel.id.label("usuario_id")).where(UsuarioModel.id == usuario_atual_id)
@@ -68,7 +76,7 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
         filtros = [
             UsuarioModel.unidade_id == unidade_id,
             UsuarioModel.id.in_(visible_ids),
-            *self._filtros(nome, email, ativo, perfil_id, sem_perfil),
+            *self._filtros(nome, email, ativo, perfil_id),
         ]
         total = (
             await self.session.execute(
@@ -91,7 +99,6 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
         email: str | None,
         ativo: bool | None,
         perfil_id: UUID | None,
-        sem_perfil: bool,
     ):
         filtros = []
         if nome and nome.strip():
@@ -102,8 +109,6 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
             filtros.append(UsuarioModel.ativo.is_(ativo))
         if perfil_id is not None:
             filtros.append(UsuarioModel.perfil_id == perfil_id)
-        if sem_perfil:
-            filtros.append(UsuarioModel.perfil_id.is_(None))
         return filtros
 
     async def existe_email(self, email: str, ignorar_id: UUID | None) -> bool:
@@ -179,7 +184,6 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
     def _to_entity(self, model: UsuarioModel) -> Usuario:
         usuario = Usuario(model.unidade_id, model.nome, model.email)
         usuario.id = model.id
-        usuario.admin_unidade = model.admin_unidade
         usuario.senha_hash = model.senha_hash
         usuario.perfil_id = model.perfil_id
         usuario.auth_version = model.auth_version
@@ -195,7 +199,6 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
             nome=entity.nome,
             email=entity.email,
             senha_hash=entity.senha_hash,
-            admin_unidade=entity.admin_unidade,
             perfil_id=entity.perfil_id,
             auth_version=entity.auth_version,
             ativo=entity.ativo,

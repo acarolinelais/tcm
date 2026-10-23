@@ -7,7 +7,7 @@ export interface PerfilAtual {
   email: string;
   unidade_id: string;
   unidade_nome: string;
-  admin_unidade: boolean;
+  perfil_codigo: string | null;
   perfil: string | null;
   permissoes: string[];
   times: { id: string; nome: string; papel: string }[];

@@ -29,8 +29,8 @@ outras páginas possam reutilizar os mesmos componentes.
 
 - RN-01: Os filtros podem ser combinados e são aplicados antes da paginação.
 - RN-02: Nome e e-mail fazem busca parcial sem diferenciar maiúsculas de minúsculas.
-- RN-03: Status aceita ativo, inativo ou todos. Perfil aceita um perfil específico, usuários sem
-  perfil ou todos.
+- RN-03: Status aceita ativo, inativo ou todos. Perfil aceita um perfil específico ou todos. Todo
+  usuário possui um perfil obrigatório.
 - RN-04: Filtros não ampliam o escopo de consulta: admins continuam restritos à unidade; os demais
   continuam restritos aos usuários visíveis por seus times e permissões.
 - RN-05: A tabela compartilhada padroniza cabeçalho, linhas, células, rolagem e paginação; páginas
@@ -60,6 +60,8 @@ outras páginas possam reutilizar os mesmos componentes.
   rolável sem deslocar o cabeçalho da página.
 - **CA-09:** Dado a paginação sem configuração prévia, quando a tabela abre, então mostra 10 itens por
   página e oferece controles para navegar e alterar essa quantidade.
+- **CA-10:** Dado que não há usuários ou que os filtros não retornam resultados, quando a tabela é
+  exibida, então mostra um estado vazio em destaque com orientação e uma ação adequada ao contexto.
 
 ## Fora de escopo
 

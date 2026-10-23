@@ -4,6 +4,7 @@ import { IdCard, MoreHorizontal, Pencil, UserRoundCheck, UserRoundX } from "luci
 
 import type { Usuario } from "../model/usuario";
 import { useAtivarUsuario, useInativarUsuario } from "../hooks/useUsuarios";
+import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
 
 export function UsuarioActionsMenu({
   usuario,
@@ -19,6 +20,7 @@ export function UsuarioActionsMenu({
   podeGerenciar: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
+  const [confirmacaoAberta, setConfirmacaoAberta] = useState(false);
   const [posicao, setPosicao] = useState({ top: 0, right: 8 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -68,9 +70,8 @@ export function UsuarioActionsMenu({
 
   function alternarAtivo() {
     if (usuario.ativo) {
-      if (!confirm(`Inativar o usuário "${usuario.nome}"?`)) return;
       setAberto(false);
-      inativar.mutate(usuario.id);
+      setConfirmacaoAberta(true);
       return;
     }
 
@@ -80,6 +81,19 @@ export function UsuarioActionsMenu({
 
   return (
     <>
+      <ConfirmDialog
+        open={confirmacaoAberta}
+        onOpenChange={setConfirmacaoAberta}
+        title="Inativar usuário?"
+        description={`Tem certeza que deseja inativar o usuário “${usuario.nome}”?`}
+        confirmLabel="Inativar usuário"
+        variant="destructive"
+        isPending={inativar.isPending}
+        onConfirm={() => {
+          inativar.mutate(usuario.id);
+          setConfirmacaoAberta(false);
+        }}
+      />
       <button
         ref={triggerRef}
         type="button"

@@ -15,7 +15,7 @@ export function OverviewPage() {
 
   return (
     <div className="space-y-4">
-      <OverviewHeroCard stats={data.stats} userName={perfil.nome} title={perfil.admin_unidade
+      <OverviewHeroCard stats={data.stats} userName={perfil.nome} title={perfil.perfil_codigo === "ADMIN_UNIDADE"
         ? `Administrador da unidade ${perfil.unidade_nome}`
         : perfil.perfil || "Visão geral"} />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[300px_1fr]">

@@ -86,7 +86,7 @@ async def perfil_atual(
         email=usuario_atual.email,
         unidade_id=usuario_atual.unidade_id,
         unidade_nome=unidade_nome or "",
-        admin_unidade=usuario_atual.admin_unidade,
+        perfil_codigo=usuario_atual.perfil_codigo,
         perfil=usuario_atual.perfil or None,
         permissoes=sorted(usuario_atual.permissoes),
         times=times,

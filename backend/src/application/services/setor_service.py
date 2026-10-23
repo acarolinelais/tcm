@@ -15,7 +15,7 @@ class SetorServiceImpl:
     async def criar(
         self, usuario_atual: UsuarioAutenticado, request: CriarSetorRequest
     ) -> SetorResponse:
-        if not usuario_atual.admin_unidade:
+        if not usuario_atual.eh_administrador:
             raise ForbiddenException("Apenas administradores da unidade podem criar setores.")
         setor = Setor(usuario_atual.unidade_id, request.nome)
         await self._repo.adicionar(setor)

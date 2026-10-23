@@ -41,7 +41,7 @@ class TimeServiceImpl:
         self, usuario_atual: UsuarioAutenticado, request: CriarTimeRequest
     ) -> TimeResponse:
         unidade_id = usuario_atual.unidade_id
-        if not usuario_atual.admin_unidade:
+        if not usuario_atual.eh_administrador:
             if not usuario_atual.pode("times.criar") or not usuario_atual.times_gerenciados:
                 raise ForbiddenException("Somente gerente alocado pode criar times.")
             setores_liderados = await self._setores_dos_times(
@@ -55,7 +55,7 @@ class TimeServiceImpl:
                 raise ForbiddenException("Gerentes só podem criar times sob sua própria gestão.")
         if await self._setor_repo.obter_por_id(unidade_id, request.setor_id) is None:
             raise NotFoundException("Setor não encontrado.")
-        gerente_id = usuario_atual.id if not usuario_atual.admin_unidade else request.gerente_id
+        gerente_id = usuario_atual.id if not usuario_atual.eh_administrador else request.gerente_id
         if gerente_id is not None:
             await self._garantir_usuario(unidade_id, gerente_id)
         time = Time(unidade_id, request.setor_id, request.nome, gerente_id)
@@ -70,7 +70,7 @@ class TimeServiceImpl:
         page_size: int,
         setor_id: UUID | None = None,
     ) -> PagedResult[TimeResponse]:
-        if usuario_atual.admin_unidade:
+        if usuario_atual.eh_administrador:
             result = await self._repo.listar_paginado(
                 usuario_atual.unidade_id, page, page_size, setor_id
             )
@@ -151,5 +151,5 @@ class TimeServiceImpl:
             *usuario_atual.time_ids,
             *usuario_atual.times_gerenciados,
         )
-        if not usuario_atual.admin_unidade and not (gerente_responsavel or permissao_no_time):
+        if not usuario_atual.eh_administrador and not (gerente_responsavel or permissao_no_time):
             raise ForbiddenException("Apenas o gerente do time ou administrador pode alterá-lo.")

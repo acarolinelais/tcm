@@ -5,7 +5,7 @@ export interface Usuario {
   nome: string;
   email: string;
   ativo: boolean;
-  perfil_id: string | null;
+  perfil_id: string;
   created_at: string;
 }
 

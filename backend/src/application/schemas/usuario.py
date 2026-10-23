@@ -20,7 +20,7 @@ class UsuarioResponse(BaseModel):
     nome: str
     email: str
     ativo: bool
-    perfil_id: UUID | None = None
+    perfil_id: UUID
     created_at: datetime
 
 

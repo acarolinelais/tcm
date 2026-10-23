@@ -152,10 +152,7 @@ class AuthServiceImpl:
                 .scalars()
                 .all()
             )
-        nome_perfil = perfil or (
-            "Administrador da unidade" if usuario_model and usuario_model.admin_unidade else ""
-        )
-        return nome_perfil, ordered_times
+        return perfil, ordered_times
 
     def _emitir_access(
         self,

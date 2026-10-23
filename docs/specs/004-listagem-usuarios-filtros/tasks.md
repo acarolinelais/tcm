@@ -19,7 +19,13 @@
 - [x] **T04. Conectar filtros de cabeçalho aos query params do endpoint**
   - Arquivos: `frontend/src/shared/ui/table-column-filter.tsx`, módulo de usuários
   - Cobre: CA-01 a CA-06
-- [ ] **T05. Validar filtros, escopo e estados da tabela**
+- [x] **T05. Mostrar estado vazio contextual na área da tabela**
+  - Arquivos: `frontend/src/modules/usuarios/components/UsuariosTable.tsx`
+  - Cobre: CA-10
+- [ ] **T06. Validar filtros, escopo e estados da tabela**
   - Arquivos: testes unitários/funcionais de usuários e tabela
   - Cobre: CA-01 a CA-09
   - Verificação: `cd backend && uv run pytest` e `cd frontend && npm test` → suítes concluídas sem falhas
+- [x] **T07. Tornar obrigatório o perfil do usuário e substituir o booleano administrativo**
+  - Arquivos: migração, autorização, autenticação e gestão de usuários/perfis
+  - Cobre: ADR 0018; perfis `ADMIN_UNIDADE` e `USUARIO_PADRAO`

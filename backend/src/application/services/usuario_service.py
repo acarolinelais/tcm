@@ -29,10 +29,9 @@ class UsuarioServiceImpl:
         email: str | None = None,
         ativo: bool | None = None,
         perfil_id: UUID | None = None,
-        sem_perfil: bool = False,
     ) -> PagedResult[UsuarioResponse]:
-        tem_filtros = any((nome, email, ativo is not None, perfil_id, sem_perfil))
-        if usuario_atual.admin_unidade:
+        tem_filtros = any((nome, email, ativo is not None, perfil_id))
+        if usuario_atual.eh_administrador:
             if tem_filtros:
                 result = await self._repo.listar_filtrado(
                     usuario_atual.unidade_id,
@@ -42,7 +41,6 @@ class UsuarioServiceImpl:
                     email,
                     ativo,
                     perfil_id,
-                    sem_perfil,
                 )
             else:
                 result = await self._repo.listar_paginado(
@@ -63,7 +61,6 @@ class UsuarioServiceImpl:
                     email,
                     ativo,
                     perfil_id,
-                    sem_perfil,
                 )
             else:
                 result = await self._repo.listar_visiveis(
@@ -72,7 +69,7 @@ class UsuarioServiceImpl:
         return result.map(to_response)
 
     async def obter(self, usuario_atual: UsuarioAutenticado, id: UUID) -> UsuarioResponse:
-        if not usuario_atual.admin_unidade:
+        if not usuario_atual.eh_administrador:
             if id != usuario_atual.id and not await self._repo.pertence_a_escopo(
                 usuario_atual.unidade_id,
                 id,
@@ -87,6 +84,7 @@ class UsuarioServiceImpl:
         self._exigir_permissao(usuario_atual, "usuarios.gerenciar")
         await self._garantir_email_unico(request.email, None)
         usuario = Usuario(usuario_atual.unidade_id, request.nome, request.email)
+        usuario.perfil_id = await self._repo.obter_perfil_padrao(usuario_atual.unidade_id)
         usuario.created_at = datetime.now()
         await self._repo.adicionar(usuario)
         await self._uow.commit()

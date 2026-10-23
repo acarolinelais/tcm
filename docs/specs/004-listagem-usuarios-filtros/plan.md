@@ -8,25 +8,24 @@
 
 Adicionar filtros opcionais ao endpoint paginado de usuários e aplicá-los no repositório junto com as
 condições de unidade e visibilidade por time. Nome e e-mail usam busca parcial sem distinção de caixa;
-status e perfil usam igualdade, com um filtro explícito para usuários sem perfil. O frontend envia os
-filtros selecionados como query params e reinicia a página quando um filtro muda. Os componentes
+status e perfil usam igualdade. Todo usuário possui perfil, então não há filtro de usuários sem
+perfil. O frontend envia os filtros selecionados como query params e reinicia a página quando um filtro muda. Os componentes
 compartilhados de tabela fornecem o estilo dos cabeçalhos e das linhas, o menu de filtro e a navegação
 de página, mantendo a rolagem no contêiner da tabela.
 
 ## Modelo de dados
 
-Sem alteração de schema ou persistência. A consulta usa os campos existentes `nome`, `email`,
-`ativo` e `perfil_id`.
+`perfil_id` é obrigatório. A migração cria perfis de sistema por unidade, atribui perfil a todas as
+contas existentes e remove o estado legado `admin_unidade`.
 
 ## Contrato da API
 
 | Verbo | Rota | Request | Sucesso | Erros |
 |---|---|---|---|---|
-| GET | `/api/usuarios` | Query: `page` (>=1), `page_size` (1–100), `nome`, `email`, `ativo`, `perfil_id`, `sem_perfil` | `PagedResult<UsuarioResponse>` filtrado dentro do escopo autorizado | 401 não autenticado; 422 para parâmetros inválidos |
+| GET | `/api/usuarios` | Query: `page` (>=1), `page_size` (1–100), `nome`, `email`, `ativo`, `perfil_id` | `PagedResult<UsuarioResponse>` filtrado dentro do escopo autorizado | 401 não autenticado; 422 para parâmetros inválidos |
 
 Os filtros são opcionais e combináveis. `nome` e `email` são buscas parciais. `ativo` aceita booleano.
-`perfil_id` aceita UUID; `sem_perfil=true` seleciona usuários sem perfil. `perfil_id` e `sem_perfil`
-simultâneos resultam em conjunto vazio.
+`perfil_id` aceita UUID. A listagem sempre retorna usuários com perfil associado.
 
 ## Backend: arquivos
 

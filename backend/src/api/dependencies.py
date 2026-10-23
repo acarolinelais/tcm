@@ -54,6 +54,7 @@ async def get_usuario_atual(
     ):
         raise CredenciaisInvalidasException("Credenciais inválidas.")
     perfil_nome = ""
+    perfil = None
     permissoes: frozenset[str] = frozenset()
     if usuario.perfil_id:
         perfil = await session.get(PerfilModel, usuario.perfil_id)
@@ -64,7 +65,8 @@ async def get_usuario_atual(
             .where(PerfilPermissaoModel.perfil_id == usuario.perfil_id)
         )
         permissoes = frozenset((await session.execute(stmt)).scalars().all())
-    if usuario.admin_unidade:
+    perfil_codigo = perfil.codigo if perfil else None
+    if perfil_codigo == "ADMIN_UNIDADE":
         permissoes = frozenset((await session.execute(select(PermissaoModel.id))).scalars().all())
         if not perfil_nome:
             perfil_nome = "Administrador da unidade"
@@ -99,7 +101,7 @@ async def get_usuario_atual(
     return UsuarioAutenticado(
         usuario.id,
         usuario.unidade_id,
-        usuario.admin_unidade,
+        perfil_codigo,
         usuario.nome,
         usuario.email,
         perfil_nome,

@@ -19,6 +19,12 @@ os times aos quais foi alocado; KP e dev valem para cada vínculo de membro. Per
 agrupam permissões que os administradores podem vincular aos usuários. Um único nome de perfil não
 representa corretamente alguém que, por exemplo, tem papéis distintos em vários times.
 
+O perfil de administração da unidade é um perfil de sistema por unidade (`ADMIN_UNIDADE`), com todas
+as permissões seedadas e escopo administrativo total. Esse perfil é protegido contra edição e
+atribuição pela interface. `admin_unidade` não é armazenado como coluna, claim JWT ou campo da API.
+Todo usuário deve ter um perfil: a migração associa administradores existentes ao perfil de sistema e
+os demais ao perfil padrão (`USUARIO_PADRAO`), e novas contas recebem o perfil padrão da unidade.
+
 ## Objetivo
 
 Aplicar permissões configuráveis por perfil em usuários, setores, times e demais recursos, e oferecer
@@ -72,6 +78,8 @@ invalidação imediata das sessões após alterações de acesso.
   a checagem atual de permissões no backend.
 - RN-11: A chave JWT é configuração de ambiente, não pode ter um valor de produção versionado no
   repositório e deve ser rejeitada quando ausente ou abaixo do requisito mínimo definido no plano.
+- RN-12: `usuarios.perfil_id` é obrigatório. A listagem não possui estado nem filtro “sem perfil”; o
+  nome do perfil pode ser resolvido pelo identificador retornado e pela listagem de perfis.
 
 ## Critérios de aceite
 

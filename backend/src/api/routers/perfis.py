@@ -64,7 +64,7 @@ async def listar_perfis(
         )
         saida.append(
             PerfilResponse(
-                id=perfil.id, nome=perfil.nome, descricao=perfil.descricao, permissoes=list(codigos)
+                id=perfil.id, nome=perfil.nome, descricao=perfil.descricao, permissoes=list(codigos), codigo=perfil.codigo
             )
         )
     return saida
@@ -105,6 +105,8 @@ async def definir_permissoes(
     perfil = await session.get(PerfilModel, perfil_id)
     if perfil is None or perfil.unidade_id != usuario.unidade_id:
         raise NotFoundException("Perfil não encontrado.")
+    if perfil.codigo is not None:
+        raise ConflictException("Os perfis padrão do sistema não podem ser alterados.")
     codigos = set(request.permissoes)
     existentes = (
         set(
@@ -130,7 +132,7 @@ async def definir_permissoes(
     )
     await session.commit()
     return PerfilResponse(
-        id=perfil.id, nome=perfil.nome, descricao=perfil.descricao, permissoes=sorted(codigos)
+        id=perfil.id, nome=perfil.nome, descricao=perfil.descricao, permissoes=sorted(codigos), codigo=perfil.codigo
     )
 
 
@@ -146,10 +148,14 @@ async def atribuir_perfil(
     alvo = await session.get(UsuarioModel, usuario_id)
     if alvo is None or alvo.unidade_id != usuario.unidade_id:
         raise NotFoundException("Usuário não encontrado.")
-    if request.perfil_id is not None:
-        perfil = await session.get(PerfilModel, request.perfil_id)
-        if perfil is None or perfil.unidade_id != usuario.unidade_id:
-            raise NotFoundException("Perfil não encontrado.")
+    perfil = await session.get(PerfilModel, request.perfil_id)
+    if perfil is None or perfil.unidade_id != usuario.unidade_id:
+        raise NotFoundException("Perfil não encontrado.")
+    atual = await session.get(PerfilModel, alvo.perfil_id)
+    if perfil.codigo == "ADMIN_UNIDADE" and (atual is None or atual.codigo != "ADMIN_UNIDADE"):
+        raise ConflictException("O perfil administrador é reservado à conta bootstrap.")
+    if atual and atual.codigo == "ADMIN_UNIDADE" and perfil.id != atual.id:
+        raise ConflictException("O perfil administrador da conta bootstrap não pode ser removido.")
     alvo.perfil_id = request.perfil_id
     alvo.auth_version += 1
     await session.commit()

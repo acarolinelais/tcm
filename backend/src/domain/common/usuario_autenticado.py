@@ -8,7 +8,7 @@ class UsuarioAutenticado:
 
     id: UUID
     unidade_id: UUID
-    admin_unidade: bool
+    perfil_codigo: str | None = None
     nome: str = ""
     email: str = ""
     perfil: str = ""
@@ -19,4 +19,8 @@ class UsuarioAutenticado:
     sessao_id: UUID | None = None
 
     def pode(self, permissao: str) -> bool:
-        return self.admin_unidade or permissao in self.permissoes
+        return self.eh_administrador or permissao in self.permissoes
+
+    @property
+    def eh_administrador(self) -> bool:
+        return self.perfil_codigo == "ADMIN_UNIDADE"

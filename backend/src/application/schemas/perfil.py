@@ -13,7 +13,7 @@ class DefinirPermissoesRequest(BaseModel):
 
 
 class AtribuirPerfilRequest(BaseModel):
-    perfil_id: UUID | None
+    perfil_id: UUID
 
 
 class PerfilResponse(BaseModel):
@@ -21,3 +21,4 @@ class PerfilResponse(BaseModel):
     nome: str
     descricao: str | None
     permissoes: list[str]
+    codigo: str | None = None

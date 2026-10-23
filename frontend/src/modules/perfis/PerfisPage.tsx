@@ -37,7 +37,7 @@ export function PerfisPage() {
     setMarcadas(atual?.permissoes ?? []);
   }, [atual?.id, atual?.permissoes]);
 
-  const acessoNegado = perfilAtual.data && !perfilAtual.data.admin_unidade &&
+  const acessoNegado = perfilAtual.data && perfilAtual.data.perfil_codigo !== "ADMIN_UNIDADE" &&
     !perfilAtual.data.permissoes.includes("perfis.gerenciar");
   if (acessoNegado) return <p role="alert" className="p-6 text-sm">Você não tem permissão para gerenciar perfis.</p>;
   if (perfis.isLoading || permissoes.isLoading) return <p className="p-6 text-sm text-muted-foreground">Carregando perfis...</p>;
@@ -63,14 +63,14 @@ export function PerfisPage() {
             {perfis.data.map((item) => <button key={item.id} onClick={() => setSelecionado(item.id)} className={`rounded-lg px-3 py-2 text-left text-sm ${selecionado === item.id ? "bg-primary/10 font-medium" : "hover:bg-secondary"}`}>{item.nome}</button>)}
           </nav>
           <div className="space-y-4 rounded-xl border border-border bg-card p-4">
-            <div><h2 className="font-medium">{atual?.nome}</h2><p className="text-sm text-muted-foreground">{atual?.descricao || "Sem descrição"}</p></div>
+            <div><h2 className="font-medium">{atual?.nome}</h2><p className="text-sm text-muted-foreground">{atual?.descricao || "Sem descrição"}</p>{atual?.codigo && <p className="mt-1 text-xs text-muted-foreground">Perfil padrão do sistema; não pode ser editado.</p>}</div>
             <div className="grid gap-2 sm:grid-cols-2">
               {permissoes.data?.map((item) => <label key={item.id} className="flex items-start gap-2 rounded-lg border border-border p-3 text-sm">
-                <input type="checkbox" checked={marcadas.includes(item.id)} onChange={(event) => setMarcadas((value) => event.target.checked ? [...value, item.id] : value.filter((code) => code !== item.id))} />
+                <input type="checkbox" disabled={Boolean(atual?.codigo)} checked={marcadas.includes(item.id)} onChange={(event) => setMarcadas((value) => event.target.checked ? [...value, item.id] : value.filter((code) => code !== item.id))} />
                 <span><span className="block font-medium">{item.id}</span><span className="text-muted-foreground">{item.descricao}</span></span>
               </label>)}
             </div>
-            <Button disabled={salvar.isPending || !selecionado} onClick={() => salvar.mutate()}>Salvar permissões</Button>
+            <Button disabled={salvar.isPending || !selecionado || Boolean(atual?.codigo)} onClick={() => salvar.mutate()}>Salvar permissões</Button>
             {salvar.error && <p role="alert" className="text-sm text-destructive">Não foi possível salvar as permissões.</p>}
           </div>
         </div>

@@ -16,7 +16,6 @@ class UsuarioRepository(RepositoryBase[Usuario], Protocol):
         email: str | None = None,
         ativo: bool | None = None,
         perfil_id: UUID | None = None,
-        sem_perfil: bool = False,
     ) -> PagedResult[Usuario]: ...
 
     async def listar_visiveis_filtrado(
@@ -30,9 +29,10 @@ class UsuarioRepository(RepositoryBase[Usuario], Protocol):
         email: str | None = None,
         ativo: bool | None = None,
         perfil_id: UUID | None = None,
-        sem_perfil: bool = False,
     ) -> PagedResult[Usuario]: ...
 
     async def existe_email(self, email: str, ignorar_id: UUID | None) -> bool: ...
 
     async def obter_por_email(self, email: str) -> Usuario | None: ...
+
+    async def obter_perfil_padrao(self, unidade_id: UUID) -> UUID: ...

@@ -16,8 +16,9 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
 export function UsuariosPage() {
   const perfil = useOutletContext<PerfilAtual>();
-  const podeGerenciar = perfil.admin_unidade || perfil.permissoes.includes("usuarios.gerenciar");
-  const podeAtribuirPerfil = perfil.admin_unidade || perfil.permissoes.includes("perfis.gerenciar");
+  const ehAdmin = perfil.perfil_codigo === "ADMIN_UNIDADE";
+  const podeGerenciar = ehAdmin || perfil.permissoes.includes("usuarios.gerenciar");
+  const podeAtribuirPerfil = ehAdmin || perfil.permissoes.includes("perfis.gerenciar");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [filtros, setFiltros] = useState<UsuarioFiltros>({});
@@ -51,10 +52,14 @@ export function UsuariosPage() {
       }
       return {
         ...atuais,
-        perfil_id: valor && valor !== "__sem_perfil__" ? valor : undefined,
-        sem_perfil: valor === "__sem_perfil__" || undefined,
+        perfil_id: valor || undefined,
       };
     });
+  }
+
+  function limparFiltros() {
+    setFiltros({});
+    setPage(1);
   }
 
   return (
@@ -73,7 +78,7 @@ export function UsuariosPage() {
         <span className="border-b-2 border-[#3478F6] px-1 pb-2 text-lg font-medium text-[#3478F6]">
           Usuários
         </span>
-        {(perfil.admin_unidade || perfil.permissoes.includes("perfis.gerenciar")) && (
+        {(ehAdmin || perfil.permissoes.includes("perfis.gerenciar")) && (
           <NavLink
             to="/perfis"
             className="px-1 pb-2 text-lg text-muted-foreground transition-colors hover:text-foreground"
@@ -96,6 +101,8 @@ export function UsuariosPage() {
         }}
         onEditar={abrirEditar}
         onEditarPerfil={setUsuarioPerfilEmEdicao}
+        onNovoUsuario={abrirCriar}
+        onLimparFiltros={limparFiltros}
         podeGerenciar={podeGerenciar}
         podeAtribuirPerfil={podeAtribuirPerfil}
       />

@@ -21,7 +21,6 @@ JWT_AUDIENCE = "sdf-manager-api"
 class TokenPayload:
     usuario_id: UUID
     unidade_id: UUID
-    admin_unidade: bool
     nome: str = ""
     email: str = ""
     perfil: str = ""
@@ -58,7 +57,6 @@ def criar_token(
         "email": usuario.email,
         "perfil": perfil,
         "unidade_id": str(usuario.unidade_id),
-        "admin_unidade": usuario.admin_unidade,
         "tem_multiplos_times": tem_multiplos_times,
         "time_id": str(time_id) if time_id else None,
         "sid": str(sessao_id or uuid4()),
@@ -87,7 +85,6 @@ def decodificar_token(token: str) -> TokenPayload | None:
                     "email",
                     "perfil",
                     "unidade_id",
-                    "admin_unidade",
                     "tem_multiplos_times",
                     "ver",
                     "iss",
@@ -102,10 +99,9 @@ def decodificar_token(token: str) -> TokenPayload | None:
         usuario_id = UUID(payload["sub"])
         unidade_id = UUID(payload["unidade_id"])
         sessao_id = UUID(payload["sid"])
-        admin_unidade = payload.get("admin_unidade", False)
         tem_multiplos_times = payload.get("tem_multiplos_times", False)
         auth_version = payload.get("ver", 0)
-        if not isinstance(admin_unidade, bool) or not isinstance(tem_multiplos_times, bool):
+        if not isinstance(tem_multiplos_times, bool):
             return None
         if not isinstance(auth_version, int) or isinstance(auth_version, bool) or auth_version < 0:
             return None
@@ -116,7 +112,6 @@ def decodificar_token(token: str) -> TokenPayload | None:
         return TokenPayload(
             usuario_id,
             unidade_id,
-            admin_unidade,
             str(payload.get("nome", "")),
             str(payload.get("email", "")),
             str(payload.get("perfil", "")),
