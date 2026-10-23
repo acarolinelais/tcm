@@ -21,19 +21,19 @@
 
 ## Fase 2: Script de convenção
 
-- [ ] **T03. Subcomando `mensagem` e esqueleto do teste**
+- [x] **T03. Subcomando `mensagem` e esqueleto do teste**
   - Arquivos: `scripts/git/convencao.sh`, `scripts/git/convencao.test.sh`, `.gitattributes` (`*.sh` e
     `.githooks/*` com `eol=lf`)
   - Cobre: RN-04, CA-04, CA-05
   - Verificação: `sh scripts/git/convencao.test.sh` → passam `feat(usuarios): filtra por perfil`,
     `fix: x`, `refactor(api)!: x`, `Merge pull request #1 ...` e `Revert "..."`; falham `Feat: Abluble`,
     `feat:sem espaço`, `update stuff` e `hotfix: x`, com a mensagem de formato esperado
-- [ ] **T04. Subcomando `branch`**
+- [x] **T04. Subcomando `branch`**
   - Arquivos: `scripts/git/convencao.sh`, `scripts/git/convencao.test.sh`
   - Cobre: RN-01, RN-02, CA-06, CA-07
   - Verificação: `sh scripts/git/convencao.test.sh` → passam `feat/009-x`, `fix/login`, `hotfix/corrige-login`
     e `docs/adr-0027`; falham `main`, `dev`, `feature/abluble`, `minha-branch`, `feat/sem-numero` e `fix/Maiuscula`
-- [ ] **T05. Subcomandos `pr`, `pr-titulo` e `spec`**
+- [x] **T05. Subcomandos `pr`, `pr-titulo` e `spec`**
   - Arquivos: `scripts/git/convencao.sh`, `scripts/git/convencao.test.sh` (repositório git temporário com
     commits de exemplo)
   - Cobre: RN-03, RN-05, CA-05, CA-08, CA-09, CA-10

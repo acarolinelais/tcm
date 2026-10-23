@@ -1,0 +1,3 @@
+# Scripts e hooks rodam com sh (ADR 0029): CRLF do Windows quebraria a execução.
+*.sh text eol=lf
+.githooks/* text eol=lf
