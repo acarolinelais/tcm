@@ -13,21 +13,24 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     bind = op.get_bind()
-    inseridos = bind.execute(
-        sa.text(
-            "INSERT INTO perfil_permissoes (perfil_id, permissao_id) "
-            "SELECT perfis.id, 'times.gerenciar' FROM perfis "
-            "WHERE perfis.codigo = 'KP' "
-            "AND NOT EXISTS (SELECT 1 FROM perfil_permissoes pp "
-            "WHERE pp.perfil_id = perfis.id AND pp.permissao_id = 'times.gerenciar') "
-            "RETURNING perfil_id"
+    inseridos = (
+        bind.execute(
+            sa.text(
+                "INSERT INTO perfil_permissoes (perfil_id, permissao_id) "
+                "SELECT perfis.id, 'times.gerenciar' FROM perfis "
+                "WHERE perfis.codigo = 'KP' "
+                "AND NOT EXISTS (SELECT 1 FROM perfil_permissoes pp "
+                "WHERE pp.perfil_id = perfis.id AND pp.permissao_id = 'times.gerenciar') "
+                "RETURNING perfil_id"
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     if inseridos:
         bind.execute(
             sa.text(
-                "UPDATE usuarios SET auth_version = auth_version + 1 "
-                "WHERE perfil_id IN :perfil_ids"
+                "UPDATE usuarios SET auth_version = auth_version + 1 WHERE perfil_id IN :perfil_ids"
             ).bindparams(sa.bindparam("perfil_ids", expanding=True)),
             {"perfil_ids": inseridos},
         )

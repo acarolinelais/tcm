@@ -42,8 +42,6 @@ def upgrade() -> None:
 def downgrade() -> None:
     bind = op.get_bind()
     bind.execute(
-        sa.text(
-            "DELETE FROM perfil_permissoes WHERE permissao_id = 'usuarios.perfil.consultar'"
-        )
+        sa.text("DELETE FROM perfil_permissoes WHERE permissao_id = 'usuarios.perfil.consultar'")
     )
     bind.execute(sa.text("DELETE FROM permissoes WHERE id = 'usuarios.perfil.consultar'"))

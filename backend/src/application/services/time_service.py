@@ -203,12 +203,16 @@ class TimeServiceImpl:
         ]
 
     async def listar_usuarios_disponiveis(self, usuario_atual: UsuarioAutenticado):
-        if not usuario_atual.eh_administrador and not (
-            usuario_atual.perfil_codigo == "GERENTE" and usuario_atual.pode("times.gerenciar")
-        ) and not (
-            usuario_atual.perfil_codigo == "KP"
-            and usuario_atual.pode("times.gerenciar")
-            and usuario_atual.time_ids
+        if (
+            not usuario_atual.eh_administrador
+            and not (
+                usuario_atual.perfil_codigo == "GERENTE" and usuario_atual.pode("times.gerenciar")
+            )
+            and not (
+                usuario_atual.perfil_codigo == "KP"
+                and usuario_atual.pode("times.gerenciar")
+                and usuario_atual.time_ids
+            )
         ):
             raise ForbiddenException("Você não tem permissão para gerenciar membros dos times.")
         return [
@@ -259,13 +263,17 @@ class TimeServiceImpl:
     def _garantir_gestao_time(usuario_atual: UsuarioAutenticado, time: Time) -> None:
         dentro_do_setor = time.setor_id in usuario_atual.setores_gerenciados
         dentro_do_time = time.id in usuario_atual.time_ids
-        if not usuario_atual.eh_administrador and not (
-            usuario_atual.perfil_codigo == "GERENTE"
-            and usuario_atual.pode("times.gerenciar")
-            and dentro_do_setor
-        ) and not (
-            usuario_atual.perfil_codigo == "KP"
-            and usuario_atual.pode("times.gerenciar")
-            and dentro_do_time
+        if (
+            not usuario_atual.eh_administrador
+            and not (
+                usuario_atual.perfil_codigo == "GERENTE"
+                and usuario_atual.pode("times.gerenciar")
+                and dentro_do_setor
+            )
+            and not (
+                usuario_atual.perfil_codigo == "KP"
+                and usuario_atual.pode("times.gerenciar")
+                and dentro_do_time
+            )
         ):
             raise ForbiddenException("Apenas o gerente do time ou administrador pode alterá-lo.")

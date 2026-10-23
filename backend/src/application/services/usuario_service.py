@@ -52,11 +52,13 @@ class UsuarioServiceImpl:
             (nome, email, ativo is not None, perfil_id, responsavel_id, sem_responsavel, setor_id)
         )
         filtros_adicionais = {
-            chave: valor for chave, valor in (
+            chave: valor
+            for chave, valor in (
                 ("responsavel_id", responsavel_id),
                 ("sem_responsavel", True if sem_responsavel else None),
                 ("setor_id", setor_id),
-            ) if valor is not None
+            )
+            if valor is not None
         }
         if usuario_atual.eh_administrador:
             if tem_filtros:
@@ -129,9 +131,7 @@ class UsuarioServiceImpl:
                     setores_por_usuario = dados_setores
         for usuario in result.items:
             resposta = to_response(usuario)
-            _, perfil_nome, perfil_codigo = perfil_por_usuario.get(
-                usuario.id, ("", "", None)
-            )
+            _, perfil_nome, perfil_codigo = perfil_por_usuario.get(usuario.id, ("", "", None))
             items.append(
                 resposta.model_copy(
                     update={

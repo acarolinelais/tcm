@@ -31,8 +31,16 @@ async def listar(
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
     return await service.listar(
-        usuario_atual, page, page_size, nome, email, ativo, perfil_id,
-        responsavel_id, sem_responsavel, setor_id,
+        usuario_atual,
+        page,
+        page_size,
+        nome,
+        email,
+        ativo,
+        perfil_id,
+        responsavel_id,
+        sem_responsavel,
+        setor_id,
     )
 
 

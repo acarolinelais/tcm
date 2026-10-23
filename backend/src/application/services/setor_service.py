@@ -47,9 +47,7 @@ class SetorServiceImpl:
                 raise NotFoundException(
                     "Usuário ativo com perfil Gerente não encontrado nesta unidade."
                 )
-            associacao = SetorGerente(
-                usuario_atual.unidade_id, setor.id, request.gerente_id
-            )
+            associacao = SetorGerente(usuario_atual.unidade_id, setor.id, request.gerente_id)
             await self._gerente_repo.adicionar(associacao)
             await self._usuario_repo.invalidar_sessoes(request.gerente_id)
         await self._uow.commit()
