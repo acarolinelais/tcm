@@ -31,6 +31,35 @@ class TimeRepositoryImpl(RepositoryBaseImpl[Time, TimeModel]):
         )
         return PagedResult([self._to_entity(m) for m in models], page, page_size, total)
 
+    async def listar_visiveis(
+        self,
+        unidade_id: UUID,
+        page: int,
+        page_size: int,
+        time_ids: tuple[UUID, ...],
+        setor_id: UUID | None = None,
+    ) -> PagedResult[Time]:
+        filtros = [TimeModel.unidade_id == unidade_id, TimeModel.id.in_(time_ids)]
+        if setor_id is not None:
+            filtros.append(TimeModel.setor_id == setor_id)
+        total = (
+            await self.session.execute(select(func.count()).select_from(TimeModel).where(*filtros))
+        ).scalar_one()
+        models = (
+            (
+                await self.session.execute(
+                    select(TimeModel)
+                    .where(*filtros)
+                    .order_by(TimeModel.nome, TimeModel.id)
+                    .offset((page - 1) * page_size)
+                    .limit(page_size)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        return PagedResult([self._to_entity(m) for m in models], page, page_size, total)
+
     def _to_entity(self, model: TimeModel) -> Time:
         time = Time(model.unidade_id, model.setor_id, model.nome, model.gerente_id)
         time.id = model.id

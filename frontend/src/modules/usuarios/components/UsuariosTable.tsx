@@ -5,15 +5,25 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useUsuariosList } from "../hooks/useUsuarios";
 import type { Usuario } from "../model/usuario";
 import { UsuarioToggleAtivo } from "./UsuarioToggleAtivo";
+import { UsuarioPerfilSelect } from "@/modules/perfis/UsuarioPerfilSelect";
 
 interface UsuariosTableProps {
   page: number;
   pageSize: number;
   onPageChange: (page: number) => void;
   onEditar: (usuario: Usuario) => void;
+  podeGerenciar?: boolean;
+  podeAtribuirPerfil?: boolean;
 }
 
-export function UsuariosTable({ page, pageSize, onPageChange, onEditar }: UsuariosTableProps) {
+export function UsuariosTable({
+  page,
+  pageSize,
+  onPageChange,
+  onEditar,
+  podeGerenciar = false,
+  podeAtribuirPerfil = false,
+}: UsuariosTableProps) {
   const { data, isLoading } = useUsuariosList(page, pageSize);
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Carregando...</p>;
@@ -29,13 +39,14 @@ export function UsuariosTable({ page, pageSize, onPageChange, onEditar }: Usuari
             <TableHead>Nome</TableHead>
             <TableHead>E-mail</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Ações</TableHead>
+            {podeAtribuirPerfil && <TableHead>Perfil</TableHead>}
+            {podeGerenciar && <TableHead>Ações</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.length === 0 && (
             <TableRow>
-              <TableCell colSpan={4} className="text-center text-muted-foreground">
+              <TableCell colSpan={3 + Number(podeGerenciar) + Number(podeAtribuirPerfil)} className="text-center text-muted-foreground">
                 Nenhum usuário cadastrado.
               </TableCell>
             </TableRow>
@@ -49,12 +60,11 @@ export function UsuariosTable({ page, pageSize, onPageChange, onEditar }: Usuari
                   {usuario.ativo ? "Ativo" : "Inativo"}
                 </Badge>
               </TableCell>
-              <TableCell className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={() => onEditar(usuario)}>
-                  Editar
-                </Button>
+              {podeAtribuirPerfil && <TableCell><UsuarioPerfilSelect usuarioId={usuario.id} perfilId={usuario.perfil_id} /></TableCell>}
+              {podeGerenciar && <TableCell className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => onEditar(usuario)}>Editar</Button>
                 <UsuarioToggleAtivo usuario={usuario} />
-              </TableCell>
+              </TableCell>}
             </TableRow>
           ))}
         </TableBody>

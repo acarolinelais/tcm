@@ -12,6 +12,8 @@ class Usuario(EntidadeTenant):
         self.atualizar(nome, email)
         self.admin_unidade = False
         self.senha_hash: str | None = None
+        self.perfil_id: UUID | None = None
+        self.auth_version = 0
 
     def atualizar(self, nome: str, email: str) -> None:
         self._nome = nome

@@ -6,14 +6,17 @@ from scalar_fastapi import get_scalar_api_reference
 
 from src.api.error_handling.handlers import registrar_handlers
 from src.api.routers.auth import router as auth_router
+from src.api.routers.perfis import router as perfis_router
 from src.api.routers.setores import router as setores_router
 from src.api.routers.times import router as times_router
 from src.api.routers.usuarios import router as usuarios_router
 from src.infrastructure.data.migrations_runner import aplicar_migrations
+from src.infrastructure.security.jwt import validar_configuracao_jwt
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    validar_configuracao_jwt()
     aplicar_migrations()
     yield
 
@@ -24,6 +27,7 @@ app.include_router(usuarios_router)
 app.include_router(auth_router)
 app.include_router(setores_router)
 app.include_router(times_router)
+app.include_router(perfis_router)
 
 
 @app.get("/scalar", include_in_schema=False)

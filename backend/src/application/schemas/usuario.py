@@ -20,10 +20,16 @@ class UsuarioResponse(BaseModel):
     nome: str
     email: str
     ativo: bool
+    perfil_id: UUID | None = None
     created_at: datetime
 
 
 def to_response(u: Usuario) -> UsuarioResponse:
     return UsuarioResponse(
-        id=u.id, nome=u.nome, email=u.email, ativo=u.ativo, created_at=u.created_at
+        id=u.id,
+        nome=u.nome,
+        email=u.email,
+        ativo=u.ativo,
+        perfil_id=u.perfil_id,
+        created_at=u.created_at,
     )

@@ -5,6 +5,9 @@ from alembic import context
 from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 from src.infrastructure.data.base import Base
+from src.infrastructure.data.models.auth_sessao_model import AuthSessaoModel  # noqa: F401
+from src.infrastructure.data.models.perfil_model import PerfilModel  # noqa: F401
+from src.infrastructure.data.models.permissao_model import PerfilPermissaoModel, PermissaoModel  # noqa: F401
 from src.infrastructure.data.models.setor_model import SetorModel  # noqa: F401
 from src.infrastructure.data.models.time_membro_model import TimeMembroModel  # noqa: F401
 from src.infrastructure.data.models.time_model import TimeModel  # noqa: F401
@@ -70,9 +73,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

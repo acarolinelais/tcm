@@ -7,10 +7,15 @@ import { toast } from "@/shared/lib/toast";
 import { UsuarioForm } from "../components/UsuarioForm";
 import { UsuariosTable } from "../components/UsuariosTable";
 import type { Usuario } from "../model/usuario";
+import { useOutletContext } from "react-router";
+import type { PerfilAtual } from "@/core/auth/api";
 
 const PAGE_SIZE = 20;
 
 export function UsuariosPage() {
+  const perfil = useOutletContext<PerfilAtual>();
+  const podeGerenciar = perfil.admin_unidade || perfil.permissoes.includes("usuarios.gerenciar");
+  const podeAtribuirPerfil = perfil.admin_unidade || perfil.permissoes.includes("perfis.gerenciar");
   const [page, setPage] = useState(1);
   const [modalAberto, setModalAberto] = useState(false);
   const [usuarioEmEdicao, setUsuarioEmEdicao] = useState<Usuario | undefined>();
@@ -34,12 +39,12 @@ export function UsuariosPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Usuários</h1>
-        <Button onClick={abrirCriar}>Novo usuário</Button>
+        {podeGerenciar && <Button onClick={abrirCriar}>Novo usuário</Button>}
       </div>
 
-      <UsuariosTable page={page} pageSize={PAGE_SIZE} onPageChange={setPage} onEditar={abrirEditar} />
+      <UsuariosTable page={page} pageSize={PAGE_SIZE} onPageChange={setPage} onEditar={abrirEditar} podeGerenciar={podeGerenciar} podeAtribuirPerfil={podeAtribuirPerfil} />
 
-      <Dialog open={modalAberto} onOpenChange={setModalAberto}>
+      <Dialog open={podeGerenciar && modalAberto} onOpenChange={setModalAberto}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{usuarioEmEdicao ? "Editar usuário" : "Novo usuário"}</DialogTitle>

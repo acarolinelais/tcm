@@ -1,0 +1,156 @@
+from uuid import UUID, uuid4
+
+from fastapi import APIRouter, Depends, Response
+from sqlalchemy import delete, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.api.dependencies import exigir_permissao, get_session, get_usuario_atual
+from src.application.schemas.perfil import (
+    AtribuirPerfilRequest,
+    CriarPerfilRequest,
+    DefinirPermissoesRequest,
+    PerfilResponse,
+)
+from src.domain.common.exceptions import ConflictException, NotFoundException
+from src.domain.common.usuario_autenticado import UsuarioAutenticado
+from src.infrastructure.data.models.perfil_model import PerfilModel
+from src.infrastructure.data.models.permissao_model import PerfilPermissaoModel, PermissaoModel
+from src.infrastructure.data.models.usuario_model import UsuarioModel
+
+router = APIRouter(prefix="/api/perfis", tags=["perfis"])
+
+
+@router.get("/permissoes", response_model=list[dict[str, str]])
+async def listar_permissoes(
+    usuario: UsuarioAutenticado = Depends(get_usuario_atual),
+    session: AsyncSession = Depends(get_session),
+):
+    exigir_permissao(usuario, "perfis.gerenciar")
+    rows = (
+        (await session.execute(select(PermissaoModel).order_by(PermissaoModel.id))).scalars().all()
+    )
+    return [{"id": row.id, "descricao": row.descricao} for row in rows]
+
+
+@router.get("", response_model=list[PerfilResponse])
+async def listar_perfis(
+    usuario: UsuarioAutenticado = Depends(get_usuario_atual),
+    session: AsyncSession = Depends(get_session),
+):
+    exigir_permissao(usuario, "perfis.gerenciar")
+    perfis = (
+        (
+            await session.execute(
+                select(PerfilModel)
+                .where(PerfilModel.unidade_id == usuario.unidade_id)
+                .order_by(PerfilModel.nome)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    saida = []
+    for perfil in perfis:
+        codigos = (
+            (
+                await session.execute(
+                    select(PerfilPermissaoModel.permissao_id).where(
+                        PerfilPermissaoModel.perfil_id == perfil.id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        saida.append(
+            PerfilResponse(
+                id=perfil.id, nome=perfil.nome, descricao=perfil.descricao, permissoes=list(codigos)
+            )
+        )
+    return saida
+
+
+@router.post("", response_model=PerfilResponse, status_code=201)
+async def criar_perfil(
+    request: CriarPerfilRequest,
+    usuario: UsuarioAutenticado = Depends(get_usuario_atual),
+    session: AsyncSession = Depends(get_session),
+):
+    exigir_permissao(usuario, "perfis.gerenciar")
+    existente = (
+        await session.execute(
+            select(PerfilModel.id).where(
+                PerfilModel.unidade_id == usuario.unidade_id, PerfilModel.nome == request.nome
+            )
+        )
+    ).first()
+    if existente:
+        raise ConflictException("Já existe um perfil com este nome.")
+    perfil = PerfilModel(
+        id=uuid4(), unidade_id=usuario.unidade_id, nome=request.nome, descricao=request.descricao
+    )
+    session.add(perfil)
+    await session.commit()
+    return PerfilResponse(id=perfil.id, nome=perfil.nome, descricao=perfil.descricao, permissoes=[])
+
+
+@router.put("/{perfil_id}/permissoes", response_model=PerfilResponse)
+async def definir_permissoes(
+    perfil_id: UUID,
+    request: DefinirPermissoesRequest,
+    usuario: UsuarioAutenticado = Depends(get_usuario_atual),
+    session: AsyncSession = Depends(get_session),
+):
+    exigir_permissao(usuario, "perfis.gerenciar")
+    perfil = await session.get(PerfilModel, perfil_id)
+    if perfil is None or perfil.unidade_id != usuario.unidade_id:
+        raise NotFoundException("Perfil não encontrado.")
+    codigos = set(request.permissoes)
+    existentes = (
+        set(
+            (await session.execute(select(PermissaoModel.id).where(PermissaoModel.id.in_(codigos))))
+            .scalars()
+            .all()
+        )
+        if codigos
+        else set()
+    )
+    if codigos != existentes:
+        raise NotFoundException("Uma ou mais permissões não existem.")
+    await session.execute(
+        delete(PerfilPermissaoModel).where(PerfilPermissaoModel.perfil_id == perfil.id)
+    )
+    session.add_all(
+        [PerfilPermissaoModel(perfil_id=perfil.id, permissao_id=code) for code in sorted(codigos)]
+    )
+    await session.execute(
+        update(UsuarioModel)
+        .where(UsuarioModel.perfil_id == perfil.id)
+        .values(auth_version=UsuarioModel.auth_version + 1)
+    )
+    await session.commit()
+    return PerfilResponse(
+        id=perfil.id, nome=perfil.nome, descricao=perfil.descricao, permissoes=sorted(codigos)
+    )
+
+
+@router.patch("/usuarios/{usuario_id}", status_code=204)
+async def atribuir_perfil(
+    usuario_id: UUID,
+    request: AtribuirPerfilRequest,
+    response: Response,
+    usuario: UsuarioAutenticado = Depends(get_usuario_atual),
+    session: AsyncSession = Depends(get_session),
+):
+    exigir_permissao(usuario, "perfis.gerenciar")
+    alvo = await session.get(UsuarioModel, usuario_id)
+    if alvo is None or alvo.unidade_id != usuario.unidade_id:
+        raise NotFoundException("Usuário não encontrado.")
+    if request.perfil_id is not None:
+        perfil = await session.get(PerfilModel, request.perfil_id)
+        if perfil is None or perfil.unidade_id != usuario.unidade_id:
+            raise NotFoundException("Perfil não encontrado.")
+    alvo.perfil_id = request.perfil_id
+    alvo.auth_version += 1
+    await session.commit()
+    response.status_code = 204
