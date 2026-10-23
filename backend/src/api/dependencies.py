@@ -1,5 +1,6 @@
 import os
 from datetime import UTC, datetime
+from uuid import UUID
 
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -15,11 +16,14 @@ from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.infrastructure.data.models.auth_sessao_model import AuthSessaoModel
 from src.infrastructure.data.models.perfil_model import PerfilModel
 from src.infrastructure.data.models.permissao_model import PerfilPermissaoModel, PermissaoModel
+from src.infrastructure.data.models.setor_gerente_model import SetorGerenteModel
+from src.infrastructure.data.models.setor_model import SetorModel
 from src.infrastructure.data.models.time_membro_model import TimeMembroModel
 from src.infrastructure.data.models.time_model import TimeModel
 from src.infrastructure.data.models.usuario_model import UsuarioModel
 from src.infrastructure.data.session import get_session as get_session
 from src.infrastructure.data.unit_of_work import UnitOfWorkImpl
+from src.infrastructure.repositories.setor_gerente_repository import SetorGerenteRepositoryImpl
 from src.infrastructure.repositories.setor_repository import SetorRepositoryImpl
 from src.infrastructure.repositories.time_membro_repository import TimeMembroRepositoryImpl
 from src.infrastructure.repositories.time_repository import TimeRepositoryImpl
@@ -88,34 +92,56 @@ async def _obter_usuario_atual(
         permissoes = frozenset((await session.execute(select(PermissaoModel.id))).scalars().all())
         if not perfil_nome:
             perfil_nome = "Administrador da unidade"
-    memberships = (
-        (
-            await session.execute(
-                select(TimeMembroModel.time_id).where(
-                    TimeMembroModel.usuario_id == usuario.id,
-                    TimeMembroModel.unidade_id == usuario.unidade_id,
-                    TimeMembroModel.ativo.is_(True),
-                )
+    membership_rows = (
+        await session.execute(
+            select(TimeMembroModel.time_id, TimeMembroModel.papel).where(
+                TimeMembroModel.usuario_id == usuario.id,
+                TimeMembroModel.unidade_id == usuario.unidade_id,
+                TimeMembroModel.ativo.is_(True),
+                TimeMembroModel.time_id.in_(
+                    select(TimeModel.id).where(
+                        TimeModel.unidade_id == usuario.unidade_id,
+                        TimeModel.ativo.is_(True),
+                    )
+                ),
             )
         )
-        .scalars()
-        .all()
-    )
-    managed = (
-        (
-            await session.execute(
-                select(TimeModel.id).where(
-                    TimeModel.gerente_id == usuario.id,
-                    TimeModel.unidade_id == usuario.unidade_id,
-                    TimeModel.ativo.is_(True),
+    ).all()
+    memberships = tuple(row.time_id for row in membership_rows)
+    kp_teams = tuple(row.time_id for row in membership_rows if row.papel == "kp")
+    setores_gerenciados: tuple[UUID, ...] = ()
+    if perfil_codigo == "GERENTE":
+        setores_gerenciados = tuple(
+            (
+                await session.execute(
+                    select(SetorGerenteModel.setor_id)
+                    .join(SetorModel, SetorModel.id == SetorGerenteModel.setor_id)
+                    .where(
+                        SetorGerenteModel.unidade_id == usuario.unidade_id,
+                        SetorGerenteModel.usuario_id == usuario.id,
+                        SetorGerenteModel.ativo.is_(True),
+                        SetorModel.ativo.is_(True),
+                    )
                 )
             )
+            .scalars()
+            .all()
         )
-        .scalars()
-        .all()
-    )
-    if managed:
-        permissoes = frozenset({*permissoes, "times.criar", "times.gerenciar"})
+    managed = ()
+    if setores_gerenciados:
+        managed = (
+            (
+                await session.execute(
+                    select(TimeModel.id).where(
+                        TimeModel.unidade_id == usuario.unidade_id,
+                        TimeModel.setor_id.in_(setores_gerenciados),
+                        TimeModel.ativo.is_(True),
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
     identidade = UsuarioAutenticado(
         usuario.id,
         usuario.unidade_id,
@@ -129,6 +155,8 @@ async def _obter_usuario_atual(
         payload.time_id,
         payload.sessao_id,
         usuario.senha_alteracao_obrigatoria,
+        setores_gerenciados,
+        kp_teams,
     )
     if identidade.senha_alteracao_obrigatoria and not permitir_senha_inicial:
         raise ForbiddenException("Altere sua senha inicial para continuar.")
@@ -159,7 +187,12 @@ async def get_auth_service(session: AsyncSession = Depends(get_session)) -> Auth
 
 
 async def get_setor_service(session: AsyncSession = Depends(get_session)) -> SetorServiceImpl:
-    return SetorServiceImpl(SetorRepositoryImpl(session), UnitOfWorkImpl(session))
+    return SetorServiceImpl(
+        SetorRepositoryImpl(session),
+        UnitOfWorkImpl(session),
+        SetorGerenteRepositoryImpl(session),
+        UsuarioRepositoryImpl(session),
+    )
 
 
 async def get_time_service(session: AsyncSession = Depends(get_session)) -> TimeServiceImpl:
@@ -169,4 +202,5 @@ async def get_time_service(session: AsyncSession = Depends(get_session)) -> Time
         TimeMembroRepositoryImpl(session),
         UsuarioRepositoryImpl(session),
         UnitOfWorkImpl(session),
+        SetorGerenteRepositoryImpl(session),
     )

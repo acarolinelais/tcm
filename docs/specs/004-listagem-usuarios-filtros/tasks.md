@@ -29,6 +29,10 @@
 - [x] **T07. Tornar obrigatório o perfil do usuário e substituir o booleano administrativo**
   - Arquivos: migração, autorização, autenticação e gestão de usuários/perfis
   - Cobre: ADR 0018; perfis `ADMIN_UNIDADE` e `USUARIO_PADRAO`
+- [x] **T08. Tornar o layout compartilhado obrigatório para todas as tabelas do sistema**
+  - Arquivos: `shared/ui/table.tsx`, tabelas de usuários, perfis, setores e times; ADR 0022
+  - Cobre: CA-08 a CA-10
+  - Verificação: `cd frontend && npm run build` → todas as páginas compilam com o layout compartilhado
 
 > A suíte completa do backend foi executada, mas ainda falha em testes anteriores fora do escopo
 > dos critérios desta spec (arquitetura/auth, setor, times, usuário e JWT). Os testes específicos de

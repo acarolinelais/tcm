@@ -1,12 +1,12 @@
 from uuid import UUID
 
-from sqlalchemy import func, select, union, update
+from sqlalchemy import func, or_, select, union, update
 
 from src.domain.common.paged_result import PagedResult
 from src.domain.entities.usuario import Usuario
+from src.infrastructure.data.models.perfil_model import PerfilModel
 from src.infrastructure.data.models.time_membro_model import TimeMembroModel
 from src.infrastructure.data.models.usuario_model import UsuarioModel
-from src.infrastructure.data.models.perfil_model import PerfilModel
 from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
 
 
@@ -21,6 +21,40 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
         if perfil_id is None:
             raise RuntimeError("Perfil padrão da unidade não foi inicializado.")
         return perfil_id
+
+    async def gerente_ativo_na_unidade(self, unidade_id: UUID, usuario_id: UUID) -> bool:
+        stmt = (
+            select(UsuarioModel.id)
+            .join(PerfilModel, PerfilModel.id == UsuarioModel.perfil_id)
+            .where(
+                UsuarioModel.id == usuario_id,
+                UsuarioModel.unidade_id == unidade_id,
+                UsuarioModel.ativo.is_(True),
+                PerfilModel.unidade_id == unidade_id,
+                PerfilModel.codigo == "GERENTE",
+            )
+        )
+        return (await self.session.execute(stmt)).first() is not None
+
+    async def perfil_atribuivel(self, unidade_id: UUID, perfil_id: UUID) -> bool:
+        stmt = select(PerfilModel.id).where(
+            PerfilModel.id == perfil_id,
+            PerfilModel.unidade_id == unidade_id,
+            or_(PerfilModel.codigo.is_(None), PerfilModel.codigo != "ADMIN_UNIDADE"),
+        )
+        return (await self.session.execute(stmt)).first() is not None
+
+    async def listar_ativos_da_unidade(self, unidade_id: UUID) -> list[Usuario]:
+        stmt = (
+            select(UsuarioModel)
+            .where(
+                UsuarioModel.unidade_id == unidade_id,
+                UsuarioModel.ativo.is_(True),
+            )
+            .order_by(UsuarioModel.nome, UsuarioModel.id)
+        )
+        models = (await self.session.execute(stmt)).scalars().all()
+        return [self._to_entity(model) for model in models]
 
     async def listar_filtrado(
         self,

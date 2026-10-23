@@ -8,6 +8,7 @@ from src.infrastructure.data.base import Base
 from src.infrastructure.data.models.auth_sessao_model import AuthSessaoModel  # noqa: F401
 from src.infrastructure.data.models.perfil_model import PerfilModel  # noqa: F401
 from src.infrastructure.data.models.permissao_model import PerfilPermissaoModel, PermissaoModel  # noqa: F401
+from src.infrastructure.data.models.setor_gerente_model import SetorGerenteModel  # noqa: F401
 from src.infrastructure.data.models.setor_model import SetorModel  # noqa: F401
 from src.infrastructure.data.models.time_membro_model import TimeMembroModel  # noqa: F401
 from src.infrastructure.data.models.time_model import TimeModel  # noqa: F401

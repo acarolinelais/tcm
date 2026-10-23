@@ -66,10 +66,14 @@ selecionado e controles claros para alterar ações por grupo ou individualmente
 - RN-12: Ao sair do editor, iniciar um novo, cancelar a criação ou sair da tela com mudanças
   pendentes, a pessoa pode salvar, descartar ou permanecer. No rascunho de criação, as opções
   equivalentes são criar, descartar ou permanecer. Nenhum rascunho é descartado sem decisão explícita.
-- RN-13: Perfis de sistema com `codigo` (`ADMIN_UNIDADE` e `USUARIO_PADRAO`) têm suas permissões
-  visíveis, são somente leitura e não oferecem ação de salvar. A API recusa tentativas de alteração.
+- RN-13: Perfis de sistema com `codigo` (`ADMIN_UNIDADE`, `USUARIO_PADRAO` e `GERENTE`) têm suas
+  permissões visíveis, são somente leitura e não oferecem ação de salvar. A API recusa tentativas de
+  alteração.
 - RN-14: O perfil `ADMIN_UNIDADE` não pode ser atribuído a outras contas por esta tela. A atribuição
   continua na gestão de usuários, sujeita às restrições do ADR 0018.
+- RN-14a: O perfil de sistema `GERENTE` pode ser atribuído a usuários pela gestão de usuários. Ele
+  concede permissões de times, mas o escopo organizacional do gerente depende de associações ativas
+  a setores, conforme a spec 006.
 - RN-15: Erros de carregamento, criação ou gravação seguem ProblemDetails e preservam o perfil
   selecionado e todo o rascunho. Conflito de nome deve apontar o campo ou explicar a duplicidade sem
   limpar os dados.
@@ -113,6 +117,9 @@ selecionado e controles claros para alterar ações por grupo ou individualmente
 - **CA-14:** Dada uma tela estreita ou navegação por teclado, quando a pessoa percorre tabela,
   menu, editor, grupos e ações, então tudo permanece legível, operável, com foco visível e sem
   rolagem horizontal.
+- **CA-16:** Dado o perfil de sistema `GERENTE`, quando o administrador o consulta, então vê suas
+  permissões em modo somente leitura; quando atribui o perfil a um usuário pela gestão de usuários,
+  então a atribuição é permitida sem tornar o perfil editável.
 
 ## Fora de escopo
 

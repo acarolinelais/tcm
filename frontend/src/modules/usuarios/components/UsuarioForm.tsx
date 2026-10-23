@@ -24,7 +24,7 @@ export function UsuarioForm({ usuario, onSalvo, podeGerenciar = true, podeAtribu
   const criar = useCriarUsuario();
   const atualizar = useAtualizarUsuario();
   const queryClient = useQueryClient();
-  const perfis = useQuery({ queryKey: ["perfis"], queryFn: listarPerfis, enabled: Boolean(usuario && podeAtribuirPerfil) });
+  const perfis = useQuery({ queryKey: ["perfis"], queryFn: listarPerfis, enabled: podeAtribuirPerfil });
   const [perfilSelecionado, setPerfilSelecionado] = useState(usuario?.perfil_id ?? "");
   const {
     register,
@@ -33,7 +33,7 @@ export function UsuarioForm({ usuario, onSalvo, podeGerenciar = true, podeAtribu
     formState: { errors, isSubmitting },
   } = useForm<UsuarioFormValues>({
     resolver: zodResolver(usuarioFormSchema),
-    defaultValues: { nome: usuario?.nome ?? "", email: usuario?.email ?? "" },
+    defaultValues: { nome: usuario?.nome ?? "", email: usuario?.email ?? "", perfil_id: usuario?.perfil_id ?? "" },
   });
 
   useEffect(() => setPerfilSelecionado(usuario?.perfil_id ?? ""), [usuario?.id, usuario?.perfil_id]);
@@ -53,7 +53,7 @@ export function UsuarioForm({ usuario, onSalvo, podeGerenciar = true, podeAtribu
           salvo = { ...salvo, perfil_id: perfilSelecionado };
         }
       } else {
-        salvo = await criar.mutateAsync(values);
+        salvo = await criar.mutateAsync({ ...values, perfil_id: values.perfil_id || undefined });
       }
       onSalvo(salvo);
     } catch (error) {
@@ -84,18 +84,23 @@ export function UsuarioForm({ usuario, onSalvo, podeGerenciar = true, podeAtribu
         <Input id="email" type="email" readOnly={!podeGerenciar} {...register("email")} />
         {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
       </div>
-      {usuario && podeAtribuirPerfil && (
+      {podeAtribuirPerfil && (
         <div className="space-y-1.5">
           <Label htmlFor="perfil-usuario">Perfil</Label>
           <select
             id="perfil-usuario"
             aria-label="Perfil do usuário"
-            value={perfilSelecionado}
-            onChange={(event) => setPerfilSelecionado(event.target.value)}
-            disabled={perfis.isLoading || isPending || perfis.data?.find((perfil) => perfil.id === usuario.perfil_id)?.codigo === "ADMIN_UNIDADE"}
+            value={usuario ? perfilSelecionado : undefined}
+            {...(!usuario ? register("perfil_id") : {})}
+            onChange={(event) => {
+              setPerfilSelecionado(event.target.value);
+              if (!usuario) register("perfil_id").onChange(event);
+            }}
+            disabled={perfis.isLoading || isPending || Boolean(usuario && perfis.data?.find((perfil) => perfil.id === usuario.perfil_id)?.codigo === "ADMIN_UNIDADE")}
             className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {perfis.data?.filter((perfil) => perfil.codigo !== "ADMIN_UNIDADE" || perfil.id === usuario.perfil_id)
+            {!usuario && <option value="">Usuário padrão</option>}
+            {perfis.data?.filter((perfil) => perfil.codigo !== "ADMIN_UNIDADE" || perfil.id === usuario?.perfil_id)
               .map((perfil) => <option key={perfil.id} value={perfil.id}>{perfil.nome}</option>)}
           </select>
           {perfis.isError && <p role="alert" className="text-sm text-destructive">Não foi possível carregar os perfis.</p>}

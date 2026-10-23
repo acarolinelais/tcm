@@ -35,6 +35,7 @@ class PerfilAtualResponse(BaseModel):
     perfil: str | None
     permissoes: list[str]
     times: list[dict[str, str]]
+    setores_gerenciados: list[UUID]
     time_atual_id: UUID | None
     tem_multiplos_times: bool
     senha_alteracao_obrigatoria: bool

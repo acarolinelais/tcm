@@ -14,10 +14,12 @@ class UsuarioAutenticado:
     perfil: str = ""
     permissoes: frozenset[str] = frozenset()
     time_ids: tuple[UUID, ...] = ()
-    times_gerenciados: tuple[UUID, ...] = ()
+    times_gerenciados: tuple[UUID, ...] = ()  # Times no escopo dos setores associados ao gerente.
     time_atual_id: UUID | None = None
     sessao_id: UUID | None = None
     senha_alteracao_obrigatoria: bool = False
+    setores_gerenciados: tuple[UUID, ...] = ()
+    times_kp: tuple[UUID, ...] = ()
 
     def pode(self, permissao: str) -> bool:
         return self.eh_administrador or permissao in self.permissoes

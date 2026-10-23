@@ -26,9 +26,7 @@ async def listar(
     service: UsuarioService = Depends(get_usuario_service),
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
-    return await service.listar(
-        usuario_atual, page, page_size, nome, email, ativo, perfil_id
-    )
+    return await service.listar(usuario_atual, page, page_size, nome, email, ativo, perfil_id)
 
 
 @router.get("/{id}", response_model=UsuarioResponse)

@@ -11,6 +11,28 @@ from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
 class TimeMembroRepositoryImpl(RepositoryBaseImpl[TimeMembro, TimeMembroModel]):
     model = TimeMembroModel
 
+    async def listar_times_kp(self, unidade_id: UUID, usuario_id: UUID) -> tuple[UUID, ...]:
+        stmt = select(TimeMembroModel.time_id).where(
+            TimeMembroModel.unidade_id == unidade_id,
+            TimeMembroModel.usuario_id == usuario_id,
+            TimeMembroModel.ativo.is_(True),
+            TimeMembroModel.papel == PapelTime.KP.value,
+        )
+        return tuple((await self.session.execute(stmt)).scalars().all())
+
+    async def listar_por_time(self, unidade_id: UUID, time_id: UUID) -> list[TimeMembro]:
+        stmt = (
+            select(TimeMembroModel)
+            .where(
+                TimeMembroModel.unidade_id == unidade_id,
+                TimeMembroModel.time_id == time_id,
+                TimeMembroModel.ativo.is_(True),
+            )
+            .order_by(TimeMembroModel.created_at)
+        )
+        models = (await self.session.execute(stmt)).scalars().all()
+        return [self._to_entity(model) for model in models]
+
     async def obter_por_time_e_usuario(
         self, unidade_id: UUID, time_id: UUID, usuario_id: UUID
     ) -> TimeMembro | None:

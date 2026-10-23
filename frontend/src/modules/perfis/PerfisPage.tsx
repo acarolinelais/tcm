@@ -7,7 +7,7 @@ import { usePerfilAtual } from "@/core/auth/usePerfilAtual";
 import { ApiError } from "@/shared/api/problem-details";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TablePagination, TableRow } from "@/shared/ui/table";
+import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyState, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
 import { criarPerfil, listarPerfis, listarPermissoes, salvarPermissoes } from "./api/perfis.api";
 import type { Perfil, Permissao } from "./api/perfis.api";
 import { PerfilAcoesMenu } from "./PerfilAcoesMenu";
@@ -24,7 +24,7 @@ export function PerfisPage() {
   const [criando, setCriando] = useState(false);
   const [modoEditor, setModoEditor] = useState<ModoEditor | null>(null);
   const [pagina, setPagina] = useState(1);
-  const [itensPorPagina, setItensPorPagina] = useState(10);
+  const [itensPorPagina, setItensPorPagina] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
   const [selecionado, setSelecionado] = useState("");
@@ -230,8 +230,8 @@ export function PerfisPage() {
       </nav>
 
       {!criando && modoEditor === null ? (
-        <div className="flex min-h-0 flex-1 flex-col gap-4">
-          <Table containerClassName="min-h-0 flex-1 overflow-auto">
+        <TableLayout>
+          <Table containerClassName={perfisPaginados.length > 0 ? "min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
             <TableHeader>
               <TableRow>
                 <TableHead>Perfil</TableHead>
@@ -241,7 +241,7 @@ export function PerfisPage() {
                 <TableHead className="w-20 text-center">Ações</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            {perfisPaginados.length > 0 && <TableBody>
               {perfisPaginados.map((perfil) => (
                 <TableRow key={perfil.id}>
                   <TableCell className="font-medium">{perfil.nome}</TableCell>
@@ -258,15 +258,15 @@ export function PerfisPage() {
                   </TableCell>
                 </TableRow>
               ))}
-            </TableBody>
+            </TableBody>}
           </Table>
           {(perfis.data ?? []).length === 0 && (
-            <div className="flex min-h-0 flex-1 items-center justify-center rounded-2xl bg-secondary/30 p-8 text-center">
-              <div><h2 className="font-semibold">Nenhum perfil cadastrado</h2><p className="mt-1 text-sm text-muted-foreground">Crie um perfil para organizar os acessos da unidade.</p></div>
-            </div>
+            <TableEmptyState className="p-8 text-center">
+              <div role="status"><h2 className="font-semibold">Nenhum perfil cadastrado</h2><p className="mt-1 text-sm text-muted-foreground">Crie um perfil para organizar os acessos da unidade.</p></div>
+            </TableEmptyState>
           )}
-          <TablePagination page={pagina} pageSize={itensPorPagina} totalCount={listaPerfis.length} pageSizeOptions={[10, 20, 50]} onPageChange={setPagina} onPageSizeChange={(quantidade) => { setItensPorPagina(quantidade); setPagina(1); }} />
-        </div>
+          <TablePagination page={pagina} pageSize={itensPorPagina} totalCount={listaPerfis.length} onPageChange={setPagina} onPageSizeChange={(quantidade) => { setItensPorPagina(quantidade); setPagina(1); }} />
+        </TableLayout>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           <Button type="button" variant="ghost" className="w-fit px-2" onClick={() => pedirAcao({ tipo: "lista" })}>← Perfis</Button>

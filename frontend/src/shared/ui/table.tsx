@@ -4,6 +4,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 
+export const DEFAULT_TABLE_PAGE_SIZE = 10;
+export const TABLE_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
+
 interface TableProps extends HTMLAttributes<HTMLTableElement> {
   containerClassName?: string;
 }
@@ -14,6 +17,10 @@ export function Table({ className, containerClassName, ...props }: TableProps) {
       <table className={cn("w-full text-sm", className)} {...props} />
     </div>
   );
+}
+
+export function TableLayout({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("flex min-h-0 flex-1 flex-col gap-4", className)} {...props} />;
 }
 
 export function TableHeader({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
@@ -30,6 +37,17 @@ export function TableHeader({ className, ...props }: HTMLAttributes<HTMLTableSec
 
 export function TableBody({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
   return <tbody className={cn(className)} {...props} />;
+}
+
+export function TableEmptyState({ children, className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={cn("flex min-h-0 flex-1 items-center justify-center rounded-2xl bg-secondary/30 text-sm text-muted-foreground", className)}
+      {...props}
+    >
+      {children}
+    </div>
+  );
 }
 
 export function TableRow({ className, ...props }: HTMLAttributes<HTMLTableRowElement>) {
@@ -56,7 +74,7 @@ interface TablePaginationProps {
   page: number;
   pageSize: number;
   totalCount: number;
-  pageSizeOptions: number[];
+  pageSizeOptions?: readonly number[];
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
   className?: string;
@@ -66,7 +84,7 @@ export function TablePagination({
   page,
   pageSize,
   totalCount,
-  pageSizeOptions,
+  pageSizeOptions = TABLE_PAGE_SIZE_OPTIONS,
   onPageChange,
   onPageSizeChange,
   className,

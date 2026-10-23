@@ -9,6 +9,7 @@ from src.domain.entities.usuario import Usuario
 class CriarUsuarioRequest(BaseModel):
     nome: str = Field(min_length=1, max_length=Usuario.NOME_MAX_LENGTH)
     email: EmailStr = Field(max_length=Usuario.EMAIL_MAX_LENGTH)
+    perfil_id: UUID | None = None
 
 
 class AtualizarUsuarioRequest(CriarUsuarioRequest):

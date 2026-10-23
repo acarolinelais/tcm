@@ -1,5 +1,5 @@
-from datetime import datetime
 from collections.abc import Callable
+from datetime import datetime
 from uuid import UUID
 
 from src.application.schemas.usuario import (
@@ -57,9 +57,7 @@ class UsuarioServiceImpl:
                     perfil_id,
                 )
             else:
-                result = await self._repo.listar_paginado(
-                    usuario_atual.unidade_id, page, page_size
-                )
+                result = await self._repo.listar_paginado(usuario_atual.unidade_id, page, page_size)
         else:
             escopo = tuple(
                 dict.fromkeys((*usuario_atual.times_gerenciados, *usuario_atual.time_ids))
@@ -98,7 +96,12 @@ class UsuarioServiceImpl:
         self._exigir_permissao(usuario_atual, "usuarios.gerenciar")
         await self._garantir_email_unico(request.email, None)
         usuario = Usuario(usuario_atual.unidade_id, request.nome, request.email)
-        usuario.perfil_id = await self._repo.obter_perfil_padrao(usuario_atual.unidade_id)
+        if request.perfil_id is None:
+            usuario.perfil_id = await self._repo.obter_perfil_padrao(usuario_atual.unidade_id)
+        else:
+            if not await self._repo.perfil_atribuivel(usuario_atual.unidade_id, request.perfil_id):
+                raise NotFoundException("Perfil não encontrado ou reservado ao administrador.")
+            usuario.perfil_id = request.perfil_id
         if not self._senha_inicial or self._hash_senha is None:
             raise ServiceUnavailableException(
                 "Configure SENHA_INICIAL_USUARIOS antes de cadastrar usuários."

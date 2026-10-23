@@ -7,6 +7,9 @@ import { usuariosRoutes } from "@/modules/usuarios";
 import { LoginPage } from "@/core/auth/LoginPage";
 import { AlterarSenhaPage } from "@/core/auth/AlterarSenhaPage";
 import { PerfisPage } from "@/modules/perfis/PerfisPage";
+import { SetoresPage } from "@/modules/setores/SetoresPage";
+import { TimesPage } from "@/modules/times/TimesPage";
+import { UsuariosPage } from "@/modules/usuarios/pages/UsuariosPage";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -21,6 +24,11 @@ export const router = createBrowserRouter([
       { path: "timeline", element: <EmBreve titulo="Timeline" /> },
       ...usuariosRoutes,
       { path: "perfis", element: <PerfisPage /> },
+      { path: "admin/perfis", element: <PerfisPage /> },
+      { path: "admin/usuarios", element: <UsuariosPage modoAdmin /> },
+      { path: "admin/setores", element: <SetoresPage /> },
+      { path: "admin/times", element: <TimesPage modoAdmin /> },
+      { path: "times", element: <TimesPage /> },
     ],
   },
 ]);

@@ -7,13 +7,20 @@ from uuid import UUID, uuid4
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.schemas.auth import AlterarSenhaRequest, LoginRequest, RefreshRequest, TokenResponse
+from src.application.schemas.auth import (
+    AlterarSenhaRequest,
+    LoginRequest,
+    RefreshRequest,
+    TokenResponse,
+)
 from src.domain.common.exceptions import CredenciaisInvalidasException
 from src.domain.entities.interfaces.autenticador import Autenticador
 from src.domain.entities.interfaces.usuario_repository import UsuarioRepository
 from src.domain.entities.usuario import Usuario
 from src.infrastructure.data.models.auth_sessao_model import AuthSessaoModel
 from src.infrastructure.data.models.perfil_model import PerfilModel
+from src.infrastructure.data.models.setor_gerente_model import SetorGerenteModel
+from src.infrastructure.data.models.setor_model import SetorModel
 from src.infrastructure.data.models.time_membro_model import TimeMembroModel
 from src.infrastructure.data.models.time_model import TimeModel
 from src.infrastructure.data.models.usuario_model import UsuarioModel
@@ -168,9 +175,11 @@ class AuthServiceImpl:
             return "", []
         usuario_model = await self._session.get(UsuarioModel, usuario_id)
         perfil = ""
+        perfil_codigo = None
         if usuario_model and usuario_model.perfil_id:
             perfil_model = await self._session.get(PerfilModel, usuario_model.perfil_id)
             perfil = perfil_model.nome if perfil_model else ""
+            perfil_codigo = perfil_model.codigo if perfil_model else None
         stmt = (
             select(TimeMembroModel.time_id)
             .join(TimeModel, TimeModel.id == TimeMembroModel.time_id)
@@ -183,12 +192,24 @@ class AuthServiceImpl:
             .order_by(TimeModel.nome, TimeModel.id)
         )
         times = list((await self._session.execute(stmt)).scalars().all())
-        managed_stmt = select(TimeModel.id).where(
-            TimeModel.gerente_id == usuario_id,
-            TimeModel.unidade_id == unidade_id,
-            TimeModel.ativo.is_(True),
+        managed_stmt = (
+            select(TimeModel.id)
+            .join(SetorModel, SetorModel.id == TimeModel.setor_id)
+            .join(SetorGerenteModel, SetorGerenteModel.setor_id == SetorModel.id)
+            .where(
+                SetorGerenteModel.usuario_id == usuario_id,
+                SetorGerenteModel.unidade_id == unidade_id,
+                SetorGerenteModel.ativo.is_(True),
+                SetorModel.ativo.is_(True),
+                TimeModel.unidade_id == unidade_id,
+                TimeModel.ativo.is_(True),
+            )
         )
-        managed = list((await self._session.execute(managed_stmt)).scalars().all())
+        managed = (
+            list((await self._session.execute(managed_stmt)).scalars().all())
+            if perfil_codigo == "GERENTE"
+            else []
+        )
         ids = set(times) | set(managed)
         ordered_times = []
         if ids:

@@ -2,7 +2,7 @@
 
 - **Status:** Concluída
 - **Data:** 2026-10-23
-- **ADRs relacionados:** 0004, 0006, 0008, 0009, 0013, 0017
+- **ADRs relacionados:** 0004, 0006, 0008, 0009, 0013, 0017, 0022
 
 ## Problema
 
@@ -33,8 +33,10 @@ outras páginas possam reutilizar os mesmos componentes.
   usuário possui um perfil obrigatório.
 - RN-04: Filtros não ampliam o escopo de consulta: admins continuam restritos à unidade; os demais
   continuam restritos aos usuários visíveis por seus times e permissões.
-- RN-05: A tabela compartilhada padroniza cabeçalho, linhas, células, rolagem e paginação; páginas
-  podem fornecer conteúdo e colunas sem duplicar essas regras visuais.
+- RN-05: Todas as tabelas do sistema, existentes e futuras, usam o padrão visual compartilhado:
+  cabeçalho, corpo, painel de estado vazio arredondado e separado do cabeçalho, espaçamentos,
+  rolagem e paginação seguem a mesma composição. Cada domínio fornece conteúdo, colunas e filtros sem
+  duplicar essas regras visuais. Exceções exigem ADR.
 - RN-06: A paginação começa com 10 itens por página e permite selecionar 10, 20, 50 ou 100 itens.
 - RN-07: A coluna de ações não oferece filtro.
 
@@ -55,18 +57,20 @@ outras páginas possam reutilizar os mesmos componentes.
   retornam ao primeiro conjunto de resultados correspondente.
 - **CA-07:** Dado parâmetros de página, tamanho ou identificador de perfil inválidos, quando consulta
   a listagem, então a API rejeita a requisição com erro de validação.
-- **CA-08:** Dado uma tabela em qualquer página que use os componentes compartilhados, quando ela é
-  exibida, então cabeçalho, linhas, células e paginação seguem o padrão visual comum, com conteúdo
-  rolável sem deslocar o cabeçalho da página.
+- **CA-08:** Dada qualquer tabela do sistema, existente ou futura, quando ela é exibida, então usa
+  `TableLayout` e os componentes compartilhados, com espaçamento uniforme entre cabeçalho, corpo ou
+  estado vazio e paginação; o painel vazio tem fundo cinza claro, cantos arredondados e fica separado
+  do cabeçalho; o conteúdo é rolável sem deslocar a paginação ou o cabeçalho da página.
 - **CA-09:** Dado a paginação sem configuração prévia, quando a tabela abre, então mostra 10 itens por
   página e oferece controles para navegar e alterar essa quantidade.
-- **CA-10:** Dado que não há usuários ou que os filtros não retornam resultados, quando a tabela é
-  exibida, então mostra um estado vazio em destaque com orientação e uma ação adequada ao contexto.
+- **CA-10:** Dado que uma tabela não tem registros ou que os filtros não retornam resultados, quando
+  ela é exibida, então mostra o painel vazio universal com orientação e uma ação adequada ao contexto.
 
 ## Fora de escopo
 
 - Ordenação por coluna.
-- Filtros para outros recursos além de usuários.
+- Definição dos filtros de negócio de outros recursos; a composição visual universal da tabela se
+  aplica a todos eles.
 - Mudança das regras de autorização ou do escopo hierárquico definido na spec 003.
 
 ## Dúvidas em aberto

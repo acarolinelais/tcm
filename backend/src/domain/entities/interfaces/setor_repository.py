@@ -1,8 +1,21 @@
 from typing import Protocol
+from uuid import UUID
 
+from src.domain.common.paged_result import PagedResult
 from src.domain.entities.interfaces.repository_base import RepositoryBase
 from src.domain.entities.setor import Setor
 
 
 class SetorRepository(RepositoryBase[Setor], Protocol):
-    pass
+    async def listar_paginado(
+        self,
+        unidade_id: UUID,
+        page: int,
+        page_size: int,
+        *,
+        ativo: bool | None = None,
+        busca: str | None = None,
+        setor_ids: tuple[UUID, ...] | None = None,
+    ) -> PagedResult[Setor]: ...
+
+    async def possui_times_ativos(self, unidade_id: UUID, setor_id: UUID) -> bool: ...

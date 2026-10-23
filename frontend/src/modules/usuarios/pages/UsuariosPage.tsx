@@ -7,19 +7,19 @@ import { toast } from "@/shared/lib/toast";
 
 import { UsuarioForm } from "../components/UsuarioForm";
 import { UsuariosTable } from "../components/UsuariosTable";
+import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS } from "@/shared/ui/table";
 import type { Usuario } from "../model/usuario";
 import type { PerfilAtual } from "@/core/auth/api";
 import type { UsuarioFiltros } from "../api/usuario.api";
 
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
-
-export function UsuariosPage() {
+export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
   const perfil = useOutletContext<PerfilAtual>();
   const ehAdmin = perfil.perfil_codigo === "ADMIN_UNIDADE";
+  if (modoAdmin && !ehAdmin) return <p role="alert" className="p-6 text-sm">Apenas o administrador da unidade pode acessar esta página.</p>;
   const podeGerenciar = ehAdmin || perfil.permissoes.includes("usuarios.gerenciar");
   const podeAtribuirPerfil = ehAdmin || perfil.permissoes.includes("perfis.gerenciar");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const [filtros, setFiltros] = useState<UsuarioFiltros>({});
   const [modalAberto, setModalAberto] = useState(false);
   const [usuarioEmEdicao, setUsuarioEmEdicao] = useState<Usuario | undefined>();
@@ -98,7 +98,7 @@ export function UsuariosPage() {
         filtros={filtros}
         onFiltroChange={alterarFiltro}
         onPageChange={setPage}
-        pageSizeOptions={PAGE_SIZE_OPTIONS}
+          pageSizeOptions={TABLE_PAGE_SIZE_OPTIONS}
         onPageSizeChange={(size) => {
           setPageSize(size);
           setPage(1);

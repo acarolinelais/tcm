@@ -11,6 +11,7 @@ export interface PerfilAtual {
   perfil: string | null;
   permissoes: string[];
   times: { id: string; nome: string; papel: string }[];
+  setores_gerenciados: string[];
   time_atual_id: string | null;
   tem_multiplos_times: boolean;
   senha_alteracao_obrigatoria: boolean;

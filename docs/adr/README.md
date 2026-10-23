@@ -32,3 +32,5 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0018](0018-perfil-administrador-e-perfil-obrigatorio.md) | Perfil administrador da unidade e perfil obrigatório | Aceito |
 | [0019](0019-senha-inicial-e-troca-obrigatoria.md) | Senha inicial local com troca obrigatória | Aceito |
 | [0020](0020-sessoes-jwt-e-refresh-rotativo.md) | Sessões JWT e refresh token rotativo | Aceito |
+| [0021](0021-escopo-gerente-por-setor.md) | Escopo de gestão de times definido pelo setor | Aceito |
+| [0022](0022-padrao-universal-de-tabelas.md) | Padrão visual universal para tabelas | Aceito |

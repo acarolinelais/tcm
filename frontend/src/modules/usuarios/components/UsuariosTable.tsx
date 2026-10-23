@@ -1,6 +1,6 @@
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TablePagination, TableRow } from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableEmptyState, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
 import { TableColumnFilter } from "@/shared/ui/table-column-filter";
 import { listarPerfis } from "@/modules/perfis/api/perfis.api";
 import { useQuery } from "@tanstack/react-query";
@@ -14,7 +14,7 @@ import { UsuarioActionsMenu } from "./UsuarioActionsMenu";
 interface UsuariosTableProps {
   page: number;
   pageSize: number;
-  pageSizeOptions: number[];
+  pageSizeOptions: readonly number[];
   filtros: UsuarioFiltros;
   onFiltroChange: (campo: "nome" | "email" | "ativo" | "perfil", valor: string) => void;
   onPageChange: (page: number) => void;
@@ -56,7 +56,7 @@ export function UsuariosTable({
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
+    <TableLayout>
       <Table containerClassName={items.length > 0 ? "min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
         <TableHeader>
           <TableRow>
@@ -137,7 +137,7 @@ export function UsuariosTable({
         </TableBody>}
       </Table>
       {items.length === 0 && (
-        <div className="flex min-h-0 flex-1 items-center justify-center rounded-2xl bg-secondary/30 px-4 py-6">
+        <TableEmptyState className="px-4 py-6">
           <div role="status" className="w-full max-w-md text-center">
             <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
               {temFiltro
@@ -162,7 +162,7 @@ export function UsuariosTable({
               </Button>
             ) : null}
           </div>
-        </div>
+        </TableEmptyState>
       )}
       <TablePagination
         page={page}
@@ -172,6 +172,6 @@ export function UsuariosTable({
         onPageChange={onPageChange}
         onPageSizeChange={onPageSizeChange}
       />
-    </div>
+    </TableLayout>
   );
 }

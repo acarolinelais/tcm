@@ -17,6 +17,8 @@ from src.application.schemas.auth import (
 from src.application.services.auth_service import AuthServiceImpl
 from src.domain.common.exceptions import ForbiddenException
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
+from src.infrastructure.data.models.setor_gerente_model import SetorGerenteModel
+from src.infrastructure.data.models.setor_model import SetorModel
 from src.infrastructure.data.models.time_membro_model import TimeMembroModel
 from src.infrastructure.data.models.time_model import TimeModel
 from src.infrastructure.data.models.unidade_model import UnidadeModel
@@ -78,16 +80,25 @@ async def perfil_atual(
     ).all()
     times = [{"id": str(row.id), "nome": row.nome, "papel": row.papel} for row in rows]
     gerenciados = (
-        await session.execute(
-            select(TimeModel.id, TimeModel.nome)
-            .where(
-                TimeModel.gerente_id == usuario_atual.id,
-                TimeModel.unidade_id == usuario_atual.unidade_id,
-                TimeModel.ativo.is_(True),
+        (
+            await session.execute(
+                select(TimeModel.id, TimeModel.nome)
+                .join(SetorModel, SetorModel.id == TimeModel.setor_id)
+                .join(SetorGerenteModel, SetorGerenteModel.setor_id == SetorModel.id)
+                .where(
+                    SetorGerenteModel.usuario_id == usuario_atual.id,
+                    SetorGerenteModel.unidade_id == usuario_atual.unidade_id,
+                    SetorGerenteModel.ativo.is_(True),
+                    SetorModel.ativo.is_(True),
+                    TimeModel.unidade_id == usuario_atual.unidade_id,
+                    TimeModel.ativo.is_(True),
+                )
+                .order_by(TimeModel.nome)
             )
-            .order_by(TimeModel.nome)
-        )
-    ).all()
+        ).all()
+        if usuario_atual.perfil_codigo == "GERENTE"
+        else []
+    )
     unidade_nome = await session.scalar(
         select(UnidadeModel.nome).where(UnidadeModel.id == usuario_atual.unidade_id)
     )
@@ -107,6 +118,7 @@ async def perfil_atual(
         perfil=usuario_atual.perfil or None,
         permissoes=sorted(usuario_atual.permissoes),
         times=times,
+        setores_gerenciados=list(usuario_atual.setores_gerenciados),
         time_atual_id=usuario_atual.time_atual_id,
         tem_multiplos_times=len(times) > 1,
         senha_alteracao_obrigatoria=usuario_atual.senha_alteracao_obrigatoria,
