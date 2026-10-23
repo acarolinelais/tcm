@@ -82,7 +82,7 @@ test("admin transfere a responsabilidade pela conta na tabela de usuários", asy
   await page.getByRole("option", { name: /Gerente Ana/ }).click();
   await page.getByRole("button", { name: "Salvar" }).click();
 
-  await expect(page.getByText("Responsável atualizado com sucesso.")).toBeVisible();
+  await expect(page.getByText("Responsável atualizado.")).toBeVisible();
   await expect(page.getByText("Gerente Ana")).toBeVisible();
 });
 

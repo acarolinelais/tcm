@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useCallback, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Globe } from "lucide-react";
 
 import { atualizarIdiomaPreferido, type PerfilAtual } from "@/core/auth/api";
 import i18n, { TEMP_LANGUAGE_KEY } from "@/core/i18n";
@@ -42,7 +42,7 @@ export function LanguageSelector({ perfil }: { perfil?: PerfilAtual }) {
 
   return <div ref={menuRef} className="relative">
     <button type="button" aria-haspopup="menu" aria-expanded={aberto} onClick={() => setAberto((value) => !value)} className="flex items-center gap-1.5 text-sm text-foreground">
-      <span aria-hidden="true">🌐</span>{atual}<ChevronDown aria-hidden="true" className="h-3.5 w-3.5 text-muted-foreground" />
+      <Globe aria-hidden="true" className="size-4 text-muted-foreground" />{atual}<ChevronDown aria-hidden="true" className="h-3.5 w-3.5 text-muted-foreground" />
     </button>
     {aberto && <div role="menu" className="popover-enter absolute right-0 top-8 z-50 min-w-36 rounded-xl border border-border bg-card p-1.5 shadow-lg">
       {languages.map(({ code, label }) => <button key={code} role="menuitem" type="button" onClick={() => void selecionar(code)} className={`w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-secondary ${code === i18n.resolvedLanguage ? "font-medium text-primary" : ""}`}>{label}</button>)}

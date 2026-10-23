@@ -49,7 +49,7 @@ export function SetoresPage() {
   const desvincular = useMutation({ mutationFn: (id: string) => setoresApi.desassociar(setorAtual!.id, id), onSuccess: async () => { await client.invalidateQueries({ queryKey: ["setor-gerentes", setorAtual?.id] }); toast.success(t("associationRemoveSuccess")); }, onError: () => toast.error(t("associationError")) });
   if (perfil.perfil_codigo !== "ADMIN_UNIDADE") return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
   return <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
-    <header className="mb-7 flex shrink-0 items-center justify-between"><h1 className="text-2xl font-medium text-[#3478F6]">{t("sectors")}</h1><Button onClick={() => { setNome(""); setGerente(""); setErroNome(""); setNovo(true); }}>{t("newSector")}</Button></header>
+    <header className="mb-7 flex shrink-0 items-center justify-between"><h1 className="text-2xl font-medium text-primary">{t("sectors")}</h1><Button onClick={() => { setNome(""); setGerente(""); setErroNome(""); setNovo(true); }}>{t("newSector")}</Button></header>
     <TableLayout>
     <Table containerClassName={`min-h-0 ${setores.data?.items.length ? "flex-1 overflow-auto" : "shrink-0 overflow-visible"}`}><TableHeader><TableRow><TableHead><TableColumnFilter label={t("sector")} value={filtros.busca ?? ""} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, busca: value || undefined })); }} placeholder={t("searchSector")} /></TableHead><TableHead>{t("managers")}</TableHead><TableHead><TableColumnFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, ativo: value === "" ? undefined : value === "true" })); }} options={[{ value: "", label: t("all") }, { value: "true", label: t("active") }, { value: "false", label: t("inactive") }]} /></TableHead><TableHead className="text-right">{t("actions")}</TableHead></TableRow></TableHeader>{Boolean(setores.data?.items.length) && <TableBody>
       {setoresVisiveis.map((setor, index) => <TableRow key={setor.id}>
@@ -83,14 +83,12 @@ export function SetoresPage() {
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle>{novo ? t("newSector") : setorAtual ? `${t("sector")}: ${setorAtual.nome}` : t("managers")}</DrawerTitle>
-          <p className="mt-1.5 text-sm leading-5 text-muted-foreground">{novo ? t("newSectorDescription") : t("manageSectorDescription")}</p>
         </DrawerHeader>
         {novo ? <form noValidate className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => { event.preventDefault(); if (!nome.trim()) { setErroNome(t("requiredField")); return; } setErroNome(""); salvar.mutate(); }}>
           <div className="flex-1 space-y-6 overflow-y-auto px-7 py-6">
             <div className="flex flex-col">
               <Label htmlFor="sector-name">{t("sectorName")}</Label>
-              <Input id="sector-name" className="mt-2.5" aria-invalid={Boolean(erroNome)} aria-describedby={erroNome ? "sector-name-hint sector-name-error" : "sector-name-hint"} value={nome} onChange={(e) => { setNome(e.target.value); setErroNome(""); }} maxLength={150} required />
-              <p id="sector-name-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("sectorNameHint")}</p>
+              <Input id="sector-name" className="mt-2.5" aria-invalid={Boolean(erroNome)} aria-describedby={erroNome ? "sector-name-error" : undefined} value={nome} onChange={(e) => { setNome(e.target.value); setErroNome(""); }} maxLength={150} required />
               {erroNome && <p id="sector-name-error" role="alert" className="mt-1.5 text-sm text-destructive">{erroNome}</p>}
             </div>
             <div className="flex flex-col">
@@ -112,8 +110,7 @@ export function SetoresPage() {
           <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-7 py-6">
           <div className="flex flex-col">
             <Label htmlFor="sector-edit-name">{t("sectorName")}</Label>
-            <Input id="sector-edit-name" className="mt-2.5" aria-invalid={Boolean(erroNome)} aria-describedby={erroNome ? "sector-edit-hint sector-edit-error" : "sector-edit-hint"} value={nome} onChange={(e) => { setNome(e.target.value); setErroNome(""); }} maxLength={150} required />
-            <p id="sector-edit-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("sectorEditHint")}</p>
+            <Input id="sector-edit-name" className="mt-2.5" aria-invalid={Boolean(erroNome)} aria-describedby={erroNome ? "sector-edit-error" : undefined} value={nome} onChange={(e) => { setNome(e.target.value); setErroNome(""); }} maxLength={150} required />
             {erroNome && <p id="sector-edit-error" role="alert" className="mt-1.5 text-sm text-destructive">{erroNome}</p>}
           </div>
           <div className="flex flex-col">

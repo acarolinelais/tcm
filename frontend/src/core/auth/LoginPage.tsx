@@ -2,7 +2,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { BarChart3, Eye, EyeOff, Network, UsersRound } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 
 import { LanguageSelector } from "@/core/i18n/LanguageSelector";
 import logo from "@/shared/assets/figma/icons/logo.svg";
@@ -60,37 +60,11 @@ export function LoginPage() {
         <LanguageSelector />
       </div>
 
-      <section className="grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-border bg-white shadow-[0_16px_48px_-36px_rgba(15,23,42,0.28)] lg:min-h-[590px] lg:grid-cols-[0.95fr_1.05fr]">
-        <aside className="hidden flex-col justify-between bg-[#F3F6FF] px-10 py-11 lg:flex xl:px-14">
-          <div className="flex items-center gap-2.5">
-            <img src={logo} alt="" className="h-6 w-6" />
-            <span className="text-base font-semibold text-foreground">TCM</span>
-          </div>
-          <div className="max-w-sm">
-            <h2 className="text-3xl font-semibold leading-tight tracking-tight text-foreground">SDF Control</h2>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">{t("loginIntro")}</p>
-            <ul className="mt-9 space-y-3">
-              {[
-                { icon: UsersRound, text: t("loginFeatureUsers") },
-                { icon: Network, text: t("loginFeatureTeams") },
-                { icon: BarChart3, text: t("loginFeatureProgress") },
-              ].map(({ icon: Icon, text }) => (
-                <li key={text} className="flex items-center gap-3 rounded-xl border border-[#E2E9FC] bg-white/85 px-3.5 py-3 text-sm text-foreground">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#EAF0FF] text-primary">
-                    <Icon aria-hidden="true" className="h-[18px] w-[18px]" />
-                  </span>
-                  <span>{text}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <p className="text-xs text-muted-foreground">TCM · SDF Control</p>
-        </aside>
-
-        <div className="flex items-center justify-center px-6 py-12 sm:px-12 lg:px-14">
+      <section className="w-full max-w-md rounded-[2rem] border border-border bg-white shadow-[0_16px_48px_-36px_rgba(15,23,42,0.28)]">
+        <div className="flex items-center justify-center px-6 py-12 sm:px-12">
           <form noValidate onSubmit={enviar} className="w-full max-w-sm space-y-7">
             <header>
-              <div className="mb-7 flex items-center gap-2.5 lg:hidden">
+              <div className="mb-7 flex items-center gap-2.5">
                 <img src={logo} alt="" className="h-6 w-6" />
                 <span className="text-base font-semibold text-foreground">TCM</span>
               </div>

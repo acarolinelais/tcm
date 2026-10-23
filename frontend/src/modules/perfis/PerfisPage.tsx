@@ -223,7 +223,7 @@ export function PerfisPage() {
     <section className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
       <header className="mb-7 flex shrink-0 flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-medium leading-8 text-[#3478F6]">{t("profileTitle")}</h1>
+          <h1 className="text-2xl font-medium leading-8 text-primary">{t("profileTitle")}</h1>
         </div>
         {!criando && <Button onClick={() => pedirAcao({ tipo: "novo" })} className="h-10 rounded-lg px-5 text-sm">{t("newProfile")}</Button>}
       </header>
@@ -247,7 +247,7 @@ export function PerfisPage() {
                   <TableCell className="text-muted-foreground">{perfil.descricao || "—"}</TableCell>
                   <TableCell>{perfil.codigo ? t("protectedBySystem") : t("unitProfile")}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className="gap-1.5 rounded-md border border-[#DCE7FF] bg-[#F5F8FF] px-2.5 py-1 text-[#3478F6]">
+                    <Badge variant="secondary" className="gap-1.5 rounded-md border border-[#DCE7FF] bg-[#F5F8FF] px-2.5 py-1 text-primary">
                       <ShieldCheck aria-hidden="true" className="size-3.5" />
                       <span aria-hidden="true">{perfil.permissoes.length}</span>
                       <span className="sr-only">{t("permissionCount", { count: perfil.permissoes.length })}</span>
@@ -285,14 +285,12 @@ export function PerfisPage() {
                       <div className="grid gap-5 sm:grid-cols-2">
                         <div className="flex flex-col">
                           <Label htmlFor="profile-name">{t("profileName")} <span className="text-destructive" aria-hidden="true">*</span></Label>
-                          <Input id="profile-name" className="mt-2.5" autoFocus required aria-invalid={Boolean(erroNome)} aria-describedby={erroNome ? "profile-name-hint profile-name-error" : "profile-name-hint"} maxLength={100} value={nome} onChange={(event) => { setNome(event.target.value); setErroNome(""); }} placeholder={t("profileExample")} />
-                          <p id="profile-name-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("profileNameHint")}</p>
+                          <Input id="profile-name" className="mt-2.5" autoFocus required aria-invalid={Boolean(erroNome)} aria-describedby={erroNome ? "profile-name-error" : undefined} maxLength={100} value={nome} onChange={(event) => { setNome(event.target.value); setErroNome(""); }} placeholder={t("profileExample")} />
                           {erroNome && <p id="profile-name-error" role="alert" className="mt-1.5 text-sm text-destructive">{erroNome}</p>}
                         </div>
                         <div className="flex flex-col">
                           <Label htmlFor="profile-description">{t("description")} <span className="text-muted-foreground">({t("optional")})</span></Label>
-                          <Input id="profile-description" className="mt-2.5" aria-describedby="profile-description-hint" maxLength={300} value={descricao} onChange={(event) => setDescricao(event.target.value)} />
-                          <p id="profile-description-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("profileDescriptionHint")}</p>
+                          <Input id="profile-description" className="mt-2.5" maxLength={300} value={descricao} onChange={(event) => setDescricao(event.target.value)} />
                         </div>
                       </div>
                     ) : (
