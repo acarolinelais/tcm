@@ -59,9 +59,7 @@ async def test_atualizar_preferencia_de_idioma_requer_sessao_e_persiste(api_clie
     app.dependency_overrides[get_auth_service] = dependency_override(service)
     app.dependency_overrides[get_usuario_atual_para_troca_senha] = dependency_override(atual)
 
-    response = await api_client.patch(
-        "/api/auth/preferencias", json={"idioma_preferido": "ko"}
-    )
+    response = await api_client.patch("/api/auth/preferencias", json={"idioma_preferido": "ko"})
 
     assert response.status_code == 200
     assert response.json() == {"idioma_preferido": "ko"}
@@ -76,7 +74,5 @@ async def test_atualizar_preferencia_de_idioma_rejeita_codigo_nao_suportado(api_
     app.dependency_overrides[get_usuario_atual_para_troca_senha] = dependency_override(
         UsuarioAutenticado(uuid4(), uuid4(), "USUARIO_PADRAO")
     )
-    response = await api_client.patch(
-        "/api/auth/preferencias", json={"idioma_preferido": "fr"}
-    )
+    response = await api_client.patch("/api/auth/preferencias", json={"idioma_preferido": "fr"})
     assert response.status_code == 422

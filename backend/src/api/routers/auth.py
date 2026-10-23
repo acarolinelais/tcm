@@ -69,9 +69,7 @@ async def atualizar_preferencias(
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual_para_troca_senha),
     service: AuthService = Depends(get_auth_service),
 ) -> PreferenciasResponse:
-    await service.atualizar_preferencias(
-        usuario_atual.unidade_id, usuario_atual.id, request
-    )
+    await service.atualizar_preferencias(usuario_atual.unidade_id, usuario_atual.id, request)
     return PreferenciasResponse(idioma_preferido=request.idioma_preferido)
 
 
