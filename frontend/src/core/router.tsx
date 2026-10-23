@@ -23,6 +23,7 @@ export const router = createBrowserRouter([
       ...overviewRoutes,
       { path: "board", element: <EmBreve titulo="board" ilustracao="board" /> },
       { path: "timeline", element: <EmBreve titulo="timeline" ilustracao="timeline" /> },
+      { path: "documentation", element: <EmBreve titulo="documentation" /> },
       ...usuariosRoutes,
       { path: "perfis", element: <PerfisPage /> },
       { path: "admin/perfis", element: <PerfisPage /> },

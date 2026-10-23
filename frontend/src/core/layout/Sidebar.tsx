@@ -13,7 +13,7 @@ import {
   Users,
   UsersRound,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import logo from "@/shared/assets/figma/icons/logo.svg";
@@ -30,8 +30,9 @@ export function Sidebar({
 }) {
   const { t } = useTranslation();
   const location = useLocation();
-  const [adminAberto, setAdminAberto] = useState(false);
   const estaNaAdmin = location.pathname.startsWith("/admin/");
+  const [adminAberto, setAdminAberto] = useState(estaNaAdmin);
+  useEffect(() => setAdminAberto(estaNaAdmin), [estaNaAdmin]);
   const itens = [
     { to: "/overview", label: t("overview"), description: t("overviewDescription"), Icon: LayoutDashboard },
     { to: "/board", label: t("board"), description: t("boardDescription"), Icon: Kanban },
@@ -86,7 +87,7 @@ export function Sidebar({
           <>
             <button
               type="button"
-              aria-expanded={adminAberto || estaNaAdmin}
+              aria-expanded={adminAberto}
               aria-label={recolhida ? t("administration") : undefined}
               aria-describedby="sidebar-tooltip-administration"
               onClick={() => setAdminAberto((aberto) => !aberto)}
@@ -94,24 +95,32 @@ export function Sidebar({
             >
               <Settings2 aria-hidden="true" className={`size-[18px] shrink-0 ${estaNaAdmin ? "text-[#3478F6]" : "text-muted-foreground"}`} />
               <span aria-hidden={recolhida} className={`${transicaoRotulo} flex-1 truncate ${larguraRotulo}`}>{t("administration")}</span>
-              {!recolhida && <ChevronDown aria-hidden="true" className={`h-3.5 w-3.5 transition-transform ${adminAberto || estaNaAdmin ? "rotate-180" : ""}`} />}
+              {!recolhida && <ChevronDown aria-hidden="true" className={`h-3.5 w-3.5 transition-transform duration-200 ease-in-out motion-reduce:transition-none ${adminAberto ? "rotate-180" : ""}`} />}
               <TooltipDescricao id="administration" titulo={t("administration")} descricao={t("administrationDescription")} />
             </button>
-            {(adminAberto || estaNaAdmin) && itensAdmin.map(([to, label, description, Icon]) => (
-              <NavLink
-                key={to}
-                to={to}
-                aria-label={recolhida ? label : undefined}
-                aria-describedby={`sidebar-tooltip-${to.replaceAll("/", "-")}`}
-                className={({ isActive }) => `group relative flex items-center rounded-xl py-2 text-sm ${recolhida ? "w-10 justify-center px-0" : "ml-3 w-[calc(100%-0.75rem)] gap-2 px-2"} ${isActive ? "bg-[#EAF0FF] text-[#3478F6]" : "text-foreground hover:bg-secondary"}`}
-              >
-                {({ isActive }) => <>
-                  <Icon aria-hidden="true" className={`size-4 shrink-0 ${isActive ? "text-[#3478F6]" : "text-muted-foreground"}`} />
-                  <span aria-hidden={recolhida} className={`${transicaoRotulo} truncate ${larguraRotulo}`}>{label}</span>
-                  <TooltipDescricao id={to.replaceAll("/", "-")} titulo={label} descricao={description} />
-                </>}
-              </NavLink>
-            ))}
+            <div
+              aria-hidden={!adminAberto}
+              inert={!adminAberto}
+              className={`grid w-full transition-[grid-template-rows,opacity] duration-200 ease-in-out motion-reduce:transition-none ${adminAberto ? "grid-rows-[1fr] opacity-100" : "pointer-events-none grid-rows-[0fr] opacity-0"}`}
+            >
+              <div className="min-h-0 w-full">
+                {itensAdmin.map(([to, label, description, Icon]) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    aria-label={recolhida ? label : undefined}
+                    aria-describedby={`sidebar-tooltip-${to.replaceAll("/", "-")}`}
+                    className={({ isActive }) => `group relative flex items-center rounded-xl py-2 text-sm ${recolhida ? "w-10 justify-center px-0" : "ml-3 w-[calc(100%-0.75rem)] gap-2 px-2"} ${isActive ? "bg-[#EAF0FF] text-[#3478F6]" : "text-foreground hover:bg-secondary"}`}
+                  >
+                    {({ isActive }) => <>
+                      <Icon aria-hidden="true" className={`size-4 shrink-0 ${isActive ? "text-[#3478F6]" : "text-muted-foreground"}`} />
+                      <span aria-hidden={recolhida} className={`${transicaoRotulo} truncate ${larguraRotulo}`}>{label}</span>
+                      <TooltipDescricao id={to.replaceAll("/", "-")} titulo={label} descricao={description} />
+                    </>}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
           </>
         )}
         {perfil.perfil_codigo !== "ADMIN_UNIDADE" && ((perfil.perfil_codigo === "GERENTE" && perfil.permissoes.includes("times.consultar") && perfil.setores_gerenciados.length > 0) || (perfil.perfil_codigo === "KP" && perfil.permissoes.includes("times.consultar") && perfil.times.length > 0)) && (
@@ -131,11 +140,18 @@ export function Sidebar({
       </nav>
       <div className="mt-auto pt-6">
         {!recolhida && <p className="px-2 pb-3 text-sm font-medium uppercase leading-5 tracking-[1px] text-[#454442]">{t("support")}</p>}
-        <button type="button" aria-label={recolhida ? t("documentation") : undefined} aria-describedby="sidebar-tooltip-documentation" className={`group relative flex items-center rounded-xl py-2.5 text-sm font-normal leading-5 tracking-normal text-[#454442] hover:bg-secondary ${recolhida ? "w-10 justify-center px-0" : "w-full gap-3 px-2"}`}>
-          <SquareTerminal aria-hidden="true" className="h-5 w-5 shrink-0" />
-          <span aria-hidden={recolhida} className={`${transicaoRotulo} ${larguraRotulo}`}>{t("documentation")}</span>
-          <TooltipDescricao id="documentation" titulo={t("documentation")} descricao={t("documentationDescription")} />
-        </button>
+        <NavLink
+          to="/documentation"
+          aria-label={recolhida ? t("documentation") : undefined}
+          aria-describedby="sidebar-tooltip-documentation"
+          className={({ isActive }) => `group relative flex items-center rounded-xl py-2.5 text-sm font-normal leading-5 tracking-normal ${recolhida ? "w-10 justify-center px-0" : "w-full gap-3 px-2"} ${isActive ? "bg-[#EAF0FF] text-[#3478F6]" : "text-[#454442] hover:bg-secondary"}`}
+        >
+          {({ isActive }) => <>
+            <SquareTerminal aria-hidden="true" className={`h-5 w-5 shrink-0 ${isActive ? "text-[#3478F6]" : ""}`} />
+            <span aria-hidden={recolhida} className={`${transicaoRotulo} ${larguraRotulo}`}>{t("documentation")}</span>
+            <TooltipDescricao id="documentation" titulo={t("documentation")} descricao={t("documentationDescription")} />
+          </>}
+        </NavLink>
       </div>
     </aside>
   );

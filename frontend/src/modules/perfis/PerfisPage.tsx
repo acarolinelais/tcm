@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, ShieldCheck } from "lucide-react";
 import { useBlocker } from "react-router";
 
 import { usePerfilAtual } from "@/core/auth/usePerfilAtual";
 import { ApiError } from "@/shared/api/problem-details";
 import { Button } from "@/shared/ui/button";
+import { Badge } from "@/shared/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyState, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
 import { criarPerfil, listarPerfis, listarPermissoes, salvarPermissoes } from "./api/perfis.api";
@@ -243,7 +244,13 @@ export function PerfisPage() {
                   <TableCell className="font-medium">{perfil.codigo ? t(`catalog.profile.${perfil.codigo}`, { defaultValue: perfil.nome }) : perfil.nome}</TableCell>
                   <TableCell className="text-muted-foreground">{perfil.descricao || "—"}</TableCell>
                   <TableCell>{perfil.codigo ? t("protectedBySystem") : t("unitProfile")}</TableCell>
-                  <TableCell>{t("permissionCount", { count: perfil.permissoes.length })}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="gap-1.5 rounded-md border border-[#DCE7FF] bg-[#F5F8FF] px-2.5 py-1 text-[#3478F6]">
+                      <ShieldCheck aria-hidden="true" className="size-3.5" />
+                      <span aria-hidden="true">{perfil.permissoes.length}</span>
+                      <span className="sr-only">{t("permissionCount", { count: perfil.permissoes.length })}</span>
+                    </Badge>
+                  </TableCell>
                   <TableCell className="text-center">
                     <PerfilAcoesMenu
                       perfil={perfil}
