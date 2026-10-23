@@ -29,6 +29,15 @@ pytestmark = pytest.mark.skipif(
     reason="Defina SDF_TEST_DATABASE_URL para executar a integração com Postgres.",
 )
 
+PERMISSOES_PROJETOS = {
+    "projetos.consultar",
+    "projetos.gerenciar",
+    "test_cases.consultar",
+    "test_cases.gerenciar",
+    "form_factor.consultar",
+    "form_factor.importar",
+}
+
 
 @pytest.mark.asyncio
 async def test_migration_cria_unidade_manaus_com_admin():
@@ -91,6 +100,43 @@ async def test_migration_seed_gerente_e_responsavel_usuario():
                 "times.gerenciar",
             } <= permissoes
             assert await session.scalar(select(UsuarioModel.responsavel_id).limit(1)) is None
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_migration_seed_permissoes_de_projetos_por_perfil():
+    engine = create_async_engine(os.environ["SDF_TEST_DATABASE_URL"])
+    try:
+        async with async_sessionmaker(engine)() as session:
+            perfis = (
+                await session.execute(
+                    select(PerfilModel).where(
+                        PerfilModel.codigo.in_(("ADMIN_UNIDADE", "GERENTE", "KP", "USUARIO_PADRAO"))
+                    )
+                )
+            ).scalars()
+            permissoes_por_codigo = {}
+            for perfil in perfis:
+                permissoes_por_codigo[perfil.codigo] = set(
+                    (
+                        await session.execute(
+                            select(PerfilPermissaoModel.permissao_id).where(
+                                PerfilPermissaoModel.perfil_id == perfil.id
+                            )
+                        )
+                    ).scalars()
+                )
+
+            assert PERMISSOES_PROJETOS <= permissoes_por_codigo["ADMIN_UNIDADE"]
+            assert PERMISSOES_PROJETOS <= permissoes_por_codigo["GERENTE"]
+            assert PERMISSOES_PROJETOS <= permissoes_por_codigo["KP"]
+            assert {
+                "projetos.consultar",
+                "test_cases.consultar",
+                "form_factor.consultar",
+            } <= permissoes_por_codigo["USUARIO_PADRAO"]
+            assert "form_factor.importar" not in permissoes_por_codigo["USUARIO_PADRAO"]
     finally:
         await engine.dispose()
 
