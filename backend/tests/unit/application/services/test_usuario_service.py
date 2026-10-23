@@ -97,25 +97,38 @@ async def test_inativar_usuario_inexistente_levanta_notfound_falha(
     uow.commit.assert_not_called()
 
 
-async def test_gerente_cria_usuario_padrao_vinculado_a_si_mesmo_ignorando_perfil(
-    service, repo, uow, gerente_atual
-):
-    perfil_solicitado = uuid4()
-    perfil_padrao = repo.obter_perfil_padrao.return_value
+async def test_gerente_cria_usuario_kp_vinculado_a_si_mesmo(service, repo, uow, gerente_atual):
+    perfil_kp = uuid4()
+    repo.perfil_kp_atribuivel.return_value = True
 
     response = await service.criar(
         gerente_atual,
-        CriarUsuarioRequest(nome="Carol", email="carol@example.com", perfil_id=perfil_solicitado),
+        CriarUsuarioRequest(nome="Carol", email="carol@example.com", perfil_id=perfil_kp),
     )
 
     criado = repo.adicionar.await_args.args[0]
-    assert criado.perfil_id == perfil_padrao
+    assert criado.perfil_id == perfil_kp
     assert criado.responsavel_id == gerente_atual.id
     assert criado.senha_hash == "hash:senha-inicial"
-    assert response.perfil_id == perfil_padrao
+    assert response.perfil_id == perfil_kp
     assert response.responsavel_id == gerente_atual.id
     repo.perfil_atribuivel.assert_not_awaited()
     uow.commit.assert_awaited_once()
+
+
+async def test_gerente_nao_cria_usuario_com_perfil_fora_de_kp_ou_padrao_falha(
+    service, repo, uow, gerente_atual
+):
+    repo.perfil_kp_atribuivel.return_value = False
+
+    with pytest.raises(ForbiddenException):
+        await service.criar(
+            gerente_atual,
+            CriarUsuarioRequest(nome="Carol", email="carol@example.com", perfil_id=uuid4()),
+        )
+
+    repo.adicionar.assert_not_awaited()
+    uow.commit.assert_not_called()
 
 
 async def test_gerente_edita_usuario_sob_sua_responsabilidade(service, repo, uow, gerente_atual):
