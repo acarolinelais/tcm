@@ -24,3 +24,7 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0010](0010-estrategia-de-testes.md) | Estratégia de testes | Aceito |
 | [0011](0011-monorepo.md) | Monorepo backend + frontend | Aceito |
 | [0012](0012-migrations-automaticas-na-inicializacao.md) | Migrations aplicadas automaticamente na inicialização | Aceito |
+| [0013](0013-multi-tenancy-hierarquia-organizacional.md) | Multi-tenancy e hierarquia organizacional | Aceito |
+| [0014](0014-autenticacao-jwt.md) | Autenticação com JWT | Aceito |
+| [0015](0015-autorizacao-papeis-rbac.md) | Autorização e papéis (RBAC) | Aceito |
+| [0016](0016-repositorio-atualizar-com-merge.md) | Repositório ganha `atualizar()` via `session.merge()` | Aceito |

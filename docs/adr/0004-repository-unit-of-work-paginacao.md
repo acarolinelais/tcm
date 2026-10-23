@@ -1,6 +1,6 @@
 # 0004. Repository, Unit of Work e PagedResult
 
-- **Status:** Aceito
+- **Status:** Aceito (a frase sobre "atualizar" não precisar de método foi substituída por [0016](0016-repositorio-atualizar-com-merge.md); o resto do ADR continua valendo)
 - **Data:** 2026-10-22
 
 ## Contexto

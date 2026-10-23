@@ -1,0 +1,24 @@
+from datetime import datetime
+from uuid import UUID
+
+from sqlalchemy import ForeignKey, String, UniqueConstraint, func
+from sqlalchemy.orm import Mapped, mapped_column
+
+from src.infrastructure.data.base import Base
+
+
+class TimeMembroModel(Base):
+    __tablename__ = "time_membros"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    unidade_id: Mapped[UUID] = mapped_column(ForeignKey("unidades.id"))
+    time_id: Mapped[UUID] = mapped_column(ForeignKey("times.id"))
+    usuario_id: Mapped[UUID] = mapped_column(ForeignKey("usuarios.id"))
+    papel: Mapped[str] = mapped_column(String(10), default="dev")
+    ativo: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime | None] = mapped_column(onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("time_id", "usuario_id", name="uq_time_membros_time_usuario"),
+    )

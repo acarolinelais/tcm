@@ -5,6 +5,10 @@ from alembic import context
 from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 from src.infrastructure.data.base import Base
+from src.infrastructure.data.models.setor_model import SetorModel  # noqa: F401
+from src.infrastructure.data.models.time_membro_model import TimeMembroModel  # noqa: F401
+from src.infrastructure.data.models.time_model import TimeModel  # noqa: F401
+from src.infrastructure.data.models.unidade_model import UnidadeModel  # noqa: F401
 from src.infrastructure.data.models.usuario_model import UsuarioModel  # noqa: F401
 
 load_dotenv()

@@ -9,7 +9,10 @@ Documentação em PT-BR. Termos de domínio no código em português; termos té
    contrariar um ADR, pare e proponha um novo ADR (skill `adr`). Não desvie em silêncio.
 2. Trabalhe a partir de uma spec em `docs/specs/NNN-nome/`. Sem spec, crie uma (skill `spec`).
 3. Implemente **um bloco por vez** (uma fase do `tasks.md`, skill `implement-task`): as tasks em sequência,
-   cada uma com a sua verificação, e um relatório só no fim do bloco.
+   cada uma com a sua verificação, e um relatório só no fim do bloco. Por padrão, pare entre blocos e
+   peça aprovação. **Se o usuário pedir pra seguir rápido por todas as fases** (ex.: "implementa tudo
+   rápido", "pode seguir sem parar"), encadeie os blocos sem pausa de aprovação entre eles — mas sempre
+   rode a verificação de cada bloco e nunca marque uma task com verificação vermelha como concluída.
 
 ## Skills do projeto (`.claude/skills/`)
 | Skill | Quando usar |
@@ -46,8 +49,13 @@ Documentação em PT-BR. Termos de domínio no código em português; termos té
   react-hook-form + zod.
 - **Testes:** unidade, integração, funcional, e2e e arquitetura, sempre com um cenário de sucesso
   e um de falha (ADR 0010).
-- **Autenticação:** ainda **não existe** (será um ADR + spec futuros). Até lá, a API não deve ser exposta
-  fora do ambiente local.
+- **Multi-tenancy:** `Unidade` é a fronteira do tenant; hierarquia `Unidade → Setor → Time → TimeMembro`,
+  isolamento por `unidade_id` filtrado no `RepositoryBaseImpl` (ADR 0013).
+- **Autenticação:** e-mail + senha com JWT emitido pelo backend, atrás de uma interface `Autenticador`
+  trocável no futuro por uma API corporativa (ADR 0014). **Ainda não implementada** — enquanto isso, a
+  API não deve ser exposta fora do ambiente local.
+- **Autorização:** quatro papéis fixos — `admin_unidade`, `gerente`, `kp` (Key Person, gerencia tasks só
+  do próprio time) e `dev` — com regras de posse sobre as tasks (ADR 0015).
 
 ## Git
 - Commits **sem** `Co-Authored-By` nem qualquer atribuição ao Claude.

@@ -1,17 +1,24 @@
-from src.domain.common.entity_base import EntityBase
+from uuid import UUID
+
+from src.domain.common.entidade_tenant import EntidadeTenant
 
 
-class Usuario(EntityBase):
+class Usuario(EntidadeTenant):
     NOME_MAX_LENGTH = 150
     EMAIL_MAX_LENGTH = 254
 
-    def __init__(self, nome: str, email: str) -> None:
-        super().__init__()
+    def __init__(self, unidade_id: UUID, nome: str, email: str) -> None:
+        super().__init__(unidade_id)
         self.atualizar(nome, email)
+        self.admin_unidade = False
+        self.senha_hash: str | None = None
 
     def atualizar(self, nome: str, email: str) -> None:
         self._nome = nome
         self._email = self.normalizar_email(email)
+
+    def definir_senha_hash(self, senha_hash: str) -> None:
+        self.senha_hash = senha_hash
 
     @property
     def nome(self) -> str:
