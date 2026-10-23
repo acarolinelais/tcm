@@ -39,7 +39,7 @@ export function AppLayout() {
   if (location.pathname === "/trocar-senha") return <Navigate to="/overview" replace />;
 
   return (
-    <div className={`box-border grid min-h-screen transition-[grid-template-columns] duration-300 ease-in-out motion-reduce:transition-none ${sidebarRecolhida ? "grid-cols-[4rem_minmax(0,1fr)]" : "grid-cols-[clamp(8.75rem,18vw,15rem)_minmax(0,1fr)] max-sm:grid-cols-[minmax(9rem,35vw)_minmax(0,1fr)]"} grid-rows-[2rem_minmax(0,1fr)] gap-x-[clamp(1rem,5.5vw,2.75rem)] gap-y-4 bg-[#FBFBFB] p-[clamp(0.5rem,1.25vw,1rem)]`}>
+    <div className={`box-border grid min-h-screen transition-[grid-template-columns] ${sidebarRecolhida ? "duration-[550ms]" : "duration-300"} ease-in-out motion-reduce:transition-none ${sidebarRecolhida ? "grid-cols-[4rem_minmax(0,1fr)]" : "grid-cols-[clamp(8.75rem,18vw,15rem)_minmax(0,1fr)] max-sm:grid-cols-[minmax(9rem,35vw)_minmax(0,1fr)]"} grid-rows-[2rem_minmax(0,1fr)] gap-x-[clamp(1rem,5.5vw,2.75rem)] gap-y-4 bg-[#FBFBFB] p-[clamp(0.5rem,1.25vw,1rem)]`}>
       <Sidebar perfil={perfil.data} recolhida={sidebarRecolhida} onToggle={() => setSidebarRecolhida((recolhida) => !recolhida)} />
       <Navbar perfil={perfil.data} />
       <main className="col-start-2 row-start-2 min-h-0 min-w-0">

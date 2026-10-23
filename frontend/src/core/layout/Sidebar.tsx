@@ -44,7 +44,7 @@ export function Sidebar({
     ["/admin/times", t("teams"), t("teamsDescription"), UsersRound],
     ["/admin/perfis", t("profiles"), t("profilesDescription"), ShieldCheck],
   ] as const;
-  const transicaoRotulo = "overflow-hidden whitespace-nowrap transition-[max-width,opacity,transform] duration-200 ease-in-out motion-reduce:transition-none";
+  const transicaoRotulo = "overflow-hidden whitespace-nowrap transition-[max-width,opacity,transform] duration-300 ease-in-out motion-reduce:transition-none";
   const larguraRotulo = recolhida ? "max-w-0 -translate-x-1 opacity-0" : "max-w-[12rem] translate-x-0 opacity-100";
 
   return (
