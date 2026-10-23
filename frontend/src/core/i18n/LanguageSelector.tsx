@@ -1,29 +1,37 @@
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown } from "lucide-react";
 
 import { atualizarIdiomaPreferido, type PerfilAtual } from "@/core/auth/api";
 import i18n, { TEMP_LANGUAGE_KEY } from "@/core/i18n";
+import { getAccessToken } from "@/core/auth/session";
 import { languages, type LanguageCode } from "./resources";
 import { toast } from "@/shared/lib/toast";
 
 export function LanguageSelector({ perfil }: { perfil?: PerfilAtual }) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [aberto, setAberto] = useState(false);
   const atual = languages.find(({ code }) => code === i18n.resolvedLanguage)?.label ?? "English";
 
   async function selecionar(code: LanguageCode) {
     setAberto(false);
     const anterior = i18n.resolvedLanguage ?? "en";
-    await i18n.changeLanguage(code);
     if (!perfil) {
       window.sessionStorage.setItem(TEMP_LANGUAGE_KEY, code);
+      await i18n.changeLanguage(code);
       return;
     }
+    const queryKey = ["auth", "me", getAccessToken()];
+    const perfilEmCache = queryClient.getQueryData<PerfilAtual>(queryKey);
+    queryClient.setQueryData<PerfilAtual>(queryKey, (atual) => atual ? { ...atual, idioma_preferido: code } : atual);
+    await i18n.changeLanguage(code);
     try {
       await atualizarIdiomaPreferido(code);
       window.sessionStorage.removeItem(TEMP_LANGUAGE_KEY);
     } catch {
+      if (perfilEmCache) queryClient.setQueryData(queryKey, perfilEmCache);
       await i18n.changeLanguage(anterior);
       toast.error(t("languageSaveError"));
     }
