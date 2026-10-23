@@ -41,3 +41,4 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0027](0027-fluxo-de-branches-e-pull-requests.md) | Fluxo de branches (`main` + `dev`) e convenção de commits | Aceito |
 | [0028](0028-ci-com-github-actions.md) | Verificação contínua e proteção de branches no GitHub | Aceito |
 | [0029](0029-git-hooks-versionados.md) | Git hooks versionados no repositório | Aceito |
+| [0030](0030-modo-mock-frontend.md) | Modo mock persistido no frontend | Aceito |

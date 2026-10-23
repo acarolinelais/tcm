@@ -19,5 +19,4 @@ export function saveTokens(tokens: TokenResponse) {
 export function clearTokens() {
   sessionStorage.removeItem(ACCESS);
   sessionStorage.removeItem(REFRESH);
-  localStorage.clear();
 }
