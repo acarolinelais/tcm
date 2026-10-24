@@ -8,6 +8,7 @@ import type { PerfilAtual } from "@/core/auth/api";
 import { ProjetoDetalhePage } from "./ProjetoDetalhePage";
 import { casosTesteApi, formFactorApi, projetosApi } from "./api/projetos.api";
 import { timesApi } from "@/modules/times/api/times.api";
+import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/ui/table";
 
 vi.mock("./api/projetos.api", () => ({
   projetosApi: { obter: vi.fn() }, casosTesteApi: { listar: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), transferirParaBackup: vi.fn() },
@@ -79,7 +80,7 @@ describe("ProjetoDetalhePage", () => {
     expect(await screen.findByRole("menuitemradio", { name: "Daniel Oliveira" })).toBeInTheDocument();
     expect(screen.getByRole("menuitemradio", { name: "Outro desenvolvedor" })).toBeInTheDocument();
     await user.click(screen.getByRole("menuitemradio", { name: "Outro desenvolvedor" }));
-    await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("project-1", 1, 10, { responsavelId: "user-2" }));
+    await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("project-1", 1, DEFAULT_TABLE_PAGE_SIZE, { responsavelId: "user-2" }));
     expect(screen.queryByRole("row", { name: /Clock_001/ })).not.toBeInTheDocument();
     expect(screen.getByRole("row", { name: /Clock_002/ })).toBeInTheDocument();
   });
@@ -166,7 +167,7 @@ describe("ProjetoDetalhePage", () => {
     expect(await screen.findByText("S27 Ultra")).toBeInTheDocument();
     expect(screen.getByText("12837-93482")).toBeInTheDocument();
     expect(screen.getByText("PASS")).toBeInTheDocument();
-    expect(formFactorApi.listar).toHaveBeenCalledWith("project-1", expect.objectContaining({ page: 1, pageSize: 10 }));
+    expect(formFactorApi.listar).toHaveBeenCalledWith("project-1", expect.objectContaining({ page: 1, pageSize: DEFAULT_TABLE_PAGE_SIZE }));
 
     await user.type(screen.getByLabelText("Semana"), "2026-W12");
     await user.type(screen.getByLabelText("One UI version"), "9.5");
