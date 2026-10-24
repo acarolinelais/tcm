@@ -69,7 +69,7 @@ const permissoes: Permissao[] = [
 function createSeed(): Database {
   const allPermissions = permissoes.map((item) => item.id);
   const adminProfile: Perfil = { id: "mock-profile-admin", nome: "Administrador", descricao: "Acesso completo à unidade.", codigo: "ADMIN_UNIDADE", permissoes: allPermissions };
-  const standardProfile: Perfil = { id: "mock-profile-standard", nome: "Developer", descricao: "Consulta projetos e TCs do time e atualiza somente os TCs atribuídos.", codigo: "USUARIO_PADRAO", permissoes: ["projetos.consultar", "test_cases.consultar"] };
+  const standardProfile: Perfil = { id: "mock-profile-standard", nome: "Developer", descricao: "Consulta projetos, TCs e Form Factor do time e atualiza somente os TCs atribuídos.", codigo: "USUARIO_PADRAO", permissoes: ["projetos.consultar", "test_cases.consultar", "form_factor.consultar"] };
   const managerProfile: Perfil = { id: "mock-profile-manager", nome: "Gerente", descricao: "Gerencia pessoas e times do setor.", codigo: "GERENTE", permissoes: ["usuarios.consultar", "usuarios.perfil.consultar", "usuarios.gerenciar", "setores.consultar", "times.consultar", "times.criar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar"] };
   const kpProfile: Perfil = { id: "mock-profile-kp", nome: "KP", descricao: "Acompanha atividades dos times associados.", codigo: "KP", permissoes: ["usuarios.consultar", "setores.consultar", "times.consultar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar"] };
   const sectors: Setor[] = [
@@ -86,7 +86,7 @@ function createSeed(): Database {
     { id: "mock-user-inactive", nome: "Rafael Lima", email: "rafael.lima@example.com", ativo: false, perfil_id: standardProfile.id, created_at: "2026-02-10T12:00:00Z" },
   ];
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     unidade: { id: UNIT_ID, nome: "Manaus", ativo: true },
     usuarios: users,
     perfis: [adminProfile, standardProfile, managerProfile, kpProfile],
@@ -164,6 +164,17 @@ function readDb(): Database {
         db.membrosTime.filter((member) => member.usuario_perfil_codigo === "USUARIO_PADRAO").forEach((member) => { member.usuario_perfil = "Developer"; });
       }
       db.schemaVersion = 7;
+      writeDb(db);
+    }
+    if ((db.schemaVersion ?? 1) < 8) {
+      const developer = db.perfis.find((profile) => profile.codigo === "USUARIO_PADRAO");
+      if (developer && !developer.permissoes.includes("form_factor.consultar")) {
+        developer.permissoes = [...developer.permissoes, "form_factor.consultar"];
+        if (developer.descricao === "Consulta projetos e TCs do time e atualiza somente os TCs atribuídos.") {
+          developer.descricao = "Consulta projetos, TCs e Form Factor do time e atualiza somente os TCs atribuídos.";
+        }
+      }
+      db.schemaVersion = 8;
       return writeDb(db);
     }
     return db;
