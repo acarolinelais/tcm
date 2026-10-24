@@ -137,6 +137,7 @@ async def test_migration_seed_permissoes_de_projetos_por_perfil():
             assert permissoes_por_codigo["USUARIO_PADRAO"] == {
                 "projetos.consultar",
                 "test_cases.consultar",
+                "form_factor.consultar",
             }
     finally:
         await engine.dispose()

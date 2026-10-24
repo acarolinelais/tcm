@@ -132,8 +132,11 @@ async def test_caso_persiste_com_responsaveis_e_tc_id_e_unico_no_projeto():
             assert [c.tc_id for c in priorizada.items] == ["Clock_001", "Clock_000"]
             assert not await repository.existe_tc_id(uuid4(), projeto_id, "Clock_001")
 
-            caso.transferir_para_backup()
-            await repository.atualizar(caso)
+            # Como no service: transfere o caso lido do banco, que já tem created_at.
+            persistido = await repository.obter_por_id(unidade_id, caso.id)
+            assert persistido is not None
+            persistido.transferir_para_backup()
+            await repository.atualizar(persistido)
             await session.flush()
             transferido = await repository.obter_por_id(unidade_id, caso.id)
             assert transferido is not None
