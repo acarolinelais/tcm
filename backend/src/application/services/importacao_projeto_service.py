@@ -1,3 +1,4 @@
+import unicodedata
 from uuid import UUID
 
 from src.application.schemas.importacao_projeto import (
@@ -77,13 +78,13 @@ class ImportacaoProjetoServiceImpl:
         usuarios = await self._usuario_repo.listar_ativos_da_unidade(usuario_atual.unidade_id)
         por_identificador: dict[str, dict[UUID, Usuario]] = {}
         for usuario in usuarios:
-            por_identificador.setdefault(usuario.email.casefold(), {})[usuario.id] = usuario
-            por_identificador.setdefault(usuario.nome.casefold(), {})[usuario.id] = usuario
+            por_identificador.setdefault(_normalizar_nome(usuario.nome), {})[usuario.id] = usuario
+            por_identificador.setdefault(_normalizar_email(usuario.email), {})[usuario.id] = usuario
 
         atribuicoes = []
         for linha in planilha.casos:
-            responsaveis = tuple(por_identificador.get(linha.responsavel.casefold(), {}).values())
-            backups = tuple(por_identificador.get(linha.backup.casefold(), {}).values())
+            responsaveis = _usuarios_correspondentes(por_identificador, linha.responsavel)
+            backups = _usuarios_correspondentes(por_identificador, linha.backup)
             if len(responsaveis) != 1:
                 raise ConflictException(
                     f"Linha {linha.linha}: responsável '{linha.responsavel}' não foi encontrado "
@@ -139,3 +140,23 @@ class ImportacaoProjetoServiceImpl:
         )
         if membro is None or not membro.ativo:
             raise ConflictException(f"Linha {linha}: {papel} precisa ser membro ativo do time.")
+
+
+def _normalizar_nome(valor: str) -> str:
+    normalizado = unicodedata.normalize("NFC", valor)
+    return " ".join(normalizado.split()).casefold()
+
+
+def _normalizar_email(valor: str) -> str:
+    normalizado = unicodedata.normalize("NFC", valor)
+    return "".join(normalizado.split()).casefold()
+
+
+def _usuarios_correspondentes(
+    por_identificador: dict[str, dict[UUID, Usuario]], identificador: str
+) -> tuple[Usuario, ...]:
+    encontrados = {
+        **por_identificador.get(_normalizar_nome(identificador), {}),
+        **por_identificador.get(_normalizar_email(identificador), {}),
+    }
+    return tuple(encontrados.values())

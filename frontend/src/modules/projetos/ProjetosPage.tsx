@@ -15,6 +15,7 @@ import { MultiSelectCombobox } from "@/shared/ui/multi-select-combobox";
 import { Dialog, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from "@/shared/ui/dialog";
 import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
 import { TableRowActions } from "@/shared/ui/table-row-actions";
+import { TableColumnFilter } from "@/shared/ui/table-column-filter";
 import { toast } from "@/shared/lib/toast";
 import { ApiError } from "@/shared/api/problem-details";
 import { lerPlanilhaProjeto, PlanilhaProjetoError, type PlanilhaProjeto } from "./utils/planilha-projeto";
@@ -32,10 +33,11 @@ export function ProjetosPage() {
   const perfil = useOutletContext<PerfilAtual>();
   const navigate = useNavigate();
   const admin = perfil.perfil_codigo === "ADMIN_UNIDADE";
-  const podeConsultar = admin || perfil.permissoes.includes("projetos.consultar");
+  const podeConsultar = admin || perfil.permissoes.includes("projetos.consultar") || perfil.permissoes.includes("test_cases.consultar");
   const podeGerenciar = admin || perfil.permissoes.includes("projetos.gerenciar");
   const [pagina, setPagina] = useState(1);
   const [tamanhoPagina, setTamanhoPagina] = useState(DEFAULT_TABLE_PAGE_SIZE);
+  const [filtrosProjeto, setFiltrosProjeto] = useState({ nome: "", time: "", app: "", oneUi: "", status: "", createdAt: "" });
   const projetos = useQuery({ queryKey: ["projetos", pagina, tamanhoPagina], queryFn: () => projetosApi.listar(pagina, tamanhoPagina) });
   const times = useQuery({ queryKey: ["projetos-times"], queryFn: () => timesApi.listar(1, 100, { ativo: true }), enabled: podeGerenciar });
   const modelos = useQuery({ queryKey: ["modelos-dispositivo", true], queryFn: () => modelosDispositivoApi.listar(1, 100, true), enabled: podeGerenciar });
@@ -59,7 +61,20 @@ export function ProjetosPage() {
 
   const timesDisponiveis = times.data?.items ?? timesVazios;
   const opcoesModelos = useMemo(() => (modelos.data?.items ?? []).map((model) => ({ value: model.id, label: model.nome })), [modelos.data?.items]);
-  const nomeTime = useMemo(() => Object.fromEntries(timesDisponiveis.map((time) => [time.id, time.nome])), [timesDisponiveis]);
+  const nomeTime = useMemo(() => Object.fromEntries([...perfil.times, ...timesDisponiveis].map((time) => [time.id, time.nome])), [perfil.times, timesDisponiveis]);
+  const projetosFiltrados = (projetos.data?.items ?? []).filter((project) => {
+    const createdAt = project.created_at ? new Date(project.created_at).toLocaleDateString() : "";
+    return project.nome.toLocaleLowerCase().includes(filtrosProjeto.nome.toLocaleLowerCase())
+      && (nomeTime[project.time_id] ?? project.time_id).toLocaleLowerCase().includes(filtrosProjeto.time.toLocaleLowerCase())
+      && project.app.toLocaleLowerCase().includes(filtrosProjeto.app.toLocaleLowerCase())
+      && project.one_ui.toLocaleLowerCase().includes(filtrosProjeto.oneUi.toLocaleLowerCase())
+      && (!filtrosProjeto.status || project.status === filtrosProjeto.status)
+      && createdAt.toLocaleLowerCase().includes(filtrosProjeto.createdAt.toLocaleLowerCase());
+  });
+  const alterarFiltroProjeto = (campo: keyof typeof filtrosProjeto, valor: string) => {
+    setPagina(1);
+    setFiltrosProjeto((atual) => ({ ...atual, [campo]: valor }));
+  };
   const queryMutation = useMutation({
     mutationFn: async () => {
       if (modo === "manual") return { projeto: await projetosApi.criar({ time_id: timeId, app: app.trim(), one_ui: oneUi.trim(), modelos_ids: modelosIds }), quantidade_casos: 0 };
@@ -158,11 +173,19 @@ export function ProjetosPage() {
       <TableLayout className="overflow-auto">
         {projetos.isLoading ? <div role="status" className="p-8 text-center text-sm text-muted-foreground">{t("loadingProjects")}</div> : projetos.isError ? <div role="alert" className="p-8 text-center text-sm text-destructive">{t("projectsLoadError")}</div> : <Table>
           <colgroup><col style={{ width: "18%" }} /><col style={{ width: "12%" }} /><col style={{ width: "10%" }} /><col style={{ width: "18%" }} /><col style={{ width: "14%" }} /><col style={{ width: "18%" }} /><col style={{ width: "10%" }} /></colgroup>
-          <TableHeader><TableRow><TableHead>{t("project")}</TableHead><TableHead>{t("team")}</TableHead><TableHead>{t("app")}</TableHead><TableHead>{t("oneUi")}</TableHead><TableHead>{t("status")}</TableHead><TableHead>{t("createdAt")}</TableHead><TableHead className="text-right">{t("actions")}</TableHead></TableRow></TableHeader>
-          <TableBody>{projetos.data?.items.length ? projetos.data.items.map((project) => <ProjectRow key={project.id} project={project} teamName={nomeTime[project.time_id]} canEdit={podeGerenciar} onView={() => navigate(`/projetos/${project.id}`)} onEdit={() => { setProjetoEditando(project); setEdicaoApp(project.app); setEdicaoOneUi(project.one_ui); }} onDelete={() => setProjetoExcluindo(project)} onStatusChange={(status) => statusMutation.mutate({ id: project.id, status })} statusLabel={statusLabel} />) : <>
+          <TableHeader><TableRow>
+            <TableHead><TableColumnFilter label={t("project")} value={filtrosProjeto.nome} onChange={(value) => alterarFiltroProjeto("nome", value)} /></TableHead>
+            <TableHead><TableColumnFilter label={t("team")} value={filtrosProjeto.time} onChange={(value) => alterarFiltroProjeto("time", value)} /></TableHead>
+            <TableHead><TableColumnFilter label={t("app")} value={filtrosProjeto.app} onChange={(value) => alterarFiltroProjeto("app", value)} /></TableHead>
+            <TableHead><TableColumnFilter label={t("oneUi")} value={filtrosProjeto.oneUi} onChange={(value) => alterarFiltroProjeto("oneUi", value)} /></TableHead>
+            <TableHead><TableColumnFilter label={t("status")} value={filtrosProjeto.status} onChange={(value) => alterarFiltroProjeto("status", value)} options={[{ value: "", label: t("all") }, ...statusProjeto.map((status) => ({ value: status, label: statusLabel(status) }))]} /></TableHead>
+            <TableHead><TableColumnFilter label={t("createdAt")} value={filtrosProjeto.createdAt} onChange={(value) => alterarFiltroProjeto("createdAt", value)} /></TableHead>
+            <TableHead className="text-right">{t("actions")}</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>{projetosFiltrados.length ? projetosFiltrados.map((project) => <ProjectRow key={project.id} project={project} teamName={nomeTime[project.time_id]} canEdit={podeGerenciar} onView={() => navigate(`/projetos/${project.id}`)} onEdit={() => { setProjetoEditando(project); setEdicaoApp(project.app); setEdicaoOneUi(project.one_ui); }} onDelete={() => setProjetoExcluindo(project)} onStatusChange={(status) => statusMutation.mutate({ id: project.id, status })} statusLabel={statusLabel} />) : <>
             <TableRow aria-hidden="true" className="border-0 hover:bg-transparent"><TableCell colSpan={7} className="h-3 p-0" /></TableRow>
             <TableRow><TableCell colSpan={7} className="p-0"><TableEmptyStatePanel role="status" className="px-5 py-7 sm:px-8">
-              <div className="text-center"><h2 className="text-base font-semibold text-foreground">{t("noProjects")}</h2><p className="mx-auto mt-1 max-w-md text-sm leading-5 text-muted-foreground">{t("noProjectsHint")}</p></div>
+              <div className="text-center"><h2 className="text-base font-semibold text-foreground">{projetos.data?.items.length ? t("noProjectResults", { defaultValue: "Nenhum projeto corresponde aos filtros." }) : t("noProjects")}</h2><p className="mx-auto mt-1 max-w-md text-sm leading-5 text-muted-foreground">{projetos.data?.items.length ? t("adjustFilters", { defaultValue: "Ajuste ou limpe os filtros para ver os resultados." }) : t("noProjectsHint")}</p></div>
             </TableEmptyStatePanel></TableCell></TableRow>
           </>}</TableBody>
         </Table>}

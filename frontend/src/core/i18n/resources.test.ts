@@ -29,6 +29,12 @@ describe("translation resources", () => {
     expect(resources.en.translation["catalog.profile.description.KP"]).toBeTruthy();
   });
 
+  it("translates the default Developer profile name to Portuguese", () => {
+    expect(resources.en.translation["catalog.profile.USUARIO_PADRAO"]).toBe("Developer");
+    expect(resources["pt-BR"].translation.standardUser).toBe("Desenvolvedor");
+    expect(resources["pt-BR"].translation["catalog.profile.USUARIO_PADRAO"]).toBe("Desenvolvedor");
+  });
+
   it("translates project and Test Case table headings while keeping Status stable", () => {
     expect(resources.en.translation.tcId).toBe("TC ID");
     expect(resources["pt-BR"].translation.tcId).toBe("ID do TC");

@@ -1,17 +1,20 @@
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, UploadCloud } from "lucide-react";
+import { ArrowLeft, ArrowRightLeft, Check, ClipboardList, Pencil, Plus, UploadCloud } from "lucide-react";
 import { Link, useOutletContext, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import type { PerfilAtual } from "@/core/auth/api";
 import { timesApi } from "@/modules/times/api/times.api";
 import { Button } from "@/shared/ui/button";
+import { Badge } from "@/shared/ui/badge";
 import { DrawerClose, DrawerContent, DrawerHeader, DrawerTitle, Dialog } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyState, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
+import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyState, TableEmptyStatePanel, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
+import { TableRowActions } from "@/shared/ui/table-row-actions";
+import { TableColumnFilter } from "@/shared/ui/table-column-filter";
 import { toast } from "@/shared/lib/toast";
 
 import { casosTesteApi, formFactorApi, projetosApi, type CasoTeste, type CategoriaCasoTeste, type DificuldadeCasoTeste, type SituacaoCasoTeste, type StatusProjeto } from "./api/projetos.api";
@@ -21,7 +24,22 @@ const dificuldades: DificuldadeCasoTeste[] = ["Low", "Medium", "High"];
 const situacoes: SituacaoCasoTeste[] = ["To-Do", "InProgress", "InReview", "Pass", "Fail"];
 const difficultyLabels: Record<DificuldadeCasoTeste, string> = { Low: "difficultyLow", Medium: "difficultyMedium", High: "difficultyHigh" };
 const situationLabels: Record<SituacaoCasoTeste, string> = { "To-Do": "situationTodo", InProgress: "situationInProgress", InReview: "situationInReview", Pass: "situationPass", Fail: "situationFail" };
+const situationBadgeClasses: Record<SituacaoCasoTeste, string> = {
+  "To-Do": "bg-slate-50 text-slate-700",
+  InProgress: "bg-blue-50 text-blue-800",
+  InReview: "bg-amber-50 text-amber-800",
+  Pass: "bg-green-50 text-green-800",
+  Fail: "bg-red-50 text-red-800",
+};
+
+function SituationBadgeContent({ situation, label }: { situation: SituacaoCasoTeste; label: string }) {
+  return <span className="inline-flex items-center gap-2.5">
+    {situation === "Pass" ? <span className="flex size-6 items-center justify-center rounded-full bg-green-800 text-white"><Check aria-hidden="true" className="size-4 stroke-[3]" /></span> : <span aria-hidden="true" className={`size-2.5 rounded-full ${situation === "Fail" ? "bg-red-600" : situation === "InReview" ? "bg-amber-500" : situation === "InProgress" ? "bg-blue-600" : "bg-slate-400"}`} />}
+    <span>{label}</span>
+  </span>;
+}
 const statusProjeto: StatusProjeto[] = ["Created", "To Do", "InProgress", "Completed", "Canceled"];
+const statusProjetoLabels: Record<StatusProjeto, string> = { Created: "projectCreated", "To Do": "toDo", InProgress: "inProgress", Completed: "completed", Canceled: "projectCanceled" };
 
 export function ProjetoDetalhePage() {
   const { t } = useTranslation();
@@ -31,6 +49,7 @@ export function ProjetoDetalhePage() {
   const [aba, setAba] = useState<"cases" | "form-factor">(perfil.perfil_codigo === "ADMIN_UNIDADE" || perfil.permissoes.includes("test_cases.consultar") ? "cases" : "form-factor");
   const [pagina, setPagina] = useState(1);
   const [tamanhoPagina, setTamanhoPagina] = useState(DEFAULT_TABLE_PAGE_SIZE);
+  const [filtrosCaso, setFiltrosCaso] = useState({ tcId: "", situation: "", assignee: "", difficulty: "", category: "", endDate: "", backup: "" });
   const [criarAberto, setCriarAberto] = useState(false);
   const [editar, setEditar] = useState<CasoTeste | null>(null);
   const [tcId, setTcId] = useState("");
@@ -45,15 +64,15 @@ export function ProjetoDetalhePage() {
   const inputSdf = useRef<HTMLInputElement>(null);
 
   const admin = perfil.perfil_codigo === "ADMIN_UNIDADE";
-  const podeConsultar = admin || perfil.permissoes.includes("projetos.consultar");
+  const podeConsultar = admin || perfil.permissoes.includes("projetos.consultar") || perfil.permissoes.includes("test_cases.consultar");
   const podeGerenciarProjeto = admin || perfil.permissoes.includes("projetos.gerenciar");
   const podeGerenciarCasos = admin || perfil.permissoes.includes("test_cases.gerenciar");
   const podeConsultarCasos = admin || perfil.permissoes.includes("test_cases.consultar");
   const podeConsultarFormFactor = admin || perfil.permissoes.includes("form_factor.consultar");
   const podeImportarSdf = admin || perfil.permissoes.includes("form_factor.importar");
   const projeto = useQuery({ queryKey: ["projetos", "detalhe", projetoId], queryFn: () => projetosApi.obter(projetoId), enabled: podeConsultar && Boolean(projetoId) });
-  const casos = useQuery({ queryKey: ["projetos", projetoId, "test-cases", pagina, tamanhoPagina], queryFn: () => casosTesteApi.listar(projetoId, pagina, tamanhoPagina), enabled: Boolean(projeto.data && podeConsultarCasos && aba === "cases") });
-  const membros = useQuery({ queryKey: ["projetos", projetoId, "membros"], queryFn: async () => timesApi.membros(projeto.data!.time_id), enabled: Boolean(projeto.data && podeGerenciarCasos) });
+  const casos = useQuery({ queryKey: ["projetos", projetoId, "test-cases", pagina, tamanhoPagina, filtrosCaso.assignee], queryFn: () => casosTesteApi.listar(projetoId, pagina, tamanhoPagina, { responsavelId: filtrosCaso.assignee || undefined }), enabled: Boolean(projeto.data && podeConsultarCasos && aba === "cases") });
+  const membros = useQuery({ queryKey: ["projetos", projetoId, "membros"], queryFn: async () => timesApi.membros(projeto.data!.time_id), enabled: Boolean(projeto.data && podeConsultarCasos) });
   const resultados = useQuery({ queryKey: ["projetos", projetoId, "form-factor", pagina, tamanhoPagina, semana, oneUi], queryFn: () => formFactorApi.listar(projetoId, { page: pagina, pageSize: tamanhoPagina, semana: semana || undefined, oneUi: oneUi || undefined }), enabled: Boolean(projeto.data && podeConsultarFormFactor && aba === "form-factor") });
 
   const updateStatus = useMutation({
@@ -90,6 +109,22 @@ export function ProjetoDetalhePage() {
   const nomesMembros = useMemo(() => Object.fromEntries((membros.data ?? []).map((member) => [member.usuario_id, member.usuario_nome ?? member.usuario_id])), [membros.data]);
   const membrosAtivos = (membros.data ?? []).filter((member) => member.ativo);
   const responsavelAtual = perfil.id;
+  const mostrarAcoes = podeGerenciarCasos || Boolean(casos.data?.items.some((item) => item.responsavel_id === responsavelAtual));
+  const casosFiltrados = (casos.data?.items ?? []).filter((item) => {
+    const endDate = item.situation === "Pass" ? item.updated_at ?? item.created_at : null;
+    const dataFinal = endDate ? new Date(endDate).toLocaleDateString() : "";
+    return item.tc_id.toLocaleLowerCase().includes(filtrosCaso.tcId.toLocaleLowerCase())
+      && (!filtrosCaso.situation || item.situation === filtrosCaso.situation)
+      && (!filtrosCaso.assignee || item.responsavel_id === filtrosCaso.assignee)
+      && (!filtrosCaso.difficulty || item.difficulty === filtrosCaso.difficulty)
+      && (!filtrosCaso.category || item.category === filtrosCaso.category)
+      && dataFinal.toLocaleLowerCase().includes(filtrosCaso.endDate.toLocaleLowerCase())
+      && (item.backup_id ? nomesMembros[item.backup_id] ?? item.backup_id : "—").toLocaleLowerCase().includes(filtrosCaso.backup.toLocaleLowerCase());
+  });
+  const alterarFiltroCaso = (campo: keyof typeof filtrosCaso, valor: string) => {
+    setPagina(1);
+    setFiltrosCaso((atual) => ({ ...atual, [campo]: valor }));
+  };
 
   function limparCaso() {
     setTcId(""); setCategory("A"); setDifficulty("Low"); setSituation("To-Do"); setResponsavelId(""); setBackupId(""); setEditar(null);
@@ -112,7 +147,7 @@ export function ProjetoDetalhePage() {
     <header className="mb-5 flex shrink-0 items-center gap-4">
       <Button asChild variant="outline" size="icon" aria-label={t("backToProjects")}><Link to="/projetos"><ArrowLeft aria-hidden="true" className="size-4" /></Link></Button>
       <div className="min-w-0 flex-1"><p className="text-sm text-muted-foreground">{t("myProjects")}</p><h1 className="truncate text-2xl font-medium text-primary">{projeto.data?.nome ?? t("loadingProjects")}</h1></div>
-      {projeto.data && podeGerenciarProjeto && <Select value={projeto.data.status} onValueChange={(value) => updateStatus.mutate(value as StatusProjeto)}><SelectTrigger aria-label={t("projectStatusFor", { name: projeto.data.nome })} className="w-40"><SelectValue /></SelectTrigger><SelectContent>{statusProjeto.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select>}
+      {projeto.data && podeGerenciarProjeto && <Select value={projeto.data.status} onValueChange={(value) => updateStatus.mutate(value as StatusProjeto)}><SelectTrigger aria-label={t("projectStatusFor", { name: projeto.data.nome })} className="w-40"><SelectValue /></SelectTrigger><SelectContent>{statusProjeto.map((value) => <SelectItem key={value} value={value}>{t(statusProjetoLabels[value])}</SelectItem>)}</SelectContent></Select>}
       {podeGerenciarCasos && aba === "cases" && <Button onClick={() => { limparCaso(); setCriarAberto(true); }}><Plus aria-hidden="true" className="size-4" />{t("newTestCase", { defaultValue: "Novo Test Case" })}</Button>}
     </header>
 
@@ -123,22 +158,42 @@ export function ProjetoDetalhePage() {
       </div>
 
       {aba === "cases" && podeConsultarCasos ? <TableLayout>
-        <Table containerClassName={casos.data?.items.length ? "min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
-          <TableHeader><TableRow><TableHead>{t("tcId")}</TableHead><TableHead>{t("category")}</TableHead><TableHead>{t("difficulty")}</TableHead><TableHead>{t("tcSituation")}</TableHead><TableHead>{t("assignee")}</TableHead><TableHead>{t("backup")}</TableHead>{(podeGerenciarCasos || casos.data?.items.some((item) => item.responsavel_id === responsavelAtual)) && <TableHead className="text-right">{t("actions")}</TableHead>}</TableRow></TableHeader>
-          {casos.data?.items.length ? <TableBody>{casos.data.items.map((testCase) => {
+        <Table containerClassName={casos.data?.items.length ? "tc-table-scroll min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
+          <TableHeader><TableRow>
+            <TableHead><TableColumnFilter label={t("tcId")} value={filtrosCaso.tcId} onChange={(value) => alterarFiltroCaso("tcId", value)} /></TableHead>
+            <TableHead><TableColumnFilter label={t("status")} value={filtrosCaso.situation} onChange={(value) => alterarFiltroCaso("situation", value)} options={[{ value: "", label: t("all") }, ...situacoes.map((value) => ({ value, label: t(situationLabels[value]) }))]} /></TableHead>
+            <TableHead><TableColumnFilter label={t("assignee")} value={filtrosCaso.assignee} onChange={(value) => alterarFiltroCaso("assignee", value)} options={[{ value: "", label: t("all") }, ...(membros.data ?? []).filter((member) => member.ativo).map((member) => ({ value: member.usuario_id, label: member.usuario_nome ?? member.usuario_id }))]} /></TableHead>
+            <TableHead><TableColumnFilter label={t("difficulty")} value={filtrosCaso.difficulty} onChange={(value) => alterarFiltroCaso("difficulty", value)} options={[{ value: "", label: t("all") }, ...dificuldades.map((value) => ({ value, label: t(difficultyLabels[value]) }))]} /></TableHead>
+            <TableHead><TableColumnFilter label={t("category")} value={filtrosCaso.category} onChange={(value) => alterarFiltroCaso("category", value)} options={[{ value: "", label: t("all") }, ...categorias.map((value) => ({ value, label: value }))]} /></TableHead>
+            <TableHead><TableColumnFilter label={t("endDate", { defaultValue: "Data final" })} value={filtrosCaso.endDate} onChange={(value) => alterarFiltroCaso("endDate", value)} placeholder={t("filterPlaceholder", { label: t("date") })} /></TableHead>
+            <TableHead><TableColumnFilter label={t("backup")} value={filtrosCaso.backup} onChange={(value) => alterarFiltroCaso("backup", value)} /></TableHead>
+            {mostrarAcoes && <TableHead className="text-right">{t("actions")}</TableHead>}
+          </TableRow></TableHeader>
+          {casosFiltrados.length ? <TableBody>{casosFiltrados.map((testCase) => {
             const canManage = podeGerenciarCasos;
             const canEditOwn = testCase.responsavel_id === responsavelAtual;
+            const endDate = testCase.situation === "Pass" ? testCase.updated_at ?? testCase.created_at : null;
             return <TableRow key={testCase.id}>
               <TableCell className="font-medium">{testCase.tc_id}</TableCell>
-              <TableCell>{canEditOwn && !canManage ? <Select value={testCase.category} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "category", value })}><SelectTrigger aria-label={`${t("category")} ${testCase.tc_id}`} className="h-8 w-20"><SelectValue /></SelectTrigger><SelectContent>{categorias.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select> : testCase.category}</TableCell>
+              <TableCell>{canManage || canEditOwn ? <Select value={testCase.situation} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "situation", value })}><SelectTrigger aria-label={`${t("tcSituation")} ${testCase.tc_id}`} className={`h-auto w-fit gap-2 rounded-lg border-0 px-3 py-1.5 text-sm shadow-none ${situationBadgeClasses[testCase.situation]}`}><SituationBadgeContent situation={testCase.situation} label={t(situationLabels[testCase.situation])} /></SelectTrigger><SelectContent>{situacoes.map((value) => <SelectItem key={value} value={value}>{t(situationLabels[value])}</SelectItem>)}</SelectContent></Select> : <Badge variant="secondary" className={`rounded-lg px-3 py-1.5 text-sm ${situationBadgeClasses[testCase.situation]}`}><SituationBadgeContent situation={testCase.situation} label={t(situationLabels[testCase.situation])} /></Badge>}</TableCell>
+              <TableCell className="text-muted-foreground">{nomesMembros[testCase.responsavel_id] ?? testCase.responsavel_id}</TableCell>
               <TableCell>{canEditOwn && !canManage ? <Select value={testCase.difficulty} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "difficulty", value })}><SelectTrigger aria-label={`${t("difficulty")} ${testCase.tc_id}`} className="h-8 w-28"><SelectValue /></SelectTrigger><SelectContent>{dificuldades.map((value) => <SelectItem key={value} value={value}>{t(difficultyLabels[value])}</SelectItem>)}</SelectContent></Select> : t(difficultyLabels[testCase.difficulty])}</TableCell>
-              <TableCell>{canEditOwn && !canManage ? <Select value={testCase.situation} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "situation", value })}><SelectTrigger aria-label={`${t("tcSituation")} ${testCase.tc_id}`} className="h-8 w-32"><SelectValue /></SelectTrigger><SelectContent>{situacoes.map((value) => <SelectItem key={value} value={value}>{t(situationLabels[value])}</SelectItem>)}</SelectContent></Select> : t(situationLabels[testCase.situation])}</TableCell>
-              <TableCell className="text-muted-foreground">{nomesMembros[testCase.responsavel_id] ?? testCase.responsavel_id}</TableCell><TableCell className="text-muted-foreground">{testCase.backup_id ? nomesMembros[testCase.backup_id] ?? testCase.backup_id : "—"}</TableCell>
-              {(canManage || canEditOwn) && <TableCell className="text-right"><div className="inline-flex gap-2">{canManage && <Button variant="outline" size="sm" onClick={() => abrirEdicao(testCase)}>{t("edit")}</Button>}{canEditOwn && testCase.backup_id && <Button variant="outline" size="sm" disabled={transfer.isPending} onClick={() => transfer.mutate(testCase.id)}>{t("transferToBackup", { defaultValue: "Transferir ao backup" })}</Button>}</div></TableCell>}
+              <TableCell>{canEditOwn && !canManage ? <Select value={testCase.category} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "category", value })}><SelectTrigger aria-label={`${t("category")} ${testCase.tc_id}`} className="h-8 w-20"><SelectValue /></SelectTrigger><SelectContent>{categorias.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select> : testCase.category}</TableCell>
+              <TableCell className="text-muted-foreground">{endDate ? new Date(endDate).toLocaleDateString() : "—"}</TableCell>
+              <TableCell className="text-muted-foreground">{testCase.backup_id ? nomesMembros[testCase.backup_id] ?? testCase.backup_id : "—"}</TableCell>
+              {mostrarAcoes && <TableCell className="text-right">{(canManage || canEditOwn) && <TableRowActions label={testCase.tc_id} actions={[
+                ...(canManage ? [{ label: t("edit"), icon: Pencil, onSelect: () => abrirEdicao(testCase) }] : []),
+                ...(canEditOwn && testCase.backup_id ? [{ label: t("transferToBackup", { defaultValue: "Transferir ao backup" }), icon: ArrowRightLeft, disabled: transfer.isPending, onSelect: () => transfer.mutate(testCase.id) }] : []),
+              ]} />}</TableCell>}
             </TableRow>;
           })}</TableBody> : null}
+          {!casos.isLoading && !casos.isError && !casosFiltrados.length && <TableBody>
+            <TableRow aria-hidden="true" className="border-0 hover:bg-transparent"><TableCell colSpan={mostrarAcoes ? 8 : 7} className="h-3 p-0" /></TableRow>
+            <TableRow><TableCell colSpan={mostrarAcoes ? 8 : 7} className="p-0"><TableEmptyStatePanel role="status" className="px-5 py-8 sm:px-8">
+              <div className="w-full max-w-md text-center"><div className="mx-auto mb-4 flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary"><ClipboardList aria-hidden="true" className="size-5" /></div><h2 className="text-base font-semibold text-foreground">{casos.data?.items.length ? t("noTestCasesResults", { defaultValue: "Nenhum Test Case corresponde aos filtros." }) : t("noTestCases", { defaultValue: "Nenhum Test Case cadastrado." })}</h2><p className="mx-auto mt-1.5 max-w-sm text-sm leading-6 text-muted-foreground">{casos.data?.items.length ? t("adjustFilters", { defaultValue: "Ajuste ou limpe os filtros para ver os resultados." }) : t("noTestCasesHint", { defaultValue: "Crie um caso de teste manualmente ou importe uma planilha na criação do projeto." })}</p></div>
+            </TableEmptyStatePanel></TableCell></TableRow>
+          </TableBody>}
         </Table>
-        {!casos.isLoading && !casos.isError && !casos.data?.items.length && <TableEmptyState><p role="status">{t("noTestCases", { defaultValue: "Nenhum Test Case cadastrado." })}</p></TableEmptyState>}
         {casos.isLoading && <p role="status" className="p-5 text-sm text-muted-foreground">{t("loading", { defaultValue: "Carregando…" })}</p>}
         {casos.isError && <p role="alert" className="p-5 text-sm text-destructive">{t("caseLoadError", { defaultValue: "Não foi possível carregar os Test Cases." })}</p>}
         <TablePagination page={pagina} pageSize={tamanhoPagina} totalCount={casos.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />

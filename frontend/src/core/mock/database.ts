@@ -69,10 +69,9 @@ const permissoes: Permissao[] = [
 function createSeed(): Database {
   const allPermissions = permissoes.map((item) => item.id);
   const adminProfile: Perfil = { id: "mock-profile-admin", nome: "Administrador", descricao: "Acesso completo à unidade.", codigo: "ADMIN_UNIDADE", permissoes: allPermissions };
-  const standardProfile: Perfil = { id: "mock-profile-standard", nome: "Usuário padrão", descricao: "Perfil padrão da unidade.", codigo: "USUARIO_PADRAO", permissoes: ["usuarios.consultar", "setores.consultar", "times.consultar"] };
+  const standardProfile: Perfil = { id: "mock-profile-standard", nome: "Developer", descricao: "Consulta projetos e TCs do time e atualiza somente os TCs atribuídos.", codigo: "USUARIO_PADRAO", permissoes: ["projetos.consultar", "test_cases.consultar"] };
   const managerProfile: Perfil = { id: "mock-profile-manager", nome: "Gerente", descricao: "Gerencia pessoas e times do setor.", codigo: "GERENTE", permissoes: ["usuarios.consultar", "usuarios.perfil.consultar", "usuarios.gerenciar", "setores.consultar", "times.consultar", "times.criar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar"] };
   const kpProfile: Perfil = { id: "mock-profile-kp", nome: "KP", descricao: "Acompanha atividades dos times associados.", codigo: "KP", permissoes: ["usuarios.consultar", "setores.consultar", "times.consultar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar"] };
-  const developerProfile: Perfil = { id: "mock-profile-developer", nome: "Desenvolvedor", descricao: "Perfil personalizado para demonstração.", codigo: null, permissoes: ["usuarios.consultar", "times.consultar", "projetos.consultar", "test_cases.consultar"] };
   const sectors: Setor[] = [
     { id: "mock-sector-engineering", unidade_id: UNIT_ID, nome: "Engenharia", ativo: true },
     { id: "mock-sector-operations", unidade_id: UNIT_ID, nome: "Operações", ativo: true },
@@ -82,15 +81,15 @@ function createSeed(): Database {
     { id: ADMIN_ID, nome: "Administradora", email: "admin@sdfmanager.com", ativo: true, perfil_id: adminProfile.id, created_at: "2026-01-10T12:00:00Z" },
     { id: MANAGER_ID, nome: "Mariana Costa", email: "mariana.costa@example.com", ativo: true, perfil_id: managerProfile.id, created_at: "2026-01-12T12:00:00Z" },
     { id: "mock-user-kp", nome: "Kaique Pereira", email: "kaique.pereira@example.com", ativo: true, perfil_id: kpProfile.id, created_at: "2026-01-15T12:00:00Z" },
-    { id: "mock-user-dev", nome: "Daniel Oliveira", email: "daniel.oliveira@example.com", ativo: true, perfil_id: developerProfile.id, responsavel_id: MANAGER_ID, created_at: "2026-02-01T12:00:00Z" },
+    { id: "mock-user-dev", nome: "Daniel Oliveira", email: "daniel.oliveira@example.com", ativo: true, perfil_id: standardProfile.id, responsavel_id: MANAGER_ID, created_at: "2026-02-01T12:00:00Z" },
     { id: "mock-user-standard", nome: "Ana Souza", email: "ana.souza@example.com", ativo: true, perfil_id: standardProfile.id, responsavel_id: MANAGER_ID, created_at: "2026-02-05T12:00:00Z" },
     { id: "mock-user-inactive", nome: "Rafael Lima", email: "rafael.lima@example.com", ativo: false, perfil_id: standardProfile.id, created_at: "2026-02-10T12:00:00Z" },
   ];
   return {
-    schemaVersion: 5,
+    schemaVersion: 7,
     unidade: { id: UNIT_ID, nome: "Manaus", ativo: true },
     usuarios: users,
-    perfis: [adminProfile, standardProfile, managerProfile, kpProfile, developerProfile],
+    perfis: [adminProfile, standardProfile, managerProfile, kpProfile],
     permissoes,
     setores: sectors,
     gerentesSetor: [{ setor_id: sectors[0].id, usuario_id: MANAGER_ID, ativo: true }],
@@ -100,9 +99,9 @@ function createSeed(): Database {
       { id: "mock-team-inactive", setor_id: sectors[1].id, nome: "Time arquivado", gerente_id: null, ativo: false },
     ],
     membrosTime: [
-      { id: "mock-member-dev", time_id: TEAM_ID, usuario_id: "mock-user-dev", usuario_nome: "Daniel Oliveira", usuario_perfil: "Desenvolvedor", usuario_perfil_codigo: null, ativo: true },
+      { id: "mock-member-dev", time_id: TEAM_ID, usuario_id: "mock-user-dev", usuario_nome: "Daniel Oliveira", usuario_perfil: "Developer", usuario_perfil_codigo: "USUARIO_PADRAO", ativo: true },
       { id: "mock-member-kp", time_id: TEAM_ID, usuario_id: "mock-user-kp", usuario_nome: "Kaique Pereira", usuario_perfil: "KP", usuario_perfil_codigo: "KP", ativo: true },
-      { id: "mock-member-inactive", time_id: TEAM_ID, usuario_id: "mock-user-inactive", usuario_nome: "Rafael Lima", usuario_perfil: "Usuário padrão", usuario_perfil_codigo: "USUARIO_PADRAO", ativo: false },
+      { id: "mock-member-inactive", time_id: TEAM_ID, usuario_id: "mock-user-inactive", usuario_nome: "Rafael Lima", usuario_perfil: "Developer", usuario_perfil_codigo: "USUARIO_PADRAO", ativo: false },
     ],
     projetos: [],
     modelosDispositivo: [
@@ -149,6 +148,22 @@ function readDb(): Database {
       db.formFactor ??= [];
       db.importacoesSdf ??= [];
       db.schemaVersion = 6;
+      writeDb(db);
+    }
+    if ((db.schemaVersion ?? 1) < 7) {
+      const developer = db.perfis.find((profile) => profile.codigo === "USUARIO_PADRAO");
+      if (developer) {
+        developer.nome = "Developer";
+        developer.descricao = "Consulta projetos e TCs do time e atualiza somente os TCs atribuídos.";
+        developer.permissoes = ["projetos.consultar", "test_cases.consultar"];
+        const legacyDeveloper = db.perfis.find((profile) => profile.id === "mock-profile-developer");
+        if (legacyDeveloper) {
+          db.usuarios.filter((user) => user.perfil_id === legacyDeveloper.id).forEach((user) => { user.perfil_id = developer.id; });
+          db.perfis = db.perfis.filter((profile) => profile.id !== legacyDeveloper.id);
+        }
+        db.membrosTime.filter((member) => member.usuario_perfil_codigo === "USUARIO_PADRAO").forEach((member) => { member.usuario_perfil = "Developer"; });
+      }
+      db.schemaVersion = 7;
       return writeDb(db);
     }
     return db;
@@ -450,14 +465,28 @@ function canManageMockTeam(db: Database, userId: string, profileCode: string | n
     || (profileCode === "KP" && db.membrosTime.some((member) => member.usuario_id === userId && member.time_id === team.id && member.ativo));
 }
 
+function normalizarNomeMembro(value: string) {
+  return value.normalize("NFC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+}
+
+function normalizarEmailMembro(value: string) {
+  return value.normalize("NFC").replace(/\s+/g, "").toLocaleLowerCase();
+}
+
 export const mockProjetosApi = {
   listar(pageNumber: number, pageSize: number) {
-    requireMockPermission("projetos.consultar");
+    const { profile } = mockProfile();
+    if (profile?.codigo !== "ADMIN_UNIDADE" && !profile?.permissoes.includes("projetos.consultar") && !profile?.permissoes.includes("test_cases.consultar")) {
+      throw new Error("Você não tem permissão para consultar projetos.");
+    }
     const { db } = mockProfile();
     return page(db.projetos.filter((project) => project.ativo && projectInMockScope(project)), pageNumber, pageSize);
   },
   obter(projectId: string) {
-    requireMockPermission("projetos.consultar");
+    const { profile } = mockProfile();
+    if (profile?.codigo !== "ADMIN_UNIDADE" && !profile?.permissoes.includes("projetos.consultar") && !profile?.permissoes.includes("test_cases.consultar")) {
+      throw new Error("Você não tem permissão para consultar projetos.");
+    }
     const { db } = mockProfile();
     return getMockProject(db, projectId);
   },
@@ -502,7 +531,9 @@ export const mockProjetosApi = {
     const usuarios = db.usuarios.filter((user) => user.ativo);
     const atribuidos = planilha.casos.map((caso) => {
       const resolver = (identificador: string, papel: string) => {
-        const found = usuarios.filter((user) => (user.nome.toLocaleLowerCase() === identificador.toLocaleLowerCase() || user.email.toLocaleLowerCase() === identificador.toLocaleLowerCase()) && membros.some((member) => member.usuario_id === user.id));
+        const nomeInformado = normalizarNomeMembro(identificador);
+        const emailInformado = normalizarEmailMembro(identificador);
+        const found = usuarios.filter((user) => (normalizarNomeMembro(user.nome) === nomeInformado || normalizarEmailMembro(user.email) === emailInformado) && membros.some((member) => member.usuario_id === user.id));
         if (found.length !== 1) throw new Error(`Linha ${caso.linha}: ${papel} '${identificador}' não foi encontrado unicamente como membro ativo do time.`);
         return found[0].id;
       };
@@ -547,11 +578,13 @@ function getMockCase(db: Database, caseId: string) {
 }
 
 export const mockCasosTesteApi = {
-  listar(projectId: string, pageNumber: number, pageSize: number) {
+  listar(projectId: string, pageNumber: number, pageSize: number, filtros: { responsavelId?: string } = {}) {
     requireMockPermission("test_cases.consultar");
     const { db } = mockProfile();
     getMockProject(db, projectId);
-    return page(db.casosTeste.filter((item) => item.projeto_id === projectId && item.ativo), pageNumber, pageSize);
+    const casosDoProjeto = db.casosTeste.filter((item) => item.projeto_id === projectId && item.ativo
+      && (!filtros.responsavelId || item.responsavel_id === filtros.responsavelId));
+    return page(casosDoProjeto, pageNumber, pageSize);
   },
   obter(caseId: string) {
     requireMockPermission("test_cases.consultar");

@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from src.application.schemas.caso_teste import AtualizarCasoTesteRequest, CriarCasoTesteRequest
 from src.application.services.caso_teste_service import CasoTesteServiceImpl
 from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
+from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.caso_teste import (
     CasoTeste,
@@ -53,6 +54,35 @@ def tornar_membro(membros, usuarios, unidade_id, time_id, usuario_id):
     usuarios.obter_por_id.return_value = usuario
     membros.obter_por_time_e_usuario.return_value = membro
     return usuario, membro
+
+
+async def test_developer_lista_todos_test_cases_do_projeto_visivel(contexto):
+    service, casos, _, _, _, _, _, _, projeto, time = contexto
+    developer_id = uuid4()
+    developer = UsuarioAutenticado(
+        developer_id,
+        projeto.unidade_id,
+        "USUARIO_PADRAO",
+        permissoes=frozenset({"test_cases.consultar"}),
+        time_ids=(time.id,),
+    )
+    casos.listar_por_projeto.return_value = PagedResult([], 1, 10, 0)
+
+    await service.listar(developer, projeto.id, 1, 10)
+
+    casos.listar_por_projeto.assert_awaited_once_with(developer.unidade_id, projeto.id, 1, 10, None)
+
+
+async def test_lista_repassa_filtro_de_responsavel_ao_repositorio(contexto):
+    service, casos, _, _, _, _, _, admin, projeto, _ = contexto
+    responsavel_id = uuid4()
+    casos.listar_por_projeto.return_value = PagedResult([], 1, 10, 0)
+
+    await service.listar(admin, projeto.id, 1, 10, responsavel_id)
+
+    casos.listar_por_projeto.assert_awaited_once_with(
+        admin.unidade_id, projeto.id, 1, 10, responsavel_id
+    )
 
 
 async def test_criar_caso_valido_com_responsavel_e_backup_do_time(contexto):

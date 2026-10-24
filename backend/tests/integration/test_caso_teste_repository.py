@@ -99,6 +99,16 @@ async def test_caso_persiste_com_responsaveis_e_tc_id_e_unico_no_projeto():
             assert pagina.items[0].tc_id == "Clock_001"
             assert pagina.items[0].responsavel_id == responsavel_id
             assert pagina.items[0].backup_id == backup_id
+            pagina_filtrada = await repository.listar_por_projeto(
+                unidade_id, projeto_id, 1, 10, responsavel_id
+            )
+            assert pagina_filtrada.total_count == 1
+            assert pagina_filtrada.items[0].responsavel_id == responsavel_id
+            sem_resultados = await repository.listar_por_projeto(
+                unidade_id, projeto_id, 1, 10, uuid4()
+            )
+            assert sem_resultados.items == []
+            assert sem_resultados.total_count == 0
             assert await repository.existe_tc_id(unidade_id, projeto_id, "Clock_001")
             assert not await repository.existe_tc_id(uuid4(), projeto_id, "Clock_001")
 

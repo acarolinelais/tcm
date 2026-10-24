@@ -17,12 +17,19 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
     model = CasoTesteModel
 
     async def listar_por_projeto(
-        self, unidade_id: UUID, projeto_id: UUID, page: int, page_size: int
+        self,
+        unidade_id: UUID,
+        projeto_id: UUID,
+        page: int,
+        page_size: int,
+        responsavel_id: UUID | None = None,
     ) -> PagedResult[CasoTeste]:
         filtros = [
             CasoTesteModel.unidade_id == unidade_id,
             CasoTesteModel.projeto_id == projeto_id,
         ]
+        if responsavel_id is not None:
+            filtros.append(CasoTesteModel.responsavel_id == responsavel_id)
         total = (
             await self.session.execute(
                 select(func.count()).select_from(CasoTesteModel).where(*filtros)

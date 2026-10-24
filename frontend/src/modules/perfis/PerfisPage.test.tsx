@@ -123,7 +123,7 @@ describe("PerfisPage", () => {
 
   it.each([
     ["ADMIN_UNIDADE", "Administrador"],
-    ["USUARIO_PADRAO", "Usuário padrão"],
+    ["USUARIO_PADRAO", "Developer"],
     ["GERENTE", "Gerente"],
     ["KP", "Ponto focal"],
   ])("permite que o administrador edite permissões do perfil de sistema %s", async (codigo, nome) => {

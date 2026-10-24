@@ -39,7 +39,7 @@ export function Sidebar({
     { to: "/board", label: t("board"), Icon: Kanban },
     { to: "/timeline", label: t("timeline"), Icon: CalendarDays },
   ];
-  if (perfil.permissoes.includes("projetos.consultar")) {
+  if (perfil.permissoes.includes("projetos.consultar") || perfil.permissoes.includes("test_cases.consultar")) {
     itens.push({ to: "/projetos", label: t("myProjects"), Icon: FolderKanban });
   }
   const itensAdmin = [

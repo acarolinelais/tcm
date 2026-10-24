@@ -117,7 +117,9 @@ async def test_migration_seed_permissoes_de_projetos_por_perfil():
                 )
             ).scalars()
             permissoes_por_codigo = {}
+            nomes_por_codigo = {}
             for perfil in perfis:
+                nomes_por_codigo[perfil.codigo] = perfil.nome
                 permissoes_por_codigo[perfil.codigo] = set(
                     (
                         await session.execute(
@@ -131,12 +133,11 @@ async def test_migration_seed_permissoes_de_projetos_por_perfil():
             assert PERMISSOES_PROJETOS <= permissoes_por_codigo["ADMIN_UNIDADE"]
             assert PERMISSOES_PROJETOS <= permissoes_por_codigo["GERENTE"]
             assert PERMISSOES_PROJETOS <= permissoes_por_codigo["KP"]
-            assert {
+            assert nomes_por_codigo["USUARIO_PADRAO"] == "Developer"
+            assert permissoes_por_codigo["USUARIO_PADRAO"] == {
                 "projetos.consultar",
                 "test_cases.consultar",
-                "form_factor.consultar",
-            } <= permissoes_por_codigo["USUARIO_PADRAO"]
-            assert "form_factor.importar" not in permissoes_por_codigo["USUARIO_PADRAO"]
+            }
     finally:
         await engine.dispose()
 

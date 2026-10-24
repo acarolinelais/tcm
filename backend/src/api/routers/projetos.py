@@ -117,10 +117,11 @@ async def listar_test_cases(
     projeto_id: UUID,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    responsavel_id: UUID | None = Query(None),
     service: CasoTesteService = Depends(get_caso_teste_service),
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
-    return await service.listar(usuario_atual, projeto_id, page, page_size)
+    return await service.listar(usuario_atual, projeto_id, page, page_size, responsavel_id)
 
 
 @router.post("/{projeto_id}/test-cases", response_model=CasoTesteResponse, status_code=201)

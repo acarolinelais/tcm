@@ -79,10 +79,14 @@ export const projetosApi = {
 };
 
 export const casosTesteApi = {
-  listar(projetoId: string, page = 1, pageSize = 20) {
+  listar(projetoId: string, page = 1, pageSize = 20, filtros: { responsavelId?: string } = {}) {
     return useMock
-      ? Promise.resolve(mockCasosTesteApi.listar(projetoId, page, pageSize))
-      : httpGet<PagedResult<CasoTeste>>(`/api/projetos/${projetoId}/test-cases`, { page, page_size: pageSize });
+      ? Promise.resolve(mockCasosTesteApi.listar(projetoId, page, pageSize, filtros))
+      : httpGet<PagedResult<CasoTeste>>(`/api/projetos/${projetoId}/test-cases`, {
+        page,
+        page_size: pageSize,
+        ...(filtros.responsavelId ? { responsavel_id: filtros.responsavelId } : {}),
+      });
   },
   obter(id: string) {
     return useMock

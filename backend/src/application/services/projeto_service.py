@@ -72,7 +72,7 @@ class ProjetoServiceImpl:
                 usuario_atual.unidade_id, page, page_size
             )
         else:
-            self._exigir_permissao(usuario_atual, "projetos.consultar")
+            self._exigir_consulta(usuario_atual)
             time_ids = self._times_no_escopo(usuario_atual)
             projetos = await self._projeto_repo.listar_por_times(
                 usuario_atual.unidade_id, time_ids, page, page_size
@@ -81,7 +81,7 @@ class ProjetoServiceImpl:
 
     async def obter(self, usuario_atual: UsuarioAutenticado, projeto_id: UUID) -> ProjetoResponse:
         if not usuario_atual.eh_administrador:
-            self._exigir_permissao(usuario_atual, "projetos.consultar")
+            self._exigir_consulta(usuario_atual)
         projeto = await self._projeto_repo.obter_por_id(usuario_atual.unidade_id, projeto_id)
         if projeto is None or not projeto.ativo:
             raise NotFoundException("Projeto não encontrado.")
@@ -146,6 +146,13 @@ class ProjetoServiceImpl:
             raise ForbiddenException("Você não tem permissão para gerenciar projetos.")
 
     @staticmethod
+    def _exigir_consulta(usuario_atual: UsuarioAutenticado) -> None:
+        if not usuario_atual.pode("projetos.consultar") and not usuario_atual.pode(
+            "test_cases.consultar"
+        ):
+            raise ForbiddenException("Você não tem permissão para consultar projetos.")
+
+    @staticmethod
     def _validar_escopo_time(
         usuario_atual: UsuarioAutenticado, time_id: UUID, setor_id: UUID
     ) -> None:
@@ -164,7 +171,7 @@ class ProjetoServiceImpl:
             return usuario_atual.times_gerenciados
         if usuario_atual.perfil_codigo == "KP":
             return usuario_atual.time_ids
-        raise ForbiddenException("Você não tem permissão para consultar projetos.")
+        return usuario_atual.time_ids
 
     @staticmethod
     def _time_esta_no_escopo(

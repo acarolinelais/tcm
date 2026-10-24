@@ -55,6 +55,8 @@ describe("APIs de projetos", () => {
   it("consulta Test Cases e transfere o responsável para o backup", async () => {
     await casosTesteApi.listar("project-1", 3, 5);
     expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/test-cases?page=3&page_size=5", expect.any(Object));
+    await casosTesteApi.listar("project-1", 1, 10, { responsavelId: "user-2" });
+    expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/test-cases?page=1&page_size=10&responsavel_id=user-2", expect.any(Object));
     await casosTesteApi.obter("case-1");
     expect(fetch).toHaveBeenLastCalledWith("/api/test-cases/case-1", expect.any(Object));
     await casosTesteApi.transferirParaBackup("case-1");
