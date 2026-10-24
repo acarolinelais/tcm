@@ -23,9 +23,11 @@ PERMISSOES_ANTERIORES = (
 
 def upgrade() -> None:
     bind = op.get_bind()
-    perfil_ids = bind.execute(
-        sa.text("SELECT id FROM perfis WHERE codigo = 'USUARIO_PADRAO'")
-    ).scalars().all()
+    perfil_ids = (
+        bind.execute(sa.text("SELECT id FROM perfis WHERE codigo = 'USUARIO_PADRAO'"))
+        .scalars()
+        .all()
+    )
     if not perfil_ids:
         return
 
@@ -33,7 +35,8 @@ def upgrade() -> None:
     bind.execute(
         sa.text(
             "UPDATE perfis AS padrao SET nome = 'Developer', "
-            "descricao = 'Consulta projetos e Test Cases do time e atualiza apenas os TCs atribuídos.' "
+            "descricao = 'Consulta projetos e Test Cases do time e "
+            "atualiza apenas os TCs atribuídos.' "
             "WHERE padrao.codigo = 'USUARIO_PADRAO' AND NOT EXISTS ("
             "SELECT 1 FROM perfis outro WHERE outro.unidade_id = padrao.unidade_id "
             "AND outro.id <> padrao.id AND lower(outro.nome) = lower('Developer'))"
@@ -43,7 +46,10 @@ def upgrade() -> None:
         sa.text(
             "DELETE FROM perfil_permissoes WHERE perfil_id IN :ids "
             "AND permissao_id NOT IN :permissoes"
-        ).bindparams(sa.bindparam("ids", expanding=True), sa.bindparam("permissoes", expanding=True)),
+        ).bindparams(
+            sa.bindparam("ids", expanding=True),
+            sa.bindparam("permissoes", expanding=True),
+        ),
         {"ids": perfil_ids, "permissoes": PERMISSOES_DEVELOPER},
     )
     bind.execute(
@@ -59,8 +65,7 @@ def upgrade() -> None:
     )
     bind.execute(
         sa.text(
-            "UPDATE usuarios SET auth_version = auth_version + 1 "
-            "WHERE perfil_id IN :ids"
+            "UPDATE usuarios SET auth_version = auth_version + 1 WHERE perfil_id IN :ids"
         ).bindparams(sa.bindparam("ids", expanding=True)),
         {"ids": perfil_ids},
     )
@@ -68,9 +73,11 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     bind = op.get_bind()
-    perfil_ids = bind.execute(
-        sa.text("SELECT id FROM perfis WHERE codigo = 'USUARIO_PADRAO'")
-    ).scalars().all()
+    perfil_ids = (
+        bind.execute(sa.text("SELECT id FROM perfis WHERE codigo = 'USUARIO_PADRAO'"))
+        .scalars()
+        .all()
+    )
     if not perfil_ids:
         return
     bind.execute(
@@ -92,8 +99,7 @@ def downgrade() -> None:
     )
     bind.execute(
         sa.text(
-            "UPDATE usuarios SET auth_version = auth_version + 1 "
-            "WHERE perfil_id IN :ids"
+            "UPDATE usuarios SET auth_version = auth_version + 1 WHERE perfil_id IN :ids"
         ).bindparams(sa.bindparam("ids", expanding=True)),
         {"ids": perfil_ids},
     )
