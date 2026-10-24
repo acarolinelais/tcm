@@ -158,6 +158,64 @@
   - Cobre: CA-19, CA-20
   - Verificação: `cd frontend && npm run e2e -- form-factor.spec.ts` → novo relatório exibe seus resultados e mantém os anteriores; resposta de escopo negado não altera o histórico exibido.
 
+## Fase 5: TC Situation, Status e erros estruturados no backend (revisão de 2026-10-24)
+
+- [ ] **T34. Separar TC Situation e Status no domínio**
+  - Arquivos: `backend/src/domain/entities/caso_teste.py`, `backend/tests/unit/domain/test_caso_teste.py`
+  - Cobre: CA-06, CA-08, CA-10
+  - Verificação: `cd backend && uv run pytest tests/unit/domain/test_caso_teste.py` → `StatusCasoTeste` mantém `To-Do`…`Fail` e inicia em `To-Do`; `SituacaoCasoTeste` aceita só `New`, `New Step` e `Without Changes`; `atualizar_campos_do_responsavel` não altera `situation`; valor inválido é recusado.
+- [ ] **T35. Migrar a coluna e persistir `status` e `situation`**
+  - Arquivos: `backend/src/infrastructure/data/models/caso_teste_model.py`, nova migration em `migrations/versions/`, `infrastructure/repositories/caso_teste_repository.py`, `backend/tests/integration/test_caso_teste_repository.py`
+  - Cobre: CA-23
+  - Verificação: `cd backend && uv run pytest tests/integration/test_caso_teste_repository.py` → caso gravado antes da migration fica com `situation = New` e `status` igual ao valor antigo; os dois campos fazem ida e volta no repositório; downgrade restaura a coluna original.
+- [ ] **T36. Ajustar schemas e regras de edição do Test Case**
+  - Arquivos: `backend/src/application/schemas/caso_teste.py`, `application/services/caso_teste_service.py`, `backend/tests/unit/application/services/test_caso_teste_service.py`
+  - Cobre: CA-06, CA-08, CA-09, CA-10, CA-15, CA-16
+  - Verificação: `cd backend && uv run pytest tests/unit/application/services/test_caso_teste_service.py` → criação exige `situation` e inicia `status` em `To-Do`; gestão edita `situation` e `status`; responsável edita `status`, Category e Difficulty e é recusado ao enviar `situation`.
+- [ ] **T37. Validar a planilha com TC Situation e erros estruturados**
+  - Arquivos: `backend/src/application/validators/importacao_projeto.py`, `backend/tests/unit/application/validators/test_importacao_projeto.py`
+  - Cobre: CA-12, CA-14, CA-21, CA-22, CA-26, CA-27, CA-28, CA-29
+  - Verificação: `cd backend && uv run pytest tests/unit/application/validators/test_importacao_projeto.py` → cada erro tem `codigo`, `linha`, `coluna` (texto do cabeçalho), `valor` e `parametros`; TC Situation vazio ou `To-Do` gera `valor_obrigatorio`/`valor_invalido` com os esperados; coluna `Status` é ignorada; duplicado traz `primeira_linha`; problemas gerais têm `linha` nula; `total_linhas` é informado; planilha com 1.000 linhas é validada.
+- [ ] **T38. Coletar todos os erros de pessoas na importação**
+  - Arquivos: `backend/src/application/services/importacao_projeto_service.py`, `backend/tests/unit/application/services/test_importacao_projeto_service.py`
+  - Cobre: CA-07, CA-12, CA-21, CA-26, CA-27
+  - Verificação: `cd backend && uv run pytest tests/unit/application/services/test_importacao_projeto_service.py` → linhas com pessoa inexistente, ambígua, fora do time ou responsável igual ao backup geram erros estruturados de todas as linhas num único `PlanilhaProjetoInvalida`, sem criar projeto nem casos; casos válidos são criados com a `situation` da linha e `status` `To-Do`; membros do time são carregados uma vez.
+- [ ] **T39. Expor os erros estruturados e os campos novos na API**
+  - Arquivos: `backend/src/api/error_handling/problem_details.py`, `api/error_handling/handlers.py`, `backend/tests/functional/test_projetos_api.py`, `backend/tests/functional/test_casos_teste_api.py`
+  - Cobre: CA-06, CA-16, CA-21, CA-26–CA-29
+  - Verificação: `cd backend && uv run pytest tests/functional/test_projetos_api.py tests/functional/test_casos_teste_api.py` → `POST /api/projetos/importar` inválido devolve 422 com `total_linhas` e `errors[]` com os membros de extensão (mantendo `campo`/`mensagem`); listagem e detalhe de Test Case retornam `situation` e `status`; responsável recebe 403 ao enviar `situation`.
+
+## Fase 6: frontend, prévia paginada e mensagens amigáveis
+
+- [ ] **T40. Atualizar modelo, cliente de API e base mock**
+  - Arquivos: `frontend/src/modules/projetos/model/projeto.ts`, `api/projetos.api.ts`, `api/projetos.api.test.ts`, `frontend/src/core/mock/database.ts`, `core/mock/database.test.ts`
+  - Cobre: CA-06, CA-16, CA-23
+  - Verificação: `cd frontend && npm test -- --run src/modules/projetos/api src/core/mock` → tipos `StatusCasoTeste`/`SituacaoCasoTeste` e `ErroPlanilha`; mock usa a chave `v2`, cria casos com `situation` informada e `status` `To-Do` e recusa `situation` vinda do responsável.
+- [ ] **T41. Validar a planilha no navegador com os mesmos códigos**
+  - Arquivos: `frontend/src/modules/projetos/utils/planilha-projeto.ts`, `utils/planilha-projeto.test.ts`, `utils/formatar-erro-planilha.ts`, `utils/formatar-erro-planilha.test.ts`, `frontend/src/core/i18n/resources.ts`, `core/i18n/resources.test.ts`
+  - Cobre: CA-21, CA-22, CA-27–CA-30
+  - Verificação: `cd frontend && npm test -- --run src/modules/projetos/utils src/core/i18n` → parser emite os mesmos códigos do backend (TC Situation obrigatório, `Status` ignorado, duplicado com primeira linha, erro geral sem linha, `totalLinhas`); cada código gera texto em en, pt e ko com coluna, valor e esperados, sem chave técnica.
+- [ ] **T42. Paginar a prévia da planilha**
+  - Arquivos: `frontend/src/modules/projetos/components/PreviaPlanilha.tsx`, `components/PreviaPlanilha.test.tsx`, `ProjetosPage.tsx`
+  - Cobre: CA-24
+  - Verificação: `cd frontend && npm test -- --run src/modules/projetos/components/PreviaPlanilha` → 1.000 casos mostram o total, 20 por página, primeira/anterior/próxima/última e página atual de total; coluna TC Situation sem Status (skill `table-rules`).
+- [ ] **T43. Mostrar os erros da planilha agrupados e paginados**
+  - Arquivos: `frontend/src/modules/projetos/components/ErrosPlanilha.tsx`, `components/ErrosPlanilha.test.tsx`, `ProjetosPage.tsx`
+  - Cobre: CA-14, CA-26–CA-29
+  - Verificação: `cd frontend && npm test -- --run src/modules/projetos/components/ErrosPlanilha` → resumo "X de Y linhas", problemas gerais separados, uma entrada por linha com todos os problemas, 20 linhas por página e criação bloqueada; o mesmo componente exibe erros da prévia e do 422 do servidor.
+- [ ] **T44. Atualizar toast de sucesso e modelo de planilha para download**
+  - Arquivos: `frontend/src/modules/projetos/ProjetosPage.tsx`, `ProjetosPage.test.tsx`, `core/i18n/resources.ts`
+  - Cobre: CA-25
+  - Verificação: `cd frontend && npm test -- --run src/modules/projetos/ProjetosPage` → toast "Planilha importada com sucesso: N Test Cases criados em <projeto>" nos três idiomas; modelo baixado traz TC Situation `New` e não traz Status.
+- [ ] **T45. Exibir e editar TC Situation e Status no detalhe do projeto**
+  - Arquivos: `frontend/src/modules/projetos/ProjetoDetalhePage.tsx`, `ProjetoDetalhePage.test.tsx`, `core/i18n/resources.ts`
+  - Cobre: CA-06, CA-09, CA-10, CA-15, CA-16
+  - Verificação: `cd frontend && npm test -- --run src/modules/projetos/ProjetoDetalhePage` → tabela tem colunas, filtros e badges de TC Situation e Status; cadastro manual exige TC Situation; gestão edita os dois; responsável edita só Status, Category e Difficulty.
+- [ ] **T46. Cobrir o novo fluxo de importação e edição ponta a ponta**
+  - Arquivos: `frontend/e2e/projetos-importacao.spec.ts`, `e2e/projetos.spec.ts`, `e2e/projetos-fixtures.ts`
+  - Cobre: CA-12, CA-21, CA-24–CA-27
+  - Verificação: `cd frontend && npm run e2e -- projetos-importacao.spec.ts projetos.spec.ts` → planilha com muitas linhas pagina a prévia e mostra o toast com a quantidade; planilha inválida mostra erros agrupados no idioma da interface; caso manual é criado com TC Situation e Status `To-Do`.
+
 ## Backlog
 
 - Definir limite de tamanho/linhas dos arquivos depois que as planilhas reais forem confirmadas.

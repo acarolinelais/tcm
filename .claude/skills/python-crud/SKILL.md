@@ -121,7 +121,7 @@ class UsuarioResponse(BaseModel):
 def to_response(u: Usuario) -> UsuarioResponse:
     return UsuarioResponse(id=u.id, nome=u.nome, email=u.email, ativo=u.ativo, created_at=u.created_at)
 ```
-Limites sempre pelas constantes da entidade. Mensagens de validação em português (ADR 0006).
+Limites sempre pelas constantes da entidade. Mensagens de validação em português (ADR 0006); erros de importação de planilha também levam código estruturado (ADR 0033).
 Regras que dependem de dados (e-mail único) ficam no service, não no schema.
 
 ### 8. application: service (`application/services/interfaces/usuario_service.py` + `.../usuario_service.py`)
