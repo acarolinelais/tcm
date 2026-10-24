@@ -200,9 +200,10 @@ class TimeServiceImpl:
         return [
             membro_to_response(
                 m,
-                dados_usuario.get(m.usuario_id, (None, None, None))[0],
-                dados_usuario.get(m.usuario_id, (None, None, None))[1],
-                dados_usuario.get(m.usuario_id, (None, None, None))[2],
+                dados_usuario.get(m.usuario_id, (None, None, None, None))[0],
+                dados_usuario.get(m.usuario_id, (None, None, None, None))[1],
+                dados_usuario.get(m.usuario_id, (None, None, None, None))[2],
+                dados_usuario.get(m.usuario_id, (None, None, None, None))[3],
             )
             for m in membros
         ]

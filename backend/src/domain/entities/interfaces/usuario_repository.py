@@ -50,6 +50,10 @@ class UsuarioRepository(RepositoryBase[Usuario], Protocol):
 
     async def existe_email(self, email: str, ignorar_id: UUID | None) -> bool: ...
 
+    async def existe_user_id(
+        self, unidade_id: UUID, user_id: str, ignorar_id: UUID | None
+    ) -> bool: ...
+
     async def obter_por_email(self, email: str) -> Usuario | None: ...
 
     async def obter_perfil_padrao(self, unidade_id: UUID) -> UUID: ...
@@ -70,7 +74,7 @@ class UsuarioRepository(RepositoryBase[Usuario], Protocol):
 
     async def dados_por_usuarios(
         self, unidade_id: UUID, usuario_ids: tuple[UUID, ...]
-    ) -> dict[UUID, tuple[str, str, str | None]]: ...
+    ) -> dict[UUID, tuple[str, str | None, str | None, str | None]]: ...
 
     async def setores_por_usuarios(
         self, unidade_id: UUID, usuario_ids: tuple[UUID, ...]

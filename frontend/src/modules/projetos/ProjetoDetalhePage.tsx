@@ -127,7 +127,7 @@ function ProjetoDetalhe() {
     onError: (error) => toast.error(error instanceof Error ? error.message : t("sdfImportError", { defaultValue: "Não foi possível importar o relatório SDF." })),
   });
 
-  const nomesMembros = useMemo(() => Object.fromEntries((membros.data ?? []).map((member) => [member.usuario_id, member.usuario_nome ?? member.usuario_id])), [membros.data]);
+  const identificadoresMembros = useMemo(() => Object.fromEntries((membros.data ?? []).map((member) => [member.usuario_id, member.usuario_user_id ?? "—"])), [membros.data]);
   const membrosAtivos = (membros.data ?? []).filter((member) => member.ativo);
   const responsavelAtual = perfil.id;
   const camposFaltando = !tcId.trim() || !situation || !responsavelId || !backupId;
@@ -146,7 +146,7 @@ function ProjetoDetalhe() {
       && (!filtrosCaso.difficulty || item.difficulty === filtrosCaso.difficulty)
       && (!filtrosCaso.category || item.category === filtrosCaso.category)
       && (!filtrosCaso.endDate || dataFinal === filtrosCaso.endDate)
-      && (item.backup_id ? nomesMembros[item.backup_id] ?? item.backup_id : "—").toLocaleLowerCase().includes(filtrosCaso.backup.toLocaleLowerCase());
+      && (item.backup_id ? identificadoresMembros[item.backup_id] ?? "—" : "—").toLocaleLowerCase().includes(filtrosCaso.backup.toLocaleLowerCase());
   });
   const alterarFiltroCaso = (campo: keyof typeof filtrosCaso, valor: string) => {
     setPagina(1);
@@ -191,7 +191,7 @@ function ProjetoDetalhe() {
             <TableHead><TableColumnFilter label={t("tcId")} value={filtrosCaso.tcId} onChange={(value) => alterarFiltroCaso("tcId", value)} /></TableHead>
             <TableHead><TableColumnFilter label={t("status")} value={filtrosCaso.status} onChange={(value) => alterarFiltroCaso("status", value)} options={[{ value: "", label: t("all") }, ...STATUS_CASO_TESTE.map((value) => ({ value, label: t(ROTULO_STATUS[value]) }))]} /></TableHead>
             <TableHead><TableColumnFilter label={t("tcSituation")} value={filtrosCaso.situation} onChange={(value) => alterarFiltroCaso("situation", value)} options={[{ value: "", label: t("all") }, ...SITUACOES_CASO_TESTE.map((value) => ({ value, label: t(ROTULO_SITUACAO[value]) }))]} /></TableHead>
-            <TableHead><TableColumnFilter label={t("assignee")} value={filtrosCaso.assignee} onChange={(value) => alterarFiltroCaso("assignee", value)} options={[{ value: "", label: t("all") }, ...(membros.data ?? []).filter((member) => member.ativo).map((member) => ({ value: member.usuario_id, label: member.usuario_nome ?? member.usuario_id }))]} /></TableHead>
+            <TableHead><TableColumnFilter label={t("assignee")} value={filtrosCaso.assignee} onChange={(value) => alterarFiltroCaso("assignee", value)} options={[{ value: "", label: t("all") }, ...(membros.data ?? []).filter((member) => member.ativo).map((member) => ({ value: member.usuario_id, label: member.usuario_user_id ?? "—" }))]} /></TableHead>
             <TableHead><TableColumnFilter label={t("difficulty")} value={filtrosCaso.difficulty} onChange={(value) => alterarFiltroCaso("difficulty", value)} options={[{ value: "", label: t("all") }, ...dificuldades.map((value) => ({ value, label: t(difficultyLabels[value]) }))]} /></TableHead>
             <TableHead><TableColumnFilter label={t("category")} value={filtrosCaso.category} onChange={(value) => alterarFiltroCaso("category", value)} options={[{ value: "", label: t("all") }, ...categorias.map((value) => ({ value, label: value }))]} /></TableHead>
             <TableHead><TableColumnFilter label={t("endDate", { defaultValue: "Data final" })} value={filtrosCaso.endDate} onChange={(value) => alterarFiltroCaso("endDate", value)} type="date" /></TableHead>
@@ -206,11 +206,11 @@ function ProjetoDetalhe() {
               <TableCell className="font-medium">{testCase.tc_id}</TableCell>
               <TableCell>{canManage || canEditOwn ? <Select value={testCase.status} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "status", value })}><SelectTrigger aria-label={`${t("status")} ${testCase.tc_id}`} className={`${statusBadgeBase} ${statusBadges[testCase.status].badge}`}><StatusBadgeContent status={testCase.status} label={t(ROTULO_STATUS[testCase.status])} /></SelectTrigger><SelectContent>{STATUS_CASO_TESTE.map((value) => <SelectItem key={value} value={value}>{t(ROTULO_STATUS[value])}</SelectItem>)}</SelectContent></Select> : <Badge variant="secondary" className={`${statusBadgeBase} ${statusBadges[testCase.status].badge}`}><StatusBadgeContent status={testCase.status} label={t(ROTULO_STATUS[testCase.status])} /></Badge>}</TableCell>
               <TableCell>{canManage ? <Select value={testCase.situation} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "situation", value })}><SelectTrigger aria-label={`${t("tcSituation")} ${testCase.tc_id}`} className="h-8 w-40"><SelectValue /></SelectTrigger><SelectContent>{SITUACOES_CASO_TESTE.map((value) => <SelectItem key={value} value={value}>{t(ROTULO_SITUACAO[value])}</SelectItem>)}</SelectContent></Select> : <span className="text-muted-foreground">{t(ROTULO_SITUACAO[testCase.situation])}</span>}</TableCell>
-              <TableCell className="text-muted-foreground">{nomesMembros[testCase.responsavel_id] ?? testCase.responsavel_id}</TableCell>
+              <TableCell className="text-muted-foreground">{identificadoresMembros[testCase.responsavel_id] ?? "—"}</TableCell>
               <TableCell>{canEditOwn && !canManage ? <Select value={testCase.difficulty} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "difficulty", value })}><SelectTrigger aria-label={`${t("difficulty")} ${testCase.tc_id}`} className="h-8 w-28"><SelectValue /></SelectTrigger><SelectContent>{dificuldades.map((value) => <SelectItem key={value} value={value}>{t(difficultyLabels[value])}</SelectItem>)}</SelectContent></Select> : t(difficultyLabels[testCase.difficulty])}</TableCell>
               <TableCell>{canEditOwn && !canManage ? <Select value={testCase.category} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "category", value })}><SelectTrigger aria-label={`${t("category")} ${testCase.tc_id}`} className="h-8 w-20"><SelectValue /></SelectTrigger><SelectContent>{categorias.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select> : testCase.category}</TableCell>
               <TableCell className="text-muted-foreground">{endDate ? formatDate(endDate) : "—"}</TableCell>
-              <TableCell className="text-muted-foreground">{testCase.backup_id ? nomesMembros[testCase.backup_id] ?? testCase.backup_id : "—"}</TableCell>
+              <TableCell className="text-muted-foreground">{testCase.backup_id ? identificadoresMembros[testCase.backup_id] ?? "—" : "—"}</TableCell>
               {mostrarAcoes && <TableCell className="text-right">{(canManage || canEditOwn) && <TableRowActions label={testCase.tc_id} actions={[
                 ...(canManage ? [{ label: t("edit"), icon: Pencil, onSelect: () => abrirEdicao(testCase) }] : []),
                 ...(canEditOwn && testCase.backup_id ? [{ label: t("transferToBackup", { defaultValue: "Transferir ao backup" }), icon: ArrowRightLeft, disabled: transfer.isPending, onSelect: () => transfer.mutate(testCase.id) }] : []),

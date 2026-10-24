@@ -51,9 +51,9 @@ describe("ProjetoDetalhePage", () => {
     vi.mocked(formFactorApi.listar).mockResolvedValue({ items: [], page: 1, page_size: 10, total_count: 0 });
     vi.mocked(formFactorApi.importar).mockResolvedValue({ quantidade_execucoes: 1, quantidade_resultados: 4 } as never);
     vi.mocked(timesApi.membros).mockResolvedValue([
-      { id: "m1", time_id: "team-1", usuario_id: "user-1", usuario_nome: "Daniel Oliveira", usuario_perfil: "Developer", usuario_perfil_codigo: null, ativo: true },
-      { id: "m3", time_id: "team-1", usuario_id: "user-2", usuario_nome: "Outro desenvolvedor", usuario_perfil: "Developer", usuario_perfil_codigo: null, ativo: true },
-      { id: "m2", time_id: "team-1", usuario_id: "backup-1", usuario_nome: "Kaique Pereira", usuario_perfil: "KP", usuario_perfil_codigo: "KP", ativo: true },
+      { id: "m1", time_id: "team-1", usuario_id: "user-1", usuario_nome: "Daniel Oliveira", usuario_user_id: "daniel-id", usuario_perfil: "Developer", usuario_perfil_codigo: null, ativo: true },
+      { id: "m3", time_id: "team-1", usuario_id: "user-2", usuario_nome: "Outro desenvolvedor", usuario_user_id: "outro-id", usuario_perfil: "Developer", usuario_perfil_codigo: null, ativo: true },
+      { id: "m2", time_id: "team-1", usuario_id: "backup-1", usuario_nome: "Kaique Pereira", usuario_user_id: "kaique-id", usuario_perfil: "KP", usuario_perfil_codigo: "KP", ativo: true },
     ]);
   });
 
@@ -67,10 +67,10 @@ describe("ProjetoDetalhePage", () => {
     const proprioCaso = screen.getByRole("row", { name: /Clock_001/ });
     const casoAlheio = screen.getByRole("row", { name: /Clock_002/ });
     expect(within(proprioCaso).getByRole("combobox", { name: "Category Clock_001" })).toBeInTheDocument();
-    expect(within(proprioCaso).getByText("Daniel Oliveira")).toBeInTheDocument();
-    expect(within(proprioCaso).getByText("Kaique Pereira")).toBeInTheDocument();
+    expect(within(proprioCaso).getByText("daniel-id")).toBeInTheDocument();
+    expect(within(proprioCaso).getByText("kaique-id")).toBeInTheDocument();
     expect(within(proprioCaso).getByRole("button", { name: /Actions for Clock_001/i })).toBeInTheDocument();
-    expect(within(casoAlheio).getByText("Outro desenvolvedor")).toBeInTheDocument();
+    expect(within(casoAlheio).getByText("outro-id")).toBeInTheDocument();
     expect(within(casoAlheio).queryByRole("combobox", { name: "Category Clock_002" })).not.toBeInTheDocument();
     expect(within(casoAlheio).queryByRole("button", { name: /Actions for Clock_002/i })).not.toBeInTheDocument();
 
@@ -79,9 +79,9 @@ describe("ProjetoDetalhePage", () => {
     expect(vi.mocked(casosTesteApi.transferirParaBackup).mock.calls[0][0]).toBe("case-1");
 
     await user.click(screen.getByRole("button", { name: /Filter by Assignee/i }));
-    expect(await screen.findByRole("menuitemradio", { name: "Daniel Oliveira" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitemradio", { name: "Outro desenvolvedor" })).toBeInTheDocument();
-    await user.click(screen.getByRole("menuitemradio", { name: "Outro desenvolvedor" }));
+    expect(await screen.findByRole("menuitemradio", { name: "daniel-id" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitemradio", { name: "outro-id" })).toBeInTheDocument();
+    await user.click(screen.getByRole("menuitemradio", { name: "outro-id" }));
     await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("project-1", 1, DEFAULT_TABLE_PAGE_SIZE, { responsavelId: "user-2" }));
     expect(screen.queryByRole("row", { name: /Clock_001/ })).not.toBeInTheDocument();
     expect(screen.getByRole("row", { name: /Clock_002/ })).toBeInTheDocument();

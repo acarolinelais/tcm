@@ -49,8 +49,8 @@ def contexto():
     time_repo.obter_por_id.return_value = time
     projeto_repo.obter_por_id.return_value = None
     caso_repo.existe_tc_id.return_value = False
-    dev = Usuario(unidade_id, "dev", "dev@example.com")
-    backup = Usuario(unidade_id, "backup", "backup@example.com")
+    dev = Usuario(unidade_id, "dev", "dev@example.com", user_id="DEV-001")
+    backup = Usuario(unidade_id, "backup", "backup@example.com", user_id="BACK-001")
     homonimo_a = Usuario(unidade_id, "Ana", "ana.a@example.com")
     homonimo_b = Usuario(unidade_id, "Ana", "ana.b@example.com")
     externo = Usuario(unidade_id, "externo", "externo@example.com")
@@ -153,12 +153,47 @@ async def test_problemas_de_celula_e_de_pessoa_voltam_juntos_na_mesma_linha(cont
     uow.commit.assert_not_awaited()
 
 
-async def test_homonimo_e_resolvido_quando_so_um_e_membro_do_time(contexto):
+async def test_homonimo_entre_membro_e_pessoa_de_fora_do_time_e_ambiguo(contexto):
+    service, admin, request, projetos, casos, uow = contexto
+
+    with pytest.raises(PlanilhaProjetoInvalida) as erro:
+        await service.importar(
+            admin, request, criar_arquivo(("Clock_001", "Bia", "backup@example.com"))
+        )
+
+    assert [(item.codigo, item.valor) for item in erro.value.erros] == [("pessoa_ambigua", "Bia")]
+    projetos.adicionar.assert_not_awaited()
+    casos.adicionar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+async def test_importa_responsavel_e_backup_por_user_id(contexto):
     service, admin, request, projetos, casos, uow = contexto
 
     resposta = await service.importar(
-        admin, request, criar_arquivo(("Clock_001", "Bia", "backup@example.com"))
+        admin, request, criar_arquivo(("Clock_001", "dev-001", "BACK-001"))
     )
 
     assert resposta.quantidade_casos == 1
+    caso = casos.adicionar.call_args.args[0]
+    assert caso.responsavel_id == service._usuario_repo.listar_ativos_da_unidade.return_value[0].id
+    assert caso.backup_id == service._usuario_repo.listar_ativos_da_unidade.return_value[1].id
     uow.commit.assert_awaited_once()
+
+
+async def test_user_id_que_coincide_com_email_de_outra_pessoa_e_ambiguo(contexto):
+    service, admin, request, projetos, casos, uow = contexto
+    usuarios = service._usuario_repo.listar_ativos_da_unidade.return_value
+    usuarios[0].definir_user_id("backup@example.com")
+
+    with pytest.raises(PlanilhaProjetoInvalida) as erro:
+        await service.importar(
+            admin, request, criar_arquivo(("Clock_001", "backup@example.com", "BACK-001"))
+        )
+
+    assert [(item.codigo, item.valor) for item in erro.value.erros] == [
+        ("pessoa_ambigua", "backup@example.com")
+    ]
+    projetos.adicionar.assert_not_awaited()
+    casos.adicionar.assert_not_awaited()
+    uow.commit.assert_not_awaited()

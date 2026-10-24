@@ -26,6 +26,28 @@ def test_atualizar_troca_nome_e_email():
     assert usuario.email == "anapaula@example.com"
 
 
+def test_user_id_e_opcional_e_preserva_capitalizacao_sem_espacos_externos():
+    usuario = Usuario(uuid4(), "Ana", "ana@example.com", user_id="  User-123  ")
+
+    assert usuario.user_id == "User-123"
+
+
+def test_atualizar_nome_e_email_preserva_user_id():
+    usuario = Usuario(uuid4(), "Ana", "ana@example.com", user_id="USR-123")
+
+    usuario.atualizar("Ana Paula", "anapaula@example.com")
+
+    assert usuario.user_id == "USR-123"
+
+
+def test_definir_user_id_vazio_limpa_o_valor():
+    usuario = Usuario(uuid4(), "Ana", "ana@example.com", user_id="USR-123")
+
+    usuario.definir_user_id("   ")
+
+    assert usuario.user_id is None
+
+
 def test_inativar_marca_usuario_como_inativo():
     usuario = Usuario(uuid4(), "Ana", "ana@example.com")
 

@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 from src.api.dependencies import get_usuario_atual, get_usuario_service
 from src.application.schemas.usuario import UsuarioResponse
-from src.domain.common.exceptions import ForbiddenException
+from src.domain.common.exceptions import ConflictException, ForbiddenException
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from tests.functional.conftest import dependency_override
@@ -27,6 +27,7 @@ async def test_criar_usuario_encaminha_perfil_selecionado(api_client, perfil_cod
         id=usuario_id,
         nome="Carol",
         email="carol@example.com",
+        user_id="USR-001",
         ativo=True,
         perfil_id=perfil_id,
         responsavel_id=atual.id if perfil_codigo == "GERENTE" else None,
@@ -37,18 +38,64 @@ async def test_criar_usuario_encaminha_perfil_selecionado(api_client, perfil_cod
 
     response = await api_client.post(
         "/api/usuarios",
-        json={"nome": "Carol", "email": "carol@example.com", "perfil_id": str(perfil_id)},
+        json={
+            "nome": "Carol",
+            "email": "carol@example.com",
+            "user_id": "USR-001",
+            "perfil_id": str(perfil_id),
+        },
     )
 
     assert response.status_code == 201
     assert response.headers["location"] == f"/api/usuarios/{usuario_id}"
     assert response.json()["perfil_id"] == str(perfil_id)
+    assert response.json()["user_id"] == "USR-001"
     assert response.json()["responsavel_id"] == (
         str(atual.id) if perfil_codigo == "GERENTE" else None
     )
     service.criar.assert_awaited_once()
     assert service.criar.await_args.args[0] == atual
     assert service.criar.await_args.args[1].perfil_id == perfil_id
+    assert service.criar.await_args.args[1].user_id == "USR-001"
+
+
+@pytest.mark.asyncio
+async def test_criar_usuario_com_user_id_duplicado_retorna_409(api_client):
+    from src.api.main import app
+
+    atual = UsuarioAutenticado(uuid4(), uuid4(), perfil_codigo="ADMIN_UNIDADE")
+    service = AsyncMock()
+    service.criar.side_effect = ConflictException(
+        "Já existe um usuário com este User ID nesta unidade."
+    )
+    app.dependency_overrides[get_usuario_atual] = dependency_override(atual)
+    app.dependency_overrides[get_usuario_service] = dependency_override(service)
+
+    response = await api_client.post(
+        "/api/usuarios",
+        json={"nome": "Carol", "email": "carol@example.com", "user_id": "USR-001"},
+    )
+
+    assert response.status_code == 409
+    service.criar.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_criar_usuario_com_user_id_acima_do_limite_retorna_422(api_client):
+    from src.api.main import app
+
+    atual = UsuarioAutenticado(uuid4(), uuid4(), perfil_codigo="ADMIN_UNIDADE")
+    service = AsyncMock()
+    app.dependency_overrides[get_usuario_atual] = dependency_override(atual)
+    app.dependency_overrides[get_usuario_service] = dependency_override(service)
+
+    response = await api_client.post(
+        "/api/usuarios",
+        json={"nome": "Carol", "email": "carol@example.com", "user_id": "x" * 151},
+    )
+
+    assert response.status_code == 422
+    service.criar.assert_not_awaited()
 
 
 @pytest.mark.asyncio
