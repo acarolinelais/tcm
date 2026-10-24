@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Download, Eye, FileSpreadsheet, FileUp, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ArrowLeft, Eye, FileSpreadsheet, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Link, useNavigate, useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
 
@@ -23,6 +23,7 @@ import { lerPlanilhaProjeto, PlanilhaProjetoError, type PlanilhaProjeto } from "
 import { errosDaApi, type ErroPlanilhaExibivel } from "./utils/formatar-erro-planilha";
 import { ErrosPlanilha } from "./components/ErrosPlanilha";
 import { PreviaPlanilha } from "./components/PreviaPlanilha";
+import { ExcelIcon, UploadFileIcon } from "./components/icones-importacao";
 import { timesApi } from "@/modules/times/api/times.api";
 import { modelosDispositivoApi, projetosApi, type Projeto, type StatusProjeto } from "./api/projetos.api";
 
@@ -211,22 +212,26 @@ export function ProjetosPage() {
         <h1 className="text-2xl font-medium text-primary">{t("newProject")}</h1>
       </header>
       <div className="thin-scroll min-h-0 flex-1 overflow-auto">
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-7 inline-flex rounded-xl border border-border bg-[#F7F8FA] p-1" role="tablist" aria-label={t("projectCreationMethod")}>
+        {/* min-h-full + flex: sem arquivo, a área de soltar ocupa o espaço livre em vez de criar rolagem. */}
+        <div className="mx-auto flex min-h-full max-w-[52.5rem] flex-col">
+          <div className="mb-4 inline-flex self-start rounded-xl border border-border bg-[#F7F8FA] p-1" role="tablist" aria-label={t("projectCreationMethod")}>
             <button role="tab" aria-selected={modo === "planilha"} type="button" onClick={() => setModo("planilha")} className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-colors ${modo === "planilha" ? "bg-white font-medium text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}><FileSpreadsheet aria-hidden="true" className="size-4" />{t("importSpreadsheet")}</button>
             <button role="tab" aria-selected={modo === "manual"} type="button" onClick={() => setModo("manual")} className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-colors ${modo === "manual" ? "bg-white font-medium text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}><Plus aria-hidden="true" className="size-4" />{t("createManually")}</button>
           </div>
-          {modo === "planilha" ? <section aria-label={t("uploadSpreadsheet")}>
-            <h2 className="mb-4 text-base font-medium text-foreground">{t("uploadSpreadsheet")}</h2>
-            {!arquivo ? <div onDragOver={(event) => { event.preventDefault(); setArrastando(true); }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setArrastando(false); }} onDrop={(event) => { event.preventDefault(); setArrastando(false); void selecionarArquivo(event.dataTransfer.files[0]); }} className={`flex min-h-64 w-full flex-col items-center justify-center rounded-2xl border border-dashed px-6 py-10 text-center transition-colors sm:min-h-72 ${arrastando ? "border-primary bg-primary/5" : "border-[#CBD5E1] bg-white"}`}>
-              <FileUp aria-hidden="true" className="mb-4 size-10 text-foreground/75" />
-              <p className="text-base text-foreground">{t("dragSpreadsheet")} <button type="button" onClick={() => inputArquivo.current?.click()} className="font-medium text-primary underline underline-offset-2 hover:text-primary/80">{t("chooseSpreadsheet")}</button></p>
-            </div> : <div className="flex items-center gap-4 rounded-2xl border border-border p-5"><FileSpreadsheet aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{arquivo.name}</p><p className="mt-1 text-xs text-muted-foreground">{(arquivo.size / 1024 / 1024).toFixed(2)} MB</p></div><Button type="button" variant="outline" size="icon" aria-label={t("removeFile")} onClick={() => { setArquivo(null); setPrevia(null); setErrosImportacao([]); setTotalLinhasComErro(undefined); setApp(""); setOneUi(""); }}><X aria-hidden="true" className="size-4" /></Button></div>}
+          {modo === "planilha" ? <section aria-label={t("uploadSpreadsheet")} className="flex flex-1 flex-col">
+            <h2 className="mb-3 text-lg font-medium leading-6 text-[#454442]">{t("uploadSpreadsheet")}</h2>
+            {!arquivo ? <div onDragOver={(event) => { event.preventDefault(); setArrastando(true); }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setArrastando(false); }} onDrop={(event) => { event.preventDefault(); setArrastando(false); void selecionarArquivo(event.dataTransfer.files[0]); }} data-arrastando={arrastando} className={`dropzone-tracejada flex max-h-[28rem] min-h-36 w-full flex-1 flex-col items-center justify-center px-6 py-8 text-center transition-colors ${arrastando ? "bg-primary/5" : "bg-white"}`}>
+              <UploadFileIcon aria-hidden="true" className="mb-4 h-11 w-9 text-[#454442]" />
+              <p className="text-base font-medium text-[#454442]">{t("dragSpreadsheet")} <button type="button" onClick={() => inputArquivo.current?.click()} className="font-medium text-primary underline underline-offset-4 hover:text-primary/80">{t("chooseSpreadsheet")}</button></p>
+            </div> : <div className="flex items-center gap-4 rounded-[20px] border border-[#DDDDDD] p-5"><ExcelIcon aria-hidden="true" className="size-7 shrink-0" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{arquivo.name}</p><p className="mt-1 text-xs text-muted-foreground">{(arquivo.size / 1024 / 1024).toFixed(2)} MB</p></div><Button type="button" variant="outline" size="icon" aria-label={t("removeFile")} onClick={() => { setArquivo(null); setPrevia(null); setErrosImportacao([]); setTotalLinhasComErro(undefined); setApp(""); setOneUi(""); }}><X aria-hidden="true" className="size-4" /></Button></div>}
             <input ref={inputArquivo} className="sr-only" type="file" accept={extensoesAceitas} onChange={(event) => { void selecionarArquivo(event.target.files?.[0]); event.target.value = ""; }} />
-            <div className="mt-3 flex justify-between gap-4 text-xs leading-5 text-muted-foreground"><p>{t("spreadsheetFormats")}</p><p className="shrink-0">{t("spreadsheetMaxSize")}</p></div>
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-[#F1F3F5] px-5 py-4 sm:px-6">
-              <div className="flex items-start gap-3"><FileSpreadsheet aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-emerald-700" /><div><p className="text-sm font-medium text-foreground">{t("spreadsheetTemplateTitle")}</p><p className="mt-1 max-w-xl text-xs leading-5 text-muted-foreground">{t("spreadsheetTemplateDescription")}</p></div></div>
-              <Button type="button" variant="outline" onClick={downloadTemplate}><Download aria-hidden="true" className="size-4" />{t("downloadTemplate")}</Button>
+            <div className="mt-2.5 flex justify-between gap-4 px-2 text-sm leading-5 text-[#777777]"><p>{t("spreadsheetFormats")}</p><p className="shrink-0">{t("spreadsheetMaxSize")}</p></div>
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-[20px] bg-[#F3F5F7] px-5 py-5 sm:px-8">
+              <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-2 text-base font-medium leading-6 text-[#454442]"><ExcelIcon aria-hidden="true" className="size-6 shrink-0" />{t("spreadsheetTemplateTitle")}</p>
+                <p className="mt-1.5 max-w-[28rem] text-sm leading-5 text-[#777777]">{t("spreadsheetTemplateDescription")}</p>
+              </div>
+              <Button type="button" variant="outline" onClick={downloadTemplate} className="h-9 rounded-[10px] border-[#DDDDDD] bg-white px-4 text-sm font-medium text-[#454442]">{t("downloadTemplate")}</Button>
             </div>
             {lendoArquivo && <p role="status" className="mt-4 text-sm text-muted-foreground">{t("readingSpreadsheet")}</p>}
             {errosImportacao.length > 0 && <ErrosPlanilha erros={errosImportacao} totalLinhas={totalLinhasComErro} />}

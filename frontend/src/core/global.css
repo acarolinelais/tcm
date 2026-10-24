@@ -87,6 +87,17 @@ body {
   height: 0;
 }
 
+/* Área de soltar arquivo do Figma: traço tracejado com cantos arredondados, que border-dashed não reproduz.
+   O stroke de 2px fica metade fora do retângulo, então aparece com 1px. */
+.dropzone-tracejada {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='20' ry='20' stroke='%23CBCFD3' stroke-width='2' stroke-dasharray='8 8'/%3e%3c/svg%3e");
+  border-radius: 20px;
+}
+
+.dropzone-tracejada[data-arrastando="true"] {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='20' ry='20' stroke='%233672F2' stroke-width='2' stroke-dasharray='8 8'/%3e%3c/svg%3e");
+}
+
 [data-sonner-toast] [data-close-button] {
   left: auto !important;
   right: 0.5rem !important;
