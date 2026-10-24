@@ -1,24 +1,21 @@
 import { NavLink, useLocation } from "react-router";
-import {
-  Building2,
-  CalendarDays,
-  ChevronDown,
-  FolderKanban,
-  Kanban,
-  LayoutDashboard,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Settings2,
-  ShieldCheck,
-  SquareTerminal,
-  Users,
-  UsersRound,
-} from "lucide-react";
+import { ChevronDown, PanelLeftClose, PanelLeftOpen, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import logo from "@/shared/assets/figma/icons/logo.svg";
 import type { PerfilAtual } from "@/core/auth/api";
+import {
+  AdministrationIcon,
+  BoardIcon,
+  DocumentationIcon,
+  OverviewIcon,
+  ProjectsIcon,
+  SectorsIcon,
+  TeamsIcon,
+  TimelineIcon,
+  UsersIcon,
+} from "./sidebar-icons";
 
 export function Sidebar({
   perfil,
@@ -35,17 +32,17 @@ export function Sidebar({
   const [adminAberto, setAdminAberto] = useState(estaNaAdmin);
   useEffect(() => setAdminAberto(estaNaAdmin), [estaNaAdmin]);
   const itens = [
-    { to: "/overview", label: t("overview"), Icon: LayoutDashboard },
-    { to: "/board", label: t("board"), Icon: Kanban },
-    { to: "/timeline", label: t("timeline"), Icon: CalendarDays },
+    { to: "/overview", label: t("overview"), Icon: OverviewIcon },
+    { to: "/board", label: t("board"), Icon: BoardIcon },
+    { to: "/timeline", label: t("timeline"), Icon: TimelineIcon },
   ];
   if (perfil.permissoes.includes("projetos.consultar") || perfil.permissoes.includes("test_cases.consultar")) {
-    itens.push({ to: "/projetos", label: t("myProjects"), Icon: FolderKanban });
+    itens.push({ to: "/projetos", label: t("myProjects"), Icon: ProjectsIcon });
   }
   const itensAdmin = [
-    ["/admin/usuarios", t("users"), Users],
-    ["/admin/setores", t("sectors"), Building2],
-    ["/admin/times", t("teams"), UsersRound],
+    ["/admin/usuarios", t("users"), UsersIcon],
+    ["/admin/setores", t("sectors"), SectorsIcon],
+    ["/admin/times", t("teams"), TeamsIcon],
     ["/admin/perfis", t("profiles"), ShieldCheck],
   ] as const;
   const transicaoRotulo = "overflow-hidden whitespace-nowrap transition-[max-width,opacity,transform] duration-300 ease-in-out motion-reduce:transition-none";
@@ -95,7 +92,7 @@ export function Sidebar({
               onClick={() => setAdminAberto((aberto) => !aberto)}
               className={`group relative flex items-center rounded-xl py-2 text-left text-sm text-foreground hover:bg-secondary ${recolhida ? "w-10 justify-center px-0" : "w-full gap-2 px-2"}`}
             >
-              <Settings2 aria-hidden="true" className={`size-[18px] shrink-0 ${estaNaAdmin ? "text-primary" : "text-muted-foreground"}`} />
+              <AdministrationIcon aria-hidden="true" className={`size-[18px] shrink-0 ${estaNaAdmin ? "text-primary" : "text-muted-foreground"}`} />
               <span aria-hidden={recolhida} className={`${transicaoRotulo} flex-1 truncate ${larguraRotulo}`}>{t("administration")}</span>
               {!recolhida && <ChevronDown aria-hidden="true" className={`h-3.5 w-3.5 transition-transform duration-200 ease-in-out motion-reduce:transition-none ${adminAberto ? "rotate-180" : ""}`} />}
               {recolhida && <TooltipRotulo titulo={t("administration")} />}
@@ -127,7 +124,7 @@ export function Sidebar({
         {perfil.perfil_codigo !== "ADMIN_UNIDADE" && ((perfil.perfil_codigo === "GERENTE" && perfil.permissoes.includes("times.consultar") && perfil.setores_gerenciados.length > 0) || (perfil.perfil_codigo === "KP" && perfil.permissoes.includes("times.consultar") && perfil.times.length > 0)) && (
           <NavLink to="/times" aria-label={recolhida ? t("teams") : undefined} className={({ isActive }) => `group relative flex items-center rounded-xl py-2 text-sm ${recolhida ? "w-10 justify-center px-0" : "w-full gap-2 px-2"} ${isActive ? "bg-[#EAF0FF] text-primary" : "text-foreground hover:bg-secondary"}`}>
             {({ isActive }) => <>
-              <UsersRound aria-hidden="true" className={`size-[18px] shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+              <TeamsIcon aria-hidden="true" className={`size-[18px] shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
               <span aria-hidden={recolhida} className={`${transicaoRotulo} ${larguraRotulo}`}>{t("teams")}</span>
               {recolhida && <TooltipRotulo titulo={t("teams")} />}
             </>}
@@ -135,7 +132,7 @@ export function Sidebar({
         )}
         {(perfil.perfil_codigo === "GERENTE" || perfil.perfil_codigo === "KP") && perfil.permissoes.includes("usuarios.consultar") && (
           <NavLink to="/usuarios" aria-label={recolhida ? t("users") : undefined} className={({ isActive }) => `group relative flex items-center rounded-xl py-2 text-sm ${recolhida ? "w-10 justify-center px-0" : "w-full gap-2 px-2"} ${isActive ? "bg-[#EAF0FF] text-primary" : "text-foreground hover:bg-secondary"}`}>
-            {({ isActive }) => <><Users aria-hidden="true" className={`size-[18px] shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`} /><span aria-hidden={recolhida} className={`${transicaoRotulo} ${larguraRotulo}`}>{t("users")}</span>{recolhida && <TooltipRotulo titulo={t("users")} />}</>}
+            {({ isActive }) => <><UsersIcon aria-hidden="true" className={`size-[18px] shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`} /><span aria-hidden={recolhida} className={`${transicaoRotulo} ${larguraRotulo}`}>{t("users")}</span>{recolhida && <TooltipRotulo titulo={t("users")} />}</>}
           </NavLink>
         )}
       </nav>
@@ -147,7 +144,7 @@ export function Sidebar({
           className={({ isActive }) => `group relative flex items-center rounded-xl py-2.5 text-sm font-normal leading-5 tracking-normal ${recolhida ? "w-10 justify-center px-0" : "w-full gap-3 px-2"} ${isActive ? "bg-[#EAF0FF] text-primary" : "text-[#454442] hover:bg-secondary"}`}
         >
           {({ isActive }) => <>
-            <SquareTerminal aria-hidden="true" className={`h-5 w-5 shrink-0 ${isActive ? "text-primary" : ""}`} />
+            <DocumentationIcon aria-hidden="true" className={`h-5 w-5 shrink-0 ${isActive ? "text-primary" : ""}`} />
             <span aria-hidden={recolhida} className={`${transicaoRotulo} ${larguraRotulo}`}>{t("documentation")}</span>
             {recolhida && <TooltipRotulo titulo={t("documentation")} />}
           </>}
