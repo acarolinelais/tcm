@@ -27,8 +27,8 @@ test("cria projeto manualmente, atribui casos e transfere um caso ao backup", as
     await route.fulfill({ json: cases[0] });
   });
   await page.route("**/api/times/team-1/membros", (route) => route.fulfill({ json: [
-    { id: "member-1", time_id: teamId, usuario_id: "manager-1", usuario_nome: "Gerente Ana", usuario_perfil: "Gerente", usuario_perfil_codigo: "GERENTE", ativo: true },
-    { id: "member-2", time_id: teamId, usuario_id: "backup-1", usuario_nome: "Kaique Pereira", usuario_perfil: "KP", usuario_perfil_codigo: "KP", ativo: true },
+    { id: "member-1", time_id: teamId, usuario_id: "manager-1", usuario_nome: "Gerente Ana", usuario_user_id: "GER-001", usuario_perfil: "Gerente", usuario_perfil_codigo: "GERENTE", ativo: true },
+    { id: "member-2", time_id: teamId, usuario_id: "backup-1", usuario_nome: "Kaique Pereira", usuario_user_id: "KP-002", usuario_perfil: "KP", usuario_perfil_codigo: "KP", ativo: true },
   ] }));
   await page.route("**/api/test-cases/case-1/transferir-para-backup", async (route) => {
     cases = [{ ...cases[0], responsavel_id: "backup-1", backup_id: null }];
@@ -67,5 +67,5 @@ test("cria projeto manualmente, atribui casos e transfere um caso ao backup", as
   await page.getByRole("row", { name: /Clock_001/ }).getByRole("button", { name: /Clock_001/ }).click();
   await page.getByRole("menuitem", { name: "Transferir ao backup" }).click();
   await expect(page.getByText("Test Case transferido para o backup.")).toBeVisible();
-  await expect(page.getByRole("row", { name: /Clock_001/ })).toContainText("Kaique Pereira");
+  await expect(page.getByRole("row", { name: /Clock_001/ })).toContainText("KP-002");
 });

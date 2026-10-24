@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import CheckConstraint, ForeignKey, Index, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.domain.entities.usuario import Usuario
@@ -15,6 +15,7 @@ class UsuarioModel(Base):
     unidade_id: Mapped[UUID] = mapped_column(ForeignKey("unidades.id"))
     nome: Mapped[str] = mapped_column(String(Usuario.NOME_MAX_LENGTH))
     email: Mapped[str] = mapped_column(String(Usuario.EMAIL_MAX_LENGTH))
+    user_id: Mapped[str | None] = mapped_column(String(Usuario.USER_ID_MAX_LENGTH), nullable=True)
     senha_hash: Mapped[str | None] = mapped_column(String(255))
     senha_alteracao_obrigatoria: Mapped[bool] = mapped_column(default=False, server_default="false")
     perfil_id: Mapped[UUID] = mapped_column(ForeignKey("perfis.id"), nullable=False)
@@ -31,6 +32,13 @@ class UsuarioModel(Base):
 
     __table_args__ = (
         UniqueConstraint("email", name="uq_usuarios_email"),
+        Index(
+            "uq_usuarios_unidade_user_id_lower",
+            "unidade_id",
+            func.lower(user_id),
+            unique=True,
+            postgresql_where=user_id.is_not(None),
+        ),
         CheckConstraint(
             "idioma_preferido IN ('en', 'pt-BR', 'ko')", name="ck_usuarios_idioma_preferido"
         ),

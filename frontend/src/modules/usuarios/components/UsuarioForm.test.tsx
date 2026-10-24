@@ -56,9 +56,36 @@ describe("UsuarioForm", () => {
 
     await user.type(screen.getByLabelText("Name"), "Ana");
     await user.type(screen.getByLabelText("Email"), "ana@example.com");
+    await user.type(screen.getByLabelText("User ID"), "USR-001");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(onSalvo).toHaveBeenCalled());
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string)).toMatchObject({
+      user_id: "USR-001",
+    });
+  });
+
+  it("edição carrega e envia o identificador existente", async () => {
+    renderForm(vi.fn(), {
+      usuario: {
+        id: "user-1",
+        nome: "Ana",
+        email: "ana@example.com",
+        user_id: "USR-001",
+        ativo: true,
+        perfil_id: "default",
+        created_at: "2026-01-01T00:00:00Z",
+      },
+    });
+    const user = userEvent.setup();
+
+    expect(screen.getByLabelText("User ID")).toHaveValue("USR-001");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string)).toMatchObject({
+      user_id: "USR-001",
+    });
   });
 
   it("falha: campos vazios mostram erros e não chamam a API", async () => {
@@ -68,6 +95,19 @@ describe("UsuarioForm", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(await screen.findByText("Name is required.")).toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("falha: identifica User ID acima do limite antes de chamar a API", async () => {
+    renderForm();
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText("Name"), "Ana");
+    await user.type(screen.getByLabelText("Email"), "ana@example.com");
+    await user.type(screen.getByLabelText("User ID"), "x".repeat(151));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText("User ID must be at most 150 characters.")).toBeInTheDocument();
     expect(fetch).not.toHaveBeenCalled();
   });
 

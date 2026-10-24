@@ -131,7 +131,9 @@ class UsuarioServiceImpl:
                     setores_por_usuario = dados_setores
         for usuario in result.items:
             resposta = to_response(usuario)
-            _, perfil_nome, perfil_codigo = perfil_por_usuario.get(usuario.id, ("", "", None))
+            _, _, perfil_nome, perfil_codigo = perfil_por_usuario.get(
+                usuario.id, ("", None, "", None)
+            )
             items.append(
                 resposta.model_copy(
                     update={
@@ -167,7 +169,10 @@ class UsuarioServiceImpl:
     ) -> UsuarioResponse:
         self._exigir_permissao(usuario_atual, "usuarios.gerenciar")
         await self._garantir_email_unico(request.email, None)
-        usuario = Usuario(usuario_atual.unidade_id, request.nome, request.email)
+        await self._garantir_user_id_unico(usuario_atual.unidade_id, request.user_id, None)
+        usuario = Usuario(
+            usuario_atual.unidade_id, request.nome, request.email, user_id=request.user_id
+        )
         if not usuario_atual.eh_administrador:
             perfil_padrao_id = await self._repo.obter_perfil_padrao(usuario_atual.unidade_id)
             if request.perfil_id is None or request.perfil_id == perfil_padrao_id:
@@ -208,7 +213,10 @@ class UsuarioServiceImpl:
         await self._exigir_responsavel_ou_admin(usuario_atual, id)
         if Usuario.normalizar_email(request.email) != usuario.email:
             await self._garantir_email_unico(request.email, id)
+        if Usuario.normalizar_user_id(request.user_id) != usuario.user_id:
+            await self._garantir_user_id_unico(usuario.unidade_id, request.user_id, id)
         usuario.atualizar(request.nome, request.email)
+        usuario.definir_user_id(request.user_id)
         usuario.auth_version += 1
         await self._repo.atualizar(usuario)
         await self._uow.commit()
@@ -269,6 +277,15 @@ class UsuarioServiceImpl:
     async def _garantir_email_unico(self, email: str, ignorar_id: UUID | None) -> None:
         if await self._repo.existe_email(email, ignorar_id):
             raise ConflictException("Já existe um usuário com este e-mail.")
+
+    async def _garantir_user_id_unico(
+        self, unidade_id: UUID, user_id: str | None, ignorar_id: UUID | None
+    ) -> None:
+        normalizado = Usuario.normalizar_user_id(user_id)
+        if normalizado is not None and await self._repo.existe_user_id(
+            unidade_id, normalizado, ignorar_id
+        ):
+            raise ConflictException("Já existe um usuário com este User ID nesta unidade.")
 
     @staticmethod
     def _exigir_permissao(usuario_atual: UsuarioAutenticado, permissao: str) -> None:

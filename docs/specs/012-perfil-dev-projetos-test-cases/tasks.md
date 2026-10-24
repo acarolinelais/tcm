@@ -144,6 +144,7 @@
 - [x] **B01. Harmonizar documentação de paginação — resolvido.** [ADR 0034](../../adr/0034-paginacao-padrao-vinte-itens.md) aceito pelo usuário. Atualizados o status da regra substituída no ADR 0022, o índice de ADRs e o resumo de tabelas no índice de specs, mantendo o comportamento atual de 20 itens.
 - [x] **B02. Atualizar o nome da constante HTTP 422 — resolvido.** Os três usos no handler agora empregam `HTTP_422_UNPROCESSABLE_CONTENT`. Suíte completa: 334 testes passaram sem os avisos de depreciação, preservando status 422 e ProblemDetails.
 - [ ] **B03. Avaliar divisão dos bundles do frontend — manutenção futura.** O build já emitia aviso de chunks acima de 500 kB antes desta spec; considerar carregamento sob demanda do leitor de planilhas e módulos. Build segue aprovado; otimização não faz parte das regras de acesso do dev.
+- [ ] **B04. Harmonizar numeração das specs criadas em paralelo.** O PR #18 integrou `012-identificador-externo-usuario` enquanto esta branch já continha `012-perfil-dev-projetos-test-cases`. Os diretórios, referências e históricos foram preservados na integração da `dev`; coordenar a renumeração documental sem recriar branches ou PRs nesta atualização.
 
 ## Registro de execução
 
@@ -178,3 +179,11 @@
 - **Backlog atualizado:** B01 e B02 resolvidos; B03 registrado como otimização futura. O ADR 0034 foi aceito pelo usuário após a conclusão das verificações.
 - **Aprendizado:** [Associação, paginação e cache no fluxo do dev](../../learning/2026-10-24-associacao-paginacao-cache-dev.md).
 - Commit e abertura de PR para `dev` solicitados pelo usuário após aprovação da entrega. Alterações pré-existentes em `.env.example` preservadas e excluídas do commit.
+
+### Integração com a dev após o PR #18 — 2026-10-24
+
+- Integrada `origin/dev` em `1683d42` à branch desta spec, preservando o identificador externo de usuário e o fluxo de projetos/TCs pessoais.
+- Resolvidos os conflitos no índice de specs, nas traduções e no import dos testes do mock, mantendo as contribuições dos dois PRs. A duplicidade de numeração das specs foi registrada em B04.
+- Atualizadas as fixtures de navegador para informar identificadores externos; verificada sua apresentação em responsável/backup sem alterar os UUIDs usados nas atribuições e permissões.
+- **Verificação conjunta:** 350 testes backend e 134 testes frontend passaram; Ruff, formatação, lint, build e convenções de Git aprovados. Passaram também 13 jornadas de navegador de projetos pessoais, criação/transferência de TCs, importação e gestão de identificadores de usuários.
+- Migration nova validada em PostgreSQL temporário, separado do banco de desenvolvimento. Alteração local de `.env.example` preservada fora do merge. Esta atualização foi concluída localmente, sem push.

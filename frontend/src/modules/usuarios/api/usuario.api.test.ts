@@ -30,12 +30,33 @@ describe("usuarioApi", () => {
   });
 
   it("criar chama POST /api/usuarios com o corpo serializado", async () => {
-    await usuarioApi.criar({ nome: "Ana", email: "ana@example.com" });
+    await usuarioApi.criar({ nome: "Ana", email: "ana@example.com", user_id: "USR-001" });
 
     const [url, init] = vi.mocked(fetch).mock.calls[0];
     expect(url).toBe("/api/usuarios");
     expect(init?.method).toBe("POST");
-    expect(JSON.parse(init?.body as string)).toEqual({ nome: "Ana", email: "ana@example.com" });
+    expect(JSON.parse(init?.body as string)).toEqual({
+      nome: "Ana",
+      email: "ana@example.com",
+      user_id: "USR-001",
+    });
+  });
+
+  it("atualizar envia o user_id informado", async () => {
+    await usuarioApi.atualizar("123", {
+      nome: "Ana",
+      email: "ana@example.com",
+      user_id: "USR-001",
+    });
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(url).toBe("/api/usuarios/123");
+    expect(init?.method).toBe("PUT");
+    expect(JSON.parse(init?.body as string)).toEqual({
+      nome: "Ana",
+      email: "ana@example.com",
+      user_id: "USR-001",
+    });
   });
 
   it("inativar chama PATCH /api/usuarios/{id}/inativar", async () => {

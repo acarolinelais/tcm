@@ -17,7 +17,7 @@ async function preparar(request: APIRequestContext, page: Page) {
   const sufixo = crypto.randomUUID();
   const usuarios = [];
   for (let i = 0; i < 3; i++) {
-    usuarios.push(await post(request, "usuarios", { nome: `Dev ${i} ${sufixo}`, email: `dev-${i}-${sufixo}@example.com` }, admin.access_token));
+    usuarios.push(await post(request, "usuarios", { nome: `Dev ${i} ${sufixo}`, email: `dev-${i}-${sufixo}@example.com`, user_id: `DEV-${i}-${sufixo}` }, admin.access_token));
   }
   const setor = await post(request, "setores", { nome: `Setor ${sufixo}` }, admin.access_token);
   const time = await post(request, "times", { nome: `Time ${sufixo}`, setor_id: setor.id }, admin.access_token);
@@ -56,6 +56,8 @@ test("entrada: somente backup abre diretamente os TCs pessoais", async ({ reques
   await page.goto("/projetos");
   await expect(page).toHaveURL(new RegExp(`/projetos/${projeto.id}$`));
   await expect(page.getByRole("row", { name: /Backup_001/ })).toBeVisible();
+  await expect(page.getByRole("row", { name: /Backup_001/ })).toContainText(dados.usuarios[1].user_id);
+  await expect(page.getByRole("row", { name: /Backup_001/ })).toContainText(dados.usuarios[0].user_id);
   await expect(page.getByText("Colega_001")).toHaveCount(0);
   await expect(page.getByRole("combobox", { name: "Status Backup_001" })).toHaveCount(0);
   const negado = await request.put(`${api}/api/test-cases/${backup.id}`, { data: { status: "Pass" }, headers: { Authorization: `Bearer ${dados.dev.access_token}` } });

@@ -96,6 +96,10 @@ class ImportacaoProjetoServiceImpl:
         for usuario in usuarios:
             por_identificador.setdefault(_normalizar_nome(usuario.nome), {})[usuario.id] = usuario
             por_identificador.setdefault(_normalizar_email(usuario.email), {})[usuario.id] = usuario
+            if usuario.user_id is not None:
+                por_identificador.setdefault(_normalizar_user_id(usuario.user_id), {})[
+                    usuario.id
+                ] = usuario
 
         membros_ativos = {
             membro.usuario_id
@@ -107,9 +111,8 @@ class ImportacaoProjetoServiceImpl:
             if not identificador:
                 return None  # A célula vazia já foi reportada pelo validador.
             encontrados = _usuarios_correspondentes(por_identificador, identificador)
-            # Homônimos se resolvem quando só um deles é membro ativo do time.
             do_time = [usuario for usuario in encontrados if usuario.id in membros_ativos]
-            if len(do_time) == 1:
+            if len(encontrados) == 1 and len(do_time) == 1:
                 return do_time[0]
             if not encontrados:
                 codigo, mensagem = "pessoa_nao_encontrada", "Pessoa não encontrada na unidade."
@@ -190,11 +193,16 @@ def _normalizar_email(valor: str) -> str:
     return "".join(normalizado.split()).casefold()
 
 
+def _normalizar_user_id(valor: str) -> str:
+    return unicodedata.normalize("NFC", valor).strip().casefold()
+
+
 def _usuarios_correspondentes(
     por_identificador: dict[str, dict[UUID, Usuario]], identificador: str
 ) -> tuple[Usuario, ...]:
     encontrados = {
         **por_identificador.get(_normalizar_nome(identificador), {}),
         **por_identificador.get(_normalizar_email(identificador), {}),
+        **por_identificador.get(_normalizar_user_id(identificador), {}),
     }
     return tuple(encontrados.values())

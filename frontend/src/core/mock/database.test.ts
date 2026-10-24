@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import * as XLSX from "@e965/xlsx";
 
 import { ApiError } from "@/shared/api/problem-details";
-import { mockAuth, mockCasosTesteApi, mockFormFactorApi, mockProjetosApi, mockTimesApi, resetMockDatabase } from "./database";
+import { mockAuth, mockCasosTesteApi, mockFormFactorApi, mockProjetosApi, mockTimesApi, mockUsuarioApi, resetMockDatabase } from "./database";
 
 const STORAGE_KEY = "sdf.mock.database.v1";
 
@@ -92,6 +92,47 @@ describe("base mock de projetos", () => {
     expect(database.projetoModelos).toContainEqual({ projeto_id: result.projeto.id, modelo_dispositivo_id: "mock-model-s27-ultra" });
   });
 
+  it("importa responsável e backup pelo user_id", async () => {
+    for (const [userId, externalId] of [["mock-user-dev", "DEV-001"], ["mock-user-kp", "KP-002"]]) {
+      const user = mockUsuarioApi.obter(userId);
+      mockUsuarioApi.atualizar(userId, { nome: user.nome, email: user.email, user_id: externalId });
+    }
+    const file = planilhaFile([
+      ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI", "Assignees", "Backup"],
+      ["Clock", "Clock_001", "Low", "A", "New", "9.5", "dev-001", "kp-002"],
+    ]);
+
+    const result = await mockProjetosApi.importar(file, "mock-team-platform", []);
+
+    expect(mockCasosTesteApi.listar(result.projeto.id, 1, 10).items[0]).toMatchObject({
+      responsavel_id: "mock-user-dev",
+      backup_id: "mock-user-kp",
+    });
+  });
+
+  it("reporta ambiguidade entre user_id e email sem criar projeto", async () => {
+    const daniel = mockUsuarioApi.obter("mock-user-dev");
+    mockUsuarioApi.atualizar(daniel.id, {
+      nome: daniel.nome,
+      email: daniel.email,
+      user_id: "kaique.pereira@example.com",
+    });
+    const file = planilhaFile([
+      ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI", "Assignees", "Backup"],
+      ["Clock", "Clock_001", "Low", "A", "New", "9.5", "kaique.pereira@example.com", "Daniel Oliveira"],
+    ]);
+
+    const erro = await mockProjetosApi.importar(file, "mock-team-platform", []).catch((error: unknown) => error);
+
+    expect(erro).toBeInstanceOf(ApiError);
+    expect((erro as ApiError).problem.errors).toContainEqual(expect.objectContaining({
+      codigo: "pessoa_ambigua",
+      coluna: "Assignees",
+      valor: "kaique.pereira@example.com",
+    }));
+    expect(mockProjetosApi.listar(1, 10).items).toHaveLength(0);
+  });
+
   it("coleta os problemas de pessoas de todas as linhas sem criar o projeto", async () => {
     const file = planilhaFile([
       ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI", "Assignees", "Backup"],
@@ -109,6 +150,29 @@ describe("base mock de projetos", () => {
         { codigo: "responsavel_igual_backup", linha: 3, coluna: "Backup", valor: "Daniel Oliveira" },
       ],
     });
+    expect(mockProjetosApi.listar(1, 10).items).toHaveLength(0);
+  });
+
+  it("não resolve homônimo fora do time quando o valor corresponde a mais de uma pessoa", async () => {
+    const file = planilhaFile([
+      ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI", "Assignees", "Backup"],
+      ["Clock", "Clock_001", "Low", "A", "New", "9.5", "Daniel Oliveira", "Kaique Pereira"],
+    ]);
+    const database = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
+    database.usuarios.push({
+      ...database.usuarios.find((user: { id: string }) => user.id === "mock-user-dev"),
+      id: "mock-user-riley",
+      nome: "Daniel Oliveira",
+      email: "riley@example.com",
+    });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(database));
+
+    const erro = await mockProjetosApi.importar(file, "mock-team-platform", []).catch((error: unknown) => error);
+
+    expect((erro as ApiError).problem.errors).toContainEqual(expect.objectContaining({
+      codigo: "pessoa_ambigua",
+      valor: "Daniel Oliveira",
+    }));
     expect(mockProjetosApi.listar(1, 10).items).toHaveLength(0);
   });
 
@@ -155,8 +219,42 @@ describe("base mock de projetos", () => {
 
     mockProjetosApi.listar(1, 10); // qualquer leitura aplica a migração
     const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-    expect(migrado.schemaVersion).toBe(10);
+    expect(migrado.schemaVersion).toBe(11);
     expect(migrado.casosTeste[0]).toMatchObject({ situation: "New", status: "InReview" });
+    expect(migrado.usuarios.every((user: { user_id?: string | null }) => user.user_id === null)).toBe(true);
+  });
+
+  it("adiciona user_id nulo aos usuários do schema anterior", () => {
+    const database = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
+    database.schemaVersion = 10;
+    database.usuarios.forEach((user: { user_id?: string | null }) => { delete user.user_id; });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(database));
+
+    mockProjetosApi.listar(1, 10);
+    const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
+    expect(migrado.schemaVersion).toBe(11);
+    expect(migrado.usuarios.every((user: { user_id?: string | null }) => user.user_id === null)).toBe(true);
+  });
+
+  it("normaliza e garante a unicidade do user_id ao criar e editar usuários", () => {
+    const original = mockUsuarioApi.obter("mock-user-dev");
+    const atualizado = mockUsuarioApi.atualizar(original.id, {
+      nome: original.nome,
+      email: original.email,
+      user_id: "  DEV-001  ",
+    });
+
+    expect(atualizado.user_id).toBe("DEV-001");
+    expect(() => mockUsuarioApi.criar({
+      nome: "Duplicado",
+      email: "duplicado@example.com",
+      user_id: "dev-001",
+    })).toThrow(ApiError);
+    expect(mockUsuarioApi.atualizar(original.id, {
+      nome: original.nome,
+      email: original.email,
+      user_id: "   ",
+    }).user_id).toBeNull();
   });
 
   it("com problemas de célula, ainda confere as pessoas e devolve tudo junto", async () => {
