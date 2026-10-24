@@ -19,6 +19,7 @@ from src.application.schemas.importacao_projeto import (
 )
 from src.application.schemas.importacao_sdf import ImportarRelatorioSdfResponse
 from src.application.schemas.projeto import (
+    AtualizarProjetoRequest,
     AtualizarStatusProjetoRequest,
     CriarProjetoRequest,
     ProjetoResponse,
@@ -79,6 +80,26 @@ async def obter_projeto(
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
     return await service.obter(usuario_atual, projeto_id)
+
+
+@router.put("/{projeto_id}", response_model=ProjetoResponse)
+async def atualizar_projeto(
+    projeto_id: UUID,
+    request: AtualizarProjetoRequest,
+    service: ProjetoService = Depends(get_projeto_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.atualizar(usuario_atual, projeto_id, request)
+
+
+@router.delete("/{projeto_id}", status_code=204)
+async def excluir_projeto(
+    projeto_id: UUID,
+    service: ProjetoService = Depends(get_projeto_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    await service.excluir(usuario_atual, projeto_id)
+    return Response(status_code=204)
 
 
 @router.patch("/{projeto_id}/status", response_model=ProjetoResponse)

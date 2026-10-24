@@ -25,6 +25,19 @@ class AtualizarStatusProjetoRequest(BaseModel):
     status: StatusProjeto
 
 
+class AtualizarProjetoRequest(BaseModel):
+    app: str = Field(min_length=1, max_length=Projeto.APP_MAX_LENGTH)
+    one_ui: str = Field(min_length=1, max_length=Projeto.ONE_UI_MAX_LENGTH)
+
+    @field_validator("app", "one_ui")
+    @classmethod
+    def limpar_texto(cls, valor: str) -> str:
+        valor = valor.strip()
+        if not valor:
+            raise ValueError("O campo é obrigatório.")
+        return valor
+
+
 class ProjetoResponse(BaseModel):
     id: UUID
     unidade_id: UUID

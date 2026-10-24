@@ -11,6 +11,13 @@ from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
 class ProjetoRepositoryImpl(RepositoryBaseImpl[Projeto, ProjetoModel]):
     model = ProjetoModel
 
+    async def adicionar(self, entity: Projeto) -> None:
+        # A importação adiciona Projeto e Test Cases na mesma unidade de trabalho, mas
+        # não há relacionamento ORM entre as entidades para ordenar o flush automaticamente.
+        # Persista o projeto primeiro para que as linhas de Test Case encontrem a FK.
+        self.session.add(self._to_model(entity))
+        await self.session.flush()
+
     async def listar_por_times(
         self,
         unidade_id: UUID,
@@ -20,7 +27,7 @@ class ProjetoRepositoryImpl(RepositoryBaseImpl[Projeto, ProjetoModel]):
     ) -> PagedResult[Projeto]:
         if not time_ids:
             return PagedResult([], page, page_size, 0)
-        filtros = [ProjetoModel.unidade_id == unidade_id]
+        filtros = [ProjetoModel.unidade_id == unidade_id, ProjetoModel.ativo.is_(True)]
         filtros.append(ProjetoModel.time_id.in_(time_ids))
         total = (
             await self.session.execute(
@@ -41,6 +48,41 @@ class ProjetoRepositoryImpl(RepositoryBaseImpl[Projeto, ProjetoModel]):
             .all()
         )
         return PagedResult([self._to_entity(model) for model in modelos], page, page_size, total)
+
+    async def listar_paginado(
+        self, unidade_id: UUID, page: int, page_size: int
+    ) -> PagedResult[Projeto]:
+        filtros = (ProjetoModel.unidade_id == unidade_id, ProjetoModel.ativo.is_(True))
+        total = (
+            await self.session.execute(
+                select(func.count()).select_from(ProjetoModel).where(*filtros)
+            )
+        ).scalar_one()
+        modelos = (
+            (
+                await self.session.execute(
+                    select(ProjetoModel)
+                    .where(*filtros)
+                    .order_by(ProjetoModel.created_at.desc(), ProjetoModel.id)
+                    .offset((page - 1) * page_size)
+                    .limit(page_size)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        return PagedResult([self._to_entity(model) for model in modelos], page, page_size, total)
+
+    async def desativar(self, unidade_id: UUID, projeto_id: UUID) -> None:
+        model = (
+            await self.session.execute(
+                select(ProjetoModel).where(
+                    ProjetoModel.unidade_id == unidade_id, ProjetoModel.id == projeto_id
+                )
+            )
+        ).scalar_one_or_none()
+        if model is not None:
+            model.ativo = False
 
     def _to_entity(self, model: ProjetoModel) -> Projeto:
         projeto = Projeto(model.unidade_id, model.time_id, model.app, model.one_ui)

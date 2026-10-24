@@ -1,4 +1,4 @@
-import { httpGet, httpPatchBody, httpPost, httpPostForm, httpPut } from "@/core/api/http-client";
+import { httpDelete, httpGet, httpPatchBody, httpPost, httpPostForm, httpPut } from "@/core/api/http-client";
 import { useMock } from "@/core/config";
 import {
   mockCasosTesteApi,
@@ -10,6 +10,7 @@ import type { PagedResult } from "@/shared/types/paged-result";
 
 import type {
   AtualizarCasoTesteInput,
+  AtualizarProjetoInput,
   CasoTeste,
   CriarCasoTesteInput,
   CriarProjetoInput,
@@ -23,6 +24,7 @@ import type {
 
 export type {
   AtualizarCasoTesteInput,
+  AtualizarProjetoInput,
   CategoriaCasoTeste,
   CasoTeste,
   CriarCasoTesteInput,
@@ -67,6 +69,12 @@ export const projetosApi = {
     return useMock
       ? Promise.resolve(mockProjetosApi.atualizarStatus(id, status))
       : httpPatchBody<Projeto>(`/api/projetos/${id}/status`, { status });
+  },
+  atualizar(id: string, body: AtualizarProjetoInput) {
+    return useMock ? Promise.resolve(mockProjetosApi.atualizar(id, body)) : httpPut<Projeto>(`/api/projetos/${id}`, body);
+  },
+  excluir(id: string) {
+    return useMock ? Promise.resolve(mockProjetosApi.excluir(id)) : httpDelete<void>(`/api/projetos/${id}`);
   },
 };
 

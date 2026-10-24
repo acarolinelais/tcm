@@ -7,6 +7,7 @@ import type { Usuario, UsuarioFormValues } from "@/modules/usuarios/model/usuari
 import type { UsuarioFiltros } from "@/modules/usuarios/api/usuario.api";
 import type {
   AtualizarCasoTesteInput,
+  AtualizarProjetoInput,
   CasoTeste,
   CriarCasoTesteInput,
   CriarProjetoInput,
@@ -453,7 +454,7 @@ export const mockProjetosApi = {
   listar(pageNumber: number, pageSize: number) {
     requireMockPermission("projetos.consultar");
     const { db } = mockProfile();
-    return page(db.projetos.filter(projectInMockScope), pageNumber, pageSize);
+    return page(db.projetos.filter((project) => project.ativo && projectInMockScope(project)), pageNumber, pageSize);
   },
   obter(projectId: string) {
     requireMockPermission("projetos.consultar");
@@ -462,6 +463,30 @@ export const mockProjetosApi = {
   },
   criar(input: CriarProjetoInput) {
     return createMockProject(input);
+  },
+  atualizar(projectId: string, input: AtualizarProjetoInput) {
+    requireMockPermission("projetos.gerenciar");
+    const { db, user, profile } = mockProfile();
+    const project = getMockProject(db, projectId);
+    if (!project.ativo) throw new Error("Projeto não encontrado.");
+    const currentTeam = db.times.find((item) => item.id === project.time_id);
+    if (!currentTeam || !canManageMockTeam(db, user.id, profile?.codigo, currentTeam)) throw new Error("O time está fora do seu escopo.");
+    project.app = input.app.trim();
+    project.one_ui = input.one_ui.trim();
+    project.nome = `${project.app} ${project.one_ui}`;
+    project.updated_at = new Date().toISOString();
+    writeDb(db);
+    return project;
+  },
+  excluir(projectId: string) {
+    requireMockPermission("projetos.gerenciar");
+    const { db, user, profile } = mockProfile();
+    const project = getMockProject(db, projectId);
+    const team = db.times.find((item) => item.id === project.time_id);
+    if (!team || !canManageMockTeam(db, user.id, profile?.codigo, team)) throw new Error("O time está fora do seu escopo.");
+    project.ativo = false;
+    project.updated_at = new Date().toISOString();
+    writeDb(db);
   },
   async importar(file: File, timeId: string, modelIds: string[], app?: string, oneUi?: string) {
     requireMockPermission("projetos.gerenciar");

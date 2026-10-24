@@ -2,6 +2,7 @@ from typing import Protocol
 from uuid import UUID
 
 from src.application.schemas.projeto import (
+    AtualizarProjetoRequest,
     AtualizarStatusProjetoRequest,
     CriarProjetoRequest,
     ProjetoResponse,
@@ -29,3 +30,9 @@ class ProjetoService(Protocol):
         projeto_id: UUID,
         request: AtualizarStatusProjetoRequest,
     ) -> ProjetoResponse: ...
+
+    async def atualizar(
+        self, usuario_atual: UsuarioAutenticado, projeto_id: UUID, request: AtualizarProjetoRequest
+    ) -> ProjetoResponse: ...
+
+    async def excluir(self, usuario_atual: UsuarioAutenticado, projeto_id: UUID) -> None: ...

@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from src.application.schemas.projeto import (
+    AtualizarProjetoRequest,
     AtualizarStatusProjetoRequest,
     CriarProjetoRequest,
     ProjetoResponse,
@@ -82,12 +83,40 @@ class ProjetoServiceImpl:
         if not usuario_atual.eh_administrador:
             self._exigir_permissao(usuario_atual, "projetos.consultar")
         projeto = await self._projeto_repo.obter_por_id(usuario_atual.unidade_id, projeto_id)
-        if projeto is None:
+        if projeto is None or not projeto.ativo:
             raise NotFoundException("Projeto não encontrado.")
         time = await self._time_repo.obter_por_id(usuario_atual.unidade_id, projeto.time_id)
         if time is None or not self._time_esta_no_escopo(usuario_atual, time.id, time.setor_id):
             raise NotFoundException("Projeto não encontrado.")
         return to_response(projeto)
+
+    async def atualizar(
+        self, usuario_atual: UsuarioAutenticado, projeto_id: UUID, request: AtualizarProjetoRequest
+    ) -> ProjetoResponse:
+        self._exigir_permissao(usuario_atual, "projetos.gerenciar")
+        projeto = await self._projeto_repo.obter_por_id(usuario_atual.unidade_id, projeto_id)
+        if projeto is None or not projeto.ativo:
+            raise NotFoundException("Projeto não encontrado.")
+        time_atual = await self._time_repo.obter_por_id(usuario_atual.unidade_id, projeto.time_id)
+        if time_atual is None:
+            raise NotFoundException("Time do projeto não encontrado.")
+        self._validar_escopo_time(usuario_atual, time_atual.id, time_atual.setor_id)
+        projeto.atualizar_dados(request.app, request.one_ui)
+        await self._projeto_repo.atualizar(projeto)
+        await self._uow.commit()
+        return to_response(projeto)
+
+    async def excluir(self, usuario_atual: UsuarioAutenticado, projeto_id: UUID) -> None:
+        self._exigir_permissao(usuario_atual, "projetos.gerenciar")
+        projeto = await self._projeto_repo.obter_por_id(usuario_atual.unidade_id, projeto_id)
+        if projeto is None or not projeto.ativo:
+            raise NotFoundException("Projeto não encontrado.")
+        time = await self._time_repo.obter_por_id(usuario_atual.unidade_id, projeto.time_id)
+        if time is None:
+            raise NotFoundException("Time do projeto não encontrado.")
+        self._validar_escopo_time(usuario_atual, time.id, time.setor_id)
+        await self._projeto_repo.desativar(usuario_atual.unidade_id, projeto_id)
+        await self._uow.commit()
 
     async def atualizar_status(
         self,
@@ -97,7 +126,7 @@ class ProjetoServiceImpl:
     ) -> ProjetoResponse:
         self._exigir_permissao(usuario_atual, "projetos.gerenciar")
         projeto = await self._projeto_repo.obter_por_id(usuario_atual.unidade_id, projeto_id)
-        if projeto is None:
+        if projeto is None or not projeto.ativo:
             raise NotFoundException("Projeto não encontrado.")
         time = await self._time_repo.obter_por_id(usuario_atual.unidade_id, projeto.time_id)
         if time is None:

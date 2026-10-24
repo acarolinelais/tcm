@@ -66,6 +66,11 @@ export interface CriarProjetoInput {
   modelos_ids: string[];
 }
 
+export interface AtualizarProjetoInput {
+  app: string;
+  one_ui: string;
+}
+
 export interface CriarCasoTesteInput {
   tc_id: string;
   category: CategoriaCasoTeste;

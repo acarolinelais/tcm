@@ -37,6 +37,13 @@ class Projeto(EntidadeTenant):
     def atualizar_status(self, status: StatusProjeto) -> None:
         self.status = StatusProjeto(status)
 
+    def atualizar_dados(self, app: str, one_ui: str) -> None:
+        self.app = self._validar_valor(app, "App", self.APP_MAX_LENGTH)
+        self.one_ui = self._validar_valor(one_ui, "One UI", self.ONE_UI_MAX_LENGTH)
+
+    def desativar(self) -> None:
+        self.ativo = False
+
     @staticmethod
     def _validar_valor(valor: str, campo: str, limite: int) -> str:
         normalizado = valor.strip()
