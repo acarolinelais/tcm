@@ -122,7 +122,7 @@ describe("base mock de projetos", () => {
 
     mockProjetosApi.listar(1, 10); // qualquer leitura aplica a migração
     const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-    expect(migrado.schemaVersion).toBe(9);
+    expect(migrado.schemaVersion).toBe(10);
     expect(migrado.casosTeste[0]).toMatchObject({ situation: "New", status: "InReview" });
   });
 
