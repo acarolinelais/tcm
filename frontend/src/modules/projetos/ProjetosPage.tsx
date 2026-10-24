@@ -14,6 +14,7 @@ import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyStatePa
 import { MultiSelectCombobox } from "@/shared/ui/multi-select-combobox";
 import { toast } from "@/shared/lib/toast";
 import { ApiError } from "@/shared/api/problem-details";
+import { lerPlanilhaProjeto, PlanilhaProjetoError, type PlanilhaProjeto } from "./utils/planilha-projeto";
 import { timesApi } from "@/modules/times/api/times.api";
 import { modelosDispositivoApi, projetosApi, type Projeto, type StatusProjeto } from "./api/projetos.api";
 
@@ -21,7 +22,6 @@ type ModoCriacao = "manual" | "planilha";
 const statusProjeto: StatusProjeto[] = ["Created", "To Do", "InProgress", "Completed", "Canceled"];
 const extensoesAceitas = ".xls,.xlsx";
 const timesVazios: Awaited<ReturnType<typeof timesApi.listar>>["items"] = [];
-const isMock = import.meta.env.VITE_USE_MOCK === "true";
 
 export function ProjetosPage() {
   const { t } = useTranslation();
@@ -42,6 +42,8 @@ export function ProjetosPage() {
   const [oneUi, setOneUi] = useState("");
   const [modelosIds, setModelosIds] = useState<string[]>([]);
   const [arquivo, setArquivo] = useState<File | null>(null);
+  const [previa, setPrevia] = useState<PlanilhaProjeto | null>(null);
+  const [lendoArquivo, setLendoArquivo] = useState(false);
   const [errosImportacao, setErrosImportacao] = useState<{ campo: string; mensagem: string }[]>([]);
   const [arrastando, setArrastando] = useState(false);
   const inputArquivo = useRef<HTMLInputElement>(null);
@@ -79,13 +81,28 @@ export function ProjetosPage() {
   });
 
   function limparFormulario() {
-    setTimeId(""); setApp(""); setOneUi(""); setModelosIds([]); setArquivo(null); setErrosImportacao([]); setModo("planilha");
+    setTimeId(""); setApp(""); setOneUi(""); setModelosIds([]); setArquivo(null); setPrevia(null); setLendoArquivo(false); setErrosImportacao([]); setModo("planilha");
   }
-  function selecionarArquivo(file?: File) {
+  async function selecionarArquivo(file?: File) {
     if (!file) return;
     if (!/\.xlsx?$/i.test(file.name)) { toast.error(t("projectFileTypeError")); return; }
-    setErrosImportacao([]);
     setArquivo(file);
+    setApp("");
+    setOneUi("");
+    setPrevia(null);
+    setErrosImportacao([]);
+    setLendoArquivo(true);
+    try {
+      const parsed = await lerPlanilhaProjeto(file);
+      setPrevia(parsed);
+      setApp(parsed.app);
+      setOneUi(parsed.one_ui);
+    } catch (error) {
+      if (error instanceof PlanilhaProjetoError) setErrosImportacao(error.errors);
+      else setErrosImportacao([{ campo: "arquivo", mensagem: t("projectFileReadError") }]);
+    } finally {
+      setLendoArquivo(false);
+    }
   }
   function statusLabel(status: StatusProjeto) {
     const keys: Record<StatusProjeto, string> = { Created: "projectCreated", "To Do": "toDo", InProgress: "inProgress", Completed: "completed", Canceled: "projectCanceled" };
@@ -125,13 +142,17 @@ export function ProjetosPage() {
             <button role="tab" aria-selected={modo === "manual"} type="button" onClick={() => setModo("manual")} className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-colors ${modo === "manual" ? "bg-white font-medium text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}><Plus aria-hidden="true" className="size-4" />{t("createManually")}</button>
           </div>
           {modo === "planilha" ? <section aria-label={t("uploadSpreadsheet")}>
-            {!arquivo ? <button type="button" onClick={() => inputArquivo.current?.click()} onDragOver={(event) => { event.preventDefault(); setArrastando(true); }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setArrastando(false); }} onDrop={(event) => { event.preventDefault(); setArrastando(false); selecionarArquivo(event.dataTransfer.files[0]); }} className={`flex min-h-64 w-full flex-col items-center justify-center rounded-2xl border border-dashed px-6 py-10 text-center transition-colors sm:min-h-72 ${arrastando ? "border-primary bg-primary/5" : "border-[#CBD5E1] bg-white hover:border-primary/60 hover:bg-[#FBFCFF]"}`}>
+            {!arquivo ? <button type="button" onClick={() => inputArquivo.current?.click()} onDragOver={(event) => { event.preventDefault(); setArrastando(true); }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setArrastando(false); }} onDrop={(event) => { event.preventDefault(); setArrastando(false); void selecionarArquivo(event.dataTransfer.files[0]); }} className={`flex min-h-64 w-full flex-col items-center justify-center rounded-2xl border border-dashed px-6 py-10 text-center transition-colors sm:min-h-72 ${arrastando ? "border-primary bg-primary/5" : "border-[#CBD5E1] bg-white hover:border-primary/60 hover:bg-[#FBFCFF]"}`}>
               <UploadCloud aria-hidden="true" className="mb-3 size-6 text-muted-foreground" /><span className="text-base font-medium text-foreground">{t("dragSpreadsheet")}</span><span className="mt-1 text-sm text-muted-foreground">{t("spreadsheetFormats")}</span>
-            </button> : <div className="flex items-center gap-4 rounded-2xl border border-border p-5"><FileSpreadsheet aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{arquivo.name}</p><p className="mt-1 text-xs text-muted-foreground">{(arquivo.size / 1024 / 1024).toFixed(2)} MB</p></div><Button type="button" variant="outline" size="icon" aria-label={t("removeFile")} onClick={() => setArquivo(null)}><X aria-hidden="true" className="size-4" /></Button></div>}
-            <input ref={inputArquivo} className="sr-only" type="file" accept={extensoesAceitas} onChange={(event) => { selecionarArquivo(event.target.files?.[0]); event.target.value = ""; }} />
+            </button> : <div className="flex items-center gap-4 rounded-2xl border border-border p-5"><FileSpreadsheet aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{arquivo.name}</p><p className="mt-1 text-xs text-muted-foreground">{(arquivo.size / 1024 / 1024).toFixed(2)} MB</p></div><Button type="button" variant="outline" size="icon" aria-label={t("removeFile")} onClick={() => { setArquivo(null); setPrevia(null); setErrosImportacao([]); setApp(""); setOneUi(""); }}><X aria-hidden="true" className="size-4" /></Button></div>}
+            <input ref={inputArquivo} className="sr-only" type="file" accept={extensoesAceitas} onChange={(event) => { void selecionarArquivo(event.target.files?.[0]); event.target.value = ""; }} />
             <div className="mt-3 space-y-1 text-xs leading-5 text-muted-foreground"><p>{t("spreadsheetSizeNotice")}</p><p>{t("projectSpreadsheetTemplateHint")}</p></div>
+            {lendoArquivo && <p role="status" className="mt-4 text-sm text-muted-foreground">{t("readingSpreadsheet")}</p>}
             {errosImportacao.length > 0 && <div role="alert" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4"><h2 className="text-sm font-semibold text-destructive">{t("projectImportValidationError")}</h2><ul className="mt-2 space-y-1 text-sm text-destructive">{errosImportacao.map((erro, index) => <li key={`${erro.campo}-${index}`}>{erro.campo}: {erro.mensagem}</li>)}</ul></div>}
-            {isMock && arquivo && <div className="mt-5 grid gap-5 rounded-2xl border border-border p-5 sm:grid-cols-2"><div><Label htmlFor="project-import-app">{t("app")}</Label><Input id="project-import-app" value={app} onChange={(event) => setApp(event.target.value)} className="mt-2" placeholder={t("appPlaceholder")} /><p className="mt-1.5 text-xs text-muted-foreground">{t("mockSpreadsheetHint")}</p></div><div><Label htmlFor="project-import-oneui">{t("oneUi")}</Label><Input id="project-import-oneui" value={oneUi} onChange={(event) => setOneUi(event.target.value)} className="mt-2" placeholder="9.5" /></div></div>}
+            {previa && <section aria-label={t("spreadsheetPreview")} className="mt-6 overflow-hidden rounded-2xl border border-border bg-white">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-[#F7F8FA] px-5 py-4"><div><h2 className="text-sm font-semibold">{t("spreadsheetPreview")}</h2><p className="mt-1 text-xs text-muted-foreground">{t("project")}: {previa.app} {previa.one_ui}</p></div><span className="text-xs text-muted-foreground">{t("testCaseCount", { count: previa.casos.length })}</span></div>
+              <div className="max-h-72 overflow-auto"><Table><TableHeader><TableRow><TableHead>{t("tcId")}</TableHead><TableHead>{t("category")}</TableHead><TableHead>{t("difficulty")}</TableHead><TableHead>{t("tcSituation")}</TableHead><TableHead>{t("assignee")}</TableHead><TableHead>{t("backup")}</TableHead></TableRow></TableHeader><TableBody>{previa.casos.map((caso) => <TableRow key={`${caso.linha}-${caso.tc_id}`}><TableCell className="font-medium">{caso.tc_id}</TableCell><TableCell>{caso.category}</TableCell><TableCell>{caso.difficulty}</TableCell><TableCell>{caso.situation}</TableCell><TableCell>{caso.responsavel}</TableCell><TableCell>{caso.backup}</TableCell></TableRow>)}</TableBody></Table></div>
+            </section>}
           </section> : <section className="rounded-2xl border border-border bg-white p-5 sm:p-7"><div className="mb-6"><h2 className="text-base font-semibold">{t("projectDetails")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("projectNameFormulaHint")}</p></div><div className="grid gap-5 sm:grid-cols-2"><div><Label htmlFor="project-app">{t("app")}</Label><Input id="project-app" value={app} onChange={(event) => setApp(event.target.value)} className="mt-2" placeholder={t("appPlaceholder")} maxLength={80} /></div><div><Label htmlFor="project-oneui">{t("oneUi")}</Label><Input id="project-oneui" value={oneUi} onChange={(event) => setOneUi(event.target.value)} className="mt-2" placeholder="9.5" maxLength={40} /></div></div><p className="mt-3 text-sm text-muted-foreground">{app.trim() && oneUi.trim() ? `${t("projectNamePreview")}: ${app.trim()} ${oneUi.trim()}` : t("projectNamePreviewHint")}</p></section>}
 
           {(modo === "manual" || arquivo) && <section className="mt-7 border-t border-border pt-6">
@@ -150,7 +171,7 @@ export function ProjetosPage() {
           </section>}
         </div>
       </div>
-      <footer className="mt-6 flex shrink-0 items-center justify-end gap-4 border-t border-border pt-5"><div className="flex gap-2"><Button variant="outline" onClick={() => { setCriacaoAberta(false); limparFormulario(); }}>{t("cancel")}</Button><Button disabled={queryMutation.isPending || !timeId || (modo === "manual" ? !app.trim() || !oneUi.trim() : !arquivo || (isMock && (!app.trim() || !oneUi.trim())))} onClick={() => queryMutation.mutate()}>{queryMutation.isPending ? t("saving") : t("createProject")}</Button></div></footer>
+      <footer className="mt-6 flex shrink-0 items-center justify-end gap-4 border-t border-border pt-5"><div className="flex gap-2"><Button variant="outline" onClick={() => { setCriacaoAberta(false); limparFormulario(); }}>{t("cancel")}</Button><Button disabled={queryMutation.isPending || lendoArquivo || !timeId || (modo === "manual" ? !app.trim() || !oneUi.trim() : !arquivo || !previa || errosImportacao.length > 0)} onClick={() => queryMutation.mutate()}>{queryMutation.isPending ? t("saving") : t("createProject")}</Button></div></footer>
     </>}
   </section>;
 }

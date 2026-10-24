@@ -110,21 +110,21 @@
   - Cobre: CA-01–CA-14
   - Verificação: `cd frontend && npm test -- --run src/modules/projetos/api` → clientes enviam payloads/uploads corretos e interpretam respostas/erros.
   - Concluído: modelos, clientes e hooks implementados; testes de API/hooks cobrem paginação, payloads, upload multipart, consultas e invalidação de escopo.
-- [~] **T24. Adicionar projetos, casos e resultados à base mock**
+- [x] **T24. Adicionar projetos, casos e resultados à base mock**
   - Arquivos: `frontend/src/core/mock/database.ts`, mocks de projetos e testes do banco/mock
   - Cobre: CA-01–CA-20
   - Verificação: `cd frontend && npm test -- --run src/core/mock` → operações mock persistem projetos, atribuições e lotes SDF sem substituir histórico.
-  - Progresso: base mock ampliada e testes cobrem projetos, unicidade de TC ID, edição/transferência e preservação de lotes. Falta interpretar as planilhas e gravar casos/resultados importados.
+  - Concluído: parser de planilhas Excel valida cabeçalhos, enums, IDs e atribuições; a importação mock cria projeto, modelos e Test Cases em uma gravação única, resolve membros por nome/e-mail e preserva resultados SDF. Testes cobrem leitura, erros e persistência.
 - [x] **T25. Criar tela de listagem e cadastro manual de projeto**
   - Arquivos: páginas/componentes de projetos, formulários e testes de componente
   - Cobre: CA-01–CA-05, CA-11
   - Verificação: `cd frontend && npm test -- --run src/modules/projetos` → cadastro manual deriva nome e respeita os times/modelos disponíveis ao perfil.
   - Concluído: listagem e cadastro manual implementados; testes cobrem os dados da tabela e a criação com time/modelo selecionados.
-- [~] **T26. Criar fluxo de importação inicial da planilha**
+- [x] **T26. Criar fluxo de importação inicial da planilha**
   - Arquivos: formulário/preview de importação inicial e testes de componente
   - Cobre: CA-12, CA-13, CA-14
   - Verificação: `cd frontend && npm test -- --run src/modules/projetos` → envia arquivo/time/modelos, mostra resumo e erros de linhas/duplicidades.
-  - Progresso: envio da planilha, resumo com a quantidade criada e erros identificados por linha implementados e cobertos por teste; falta prévia dos Test Cases antes da criação.
+  - Concluído: arquivo é lido antes do envio; App e One UI são extraídos do primeiro valor preenchido, a prévia mostra todos os Test Cases e os erros de leitura/validação impedem a criação. Testes cobrem prévia, erros e resumo.
 - [x] **T27. Criar gestão de Test Cases e atribuições**
   - Arquivos: componentes/tabela/formulário de casos, testes de componente
   - Cobre: CA-06–CA-10, CA-13, CA-15–CA-18

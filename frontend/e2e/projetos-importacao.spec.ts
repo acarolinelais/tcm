@@ -1,6 +1,17 @@
 import { expect, test } from "@playwright/test";
+import * as XLSX from "@e965/xlsx";
 
 import { project, setupProjectSession, setupTeamsAndModels } from "./projetos-fixtures";
+
+function planilhaValida() {
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+    ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI", "Assignees", "Backup"],
+    ["Clock", "Clock_001", "Low", "A", "To-Do", "9.5", "Gerente Ana", "Kaique Pereira"],
+    ["", "Clock_002", "Medium", "B", "InProgress", "", "Gerente Ana", "Kaique Pereira"],
+  ]), "Cases");
+  return Buffer.from(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
+}
 
 test.beforeEach(async ({ page }) => {
   await setupProjectSession(page);
@@ -17,7 +28,8 @@ test("importa planilha e informa o número de Test Cases criados", async ({ page
 
   await page.goto("/projetos");
   await page.getByRole("button", { name: "Novo projeto" }).click();
-  await page.locator('input[type="file"]').setInputFiles({ name: "clock.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from("sheet") });
+  await page.locator('input[type="file"]').setInputFiles({ name: "clock.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: planilhaValida() });
+  await expect(page.getByRole("region", { name: "Prévia dos Test Cases" })).toContainText("Clock_002");
   await page.getByLabel("Time").click();
   await page.getByRole("option", { name: "Plataforma" }).click();
   await page.getByRole("button", { name: "Criar projeto" }).click();
@@ -38,9 +50,11 @@ test("mostra erro por linha e não cria projeto quando a planilha é inválida",
 
   await page.goto("/projetos");
   await page.getByRole("button", { name: "Novo projeto" }).click();
-  await page.locator('input[type="file"]').setInputFiles({ name: "invalid.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from("sheet") });
+  await page.locator('input[type="file"]').setInputFiles({ name: "invalid.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: planilhaValida() });
+  await expect(page.getByRole("region", { name: "Prévia dos Test Cases" })).toContainText("Clock_002");
   await page.getByLabel("Time").click();
   await page.getByRole("option", { name: "Plataforma" }).click();
+  await expect(page.getByRole("button", { name: "Criar projeto" })).toBeEnabled();
   await page.getByRole("button", { name: "Criar projeto" }).click();
 
   await expect(page.getByRole("alert")).toContainText("linha.3.tc_id: TC ID já cadastrado no projeto.");

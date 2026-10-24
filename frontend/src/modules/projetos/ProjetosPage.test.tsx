@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as XLSX from "@e965/xlsx";
 
 import type { PerfilAtual } from "@/core/auth/api";
 import { ProjetosPage } from "./ProjetosPage";
@@ -25,6 +26,15 @@ const perfil: PerfilAtual = {
   perfil_codigo: "ADMIN_UNIDADE", perfil: "Administrador", permissoes: [], times: [], setores_gerenciados: [],
   time_atual_id: null, tem_multiplos_times: false, senha_alteracao_obrigatoria: false, idioma_preferido: "en",
 };
+
+function planilhaFile() {
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+    ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI", "Assignees", "Backup"],
+    ["Clock", "Clock_001", "Low", "A", "To-Do", "9.5", "Daniel Oliveira", "Kaique Pereira"],
+  ]), "Cases");
+  return new File([XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as BlobPart], "casos.xlsx");
+}
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -91,7 +101,9 @@ describe("ProjetosPage", () => {
     await user.click(await screen.findByRole("button", { name: /New project/i }));
     const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]');
     expect(fileInput).not.toBeNull();
-    await user.upload(fileInput!, new File(["planilha"], "casos.xlsx", { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+    await user.upload(fileInput!, planilhaFile());
+    expect(await screen.findByRole("region", { name: "Test Case preview" })).toBeInTheDocument();
+    expect(screen.getByText("Clock_001")).toBeInTheDocument();
     await user.click(screen.getByLabelText("Team"));
     await user.click(await screen.findByRole("option", { name: "Plataforma" }));
     await user.click(screen.getByRole("button", { name: "Create project" }));
@@ -99,17 +111,28 @@ describe("ProjetosPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("linha.3.tc id: TC ID duplicado na planilha.");
   });
 
+  it("bloqueia o envio quando o arquivo não é uma planilha válida", async () => {
+    const user = userEvent.setup();
+    const { container } = renderPage();
+    await user.click(await screen.findByRole("button", { name: /New project/i }));
+    await user.upload(container.querySelector('input[type="file"]')!, new File(["invalid"], "invalid.xlsx"));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("linha.1.app: Coluna obrigatória não encontrada.");
+    expect(screen.getByRole("button", { name: "Create project" })).toBeDisabled();
+    expect(projetosApi.importar).not.toHaveBeenCalled();
+  });
+
   it("mostra quantos casos foram criados ao importar a planilha", async () => {
     vi.mocked(projetosApi.importar).mockResolvedValue({ projeto: { id: "project-1", nome: "Clock 9.5" } as never, quantidade_casos: 4 });
     const user = userEvent.setup();
     const { container } = renderPage();
     await user.click(await screen.findByRole("button", { name: /New project/i }));
-    await user.upload(container.querySelector('input[type="file"]')!, new File(["planilha"], "casos.xlsx"));
+    await user.upload(container.querySelector('input[type="file"]')!, planilhaFile());
     await user.click(screen.getByLabelText("Team"));
     await user.click(await screen.findByRole("option", { name: "Plataforma" }));
     await user.click(screen.getByRole("button", { name: "Create project" }));
 
-    await waitFor(() => expect(projetosApi.importar).toHaveBeenCalledWith(expect.any(File), "team-1", [], "", ""));
+    await waitFor(() => expect(projetosApi.importar).toHaveBeenCalledWith(expect.any(File), "team-1", [], "Clock", "9.5"));
     expect(toastMock.success).toHaveBeenCalledWith(expect.stringContaining("4"));
   });
 });

@@ -15,6 +15,7 @@ import type {
   Projeto,
   StatusProjeto,
 } from "@/modules/projetos/model/projeto";
+import { lerPlanilhaProjeto } from "@/modules/projetos/utils/planilha-projeto";
 import type { PagedResult } from "@/shared/types/paged-result";
 
 const STORAGE_KEY = "sdf.mock.database.v1";
@@ -426,10 +427,7 @@ function createMockProject(input: CriarProjetoInput) {
   requireMockPermission("projetos.gerenciar");
   const team = db.times.find((item) => item.id === input.time_id && item.ativo);
   if (!team) throw new Error("Time não encontrado ou inativo.");
-  const canManageTeam = profile?.codigo === "ADMIN_UNIDADE"
-    || (profile?.codigo === "GERENTE" && db.gerentesSetor.some((manager) => manager.usuario_id === user.id && manager.setor_id === team.setor_id && manager.ativo))
-    || (profile?.codigo === "KP" && db.membrosTime.some((member) => member.usuario_id === user.id && member.time_id === team.id && member.ativo));
-  if (!canManageTeam) throw new Error("O time está fora do seu escopo.");
+  if (!canManageMockTeam(db, user.id, profile?.codigo, team)) throw new Error("O time está fora do seu escopo.");
   const selectedModels = new Set(input.modelos_ids);
   const models = db.modelosDispositivo.filter((model) => selectedModels.has(model.id) && model.unidade_id === db.unidade.id && model.ativo);
   if (models.length !== selectedModels.size) throw new Error("Selecione apenas modelos de dispositivo ativos da unidade.");
@@ -443,6 +441,12 @@ function createMockProject(input: CriarProjetoInput) {
   input.modelos_ids.forEach((modelId) => db.projetoModelos.push({ projeto_id: project.id, modelo_dispositivo_id: modelId }));
   writeDb(db);
   return project;
+}
+
+function canManageMockTeam(db: Database, userId: string, profileCode: string | null | undefined, team: Time) {
+  return profileCode === "ADMIN_UNIDADE"
+    || (profileCode === "GERENTE" && db.gerentesSetor.some((manager) => manager.usuario_id === userId && manager.setor_id === team.setor_id && manager.ativo))
+    || (profileCode === "KP" && db.membrosTime.some((member) => member.usuario_id === userId && member.time_id === team.id && member.ativo));
 }
 
 export const mockProjetosApi = {
@@ -459,11 +463,40 @@ export const mockProjetosApi = {
   criar(input: CriarProjetoInput) {
     return createMockProject(input);
   },
-  importar(file: File, timeId: string, modelIds: string[], app?: string, oneUi?: string) {
-    if (!file.size) throw new Error("A planilha está vazia.");
-    if (!app?.trim() || !oneUi?.trim()) throw new Error("Informe o App e a versão One UI extraídos da planilha.");
-    const projeto = createMockProject({ time_id: timeId, modelos_ids: modelIds, app, one_ui: oneUi });
-    return { projeto, quantidade_casos: 0 };
+  async importar(file: File, timeId: string, modelIds: string[], app?: string, oneUi?: string) {
+    requireMockPermission("projetos.gerenciar");
+    const planilha = await lerPlanilhaProjeto(file);
+    const { db, user, profile } = mockProfile();
+    const time = db.times.find((item) => item.id === timeId && item.ativo);
+    if (!time) throw new Error("Time não encontrado ou inativo.");
+    if (!canManageMockTeam(db, user.id, profile?.codigo, time)) throw new Error("O time está fora do seu escopo.");
+    const selectedModels = new Set(modelIds);
+    const models = db.modelosDispositivo.filter((model) => selectedModels.has(model.id) && model.unidade_id === db.unidade.id && model.ativo);
+    if (models.length !== selectedModels.size) throw new Error("Selecione apenas modelos de dispositivo ativos da unidade.");
+    const membros = db.membrosTime.filter((member) => member.time_id === time.id && member.ativo);
+    const usuarios = db.usuarios.filter((user) => user.ativo);
+    const atribuidos = planilha.casos.map((caso) => {
+      const resolver = (identificador: string, papel: string) => {
+        const found = usuarios.filter((user) => (user.nome.toLocaleLowerCase() === identificador.toLocaleLowerCase() || user.email.toLocaleLowerCase() === identificador.toLocaleLowerCase()) && membros.some((member) => member.usuario_id === user.id));
+        if (found.length !== 1) throw new Error(`Linha ${caso.linha}: ${papel} '${identificador}' não foi encontrado unicamente como membro ativo do time.`);
+        return found[0].id;
+      };
+      return { caso, responsavelId: resolver(caso.responsavel, "Responsável"), backupId: resolver(caso.backup, "Backup") };
+    });
+    if (atribuidos.some(({ responsavelId, backupId }) => responsavelId === backupId)) {
+      const line = atribuidos.find(({ responsavelId, backupId }) => responsavelId === backupId)!.caso.linha;
+      throw new Error(`Linha ${line}: responsável principal e backup devem ser pessoas distintas.`);
+    }
+    const nomeApp = planilha.app || app?.trim() || "";
+    const versao = planilha.one_ui || oneUi?.trim() || "";
+    const now = new Date().toISOString();
+    const projeto: Projeto = { id: id("mock-project"), unidade_id: db.unidade.id, time_id: time.id, app: nomeApp, one_ui: versao, nome: `${nomeApp} ${versao}`, status: "Created", ativo: true, created_at: now, updated_at: now };
+    const casos: CasoTeste[] = atribuidos.map(({ caso, responsavelId, backupId }) => ({ id: id("mock-test-case"), unidade_id: db.unidade.id, projeto_id: projeto.id, tc_id: caso.tc_id, category: caso.category, difficulty: caso.difficulty, situation: caso.situation, responsavel_id: responsavelId, backup_id: backupId, ativo: true, created_at: now, updated_at: now }));
+    db.projetos.unshift(projeto);
+    modelIds.forEach((modelId) => db.projetoModelos.push({ projeto_id: projeto.id, modelo_dispositivo_id: modelId }));
+    db.casosTeste.unshift(...casos);
+    writeDb(db);
+    return { projeto, quantidade_casos: atribuidos.length };
   },
   atualizarStatus(projectId: string, status: StatusProjeto) {
     requireMockPermission("projetos.gerenciar");
