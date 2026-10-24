@@ -43,8 +43,9 @@ ser registradas em ADR antes de serem introduzidas.
 | 015 | Descrição do modelo no seletor de projetos | Concluída |
 | 016 | Upload da planilha no padrão do Figma (progresso, remover com Desfazer, prévia) | Concluída |
 | 017 | Status In Validation do Test Case | Concluída |
+| 022 | Deploy inicial (imagens da API e do frontend, Compose de produção) | Aprovada |
 
-> As duas specs 012 foram criadas em paralelo. Os diretórios e históricos foram preservados nesta integração; a harmonização da numeração está registrada no backlog da spec de perfil Dev.
+> As três specs 012 foram criadas em paralelo. Os diretórios e históricos foram preservados; a harmonização de numeração foi feita ao registrar a spec de deploy como 022.
 
 > O repositório tem a governança (ADRs, skills, templates) pronta. A spec `001-fundacao` cria a
 > infraestrutura comum dos dois lados e a primeira entidade de referência. As demais specs de contexto

@@ -47,3 +47,4 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0033](0033-erros-de-planilha-com-codigo-estruturado.md) | Erros de planilha com código estruturado e texto montado no frontend | Aceito |
 | [0034](0034-paginacao-padrao-vinte-itens.md) | Paginação padrão de 20 itens | Aceito |
 | [0035](0035-commits-diretos-na-dev.md) | Commits diretos na `dev` | Aceito |
+| [0037](0037-deploy-com-imagens-docker-e-compose.md) | Deploy com imagens Docker e Compose de produção | Aceito |
