@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
+import { MemoryRouter, Outlet, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PerfilAtual } from "@/core/auth/api";
@@ -12,7 +12,7 @@ import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/ui/table";
 import { formatarDiaIso, semanaIso } from "@/shared/lib/utils";
 
 vi.mock("./api/projetos.api", () => ({
-  projetosApi: { obter: vi.fn() }, casosTesteApi: { listar: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), transferirParaBackup: vi.fn() },
+  projetosApi: { obter: vi.fn(), listar: vi.fn() }, casosTesteApi: { listar: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), transferirParaBackup: vi.fn() },
   formFactorApi: { listar: vi.fn(), importar: vi.fn() }, modelosDispositivoApi: {},
 }));
 vi.mock("@/modules/times/api/times.api", () => ({ timesApi: { membros: vi.fn() } }));
@@ -31,8 +31,8 @@ const perfil: PerfilAtual = {
 function renderPage(currentProfile = perfil) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   function ContextOutlet() { return <Outlet context={currentProfile} />; }
-  const router = createMemoryRouter([{ path: "/", element: <ContextOutlet />, children: [{ path: "projetos/:projetoId", element: <ProjetoDetalhePage /> }] }], { initialEntries: ["/projetos/project-1"] });
-  return render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
+  // MemoryRouter declarativo: o createMemoryRouter navega com um Request que o jsdom rejeita.
+  return render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/projetos/project-1"]}><Routes><Route element={<ContextOutlet />}><Route path="projetos/:projetoId" element={<ProjetoDetalhePage />} /></Route></Routes></MemoryRouter></QueryClientProvider>);
 }
 
 describe("ProjetoDetalhePage", () => {
@@ -43,6 +43,7 @@ describe("ProjetoDetalhePage", () => {
     HTMLElement.prototype.releasePointerCapture ??= () => undefined;
     HTMLElement.prototype.scrollIntoView ??= () => undefined;
     vi.mocked(projetosApi.obter).mockResolvedValue(projeto);
+    vi.mocked(projetosApi.listar).mockResolvedValue({ items: [projeto], page: 1, page_size: 100, total_count: 1 });
     vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: casos, page: 1, page_size: 10, total_count: 2 });
     vi.mocked(casosTesteApi.criar).mockResolvedValue({ ...casos[0], tc_id: "Clock_003" });
     vi.mocked(casosTesteApi.atualizar).mockResolvedValue(casos[0]);
@@ -107,6 +108,30 @@ describe("ProjetoDetalhePage", () => {
 
     await escolherDia(outroDia);
     expect(screen.queryByRole("row", { name: /Clock_002/ })).not.toBeInTheDocument();
+  });
+
+  it("troca de projeto pelo menu do título quando há outros projetos", async () => {
+    const outro = { ...projeto, id: "project-2", nome: "Gallery 1.0" };
+    vi.mocked(projetosApi.listar).mockResolvedValue({ items: [projeto, outro], page: 1, page_size: 100, total_count: 2 });
+    vi.mocked(projetosApi.obter).mockImplementation(async (id) => (id === outro.id ? outro : projeto));
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Clock 9.5" }));
+    const menu = await screen.findByRole("menu", { name: "Switch project" });
+    expect(within(menu).getByRole("menuitemradio", { name: "Clock 9.5" })).toHaveAttribute("aria-checked", "true");
+    await user.click(within(menu).getByRole("menuitemradio", { name: "Gallery 1.0" }));
+
+    expect(await screen.findByRole("heading", { name: "Gallery 1.0" })).toBeInTheDocument();
+    expect(projetosApi.obter).toHaveBeenLastCalledWith("project-2");
+  });
+
+  it("mostra só o título, sem menu, quando não há outro projeto", async () => {
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "Clock 9.5" })).toBeInTheDocument();
+    await waitFor(() => expect(projetosApi.listar).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: "Clock 9.5" })).not.toBeInTheDocument();
   });
 
   it("permite ao responsável atualizar somente categoria, dificuldade e situação do próprio caso", async () => {

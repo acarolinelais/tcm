@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRightLeft, Check, ClipboardList, Clock, Eye, Pencil, Play, Plus, UploadCloud, X, type LucideIcon } from "lucide-react";
-import { Link, useOutletContext, useParams } from "react-router";
+import { ArrowRightLeft, Check, ClipboardList, Clock, Eye, Pencil, Play, Plus, UploadCloud, X, type LucideIcon } from "lucide-react";
+import { useOutletContext, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import type { PerfilAtual } from "@/core/auth/api";
@@ -15,6 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyState, TableEmptyStatePanel, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
 import { TableRowActions } from "@/shared/ui/table-row-actions";
 import { WeekPicker } from "@/shared/ui/week-picker";
+
+import { ProjetoSwitcher } from "./components/ProjetoSwitcher";
 import { TableColumnFilter } from "@/shared/ui/table-column-filter";
 import { toast } from "@/shared/lib/toast";
 import { formatarDiaIso } from "@/shared/lib/utils";
@@ -44,6 +46,12 @@ function SituationBadgeContent({ situation, label }: { situation: SituacaoCasoTe
 }
 
 export function ProjetoDetalhePage() {
+  const { projetoId = "" } = useParams();
+  // key: ao trocar de projeto, filtros, página e aba voltam ao estado inicial.
+  return <ProjetoDetalhe key={projetoId} />;
+}
+
+function ProjetoDetalhe() {
   const { t } = useTranslation();
   const perfil = useOutletContext<PerfilAtual>();
   const { projetoId = "" } = useParams();
@@ -140,16 +148,15 @@ export function ProjetoDetalhePage() {
   if (!podeConsultar || (!podeConsultarCasos && !podeConsultarFormFactor && !podeImportarSdf)) return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
 
   return <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
-    <header className="mb-5 flex shrink-0 items-center gap-4">
-      <Button asChild variant="outline" size="icon" aria-label={t("backToProjects")}><Link to="/projetos"><ArrowLeft aria-hidden="true" className="size-4" /></Link></Button>
-      <div className="min-w-0 flex-1"><p className="text-sm text-muted-foreground">{t("myProjects")}</p><h1 className="truncate text-2xl font-medium text-primary">{projeto.data?.nome ?? t("loadingProjects")}</h1></div>
+    <header className="mb-4 flex shrink-0 items-center gap-4">
+      <div className="min-w-0 flex-1">{projeto.data ? <ProjetoSwitcher projetoId={projetoId} nome={projeto.data.nome} /> : <h1 className="truncate text-2xl font-medium text-primary">{t("loadingProjects")}</h1>}</div>
       {podeGerenciarCasos && aba === "cases" && <Button onClick={() => { limparCaso(); setCriarAberto(true); }}><Plus aria-hidden="true" className="size-4" />{t("newTestCase", { defaultValue: "Novo Test Case" })}</Button>}
     </header>
 
     {projeto.isLoading ? <p role="status" className="py-8 text-sm text-muted-foreground">{t("loadingProjects")}</p> : projeto.isError || !projeto.data ? <p role="alert" className="py-8 text-sm text-muted-foreground">{t("projectNotFound", { defaultValue: "Projeto não encontrado ou sem acesso." })}</p> : <>
-      <div className="mb-5 flex shrink-0 gap-6 border-b border-border" role="tablist" aria-label={t("projectTabs", { defaultValue: "Abas do projeto" })}>
-        {podeConsultarCasos && <button type="button" role="tab" aria-selected={aba === "cases"} onClick={() => { setAba("cases"); setPagina(1); }} className={`border-b-2 px-1 py-3 text-sm ${aba === "cases" ? "border-primary font-medium text-primary" : "border-transparent text-muted-foreground"}`}>{t("testCases", { defaultValue: "Test Cases" })}</button>}
-        {(podeConsultarFormFactor || podeImportarSdf) && <button type="button" role="tab" aria-selected={aba === "form-factor"} onClick={() => { setAba("form-factor"); setPagina(1); }} className={`border-b-2 px-1 py-3 text-sm ${aba === "form-factor" ? "border-primary font-medium text-primary" : "border-transparent text-muted-foreground"}`}>{t("formFactor", { defaultValue: "Form Factor" })}</button>}
+      <div className="mb-5 flex shrink-0 gap-4 border-b border-border" role="tablist" aria-label={t("projectTabs", { defaultValue: "Abas do projeto" })}>
+        {podeConsultarCasos && <button type="button" role="tab" aria-selected={aba === "cases"} onClick={() => { setAba("cases"); setPagina(1); }} className={`-mb-px border-b-2 px-0.5 pb-1.5 text-lg transition-colors ${aba === "cases" ? "border-primary text-primary" : "border-transparent text-foreground hover:text-primary"}`}>{t("testCasesTab")}</button>}
+        {(podeConsultarFormFactor || podeImportarSdf) && <button type="button" role="tab" aria-selected={aba === "form-factor"} onClick={() => { setAba("form-factor"); setPagina(1); }} className={`-mb-px border-b-2 px-0.5 pb-1.5 text-lg transition-colors ${aba === "form-factor" ? "border-primary text-primary" : "border-transparent text-foreground hover:text-primary"}`}>{t("formFactor", { defaultValue: "Form Factor" })}</button>}
       </div>
 
       {aba === "cases" && podeConsultarCasos ? <TableLayout>
