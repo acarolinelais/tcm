@@ -44,9 +44,22 @@ test("pagina a prévia e informa quantos Test Cases foram criados", async ({ pag
   await expect(page.getByText("Planilha importada com sucesso: 45 Test Cases criados em Clock 9.5.")).toBeVisible();
 });
 
-test("mostra os problemas da planilha agrupados por linha antes de enviar", async ({ page }) => {
+test("mostra os problemas da planilha agrupados por linha e confere as pessoas no servidor", async ({ page }) => {
   let submitted = false;
-  await page.route("**/api/projetos/importar", (route) => { submitted = true; return route.abort(); });
+  await page.route("**/api/projetos/importar", (route) => {
+    submitted = true;
+    return route.fulfill({
+      status: 422,
+      contentType: "application/problem+json",
+      body: JSON.stringify({
+        title: "Planilha inválida.", status: 422, total_linhas: 2,
+        errors: [
+          { campo: "linha.2.tc situation", mensagem: "x", codigo: "valor_invalido", linha: 2, coluna: "TC Situation", valor: "To-Do", parametros: { esperados: ["New", "New Step", "Without Changes"] } },
+          { campo: "linha.2.backup", mensagem: "x", codigo: "pessoa_fora_do_time", linha: 2, coluna: "Backup", valor: "Kaique Pereira" },
+        ],
+      }),
+    });
+  });
 
   await page.goto("/projetos");
   await page.getByRole("button", { name: "Novo projeto" }).click();
@@ -62,8 +75,14 @@ test("mostra os problemas da planilha agrupados por linha antes de enviar", asyn
   await expect(alerta).toContainText('Coluna TC ID: "Clock_001" já aparece na linha 2.');
   await expect(alerta).toContainText("Coluna Category: a célula está vazia.");
   await expect(alerta).not.toContainText("linha.");
-  await expect(page.getByRole("button", { name: "Criar projeto" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Conferir planilha" })).toBeDisabled();
   expect(submitted).toBe(false);
+
+  await page.getByLabel("Time").click();
+  await page.getByRole("option", { name: "Plataforma" }).click();
+  await page.getByRole("button", { name: "Conferir planilha" }).click();
+  await expect(alerta).toContainText('Coluna Backup: "Kaique Pereira" não é membro ativo do time selecionado.');
+  expect(submitted).toBe(true);
 });
 
 test("mostra os problemas de pessoas devolvidos pela API e não cria o projeto", async ({ page }) => {

@@ -1,6 +1,6 @@
 # 011. Projetos e Test Cases: Spec
 
-- **Status:** Em andamento
+- **Status:** Concluída
 - **Data:** 2026-10-23
 - **ADRs relacionados:** 0003, 0004, 0005, 0006, 0008, 0009, 0010, 0013, 0015, 0018, 0021, 0026
 
@@ -54,7 +54,8 @@ Permitir que gerente ou KP crie projetos vinculados a um time e cadastre Test Ca
   - os problemas por linha são agrupados por número de linha, como aparece no editor de planilhas, e cada problema cita a coluna pelo nome do cabeçalho, o valor encontrado (ou que a célula está vazia) e o que era esperado, por exemplo: Coluna TC Situation: "To-Do" não é válido. Use New, New Step ou Without Changes;
   - um TC ID duplicado informa o identificador e a linha em que ele apareceu primeiro, e um responsável ou backup inválido informa o nome lido e que a pessoa precisa ser membro ativo do time;
   - nenhum identificador técnico interno aparece na mensagem;
-  - a lista de linhas com problema é paginada, com 20 linhas por página.
+  - a lista de linhas com problema é paginada, com 20 linhas por página;
+  - com problemas na planilha, a criação fica bloqueada e a ação passa a ser "Conferir planilha": ela verifica também responsável e backup no time escolhido e mostra todos os problemas juntos, sem criar nada.
 - RN-23: Ao concluir a importação da planilha de Test Cases, o sistema exibe uma notificação de sucesso informando que a planilha foi importada, o nome do projeto criado e quantos Test Cases foram criados.
 
 ## Critérios de aceite

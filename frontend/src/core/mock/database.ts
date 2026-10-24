@@ -16,7 +16,7 @@ import type {
   Projeto,
   StatusProjeto,
 } from "@/modules/projetos/model/projeto";
-import { lerPlanilhaProjeto } from "@/modules/projetos/utils/planilha-projeto";
+import { lerPlanilhaProjeto, PlanilhaProjetoError, type PessoasDaLinha, type PlanilhaProjeto } from "@/modules/projetos/utils/planilha-projeto";
 import { ApiError, type ProblemDetailsError } from "@/shared/api/problem-details";
 import type { PagedResult } from "@/shared/types/paged-result";
 
@@ -541,7 +541,22 @@ export const mockProjetosApi = {
   },
   async importar(file: File, timeId: string, modelIds: string[], app?: string, oneUi?: string) {
     requireMockPermission("projetos.gerenciar");
-    const planilha = await lerPlanilhaProjeto(file);
+    // Como o backend (ADR 0033): com a planilha inválida, ainda confere as pessoas e devolve tudo junto.
+    let planilha: PlanilhaProjeto | null = null;
+    let erros: ProblemDetailsError[] = [];
+    let pessoas: PessoasDaLinha[];
+    let colunas: PlanilhaProjeto["colunas"];
+    let totalLinhas: number | undefined;
+    try {
+      planilha = await lerPlanilhaProjeto(file);
+      ({ colunas, totalLinhas } = planilha);
+      pessoas = planilha.casos;
+    } catch (error) {
+      if (!(error instanceof PlanilhaProjetoError)) throw error;
+      erros = error.errors.map((erro) => ({ ...erro, campo: erro.linha ? `linha.${erro.linha}.${erro.coluna}` : "planilha", mensagem: "Valor inválido na planilha." }));
+      if (!error.pessoas.length || !error.colunas) throw new ApiError({ type: "about:blank", title: "Planilha inválida.", status: 422, errors: erros, total_linhas: error.totalLinhas });
+      ({ pessoas, colunas, totalLinhas } = { pessoas: error.pessoas, colunas: error.colunas, totalLinhas: error.totalLinhas });
+    }
     const { db, user, profile } = mockProfile();
     const time = db.times.find((item) => item.id === timeId && item.ativo);
     if (!time) throw new Error("Time não encontrado ou inativo.");
@@ -551,30 +566,35 @@ export const mockProjetosApi = {
     if (models.length !== selectedModels.size) throw new Error("Selecione apenas modelos de dispositivo ativos da unidade.");
     const membros = new Set(db.membrosTime.filter((member) => member.time_id === time.id && member.ativo).map((member) => member.usuario_id));
     const usuarios = db.usuarios.filter((user) => user.ativo);
-    // Mesmo contrato do backend (ADR 0033): coleta os problemas de pessoas de todas as linhas.
-    const erros: ProblemDetailsError[] = [];
     const resolver = (linha: number, campo: "assignees" | "backup", coluna: string, identificador: string) => {
+      if (!identificador) return null; // A célula vazia já foi reportada na leitura.
       const nomeInformado = normalizarNomeMembro(identificador);
       const emailInformado = normalizarEmailMembro(identificador);
       const found = usuarios.filter((user) => normalizarNomeMembro(user.nome) === nomeInformado || normalizarEmailMembro(user.email) === emailInformado);
-      if (found.length === 1 && membros.has(found[0].id)) return found[0].id;
+      const doTime = found.filter((user) => membros.has(user.id));
+      if (doTime.length === 1) return doTime[0].id;
       const codigo = !found.length ? "pessoa_nao_encontrada" : found.length > 1 ? "pessoa_ambigua" : "pessoa_fora_do_time";
-      erros.push({ campo: `linha.${linha}.${campo}`, mensagem: codigo, codigo, linha, coluna, valor: identificador });
+      const mensagem = { pessoa_nao_encontrada: "Pessoa não encontrada na unidade.", pessoa_ambigua: "Mais de uma pessoa corresponde a este valor.", pessoa_fora_do_time: "A pessoa precisa ser membro ativo do time." }[codigo];
+      erros.push({ campo: `linha.${linha}.${campo}`, mensagem, codigo, linha, coluna, valor: identificador });
       return null;
     };
-    const atribuidos = planilha.casos.flatMap((caso) => {
-      const responsavelId = resolver(caso.linha, "assignees", planilha.colunas.assignees, caso.responsavel);
-      const backupId = resolver(caso.linha, "backup", planilha.colunas.backup, caso.backup);
-      if (!responsavelId || !backupId) return [];
+    const atribuicoes = new Map<number, { responsavelId: string; backupId: string }>();
+    for (const linha of pessoas) {
+      const responsavelId = resolver(linha.linha, "assignees", colunas.assignees, linha.responsavel);
+      const backupId = resolver(linha.linha, "backup", colunas.backup, linha.backup);
+      if (!responsavelId || !backupId) continue;
       if (responsavelId === backupId) {
-        erros.push({ campo: `linha.${caso.linha}.backup`, mensagem: "responsavel_igual_backup", codigo: "responsavel_igual_backup", linha: caso.linha, coluna: planilha.colunas.backup, valor: caso.backup });
-        return [];
+        erros.push({ campo: `linha.${linha.linha}.backup`, mensagem: "Responsável principal e backup devem ser pessoas distintas.", codigo: "responsavel_igual_backup", linha: linha.linha, coluna: colunas.backup, valor: linha.backup });
+        continue;
       }
-      return [{ caso, responsavelId, backupId }];
-    });
-    if (erros.length) {
-      throw new ApiError({ type: "about:blank", title: "Planilha inválida.", status: 422, errors: erros, total_linhas: planilha.totalLinhas });
+      atribuicoes.set(linha.linha, { responsavelId, backupId });
     }
+    if (erros.length || !planilha) {
+      // Gerais primeiro; depois por linha (a ordenação é estável dentro da linha).
+      erros.sort((a, b) => (a.linha ?? 0) - (b.linha ?? 0));
+      throw new ApiError({ type: "about:blank", title: "Planilha inválida.", status: 422, errors: erros, total_linhas: totalLinhas });
+    }
+    const atribuidos = planilha.casos.map((caso) => ({ caso, ...atribuicoes.get(caso.linha)! }));
     const nomeApp = planilha.app || app?.trim() || "";
     const versao = planilha.one_ui || oneUi?.trim() || "";
     const now = new Date().toISOString();

@@ -125,4 +125,19 @@ describe("base mock de projetos", () => {
     expect(migrado.schemaVersion).toBe(9);
     expect(migrado.casosTeste[0]).toMatchObject({ situation: "New", status: "InReview" });
   });
+
+  it("com problemas de célula, ainda confere as pessoas e devolve tudo junto", async () => {
+    const file = planilhaFile([
+      ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI", "Assignees", "Backup"],
+      ["Clock", "Clock_001", "Low", "D", "New", "9.5", "Rafael Lima", "Kaique Pereira"],
+    ]);
+
+    const erro = await mockProjetosApi.importar(file, "mock-team-platform", []).catch((error: unknown) => error);
+
+    expect((erro as ApiError).problem.errors?.map(({ linha, coluna, codigo }) => [linha, coluna, codigo])).toEqual([
+      [2, "Category", "valor_invalido"],
+      [2, "Assignees", "pessoa_nao_encontrada"],
+    ]);
+    expect(mockProjetosApi.listar(1, 10).items).toHaveLength(0);
+  });
 });

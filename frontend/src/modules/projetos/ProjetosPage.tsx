@@ -64,6 +64,9 @@ export function ProjetosPage() {
   const [edicaoOneUi, setEdicaoOneUi] = useState("");
   const inputArquivo = useRef<HTMLInputElement>(null);
 
+  // Com problemas na planilha, o envio só confere: o servidor devolve também os problemas de
+  // responsável e backup, que a prévia não consegue verificar, e não cria nada (CA-26, CA-27).
+  const conferirPlanilha = modo === "planilha" && errosImportacao.length > 0;
   const timesDisponiveis = times.data?.items ?? timesVazios;
   const opcoesModelos = useMemo(() => (modelos.data?.items ?? []).map((model) => ({ value: model.id, label: model.nome })), [modelos.data?.items]);
   const nomeTime = useMemo(() => Object.fromEntries([...perfil.times, ...timesDisponiveis].map((time) => [time.id, time.nome])), [perfil.times, timesDisponiveis]);
@@ -226,8 +229,8 @@ export function ProjetosPage() {
               <Button type="button" variant="outline" onClick={downloadTemplate}><Download aria-hidden="true" className="size-4" />{t("downloadTemplate")}</Button>
             </div>
             {lendoArquivo && <p role="status" className="mt-4 text-sm text-muted-foreground">{t("readingSpreadsheet")}</p>}
-            {errosImportacao.length > 0 && <ErrosPlanilha key={arquivo?.name} erros={errosImportacao} totalLinhas={totalLinhasComErro} />}
-            {previa && <PreviaPlanilha key={arquivo?.name} previa={previa} />}
+            {errosImportacao.length > 0 && <ErrosPlanilha erros={errosImportacao} totalLinhas={totalLinhasComErro} />}
+            {previa && <PreviaPlanilha previa={previa} />}
           </section> : <section className="rounded-2xl border border-border bg-white p-5 sm:p-7"><div className="mb-6"><h2 className="text-base font-semibold">{t("projectDetails")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("projectNameFormulaHint")}</p></div><div className="grid gap-5 sm:grid-cols-2"><div><Label htmlFor="project-app">{t("app")}</Label><Input id="project-app" value={app} onChange={(event) => setApp(event.target.value)} className="mt-2" placeholder={t("appPlaceholder")} maxLength={80} /></div><div><Label htmlFor="project-oneui">{t("oneUi")}</Label><Input id="project-oneui" value={oneUi} onChange={(event) => setOneUi(event.target.value)} className="mt-2" placeholder="9.5" maxLength={40} /></div></div><p className="mt-3 text-sm text-muted-foreground">{app.trim() && oneUi.trim() ? `${t("projectNamePreview")}: ${app.trim()} ${oneUi.trim()}` : t("projectNamePreviewHint")}</p></section>}
 
           {(modo === "manual" || arquivo) && <section className="mt-7 border-t border-border pt-6">
@@ -246,7 +249,7 @@ export function ProjetosPage() {
           </section>}
         </div>
       </div>
-      <footer className="mt-6 flex shrink-0 items-center justify-end gap-4 border-t border-border pt-5"><div className="flex gap-2"><Button variant="outline" onClick={() => { setCriacaoAberta(false); limparFormulario(); }}>{t("cancel")}</Button><Button disabled={queryMutation.isPending || lendoArquivo || !timeId || (modo === "manual" ? !app.trim() || !oneUi.trim() : !arquivo || !previa || errosImportacao.length > 0)} onClick={() => queryMutation.mutate()}>{queryMutation.isPending ? t("saving") : t("createProject")}</Button></div></footer>
+      <footer className="mt-6 flex shrink-0 items-center justify-end gap-4 border-t border-border pt-5"><div className="flex gap-2"><Button variant="outline" onClick={() => { setCriacaoAberta(false); limparFormulario(); }}>{t("cancel")}</Button><Button disabled={queryMutation.isPending || lendoArquivo || !timeId || (modo === "manual" ? !app.trim() || !oneUi.trim() : !arquivo)} onClick={() => queryMutation.mutate()}>{queryMutation.isPending ? t("saving") : conferirPlanilha ? t("checkSpreadsheet") : t("createProject")}</Button></div></footer>
     </>}
     <Dialog open={Boolean(projetoEditando)} onOpenChange={(open) => { if (!open && !editarProjeto.isPending) setProjetoEditando(null); }}>
       <DrawerContent>

@@ -36,9 +36,9 @@ describe("mensagens de erro da planilha", () => {
 
     expect(erros).toEqual([
       { codigo: "pessoa_fora_do_time", linha: 3, coluna: "Assignees", valor: "Rafael", parametros: undefined },
-      { codigo: null, mensagem: "Campo obrigatório.", linha: null, coluna: null, valor: null, parametros: undefined },
+      { codigo: null, mensagem: "time_id: Campo obrigatório.", linha: null, coluna: null, valor: null, parametros: undefined },
     ]);
-    expect(formatarErroPlanilha(i18n.t, erros[1])).toBe("Campo obrigatório.");
+    expect(formatarErroPlanilha(i18n.t, erros[1])).toBe("time_id: Campo obrigatório.");
   });
 
   it("separa problemas gerais e agrupa os demais por linha em ordem", () => {

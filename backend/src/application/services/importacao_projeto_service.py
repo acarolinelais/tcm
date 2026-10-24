@@ -9,6 +9,7 @@ from src.application.schemas.projeto import to_response
 from src.application.services.projeto_service import ProjetoServiceImpl
 from src.application.validators.importacao_projeto import (
     ErroImportacaoPlanilha,
+    PessoasDaLinha,
     PlanilhaProjetoInvalida,
     validar_planilha_projeto,
 )
@@ -63,7 +64,6 @@ class ImportacaoProjetoServiceImpl:
         ):
             raise ForbiddenException("Você não tem permissão para importar projetos.")
 
-        planilha = validar_planilha_projeto(conteudo)
         time = await self._time_repo.obter_por_id(usuario_atual.unidade_id, request.time_id)
         if time is None:
             raise NotFoundException("Time não encontrado.")
@@ -78,6 +78,19 @@ class ImportacaoProjetoServiceImpl:
         if len(modelos) != len(modelo_ids):
             raise ConflictException("Todos os modelos devem existir e estar ativos nesta unidade.")
 
+        # Os problemas das células e os de pessoas voltam juntos, numa única resposta (ADR 0033).
+        try:
+            planilha = validar_planilha_projeto(conteudo)
+            erros: list[ErroImportacaoPlanilha] = []
+            pessoas = [PessoasDaLinha(c.linha, c.responsavel, c.backup) for c in planilha.casos]
+            colunas, total_linhas = planilha.colunas, planilha.total_linhas
+        except PlanilhaProjetoInvalida as invalida:
+            if not invalida.pessoas:
+                raise
+            planilha = None
+            erros, pessoas = list(invalida.erros), list(invalida.pessoas)
+            colunas, total_linhas = invalida.colunas, invalida.total_linhas
+
         usuarios = await self._usuario_repo.listar_ativos_da_unidade(usuario_atual.unidade_id)
         por_identificador: dict[str, dict[UUID, Usuario]] = {}
         for usuario in usuarios:
@@ -88,13 +101,16 @@ class ImportacaoProjetoServiceImpl:
             membro.usuario_id
             for membro in await self._membro_repo.listar_por_time(time.unidade_id, time.id)
         }
-        atribuicoes = []
-        erros: list[ErroImportacaoPlanilha] = []
+        atribuicoes: dict[int, tuple[UUID, UUID]] = {}
 
         def pessoa(numero: int, campo: str, identificador: str) -> Usuario | None:
+            if not identificador:
+                return None  # A célula vazia já foi reportada pelo validador.
             encontrados = _usuarios_correspondentes(por_identificador, identificador)
-            if len(encontrados) == 1 and encontrados[0].id in membros_ativos:
-                return encontrados[0]
+            # Homônimos se resolvem quando só um deles é membro ativo do time.
+            do_time = [usuario for usuario in encontrados if usuario.id in membros_ativos]
+            if len(do_time) == 1:
+                return do_time[0]
             if not encontrados:
                 codigo, mensagem = "pessoa_nao_encontrada", "Pessoa não encontrada na unidade."
             elif len(encontrados) > 1:
@@ -106,12 +122,12 @@ class ImportacaoProjetoServiceImpl:
                 )
             erros.append(
                 ErroImportacaoPlanilha(
-                    numero, campo, mensagem, codigo, planilha.colunas[campo], identificador
+                    numero, campo, mensagem, codigo, colunas[campo], identificador
                 )
             )
             return None
 
-        for linha in planilha.casos:
+        for linha in pessoas:
             responsavel = pessoa(linha.linha, "assignees", linha.responsavel)
             backup = pessoa(linha.linha, "backup", linha.backup)
             if responsavel is not None and backup is not None:
@@ -122,18 +138,21 @@ class ImportacaoProjetoServiceImpl:
                             "backup",
                             "Responsável principal e backup devem ser pessoas distintas.",
                             "responsavel_igual_backup",
-                            planilha.colunas["backup"],
+                            colunas["backup"],
                             linha.backup,
                         )
                     )
                 else:
-                    atribuicoes.append((linha, responsavel.id, backup.id))
-        if erros:
-            raise PlanilhaProjetoInvalida(tuple(erros), planilha.total_linhas)
+                    atribuicoes[linha.linha] = (responsavel.id, backup.id)
+        if erros or planilha is None:
+            # Gerais primeiro; depois por linha, como a pessoa lê a planilha.
+            erros.sort(key=lambda erro: (erro.linha is not None, erro.linha or 0))
+            raise PlanilhaProjetoInvalida(tuple(erros), total_linhas)
 
         projeto = Projeto(usuario_atual.unidade_id, time.id, planilha.app, planilha.one_ui)
         casos = []
-        for linha, responsavel_id, backup_id in atribuicoes:
+        for linha in planilha.casos:
+            responsavel_id, backup_id = atribuicoes[linha.linha]
             casos.append(
                 CasoTeste(
                     usuario_atual.unidade_id,

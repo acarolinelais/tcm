@@ -10,6 +10,12 @@ import type { PlanilhaProjeto } from "../utils/planilha-projeto";
 export function PreviaPlanilha({ previa }: { previa: PlanilhaProjeto }) {
   const { t } = useTranslation();
   const [pagina, setPagina] = useState(1);
+  // Reler o arquivo (mesmo com o mesmo nome) volta para a primeira página.
+  const [previaAnterior, setPreviaAnterior] = useState(previa);
+  if (previaAnterior !== previa) {
+    setPreviaAnterior(previa);
+    setPagina(1);
+  }
   const [tamanho, setTamanho] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const casosDaPagina = previa.casos.slice((pagina - 1) * tamanho, pagina * tamanho);
 

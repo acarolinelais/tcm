@@ -23,8 +23,15 @@ export interface PlanilhaProjeto {
   colunas: Record<CabecalhoObrigatorio, string>;
 }
 
+export interface PessoasDaLinha {
+  linha: number;
+  responsavel: string;
+  backup: string;
+}
+
 export class PlanilhaProjetoError extends Error {
-  constructor(readonly errors: ErroPlanilha[], readonly totalLinhas?: number) {
+  /** `pessoas` e `colunas` permitem conferir responsável e backup mesmo com a planilha inválida. */
+  constructor(readonly errors: ErroPlanilha[], readonly totalLinhas?: number, readonly pessoas: PessoasDaLinha[] = [], readonly colunas?: PlanilhaProjeto["colunas"]) {
     super("A planilha possui dados inválidos.");
     this.name = "PlanilhaProjetoError";
   }
@@ -54,8 +61,8 @@ function geral(codigo: ErroPlanilha["codigo"], coluna: string | null = null): Er
   return { codigo, linha: null, coluna, valor: null };
 }
 
-function falha(errors: ErroPlanilha[], totalLinhas?: number): never {
-  throw new PlanilhaProjetoError(errors, totalLinhas);
+function falha(errors: ErroPlanilha[], totalLinhas?: number, pessoas?: PessoasDaLinha[], colunas?: PlanilhaProjeto["colunas"]): never {
+  throw new PlanilhaProjetoError(errors, totalLinhas, pessoas, colunas);
 }
 
 function lerBytes(file: File): Promise<ArrayBuffer> {
@@ -125,6 +132,7 @@ export async function lerPlanilhaProjeto(file: File): Promise<PlanilhaProjeto> {
   let app = "";
   let oneUi = "";
   let totalLinhas = 0;
+  const pessoas: PessoasDaLinha[] = [];
   rows.slice(1).forEach((row, index) => {
     const linha = index + 2;
     const get = (name: CabecalhoObrigatorio) => texto(row[indexes.get(name)!]);
@@ -152,6 +160,7 @@ export async function lerPlanilhaProjeto(file: File): Promise<PlanilhaProjeto> {
     const situation = opcao<SituacaoCasoTeste>("tc situation");
     const responsavel = get("assignees");
     const backup = get("backup");
+    pessoas.push({ linha, responsavel, backup });
     if (!responsavel) erro("assignees", "valor_obrigatorio");
     if (!backup) erro("backup", "valor_obrigatorio");
 
@@ -165,6 +174,6 @@ export async function lerPlanilhaProjeto(file: File): Promise<PlanilhaProjeto> {
     if (!app) errors.push(geral("app_ausente", colunas.app));
     if (!oneUi) errors.push(geral("one_ui_ausente", colunas["one ui"]));
   }
-  if (errors.length) return falha(errors, totalLinhas);
+  if (errors.length) return falha(errors, totalLinhas, pessoas, colunas as PlanilhaProjeto["colunas"]);
   return { app, one_ui: oneUi, casos, totalLinhas, colunas: colunas as PlanilhaProjeto["colunas"] };
 }

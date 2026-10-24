@@ -207,7 +207,8 @@ describe("ProjetoDetalhePage", () => {
       await user.click(selects[5]);
       await user.click(await screen.findByRole("option", { name: /Kaique Pereira/ }));
       await user.click(within(drawer).getByRole("button", { name: "Save" }));
-      await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-2", expect.objectContaining({ situation: "New Step", status: "Pass", responsavel_id: "user-1", backup_id: "backup-1" })));
+      // Só os campos alterados vão na requisição, para não desfazer mudanças de outra pessoa.
+      await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-2", { responsavel_id: "user-1", backup_id: "backup-1" }));
       unmount();
       vi.mocked(casosTesteApi.atualizar).mockClear();
     }

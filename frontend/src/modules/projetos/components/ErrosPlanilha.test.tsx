@@ -46,4 +46,16 @@ describe("ErrosPlanilha", () => {
     expect(screen.getByRole("heading", { name: "Linha 2" })).toBeInTheDocument();
     await i18n.changeLanguage("en");
   });
+
+  it("volta para a primeira página quando chega uma lista de erros nova", async () => {
+    await i18n.changeLanguage("en");
+    const user = userEvent.setup();
+    const total = DEFAULT_TABLE_PAGE_SIZE + 5;
+    const { rerender } = render(<ErrosPlanilha totalLinhas={total} erros={Array.from({ length: total }, (_, index) => linhaInvalida(index + 2)).flat()} />);
+    await user.click(screen.getByRole("button", { name: "Last page" }));
+
+    rerender(<ErrosPlanilha totalLinhas={total} erros={linhaInvalida(7)} />);
+
+    expect(screen.getByRole("heading", { name: "Row 7" })).toBeInTheDocument();
+  });
 });

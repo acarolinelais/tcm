@@ -41,12 +41,27 @@ class ErroImportacaoPlanilha:
     parametros: dict[str, object] | None = None
 
 
+@dataclass(frozen=True)
+class PessoasDaLinha:
+    linha: int
+    responsavel: str
+    backup: str
+
+
 class PlanilhaProjetoInvalida(ValueError):
     def __init__(
-        self, erros: tuple[ErroImportacaoPlanilha, ...], total_linhas: int | None = None
+        self,
+        erros: tuple[ErroImportacaoPlanilha, ...],
+        total_linhas: int | None = None,
+        pessoas: tuple[PessoasDaLinha, ...] = (),
+        colunas: dict[str, str] | None = None,
     ) -> None:
         self.erros = erros
         self.total_linhas = total_linhas
+        # Responsável e backup de cada linha lida, para o service validá-los mesmo com outros
+        # problemas na planilha e devolver tudo de uma vez (ADR 0033).
+        self.pessoas = pessoas
+        self.colunas = colunas or {}
         super().__init__("A planilha possui dados inválidos.")
 
 
@@ -156,6 +171,7 @@ def validar_planilha_projeto(conteudo: bytes) -> PlanilhaProjetoValidada:
     casos: list[LinhaCasoTesteImportada] = []
     primeira_linha_por_tc_id: dict[str, int] = {}
     total_linhas = 0
+    pessoas: list[PessoasDaLinha] = []
     for numero_linha, valores in enumerate(linhas, start=2):
         if not any(_texto(valor) for valor in valores):
             continue
@@ -192,6 +208,7 @@ def validar_planilha_projeto(conteudo: bytes) -> PlanilhaProjetoValidada:
         situation = opcao(numero_linha, "tc situation", campos["tc situation"], SituacaoCasoTeste)
         responsavel = campos["assignees"]
         backup = campos["backup"]
+        pessoas.append(PessoasDaLinha(numero_linha, responsavel, backup))
         if not responsavel:
             erros.append(
                 erro_linha(
@@ -229,7 +246,7 @@ def validar_planilha_projeto(conteudo: bytes) -> PlanilhaProjetoValidada:
                 )
             )
     if erros:
-        raise PlanilhaProjetoInvalida(tuple(erros), total_linhas)
+        raise PlanilhaProjetoInvalida(tuple(erros), total_linhas, tuple(pessoas), colunas)
     return PlanilhaProjetoValidada(
         valores_app[0], valores_one_ui[0], tuple(casos), total_linhas, colunas
     )

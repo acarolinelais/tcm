@@ -43,6 +43,11 @@ function StatusBadgeContent({ status, label }: { status: StatusCasoTeste; label:
   </span>;
 }
 
+/** Só os campos que mudaram: reenviar o resto desfaria edições feitas por outra pessoa enquanto o drawer estava aberto. */
+function camposAlterados(original: CasoTeste, editado: Pick<CasoTeste, "category" | "difficulty" | "situation" | "status" | "responsavel_id" | "backup_id">) {
+  return Object.fromEntries(Object.entries(editado).filter(([campo, valor]) => original[campo as keyof typeof editado] !== valor)) as Partial<typeof editado>;
+}
+
 export function ProjetoDetalhePage() {
   const { projetoId = "" } = useParams();
   // key: ao trocar de projeto, filtros, página e aba voltam ao estado inicial.
@@ -87,7 +92,7 @@ function ProjetoDetalhe() {
 
   const saveCase = useMutation({
     mutationFn: () => editar
-      ? casosTesteApi.atualizar(editar.id, { category, difficulty, situation: situation || undefined, status, responsavel_id: responsavelId, backup_id: backupId || null })
+      ? casosTesteApi.atualizar(editar.id, camposAlterados(editar, { category, difficulty, situation: situation || editar.situation, status, responsavel_id: responsavelId, backup_id: backupId || null }))
       : casosTesteApi.criar(projetoId, { tc_id: tcId.trim(), category, difficulty, situation: situation as SituacaoCasoTeste, responsavel_id: responsavelId, backup_id: backupId }),
     onSuccess: async () => { await client.invalidateQueries({ queryKey: ["projetos", projetoId, "test-cases"] }); setCriarAberto(false); setEditar(null); toast.success(t("caseSaveSuccess", { defaultValue: "Test Case salvo." })); },
     onError: (error) => toast.error(error instanceof Error ? error.message : t("caseSaveError", { defaultValue: "Não foi possível salvar o Test Case." })),

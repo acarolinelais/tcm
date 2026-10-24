@@ -133,4 +133,4 @@ Cada item de `errors[]` mantém `campo` e `mensagem` (ADR 0006) e ganha os membr
 - Planilhas grandes podem exceder a memória ou o tempo de uma requisição; limite de arquivo/linhas deve ser definido com o formato real e validado antes da persistência.
 - Renomear `situation` para `status` e reaproveitar `situation` com outro significado quebra o contrato atual da API; o único consumidor é o frontend deste repositório, atualizado no mesmo bloco. A migration é reversível (downgrade descarta `situation` e renomeia `status` de volta).
 - Validação duplicada no cliente (prévia) e no servidor (importação): os dois precisam emitir os mesmos códigos; os testes de ambos usam os mesmos casos de planilha.
-- Problemas de responsável/backup só aparecem depois de clicar em criar, porque a prévia não consulta os membros do time; a lista de erros mostra o mesmo formato nos dois momentos.
+- A prévia não consulta os membros do time: com problemas na planilha, o botão vira "Conferir planilha" e o servidor devolve os problemas de célula e de pessoas juntos (o service confere as pessoas mesmo com a planilha inválida), sem criar nada.

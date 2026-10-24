@@ -15,6 +15,12 @@ interface ErrosPlanilhaProps {
 export function ErrosPlanilha({ erros, totalLinhas }: ErrosPlanilhaProps) {
   const { t } = useTranslation();
   const [pagina, setPagina] = useState(1);
+  // Uma lista nova (outra leitura ou outro 422) volta para a primeira página.
+  const [errosAnteriores, setErrosAnteriores] = useState(erros);
+  if (errosAnteriores !== erros) {
+    setErrosAnteriores(erros);
+    setPagina(1);
+  }
   const [tamanho, setTamanho] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const { gerais, linhas } = useMemo(() => agruparErrosPlanilha(erros), [erros]);
   const linhasDaPagina = linhas.slice((pagina - 1) * tamanho, pagina * tamanho);

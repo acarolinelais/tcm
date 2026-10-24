@@ -15,7 +15,8 @@ export function errosDaApi(problem: ProblemDetails): ErroPlanilhaExibivel[] {
     const base = { linha: erro.linha ?? null, coluna: erro.coluna ?? null, valor: erro.valor ?? null, parametros: erro.parametros as ErroPlanilha["parametros"] };
     return erro.codigo && codigos.has(erro.codigo)
       ? { ...base, codigo: erro.codigo as CodigoErroPlanilha }
-      : { ...base, codigo: null, mensagem: erro.mensagem };
+      // Sem código conhecido (ex.: validação de outro campo do formulário), o campo ainda identifica o problema.
+      : { ...base, codigo: null, mensagem: erro.campo ? `${erro.campo}: ${erro.mensagem}` : erro.mensagem };
   });
 }
 

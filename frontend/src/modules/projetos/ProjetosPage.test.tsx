@@ -125,8 +125,35 @@ describe("ProjetosPage", () => {
     expect(alerta).toHaveTextContent("Whole spreadsheet");
     expect(alerta).toHaveTextContent("The header is missing the TC Situation column.");
     expect(alerta).not.toHaveTextContent("linha.1");
-    expect(screen.getByRole("button", { name: "Create project" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Check spreadsheet" })).toBeDisabled();
     expect(projetosApi.importar).not.toHaveBeenCalled();
+  });
+
+  it("com problemas na prévia, confere a planilha no servidor e mostra também os problemas de pessoas", async () => {
+    vi.mocked(projetosApi.importar).mockRejectedValue(new ApiError({
+      type: "about:blank", title: "Planilha inválida.", status: 422, total_linhas: 1,
+      errors: [
+        { campo: "linha.2.tc situation", mensagem: "x", codigo: "valor_invalido", linha: 2, coluna: "TC Situation", valor: "To-Do", parametros: { esperados: ["New", "New Step", "Without Changes"] } },
+        { campo: "linha.2.assignees", mensagem: "x", codigo: "pessoa_fora_do_time", linha: 2, coluna: "Assignees", valor: "Daniel Oliveira" },
+      ],
+    }));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+      ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI", "Assignees", "Backup"],
+      ["Clock", "Clock_001", "Low", "A", "To-Do", "9.5", "Daniel Oliveira", "Kaique Pereira"],
+    ]), "Cases");
+    const user = userEvent.setup();
+    const { container } = renderPage();
+    await user.click(await screen.findByRole("button", { name: /New project/i }));
+    await user.upload(container.querySelector('input[type="file"]')!, new File([XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as BlobPart], "casos.xlsx"));
+    expect(await screen.findByRole("alert")).not.toHaveTextContent("Assignees column");
+    await user.click(screen.getByLabelText("Team"));
+    await user.click(await screen.findByRole("option", { name: "Plataforma" }));
+    await user.click(screen.getByRole("button", { name: "Check spreadsheet" }));
+
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent('Assignees column: "Daniel Oliveira" isn\'t an active member of the selected team.'));
+    expect(screen.getByRole("alert")).toHaveTextContent('TC Situation column: "To-Do" isn\'t valid.');
+    expect(toastMock.success).not.toHaveBeenCalled();
   });
 
   it("mostra quantos casos foram criados ao importar a planilha", async () => {
