@@ -42,6 +42,27 @@ describe("base mock de projetos", () => {
     expect(() => mockCasosTesteApi.atualizar(mockCasosTesteApi.listar(projects[1].id, 1, 20).items[0].id, { status: "Pass" })).toThrow();
   });
 
+  it("filtra a semana pela data final antes de paginar e exclui TCs sem data final", () => {
+    const project = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: [] });
+    for (const tc_id of ["Principal", "Backup", "Anterior", "Pendente"]) {
+      mockCasosTesteApi.criar(project.id, { tc_id, category: "A", difficulty: "Low", situation: "New", responsavel_id: tc_id === "Backup" ? "mock-user-kp" : "mock-user-dev", backup_id: tc_id === "Backup" ? "mock-user-dev" : "mock-user-kp" });
+    }
+    const db = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+    for (const item of db.casosTeste) {
+      item.created_at = "2026-03-24T12:00:00Z";
+      item.updated_at = item.tc_id === "Anterior" ? "2026-03-16T12:00:00Z" : null;
+      item.status = item.tc_id === "Pendente" ? "To-Do" : "Pass";
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+    entrar("daniel.oliveira@example.com");
+    const first = mockCasosTesteApi.listar(project.id, 1, 1, { associadosAMim: true, semana: "2026-W13" });
+    const second = mockCasosTesteApi.listar(project.id, 2, 1, { associadosAMim: true, semana: "2026-W13" });
+    expect(first.total_count).toBe(2);
+    expect(second.total_count).toBe(2);
+    expect([first.items[0].tc_id, second.items[0].tc_id]).toEqual(["Principal", "Backup"]);
+    expect(mockCasosTesteApi.listar(project.id, 1, 20).total_count).toBe(4);
+  });
+
   it("cria projetos com nome derivado e mantém o time e modelos informados", () => {
     const project = mockProjetosApi.criar({
       time_id: "mock-team-platform",

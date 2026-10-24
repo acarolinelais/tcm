@@ -88,6 +88,13 @@ describe("APIs de projetos", () => {
 describe("consultas pessoais", () => {
   beforeEach(() => vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ items: [] }), { status: 200 }))));
   afterEach(() => vi.unstubAllGlobals());
+  it("envia semana e fuso do navegador junto ao filtro pessoal", async () => {
+    await casosTesteApi.listar("p", 1, 20, { associadosAMim: true, semana: "2026-W13" });
+    const url = new URL(vi.mocked(fetch).mock.calls[0][0] as string, "http://localhost");
+    expect(url.searchParams.get("semana")).toBe("2026-W13");
+    expect(url.searchParams.get("fuso_horario")).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    expect(url.searchParams.get("associados_a_mim")).toBe("true");
+  });
   it("transmite filtro pessoal e paginação de projetos", async () => {
     await projetosApi.listar(2, 1, true);
     expect(fetch).toHaveBeenCalledWith("/api/projetos?page=2&page_size=1&associados_a_mim=true", expect.any(Object));

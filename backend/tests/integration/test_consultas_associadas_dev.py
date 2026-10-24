@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
 from src.infrastructure.data.models.perfil_model import PerfilModel
@@ -300,3 +301,57 @@ async def test_casos_de_outra_unidade_nao_sao_revelados(contexto):
 
     assert pagina.items == []
     assert pagina.total_count == 0
+
+
+async def test_casos_filtram_semana_antes_da_paginacao_e_respeitam_limites(contexto):
+    c = contexto
+    projeto = await c.projeto()
+    inicio, fim = datetime(2026, 3, 23, 4), datetime(2026, 3, 30, 4)
+    dentro = []
+    for indice, (status, data) in enumerate(
+        [
+            ("Pass", inicio),
+            ("Pass", fim - timedelta(seconds=1)),
+            ("Pass", inicio - timedelta(seconds=1)),
+            ("Pass", fim),
+            ("To-Do", inicio),
+        ]
+    ):
+        caso = await c.caso(projeto)
+        await c.session.execute(
+            update(CasoTesteModel)
+            .where(CasoTesteModel.id == caso.id)
+            .values(
+                tc_id=f"Clock_{indice}",
+                status=status,
+                created_at=data,
+                updated_at=None,
+            )
+        )
+        if indice < 2:
+            dentro.append(caso.id)
+    # Caso de colega na mesma semana não pode ampliar a consulta pessoal.
+    colega = await c.caso(projeto, c.colega_id, c.terceiro_id)
+    await c.session.execute(
+        update(CasoTesteModel)
+        .where(CasoTesteModel.id == colega.id)
+        .values(
+            status="Pass",
+            updated_at=inicio,
+        )
+    )
+    paginas = [
+        await c.casos.listar_por_projeto(
+            c.unidade_id,
+            projeto.id,
+            n,
+            1,
+            associado_usuario_id=c.dev_id,
+            data_final_inicio=inicio,
+            data_final_fim=fim,
+        )
+        for n in (1, 2, 3)
+    ]
+    assert [p.items[0].id for p in paginas[:2]] == dentro
+    assert all(p.total_count == 2 for p in paginas)
+    assert paginas[2].items == []

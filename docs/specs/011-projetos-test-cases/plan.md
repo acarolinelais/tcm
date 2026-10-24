@@ -125,6 +125,14 @@ Cada item de `errors[]` mantém `campo` e `mensagem` (ADR 0006) e ganha os membr
 - `core/i18n/resources.ts` — rótulos, opções, toast e um texto por código de erro em en, pt e ko.
 - `e2e/projetos-importacao.spec.ts`, `e2e/projetos.spec.ts` e `e2e/projetos-fixtures.ts` — fixtures com TC Situation e cenários de prévia paginada e erros.
 
+## Manutenção de filtros de semana — 2026-10-24
+
+- O seletor de semana fica no canto superior direito do cabeçalho do card nas duas abas, com estado independente e retorno à página 1. O campo de filtro One UI foi removido da interface de Form Factor; a coluna e o contrato existente da API permanecem.
+- `GET /api/projetos/{id}/test-cases` aceita `semana=YYYY-Www` e `fuso_horario` IANA (padrão UTC), enviados pelo cliente somente quando o filtro está ativo. O service valida a semana/fuso e converte os limites locais para UTC; o repositório aplica `status = Pass` e `coalesce(updated_at, created_at) >= início AND < fim` antes de contar/paginar, junto do escopo e dos demais filtros. Sem semana, o comportamento é preservado.
+- Timestamps de Test Cases são serializados com UTC explícito, pois o banco atual os armazena sem informação de fuso. Isso mantém a Data final apresentada no navegador alinhada aos limites usados na consulta. Não há migration.
+- O parser de semana do Form Factor foi extraído para `application/validators/semana.py`, mantendo sua assinatura importável e mensagens de erro existentes; o novo argumento de fuso é usado por Test Cases. Mock e cache incluem o novo filtro. A consulta de associação do dev não usa a semana, para não confundir ausência de resultados com perda de associação.
+- CA-31: integração PostgreSQL (limites inclusivo/exclusivo, contagem, escopo e paginação), cliente/mock e jornada real do dev; CA-32: validação de semana/fuso e contrato HTTP; CA-33: teste de componente de alternância e limpeza. Cobrir também transição de horário de verão e serialização UTC.
+
 ## Riscos e decisões pendentes
 
 - A spec ainda não define se o relatório SDF pode conter mais de uma execução do mesmo TC no mesmo arquivo nem a política para reimportar o mesmo arquivo; o modelo preserva cada importação como lote distinto, sem deduplicação implícita.

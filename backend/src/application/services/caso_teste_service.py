@@ -6,6 +6,7 @@ from src.application.schemas.caso_teste import (
     CriarCasoTesteRequest,
     to_response,
 )
+from src.application.validators.semana import intervalo_semana_iso
 from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
@@ -56,9 +57,12 @@ class CasoTesteServiceImpl:
         page_size: int,
         responsavel_id: UUID | None = None,
         associados_a_mim: bool = False,
+        semana: str | None = None,
+        fuso_horario: str = "UTC",
     ) -> PagedResult[CasoTesteResponse]:
         self._exigir_permissao(usuario_atual, "test_cases.consultar")
         await self._obter_projeto_visivel(usuario_atual, projeto_id)
+        inicio, fim = intervalo_semana_iso(semana, fuso_horario)
         casos = await self._caso_repo.listar_por_projeto(
             usuario_atual.unidade_id,
             projeto_id,
@@ -67,6 +71,7 @@ class CasoTesteServiceImpl:
             responsavel_id,
             priorizar_responsavel_id=usuario_atual.id,
             **({"associado_usuario_id": usuario_atual.id} if associados_a_mim else {}),
+            **({"data_final_inicio": inicio, "data_final_fim": fim} if semana else {}),
         )
         return casos.map(to_response)
 

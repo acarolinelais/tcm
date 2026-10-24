@@ -668,13 +668,14 @@ function getMockCase(db: Database, caseId: string) {
 }
 
 export const mockCasosTesteApi = {
-  listar(projectId: string, pageNumber: number, pageSize: number, filtros: { responsavelId?: string; associadosAMim?: boolean } = {}) {
+  listar(projectId: string, pageNumber: number, pageSize: number, filtros: { responsavelId?: string; associadosAMim?: boolean; semana?: string } = {}) {
     requireMockPermission("test_cases.consultar");
     const { db, user } = mockProfile();
     if (!getMockProject(db, projectId).ativo) throw new Error("Projeto não encontrado.");
     const casosDoProjeto = db.casosTeste.filter((item) => item.projeto_id === projectId && item.ativo
       && item.unidade_id === db.unidade.id
       && (!filtros.associadosAMim || item.responsavel_id === user.id || item.backup_id === user.id)
+      && (!filtros.semana || (item.status === "Pass" && Boolean(item.updated_at ?? item.created_at) && semanaIso((item.updated_at ?? item.created_at)!) === filtros.semana))
       && (!filtros.responsavelId || item.responsavel_id === filtros.responsavelId));
     // Igual à API: os casos em que o usuário é o responsável principal vêm primeiro.
     const prioridade = (item: (typeof casosDoProjeto)[number]) => (item.responsavel_id === user.id ? 0 : 1);

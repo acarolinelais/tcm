@@ -23,6 +23,8 @@ class CasoTesteService(Protocol):
         page_size: int,
         responsavel_id: UUID | None = None,
         associados_a_mim: bool = False,
+        semana: str | None = None,
+        fuso_horario: str = "UTC",
     ) -> PagedResult[CasoTesteResponse]: ...
 
     async def criar(

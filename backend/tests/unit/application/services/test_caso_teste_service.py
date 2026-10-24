@@ -104,6 +104,31 @@ async def test_lista_pessoal_inclui_identidade_autenticada(contexto):
     )
 
 
+async def test_lista_por_semana_combina_data_final_e_associacao(contexto):
+    service, casos, _, _, _, _, _, admin, projeto, _ = contexto
+    casos.listar_por_projeto.return_value = PagedResult([], 1, 10, 0)
+    await service.listar(
+        admin,
+        projeto.id,
+        1,
+        10,
+        associados_a_mim=True,
+        semana="2026-W13",
+        fuso_horario="America/Manaus",
+    )
+    casos.listar_por_projeto.assert_awaited_once_with(
+        admin.unidade_id,
+        projeto.id,
+        1,
+        10,
+        None,
+        priorizar_responsavel_id=admin.id,
+        associado_usuario_id=admin.id,
+        data_final_inicio=datetime(2026, 3, 23, 4),
+        data_final_fim=datetime(2026, 3, 30, 4),
+    )
+
+
 async def test_lista_pessoal_projeto_inativo_nao_consulta_casos(contexto):
     service, casos, _, _, _, _, _, admin, projeto, _ = contexto
     projeto.ativo = False

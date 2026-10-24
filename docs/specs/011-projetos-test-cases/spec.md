@@ -46,7 +46,7 @@ Permitir que gerente ou KP crie projetos vinculados a um time e cadastre Test Ca
 - RN-17: O responsável principal pode transferir seu Test Case para o backup associado ao caso. A transferência atualiza o responsável principal para o backup e deixa vazio o campo de backup.
 - RN-18: O projeto tem dois fluxos de importação independentes, com finalidades e dados distintos: a planilha de Test Cases cria e gerencia o trabalho do time; uma planilha exportada posteriormente pelo SDF registra os resultados dos Test Cases executados e alimenta a aba Form Factor. Importar resultados não altera os dados de gerenciamento dos Test Cases.
 - RN-19: A importação do relatório SDF é permitida a qualquer usuário cujo perfil tenha a permissão específica para importar relatórios no escopo do projeto. Não é restrita por padrão a gerente ou KP.
-- RN-20: O relatório SDF associa os resultados ao Test Case pelo TC ID e informa um resultado por modelo. A aba Form Factor exibe o identificador do Test Case, o SDF ID, os resultados por modelo e a data reportada, preservando os valores de resultado fornecidos pelo SDF. Cada importação acrescenta os resultados reportados sem substituir os resultados de importações anteriores. A visualização pode filtrar os resultados por semana e versão de One UI.
+- RN-20: O relatório SDF associa os resultados ao Test Case pelo TC ID e informa um resultado por modelo. A aba Form Factor exibe o identificador do Test Case, o SDF ID, os resultados por modelo e a data reportada, preservando os valores de resultado fornecidos pelo SDF. Cada importação acrescenta os resultados reportados sem substituir os resultados de importações anteriores. A visualização oferece um filtro por semana no canto superior direito do cabeçalho do card, ao lado do nome do projeto e acima das abas. A versão de One UI permanece como informação na listagem, sem campo de filtro próprio na interface.
 - RN-21: Antes de criar o projeto pela planilha de Test Cases, o sistema mostra uma prévia com o nome do projeto, o total de casos lidos e, para cada caso, TC ID, Category, Difficulty, TC Situation, responsável e backup. A prévia é paginada com 20 casos por página e permite navegar entre as páginas sem recarregar o arquivo. A planilha deve suportar pelo menos 1.000 Test Cases.
 - RN-22: Quando a planilha de Test Cases está fora do padrão, o sistema explica o problema em linguagem de quem preencheu a planilha, no idioma da interface:
   - um resumo no topo informa quantas linhas têm problemas em relação ao total lido (por exemplo, "4 de 120 linhas precisam de ajuste") e que nada foi criado;
@@ -57,6 +57,7 @@ Permitir que gerente ou KP crie projetos vinculados a um time e cadastre Test Ca
   - a lista de linhas com problema é paginada, com 20 linhas por página;
   - com problemas na planilha, a criação fica bloqueada e a ação passa a ser "Conferir planilha": ela verifica também responsável e backup no time escolhido e mostra todos os problemas juntos, sem criar nada.
 - RN-23: Ao concluir a importação da planilha de Test Cases, o sistema exibe uma notificação de sucesso informando que a planilha foi importada, o nome do projeto criado e quantos Test Cases foram criados.
+- RN-24: A aba Test Cases oferece o mesmo seletor de semana no canto superior direito do cabeçalho do card. Ele considera a Data final já exibida para casos com Status `Pass` e o fuso horário do navegador; casos sem Data final não aparecem enquanto uma semana está selecionada. Limpar o filtro restaura a consulta sem restrição de semana. A seleção de semana é independente da aba Form Factor, combina com os demais filtros e retorna à primeira página.
 
 ## Critérios de aceite
 
@@ -92,6 +93,9 @@ Permitir que gerente ou KP crie projetos vinculados a um time e cadastre Test Ca
 - **CA-28 (falha):** Dada uma planilha em que o TC ID `Clock_001` aparece nas linhas 2 e 5, quando é lida, então a linha 5 informa que `Clock_001` já apareceu na linha 2.
 - **CA-29 (falha):** Dada uma planilha sem nenhuma linha de Test Case, ou sem uma coluna obrigatória, quando é lida, então o sistema mostra um problema geral da planilha, sem atribuí-lo a um número de linha, citando as colunas faltantes pelo nome.
 - **CA-30 (falha):** Dada a interface em inglês, português ou coreano, quando a planilha tem problemas, então todas as mensagens aparecem no idioma da interface.
+- **CA-31:** Dado um projeto com casos concluídos e pendentes, quando uma semana é selecionada no cabeçalho de Test Cases, então aparecem somente os casos cuja Data final pertence à semana no fuso do navegador, com contagem e paginação correspondentes aos filtros; ao limpar, os casos sem Data final voltam a aparecer.
+- **CA-32 (falha):** Dada uma semana ISO inexistente ou um fuso horário inválido, quando a consulta de Test Cases é feita, então a consulta é recusada sem retornar resultados incorretos.
+- **CA-33:** Dadas seleções diferentes de semana em Test Cases e Form Factor, quando a pessoa alterna entre as abas, então cada aba mantém sua seleção; quando não há casos na semana selecionada, a tela informa que nenhum caso corresponde aos filtros e permite limpá-los.
 
 ## Fora de escopo
 
