@@ -18,6 +18,8 @@ import { TableRowActions } from "@/shared/ui/table-row-actions";
 import { WeekPicker } from "@/shared/ui/week-picker";
 
 import { ProjetoSwitcher } from "./components/ProjetoSwitcher";
+import { ProjetosEntradaPage } from "./ProjetosEntradaPage";
+import { useCasosTeste } from "./hooks/useProjetos";
 import { TableColumnFilter } from "@/shared/ui/table-column-filter";
 import { toast } from "@/shared/lib/toast";
 import { formatarDiaIso } from "@/shared/lib/utils";
@@ -80,21 +82,23 @@ function ProjetoDetalhe() {
   const [indicador, setIndicador] = useState<{ left: number; width: number } | null>(null);
 
   const admin = perfil.perfil_codigo === "ADMIN_UNIDADE";
+  const dev = perfil.perfil_codigo === "USUARIO_PADRAO";
   const podeConsultar = admin || perfil.permissoes.includes("projetos.consultar") || perfil.permissoes.includes("test_cases.consultar");
-  const podeGerenciarCasos = admin || perfil.permissoes.includes("test_cases.gerenciar");
+  const podeGerenciarCasos = admin || (["GERENTE", "KP"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("test_cases.gerenciar"));
   const podeConsultarCasos = admin || perfil.permissoes.includes("test_cases.consultar");
   const podeConsultarFormFactor = admin || perfil.permissoes.includes("form_factor.consultar");
   const podeImportarSdf = admin || perfil.permissoes.includes("form_factor.importar");
-  const projeto = useQuery({ queryKey: ["projetos", "detalhe", projetoId], queryFn: () => projetosApi.obter(projetoId), enabled: podeConsultar && Boolean(projetoId) });
-  const casos = useQuery({ queryKey: ["projetos", projetoId, "test-cases", pagina, tamanhoPagina, filtrosCaso.assignee], queryFn: () => casosTesteApi.listar(projetoId, pagina, tamanhoPagina, { responsavelId: filtrosCaso.assignee || undefined }), enabled: Boolean(projeto.data && podeConsultarCasos && aba === "cases") });
-  const membros = useQuery({ queryKey: ["projetos", projetoId, "membros"], queryFn: async () => timesApi.membros(projeto.data!.time_id), enabled: Boolean(projeto.data && podeConsultarCasos) });
-  const resultados = useQuery({ queryKey: ["projetos", projetoId, "form-factor", pagina, tamanhoPagina, semana, oneUi], queryFn: () => formFactorApi.listar(projetoId, { page: pagina, pageSize: tamanhoPagina, semana: semana || undefined, oneUi: oneUi || undefined }), enabled: Boolean(projeto.data && podeConsultarFormFactor && aba === "form-factor") });
+  const projeto = useQuery({ queryKey: ["projetos", "detalhe", projetoId, perfil.unidade_id, perfil.id], queryFn: () => projetosApi.obter(projetoId), enabled: podeConsultar && Boolean(projetoId) });
+  const casos = useCasosTeste(projetoId, pagina, tamanhoPagina, { responsavelId: filtrosCaso.assignee || undefined, ...(dev ? { associadosAMim: true } : {}) }, perfil, Boolean(projeto.isSuccess && podeConsultarCasos && aba === "cases"));
+  const associacao = useCasosTeste(projetoId, 1, 1, { associadosAMim: true }, perfil, dev && projeto.isSuccess && podeConsultarCasos);
+  const membros = useQuery({ queryKey: ["projetos", projetoId, "membros", perfil.unidade_id, perfil.id], queryFn: async () => timesApi.membros(projeto.data!.time_id), enabled: projeto.isSuccess && podeConsultarCasos });
+  const resultados = useQuery({ queryKey: ["projetos", projetoId, "form-factor", pagina, tamanhoPagina, semana, oneUi, perfil.unidade_id, perfil.id], queryFn: () => formFactorApi.listar(projetoId, { page: pagina, pageSize: tamanhoPagina, semana: semana || undefined, oneUi: oneUi || undefined }), enabled: projeto.isSuccess && podeConsultarFormFactor && aba === "form-factor" });
 
   const saveCase = useMutation({
     mutationFn: () => editar
       ? casosTesteApi.atualizar(editar.id, camposAlterados(editar, { category, difficulty, situation: situation || editar.situation, status, responsavel_id: responsavelId, backup_id: backupId || null }))
       : casosTesteApi.criar(projetoId, { tc_id: tcId.trim(), category, difficulty, situation: situation as SituacaoCasoTeste, responsavel_id: responsavelId, backup_id: backupId }),
-    onSuccess: async () => { await client.invalidateQueries({ queryKey: ["projetos", projetoId, "test-cases"] }); setCriarAberto(false); setEditar(null); toast.success(t("caseSaveSuccess", { defaultValue: "Test Case salvo." })); },
+    onSuccess: async () => { await client.invalidateQueries({ queryKey: ["projetos"] }); setCriarAberto(false); setEditar(null); toast.success(t("caseSaveSuccess", { defaultValue: "Test Case salvo." })); },
     onError: (error) => toast.error(error instanceof Error ? error.message : t("caseSaveError", { defaultValue: "Não foi possível salvar o Test Case." })),
   });
   const updateMemberCase = useMutation({
@@ -115,7 +119,7 @@ function ProjetoDetalhe() {
   });
   const transfer = useMutation({
     mutationFn: casosTesteApi.transferirParaBackup,
-    onSuccess: async () => { await client.invalidateQueries({ queryKey: ["projetos", projetoId, "test-cases"] }); toast.success(t("caseTransferred", { defaultValue: "Test Case transferido para o backup." })); },
+    onSuccess: async () => { await client.invalidateQueries({ queryKey: ["projetos"] }); toast.success(t("caseTransferred", { defaultValue: "Test Case transferido para o backup." })); },
     onError: (error) => toast.error(error instanceof Error ? error.message : t("caseTransferError", { defaultValue: "Não foi possível transferir o Test Case." })),
   });
   const importReport = useMutation({
@@ -136,7 +140,7 @@ function ProjetoDetalhe() {
     setIndicador(ativa ? { left: ativa.offsetLeft, width: ativa.offsetWidth } : null);
   }, [aba, projeto.data, i18n.resolvedLanguage]);
   const mostrarAcoes = podeGerenciarCasos || Boolean(casos.data?.items.some((item) => item.responsavel_id === responsavelAtual));
-  const casosFiltrados = (casos.data?.items ?? []).filter((item) => {
+  const casosFiltrados = (casos.isError ? [] : casos.data?.items ?? []).filter((item) => {
     const endDate = item.status === "Pass" ? item.updated_at ?? item.created_at : null;
     const dataFinal = endDate ? formatarDiaIso(new Date(endDate)) : "";
     return item.tc_id.toLocaleLowerCase().includes(filtrosCaso.tcId.toLocaleLowerCase())
@@ -170,6 +174,9 @@ function ProjetoDetalhe() {
   }
 
   if (!podeConsultar || (!podeConsultarCasos && !podeConsultarFormFactor && !podeImportarSdf)) return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
+  if (dev && !podeConsultarCasos) return <p role="alert">{t("permissionDenied")}</p>;
+  if (projeto.isError) return <p role="alert" className="p-6 text-sm">{t("projectNotFound")}</p>;
+  if (dev && projeto.isSuccess && associacao.isSuccess && !associacao.isFetching && associacao.data.total_count === 0) return <ProjetosEntradaPage projetoSemCasosId={projetoId} />;
 
   return <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
     <header className="mb-4 flex shrink-0 items-center gap-4">

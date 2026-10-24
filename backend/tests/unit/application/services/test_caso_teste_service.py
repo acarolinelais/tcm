@@ -89,6 +89,29 @@ async def test_lista_repassa_filtro_de_responsavel_ao_repositorio(contexto):
     )
 
 
+async def test_lista_pessoal_inclui_identidade_autenticada(contexto):
+    service, casos, _, _, _, _, _, admin, projeto, _ = contexto
+    casos.listar_por_projeto.return_value = PagedResult([], 1, 10, 0)
+    await service.listar(admin, projeto.id, 1, 10, associados_a_mim=True)
+    casos.listar_por_projeto.assert_awaited_once_with(
+        admin.unidade_id,
+        projeto.id,
+        1,
+        10,
+        None,
+        priorizar_responsavel_id=admin.id,
+        associado_usuario_id=admin.id,
+    )
+
+
+async def test_lista_pessoal_projeto_inativo_nao_consulta_casos(contexto):
+    service, casos, _, _, _, _, _, admin, projeto, _ = contexto
+    projeto.ativo = False
+    with pytest.raises(NotFoundException):
+        await service.listar(admin, projeto.id, 1, 10, associados_a_mim=True)
+    casos.listar_por_projeto.assert_not_awaited()
+
+
 async def test_criar_caso_valido_com_responsavel_e_backup_do_time(contexto):
     service, casos, _, _, membros, usuarios, uow, admin, projeto, time = contexto
     request = request_criar()

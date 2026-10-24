@@ -15,6 +15,7 @@ class CasoTesteRepository(RepositoryBase[CasoTeste], Protocol):
         page_size: int,
         responsavel_id: UUID | None = None,
         priorizar_responsavel_id: UUID | None = None,
+        associado_usuario_id: UUID | None = None,
     ) -> PagedResult[CasoTeste]: ...
 
     async def existe_tc_id(self, unidade_id: UUID, projeto_id: UUID, tc_id: str) -> bool: ...

@@ -65,9 +65,22 @@ class ProjetoServiceImpl:
         return to_response(projeto_criado or projeto)
 
     async def listar(
-        self, usuario_atual: UsuarioAutenticado, page: int, page_size: int
+        self,
+        usuario_atual: UsuarioAutenticado,
+        page: int,
+        page_size: int,
+        associados_a_mim: bool = False,
     ) -> PagedResult[ProjetoResponse]:
-        if usuario_atual.eh_administrador:
+        if associados_a_mim:
+            self._exigir_consulta(usuario_atual)
+            projetos = await self._projeto_repo.listar_associados_por_times(
+                usuario_atual.unidade_id,
+                None if usuario_atual.eh_administrador else self._times_no_escopo(usuario_atual),
+                usuario_atual.id,
+                page,
+                page_size,
+            )
+        elif usuario_atual.eh_administrador:
             projetos = await self._projeto_repo.listar_paginado(
                 usuario_atual.unidade_id, page, page_size
             )

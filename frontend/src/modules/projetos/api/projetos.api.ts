@@ -40,10 +40,10 @@ export type {
 } from "../model/projeto";
 
 export const projetosApi = {
-  listar(page = 1, pageSize = 20) {
+  listar(page = 1, pageSize = 20, associadosAMim = false) {
     return useMock
-      ? Promise.resolve(mockProjetosApi.listar(page, pageSize))
-      : httpGet<PagedResult<Projeto>>("/api/projetos", { page, page_size: pageSize });
+      ? Promise.resolve(mockProjetosApi.listar(page, pageSize, associadosAMim))
+      : httpGet<PagedResult<Projeto>>("/api/projetos", { page, page_size: pageSize, ...(associadosAMim ? { associados_a_mim: "true" } : {}) });
   },
   obter(id: string) {
     return useMock
@@ -79,13 +79,14 @@ export const projetosApi = {
 };
 
 export const casosTesteApi = {
-  listar(projetoId: string, page = 1, pageSize = 20, filtros: { responsavelId?: string } = {}) {
+  listar(projetoId: string, page = 1, pageSize = 20, filtros: { responsavelId?: string; associadosAMim?: boolean } = {}) {
     return useMock
       ? Promise.resolve(mockCasosTesteApi.listar(projetoId, page, pageSize, filtros))
       : httpGet<PagedResult<CasoTeste>>(`/api/projetos/${projetoId}/test-cases`, {
         page,
         page_size: pageSize,
         ...(filtros.responsavelId ? { responsavel_id: filtros.responsavelId } : {}),
+        ...(filtros.associadosAMim ? { associados_a_mim: "true" } : {}),
       });
   },
   obter(id: string) {

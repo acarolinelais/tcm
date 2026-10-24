@@ -1,9 +1,11 @@
 import { Menu } from "@base-ui/react/menu";
 import { Check, ChevronDown } from "lucide-react";
-import { useNavigate } from "react-router";
+import { useNavigate, useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
 
-import { useProjetos } from "../hooks/useProjetos";
+import type { PerfilAtual } from "@/core/auth/api";
+import { Button } from "@/shared/ui/button";
+import { useProjetosSeletor } from "../hooks/useProjetos";
 
 const titulo = "truncate text-2xl font-medium text-primary";
 
@@ -11,11 +13,12 @@ const titulo = "truncate text-2xl font-medium text-primary";
 export function ProjetoSwitcher({ projetoId, nome }: { projetoId: string; nome: string }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  // 100 é o page_size máximo da API de projetos.
-  const projetos = useProjetos(1, 100);
-  const outros = (projetos.data?.items ?? []).filter((projeto) => projeto.id !== projetoId);
+  const perfil = useOutletContext<PerfilAtual>();
+  const projetos = useProjetosSeletor(perfil);
+  const opcoes = projetos.data?.pages.flatMap((pagina) => pagina.items) ?? [];
+  const outros = opcoes.filter((projeto) => projeto.id !== projetoId);
 
-  if (!outros.length) return <h1 className={titulo}>{nome}</h1>;
+  if (!outros.length && !projetos.hasNextPage && !projetos.isError) return <h1 className={titulo}>{nome}</h1>;
 
   return (
     <h1 className="min-w-0">
@@ -28,7 +31,7 @@ export function ProjetoSwitcher({ projetoId, nome }: { projetoId: string; nome: 
           <Menu.Positioner align="start" sideOffset={6} className="z-[70] outline-none">
             <Menu.Popup aria-label={t("switchProject")} className="base-popup max-h-80 min-w-56 overflow-y-auto rounded-xl border border-border bg-card p-1 text-sm text-card-foreground shadow-lg outline-none">
               <Menu.RadioGroup value={projetoId} onValueChange={(id: string) => navigate(`/projetos/${id}`)}>
-                {projetos.data?.items.map((projeto) => (
+                {opcoes.map((projeto) => (
                   <Menu.RadioItem
                     key={projeto.id}
                     value={projeto.id}
@@ -41,6 +44,8 @@ export function ProjetoSwitcher({ projetoId, nome }: { projetoId: string; nome: 
                   </Menu.RadioItem>
                 ))}
               </Menu.RadioGroup>
+              {projetos.isError && <p role="alert" className="p-2 text-destructive">{t("projectsLoadError")}</p>}
+              {(projetos.hasNextPage || projetos.isError) && <Button variant="ghost" disabled={projetos.isFetching} onClick={() => void (projetos.isError && !projetos.isFetchNextPageError ? projetos.refetch() : projetos.fetchNextPage())}>{t(projetos.isError ? "retryQuery" : "moreProjects")}</Button>}
             </Menu.Popup>
           </Menu.Positioner>
         </Menu.Portal>

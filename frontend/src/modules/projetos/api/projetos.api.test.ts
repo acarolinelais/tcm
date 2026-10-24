@@ -84,3 +84,20 @@ describe("APIs de projetos", () => {
     expect((init?.body as FormData).get("arquivo")).toBe(report);
   });
 });
+
+describe("consultas pessoais", () => {
+  beforeEach(() => vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ items: [] }), { status: 200 }))));
+  afterEach(() => vi.unstubAllGlobals());
+  it("transmite filtro pessoal e paginação de projetos", async () => {
+    await projetosApi.listar(2, 1, true);
+    expect(fetch).toHaveBeenCalledWith("/api/projetos?page=2&page_size=1&associados_a_mim=true", expect.any(Object));
+  });
+  it("combina associação com responsável sem substituir o filtro pessoal", async () => {
+    await casosTesteApi.listar("p", 1, 20, { associadosAMim: true, responsavelId: "colega" });
+    expect(fetch).toHaveBeenCalledWith("/api/projetos/p/test-cases?page=1&page_size=20&responsavel_id=colega&associados_a_mim=true", expect.any(Object));
+  });
+  it("propaga erro de consulta", async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error("offline"));
+    await expect(projetosApi.listar(1, 1, true)).rejects.toThrow("offline");
+  });
+});

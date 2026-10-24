@@ -17,7 +17,11 @@ class ProjetoService(Protocol):
     ) -> ProjetoResponse: ...
 
     async def listar(
-        self, usuario_atual: UsuarioAutenticado, page: int, page_size: int
+        self,
+        usuario_atual: UsuarioAutenticado,
+        page: int,
+        page_size: int,
+        associados_a_mim: bool = False,
     ) -> PagedResult[ProjetoResponse]: ...
 
     async def obter(

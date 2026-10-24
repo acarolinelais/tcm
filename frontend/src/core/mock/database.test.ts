@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import * as XLSX from "@e965/xlsx";
 
 import { ApiError } from "@/shared/api/problem-details";
-import { mockAuth, mockCasosTesteApi, mockFormFactorApi, mockProjetosApi, mockUsuarioApi, resetMockDatabase } from "./database";
+import { mockAuth, mockCasosTesteApi, mockFormFactorApi, mockProjetosApi, mockTimesApi, mockUsuarioApi, resetMockDatabase } from "./database";
 
 const STORAGE_KEY = "sdf.mock.database.v1";
 
@@ -25,6 +25,23 @@ describe("base mock de projetos", () => {
     entrar("admin@sdfmanager.com");
   });
 
+  it("filtra projetos e casos pessoais incluindo backup antes de paginar", () => {
+    mockTimesApi.adicionar("mock-team-platform", "mock-user-manager");
+    const projects = ["Clock", "Gallery", "Weather"].map((app) => mockProjetosApi.criar({ time_id: "mock-team-platform", app, one_ui: "9.5", modelos_ids: [] }));
+    const base = { category: "A" as const, difficulty: "Low" as const, situation: "New" as const };
+    mockCasosTesteApi.criar(projects[0].id, { ...base, tc_id: "Principal", responsavel_id: "mock-user-dev", backup_id: "mock-user-kp" });
+    mockCasosTesteApi.criar(projects[0].id, { ...base, tc_id: "Colega", responsavel_id: "mock-user-kp", backup_id: "mock-user-manager" });
+    mockCasosTesteApi.criar(projects[1].id, { ...base, tc_id: "Backup", responsavel_id: "mock-user-kp", backup_id: "mock-user-dev" });
+    entrar("daniel.oliveira@example.com");
+    const first = mockProjetosApi.listar(1, 1, true);
+    const second = mockProjetosApi.listar(2, 1, true);
+    expect(first.total_count).toBe(2);
+    expect(new Set([first.items[0].id, second.items[0].id])).toEqual(new Set([projects[0].id, projects[1].id]));
+    expect(mockCasosTesteApi.listar(projects[0].id, 1, 20, { associadosAMim: true }).items.map((c) => c.tc_id)).toEqual(["Principal"]);
+    expect(mockCasosTesteApi.listar(projects[1].id, 1, 20, { associadosAMim: true }).items.map((c) => c.tc_id)).toEqual(["Backup"]);
+    expect(() => mockCasosTesteApi.atualizar(mockCasosTesteApi.listar(projects[1].id, 1, 20).items[0].id, { status: "Pass" })).toThrow();
+  });
+
   it("cria projetos com nome derivado e mantém o time e modelos informados", () => {
     const project = mockProjetosApi.criar({
       time_id: "mock-team-platform",
@@ -34,11 +51,27 @@ describe("base mock de projetos", () => {
     });
 
     expect(project).toMatchObject({ nome: "Clock 9.5", app: "Clock", one_ui: "9.5", status: "Created" });
+    expect(mockProjetosApi.listar(1, 10, true).total_count).toBe(0);
     expect(mockProjetosApi.listar(1, 10).items.map((item) => item.id)).toContain(project.id);
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}").projetoModelos).toContainEqual({
       projeto_id: project.id,
       modelo_dispositivo_id: "mock-model-s27-ultra",
     });
+  });
+
+  it("não oferece associação de outra unidade nem de time sem participação ativa", () => {
+    const project = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: [] });
+    mockCasosTesteApi.criar(project.id, { tc_id: "Principal", category: "A", difficulty: "Low", situation: "New", responsavel_id: "mock-user-dev", backup_id: "mock-user-kp" });
+    const db = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+    db.projetos.push({ ...db.projetos[0], id: "outra-unidade", unidade_id: "outra" });
+    db.casosTeste.push({ ...db.casosTeste[0], id: "caso-outra", projeto_id: "outra-unidade", unidade_id: "outra" });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+    entrar("daniel.oliveira@example.com");
+    expect(mockProjetosApi.listar(1, 20, true).items.map((p) => p.id)).toEqual([project.id]);
+    entrar("admin@sdfmanager.com");
+    mockTimesApi.remover("mock-team-platform", "mock-user-dev");
+    entrar("daniel.oliveira@example.com");
+    expect(mockProjetosApi.listar(1, 20, true).total_count).toBe(0);
   });
 
   it("importa casos, resolve responsáveis pelo nome/e-mail e mantém o primeiro App e One UI", async () => {

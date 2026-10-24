@@ -16,6 +16,10 @@ function renderSidebar(currentProfile: PerfilAtual) {
 }
 
 describe("Sidebar project navigation", () => {
+  it("mostra Projects para dev sem depender de projetos ou TCs associados", () => {
+    renderSidebar({ ...perfil, perfil_codigo: "USUARIO_PADRAO", permissoes: ["test_cases.consultar"] });
+    expect(screen.getByRole("link", { name: "Projects" })).toHaveAttribute("href", "/projetos");
+  });
   it("shows My Projects only when the profile can consult projects", () => {
     const { rerender } = renderSidebar(perfil);
     expect(screen.queryByRole("link", { name: "My Projects" })).not.toBeInTheDocument();
