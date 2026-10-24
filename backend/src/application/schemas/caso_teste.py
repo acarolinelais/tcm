@@ -8,6 +8,7 @@ from src.domain.entities.caso_teste import (
     CategoriaCasoTeste,
     DificuldadeCasoTeste,
     SituacaoCasoTeste,
+    StatusCasoTeste,
 )
 
 
@@ -15,6 +16,7 @@ class CriarCasoTesteRequest(BaseModel):
     tc_id: str = Field(min_length=1, max_length=CasoTeste.TC_ID_MAX_LENGTH)
     category: CategoriaCasoTeste
     difficulty: DificuldadeCasoTeste
+    situation: SituacaoCasoTeste
     responsavel_id: UUID
     backup_id: UUID
 
@@ -33,6 +35,7 @@ class AtualizarCasoTesteRequest(BaseModel):
     category: CategoriaCasoTeste | None = None
     difficulty: DificuldadeCasoTeste | None = None
     situation: SituacaoCasoTeste | None = None
+    status: StatusCasoTeste | None = None
     responsavel_id: UUID | None = None
     backup_id: UUID | None = None
 
@@ -51,6 +54,7 @@ class CasoTesteResponse(BaseModel):
     category: CategoriaCasoTeste
     difficulty: DificuldadeCasoTeste
     situation: SituacaoCasoTeste
+    status: StatusCasoTeste
     responsavel_id: UUID
     backup_id: UUID | None
     ativo: bool
@@ -67,6 +71,7 @@ def to_response(caso: CasoTeste) -> CasoTesteResponse:
         category=caso.category,
         difficulty=caso.difficulty,
         situation=caso.situation,
+        status=caso.status,
         responsavel_id=caso.responsavel_id,
         backup_id=caso.backup_id,
         ativo=caso.ativo,

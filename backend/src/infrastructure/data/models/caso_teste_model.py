@@ -17,7 +17,8 @@ class CasoTesteModel(Base):
     tc_id: Mapped[str] = mapped_column(String(CasoTeste.TC_ID_MAX_LENGTH), nullable=False)
     category: Mapped[str] = mapped_column(String(1), nullable=False)
     difficulty: Mapped[str] = mapped_column(String(10), nullable=False)
-    situation: Mapped[str] = mapped_column(String(10), nullable=False)
+    situation: Mapped[str] = mapped_column(String(20), nullable=False)
+    status: Mapped[str] = mapped_column(String(10), nullable=False)
     responsavel_id: Mapped[UUID] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
     backup_id: Mapped[UUID | None] = mapped_column(ForeignKey("usuarios.id"))
     ativo: Mapped[bool] = mapped_column(default=True, server_default="true", nullable=False)
@@ -31,8 +32,12 @@ class CasoTesteModel(Base):
             "difficulty IN ('Low', 'Medium', 'High')", name="ck_casos_teste_difficulty"
         ),
         CheckConstraint(
-            "situation IN ('To-Do', 'InProgress', 'InReview', 'Pass', 'Fail')",
+            "situation IN ('New', 'New Step', 'Without Changes')",
             name="ck_casos_teste_situation",
+        ),
+        CheckConstraint(
+            "status IN ('To-Do', 'InProgress', 'InReview', 'Pass', 'Fail')",
+            name="ck_casos_teste_status",
         ),
         CheckConstraint(
             "backup_id IS NULL OR responsavel_id <> backup_id",

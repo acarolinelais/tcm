@@ -126,7 +126,21 @@ async def test_planilha_inicial_invalida_retorna_problem_details_422(api_client)
     usuario = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
     service = AsyncMock()
     service.importar.side_effect = PlanilhaProjetoInvalida(
-        (ErroImportacaoPlanilha(2, "tc id", "TC ID duplicado."),)
+        (
+            ErroImportacaoPlanilha(
+                5,
+                "tc id",
+                "TC ID duplicado na planilha.",
+                "tc_id_duplicado",
+                "TC ID",
+                "Clock_001",
+                {"primeira_linha": 2},
+            ),
+            ErroImportacaoPlanilha(
+                None, "planilha", "A planilha precisa conter ao menos um Test Case.", "sem_casos"
+            ),
+        ),
+        total_linhas=120,
     )
     app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
     app.dependency_overrides[get_importacao_projeto_service] = dependency_override(service)
@@ -138,7 +152,24 @@ async def test_planilha_inicial_invalida_retorna_problem_details_422(api_client)
     )
 
     assert response.status_code == 422
-    assert response.json()["errors"][0]["campo"] == "linha.2.tc id"
+    corpo = response.json()
+    assert corpo["total_linhas"] == 120
+    assert corpo["errors"] == [
+        {
+            "campo": "linha.5.tc id",
+            "mensagem": "TC ID duplicado na planilha.",
+            "codigo": "tc_id_duplicado",
+            "linha": 5,
+            "coluna": "TC ID",
+            "valor": "Clock_001",
+            "parametros": {"primeira_linha": 2},
+        },
+        {
+            "campo": "planilha",
+            "mensagem": "A planilha precisa conter ao menos um Test Case.",
+            "codigo": "sem_casos",
+        },
+    ]
 
 
 async def test_gerente_nao_consulta_projeto_de_setor_fora_do_escopo(api_client):

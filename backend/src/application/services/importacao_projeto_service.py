@@ -7,7 +7,11 @@ from src.application.schemas.importacao_projeto import (
 )
 from src.application.schemas.projeto import to_response
 from src.application.services.projeto_service import ProjetoServiceImpl
-from src.application.validators.importacao_projeto import validar_planilha_projeto
+from src.application.validators.importacao_projeto import (
+    ErroImportacaoPlanilha,
+    PlanilhaProjetoInvalida,
+    validar_planilha_projeto,
+)
 from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.caso_teste import CasoTeste
@@ -23,7 +27,6 @@ from src.domain.entities.interfaces.unit_of_work import UnitOfWork
 from src.domain.entities.interfaces.usuario_repository import UsuarioRepository
 from src.domain.entities.projeto import Projeto
 from src.domain.entities.projeto_modelo import ProjetoModelo
-from src.domain.entities.time import Time
 from src.domain.entities.usuario import Usuario
 
 
@@ -81,29 +84,52 @@ class ImportacaoProjetoServiceImpl:
             por_identificador.setdefault(_normalizar_nome(usuario.nome), {})[usuario.id] = usuario
             por_identificador.setdefault(_normalizar_email(usuario.email), {})[usuario.id] = usuario
 
+        membros_ativos = {
+            membro.usuario_id
+            for membro in await self._membro_repo.listar_por_time(time.unidade_id, time.id)
+        }
         atribuicoes = []
+        erros: list[ErroImportacaoPlanilha] = []
+
+        def pessoa(numero: int, campo: str, identificador: str) -> Usuario | None:
+            encontrados = _usuarios_correspondentes(por_identificador, identificador)
+            if len(encontrados) == 1 and encontrados[0].id in membros_ativos:
+                return encontrados[0]
+            if not encontrados:
+                codigo, mensagem = "pessoa_nao_encontrada", "Pessoa não encontrada na unidade."
+            elif len(encontrados) > 1:
+                codigo, mensagem = "pessoa_ambigua", "Mais de uma pessoa corresponde a este valor."
+            else:
+                codigo, mensagem = (
+                    "pessoa_fora_do_time",
+                    "A pessoa precisa ser membro ativo do time.",
+                )
+            erros.append(
+                ErroImportacaoPlanilha(
+                    numero, campo, mensagem, codigo, planilha.colunas[campo], identificador
+                )
+            )
+            return None
+
         for linha in planilha.casos:
-            responsaveis = _usuarios_correspondentes(por_identificador, linha.responsavel)
-            backups = _usuarios_correspondentes(por_identificador, linha.backup)
-            if len(responsaveis) != 1:
-                raise ConflictException(
-                    f"Linha {linha.linha}: responsável '{linha.responsavel}' não foi encontrado "
-                    "unicamente na unidade."
-                )
-            if len(backups) != 1:
-                raise ConflictException(
-                    f"Linha {linha.linha}: backup '{linha.backup}' não foi encontrado "
-                    "unicamente na unidade."
-                )
-            responsavel, backup = responsaveis[0], backups[0]
-            if responsavel.id == backup.id:
-                raise ConflictException(
-                    f"Linha {linha.linha}: responsável principal e backup devem ser "
-                    "pessoas distintas."
-                )
-            await self._garantir_membro(time, responsavel.id, linha.linha, "responsável")
-            await self._garantir_membro(time, backup.id, linha.linha, "backup")
-            atribuicoes.append((linha, responsavel.id, backup.id))
+            responsavel = pessoa(linha.linha, "assignees", linha.responsavel)
+            backup = pessoa(linha.linha, "backup", linha.backup)
+            if responsavel is not None and backup is not None:
+                if responsavel.id == backup.id:
+                    erros.append(
+                        ErroImportacaoPlanilha(
+                            linha.linha,
+                            "backup",
+                            "Responsável principal e backup devem ser pessoas distintas.",
+                            "responsavel_igual_backup",
+                            planilha.colunas["backup"],
+                            linha.backup,
+                        )
+                    )
+                else:
+                    atribuicoes.append((linha, responsavel.id, backup.id))
+        if erros:
+            raise PlanilhaProjetoInvalida(tuple(erros), planilha.total_linhas)
 
         projeto = Projeto(usuario_atual.unidade_id, time.id, planilha.app, planilha.one_ui)
         casos = []
@@ -133,13 +159,6 @@ class ImportacaoProjetoServiceImpl:
         return ImportarProjetoPlanilhaResponse(
             projeto=to_response(projeto_criado or projeto), quantidade_casos=len(casos)
         )
-
-    async def _garantir_membro(self, time: Time, usuario_id, linha: int, papel: str) -> None:
-        membro = await self._membro_repo.obter_por_time_e_usuario(
-            time.unidade_id, time.id, usuario_id
-        )
-        if membro is None or not membro.ativo:
-            raise ConflictException(f"Linha {linha}: {papel} precisa ser membro ativo do time.")
 
 
 def _normalizar_nome(valor: str) -> str:

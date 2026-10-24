@@ -21,8 +21,8 @@ from src.domain.entities.time import Time
 
 
 class CasoTesteServiceImpl:
-    CAMPOS_RESPONSAVEL = frozenset({"category", "difficulty", "situation"})
-    CAMPOS_GESTAO = CAMPOS_RESPONSAVEL | {"responsavel_id", "backup_id"}
+    CAMPOS_RESPONSAVEL = frozenset({"category", "difficulty", "status"})
+    CAMPOS_GESTAO = CAMPOS_RESPONSAVEL | {"situation", "responsavel_id", "backup_id"}
 
     def __init__(
         self,
@@ -96,6 +96,7 @@ class CasoTesteServiceImpl:
             request.difficulty,
             request.responsavel_id,
             request.backup_id,
+            request.situation,
         )
         await self._caso_repo.adicionar(caso)
         await self._uow.commit()
@@ -126,10 +127,10 @@ class CasoTesteServiceImpl:
                 raise ForbiddenException("Você só pode editar Test Cases atribuídos a você.")
             if campos_enviados - self.CAMPOS_RESPONSAVEL:
                 raise ForbiddenException(
-                    "O responsável só pode editar situação, Category e Difficulty."
+                    "O responsável só pode editar Status, Category e Difficulty."
                 )
             caso.atualizar_campos_do_responsavel(
-                request.situation or caso.situation,
+                request.status or caso.status,
                 request.category or caso.category,
                 request.difficulty or caso.difficulty,
             )
@@ -181,6 +182,7 @@ class CasoTesteServiceImpl:
             responsavel_id,
             backup_id,
             request.situation or caso.situation,
+            request.status or caso.status,
             request.category or caso.category,
             request.difficulty or caso.difficulty,
         )

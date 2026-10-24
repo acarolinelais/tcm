@@ -61,11 +61,29 @@ async def handle_invalid_input(request: Request, exc: InvalidInputException) -> 
 
 async def handle_spreadsheet_validation_error(request: Request, exc: Exception) -> JSONResponse:
     errors = [
-        ProblemDetailsError(campo=f"linha.{erro.linha}.{erro.campo}", mensagem=erro.mensagem)
+        ProblemDetailsError(
+            campo=f"linha.{erro.linha}.{erro.campo}" if erro.linha else erro.campo,
+            mensagem=erro.mensagem,
+            # Só os erros com código (ADR 0033) levam os membros de extensão.
+            **(
+                {
+                    "codigo": erro.codigo,
+                    "linha": erro.linha,
+                    "coluna": erro.coluna,
+                    "valor": erro.valor,
+                    "parametros": erro.parametros,
+                }
+                if erro.codigo
+                else {}
+            ),
+        )
         for erro in exc.erros
     ]
     problem = ProblemDetails(
-        title="Planilha inválida.", status=status.HTTP_422_UNPROCESSABLE_ENTITY, errors=errors
+        title="Planilha inválida.",
+        status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        errors=errors,
+        total_linhas=getattr(exc, "total_linhas", None),
     )
     return _response(problem)
 

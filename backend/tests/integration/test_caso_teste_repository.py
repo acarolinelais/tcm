@@ -1,13 +1,19 @@
 import os
+from importlib import import_module
 from uuid import uuid4
 
 import pytest
+from alembic.operations import Operations
+from alembic.runtime.migration import MigrationContext
+from sqlalchemy import insert, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from src.domain.entities.caso_teste import (
     CasoTeste,
     CategoriaCasoTeste,
     DificuldadeCasoTeste,
+    SituacaoCasoTeste,
+    StatusCasoTeste,
 )
 from src.infrastructure.data.models.perfil_model import PerfilModel
 from src.infrastructure.data.models.projeto_model import ProjetoModel
@@ -90,6 +96,7 @@ async def test_caso_persiste_com_responsaveis_e_tc_id_e_unico_no_projeto():
                 DificuldadeCasoTeste.LOW,
                 responsavel_id,
                 backup_id,
+                SituacaoCasoTeste.NEW_STEP,
             )
             await repository.adicionar(caso)
             await session.flush()
@@ -99,6 +106,8 @@ async def test_caso_persiste_com_responsaveis_e_tc_id_e_unico_no_projeto():
             assert pagina.items[0].tc_id == "Clock_001"
             assert pagina.items[0].responsavel_id == responsavel_id
             assert pagina.items[0].backup_id == backup_id
+            assert pagina.items[0].situation == SituacaoCasoTeste.NEW_STEP
+            assert pagina.items[0].status == StatusCasoTeste.TO_DO
             pagina_filtrada = await repository.listar_por_projeto(
                 unidade_id, projeto_id, 1, 10, responsavel_id
             )
@@ -121,6 +130,7 @@ async def test_caso_persiste_com_responsaveis_e_tc_id_e_unico_no_projeto():
                     DificuldadeCasoTeste.LOW,
                     backup_id,
                     responsavel_id,
+                    SituacaoCasoTeste.NEW,
                 )
             )
             await session.flush()
@@ -151,10 +161,95 @@ async def test_caso_persiste_com_responsaveis_e_tc_id_e_unico_no_projeto():
                 DificuldadeCasoTeste.MEDIUM,
                 responsavel_id,
                 backup_id,
+                SituacaoCasoTeste.NEW,
             )
             await repository.adicionar(duplicado)
             with pytest.raises(IntegrityError):
                 await session.flush()
             await session.rollback()
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_migration_preserva_progresso_em_status_e_preenche_situation_new():
+    engine = create_async_engine(os.environ["SDF_TEST_DATABASE_URL"])
+    migration = import_module(
+        "src.infrastructure.data.migrations.versions.8293a4b5c6d7_caso_teste_situation_e_status"
+    )
+
+    def executar(sync_connection, passo):
+        with Operations.context(MigrationContext.configure(sync_connection)):
+            passo()
+
+    try:
+        async with engine.connect() as connection:
+            transaction = await connection.begin()
+            try:
+                # Volta ao esquema anterior, grava um caso antigo e reaplica a migration.
+                await connection.run_sync(executar, migration.downgrade)
+                unidade_id, setor_id, time_id, projeto_id, perfil_id, usuario_id, caso_id = (
+                    uuid4() for _ in range(7)
+                )
+                for model, valores in [
+                    (UnidadeModel, {"id": unidade_id, "nome": f"Migration {unidade_id}"}),
+                    (
+                        PerfilModel,
+                        {"id": perfil_id, "unidade_id": unidade_id, "nome": f"P {perfil_id}"},
+                    ),
+                    (SetorModel, {"id": setor_id, "unidade_id": unidade_id, "nome": "Mobile"}),
+                    (
+                        TimeModel,
+                        {
+                            "id": time_id,
+                            "unidade_id": unidade_id,
+                            "setor_id": setor_id,
+                            "nome": "T",
+                        },
+                    ),
+                    (
+                        ProjetoModel,
+                        {
+                            "id": projeto_id,
+                            "unidade_id": unidade_id,
+                            "time_id": time_id,
+                            "app": "Clock",
+                            "one_ui": "9.5",
+                        },
+                    ),
+                    (
+                        UsuarioModel,
+                        {
+                            "id": usuario_id,
+                            "unidade_id": unidade_id,
+                            "nome": "Pessoa",
+                            "email": f"{usuario_id}@example.com",
+                            "perfil_id": perfil_id,
+                        },
+                    ),
+                ]:
+                    await connection.execute(insert(model).values(**valores))
+                # O caso antigo usa SQL puro: o model atual já tem a coluna `status`.
+                await connection.execute(
+                    text(
+                        "INSERT INTO casos_teste (id, unidade_id, projeto_id, tc_id, category, "
+                        "difficulty, situation, responsavel_id) "
+                        "VALUES (:id, :u, :p, 'Clock_001', 'A', 'Low', 'InProgress', :r)"
+                    ),
+                    {"id": caso_id, "u": unidade_id, "p": projeto_id, "r": usuario_id},
+                )
+
+                await connection.run_sync(executar, migration.upgrade)
+                linha = (
+                    await connection.execute(
+                        text("SELECT situation, status FROM casos_teste WHERE id = :id"),
+                        {"id": caso_id},
+                    )
+                ).one()
+
+                assert linha.situation == "New"
+                assert linha.status == "InProgress"
+            finally:
+                await transaction.rollback()
     finally:
         await engine.dispose()
