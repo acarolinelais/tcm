@@ -54,6 +54,7 @@ export function UsuarioForm({
     defaultValues: {
       nome: usuario?.nome ?? "",
       email: usuario?.email ?? "",
+      user_id: usuario?.user_id ?? "",
       perfil_id: usuario?.perfil_id ?? "",
     },
   });
@@ -94,6 +95,9 @@ export function UsuarioForm({
               message: t(campoErro.campo === "nome" ? "invalidName" : "emailInUse"),
             });
             aplicado = true;
+          } else if (campoErro.campo === "user_id") {
+            setError("user_id", { message: t("userIdInUse") });
+            aplicado = true;
           }
         }
         if (!aplicado) toast.error(t("userSaveError"));
@@ -130,6 +134,18 @@ export function UsuarioForm({
             {...register("email")}
           />
           {errors.email && <p id="user-email-error" className="mt-1.5 text-sm text-destructive">{errors.email.message}</p>}
+        </div>
+        <div className="flex flex-col">
+          <Label htmlFor="user_id">{t("userId")}</Label>
+          <Input
+            id="user_id"
+            className="mt-2.5"
+            aria-invalid={Boolean(errors.user_id)}
+            aria-describedby={errors.user_id ? "user-id-error" : undefined}
+            readOnly={!podeGerenciar}
+            {...register("user_id")}
+          />
+          {errors.user_id && <p id="user-id-error" className="mt-1.5 text-sm text-destructive">{errors.user_id.message}</p>}
         </div>
         {podeSelecionarPerfil && (
           <div className="flex flex-col">

@@ -13,7 +13,10 @@ from src.domain.entities.usuario import Usuario
 
 @pytest.fixture
 def repo():
-    return AsyncMock(existe_email=AsyncMock(return_value=False))
+    return AsyncMock(
+        existe_email=AsyncMock(return_value=False),
+        existe_user_id=AsyncMock(return_value=False),
+    )
 
 
 @pytest.fixture
@@ -53,6 +56,21 @@ async def test_criar_usuario_valido_chama_adicionar_e_commit(service, repo, uow,
     uow.commit.assert_called_once()
     assert resposta.nome == "Ana"
     assert resposta.email == "ana@example.com"
+    assert resposta.user_id is None
+
+
+async def test_criar_usuario_salva_user_id_normalizado(service, repo, uow, usuario_atual):
+    request = CriarUsuarioRequest(
+        nome="Ana", email="ana@example.com", user_id="  USR-001  "
+    )
+
+    resposta = await service.criar(usuario_atual, request)
+
+    criado = repo.adicionar.await_args.args[0]
+    assert criado.user_id == "USR-001"
+    assert resposta.user_id == "USR-001"
+    repo.existe_user_id.assert_awaited_once_with(usuario_atual.unidade_id, "USR-001", None)
+    uow.commit.assert_awaited_once()
 
 
 async def test_atualizar_usuario_valido_retorna_response_atualizado(
@@ -67,8 +85,30 @@ async def test_atualizar_usuario_valido_retorna_response_atualizado(
     resposta = await service.atualizar(usuario_atual, usuario.id, request)
 
     assert resposta.nome == "Ana Paula"
+    assert resposta.user_id is None
     repo.atualizar.assert_called_once_with(usuario)
     uow.commit.assert_called_once()
+
+
+async def test_atualizar_usuario_define_user_id_e_recusa_duplicidade(
+    service, repo, uow, usuario_atual
+):
+    usuario = Usuario(usuario_atual.unidade_id, "Ana", "ana@example.com")
+    usuario.perfil_id = uuid4()
+    repo.obter_por_id.return_value = usuario
+    repo.existe_user_id.return_value = True
+
+    with pytest.raises(ConflictException):
+        await service.atualizar(
+            usuario_atual,
+            usuario.id,
+            AtualizarUsuarioRequest(
+                nome="Ana", email="ana@example.com", user_id="USR-001"
+            ),
+        )
+
+    repo.atualizar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
 
 
 async def test_criar_email_duplicado_levanta_conflict_falha(service, repo, uow, usuario_atual):
@@ -277,7 +317,7 @@ async def test_gerente_recebe_nome_do_perfil_dos_usuarios_no_escopo(service, rep
     usuario.created_at = datetime.now()
     repo.listar_visiveis.return_value = PagedResult([usuario], 1, 20, 1)
     repo.dados_por_usuarios.return_value = {
-        usuario.id: (usuario.nome, "Auditoria", None),
+        usuario.id: (usuario.nome, None, "Auditoria", None),
     }
 
     resposta = await service.listar(gerente_atual, 1, 20)

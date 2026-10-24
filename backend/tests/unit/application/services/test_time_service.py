@@ -133,6 +133,20 @@ async def test_developer_consulta_membros_apenas_do_time_associado(contexto):
     usuarios.dados_por_usuarios.assert_awaited_once_with(developer.unidade_id, ())
 
 
+async def test_listar_membros_inclui_user_id_do_usuario(contexto):
+    service, _, _, membros, usuarios, _, atual, time = contexto
+    membro = TimeMembro(atual.unidade_id, time.id, uuid4())
+    membros.listar_por_time.return_value = [membro]
+    usuarios.dados_por_usuarios.return_value = {
+        membro.usuario_id: ("Ana Souza", "ana-123", "Developer", "USUARIO_PADRAO")
+    }
+
+    resposta = await service.listar_membros(atual, time.id)
+
+    assert resposta[0].usuario_nome == "Ana Souza"
+    assert resposta[0].usuario_user_id == "ana-123"
+
+
 async def test_developer_sem_vinculo_nao_consulta_membros_do_time(contexto):
     service, _, _, membros, _, uow, atual, time = contexto
     developer = UsuarioAutenticado(

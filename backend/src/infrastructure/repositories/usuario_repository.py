@@ -73,11 +73,17 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
 
     async def dados_por_usuarios(
         self, unidade_id: UUID, usuario_ids: tuple[UUID, ...]
-    ) -> dict[UUID, tuple[str, str, str | None]]:
+    ) -> dict[UUID, tuple[str, str | None, str | None, str | None]]:
         if not usuario_ids:
             return {}
         stmt = (
-            select(UsuarioModel.id, UsuarioModel.nome, PerfilModel.nome, PerfilModel.codigo)
+            select(
+                UsuarioModel.id,
+                UsuarioModel.nome,
+                UsuarioModel.user_id,
+                PerfilModel.nome,
+                PerfilModel.codigo,
+            )
             .join(PerfilModel, PerfilModel.id == UsuarioModel.perfil_id)
             .where(
                 UsuarioModel.unidade_id == unidade_id,
@@ -86,8 +92,8 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
             )
         )
         return {
-            usuario_id: (usuario_nome, perfil_nome, perfil_codigo)
-            for usuario_id, usuario_nome, perfil_nome, perfil_codigo in (
+            usuario_id: (usuario_nome, user_id, perfil_nome, perfil_codigo)
+            for usuario_id, usuario_nome, user_id, perfil_nome, perfil_codigo in (
                 await self.session.execute(stmt)
             ).all()
         }
@@ -276,6 +282,20 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
             stmt = stmt.where(UsuarioModel.id != ignorar_id)
         return (await self.session.execute(stmt)).first() is not None
 
+    async def existe_user_id(
+        self, unidade_id: UUID, user_id: str, ignorar_id: UUID | None
+    ) -> bool:
+        normalizado = Usuario.normalizar_user_id(user_id)
+        if normalizado is None:
+            return False
+        stmt = select(UsuarioModel.id).where(
+            UsuarioModel.unidade_id == unidade_id,
+            func.lower(UsuarioModel.user_id) == normalizado.lower(),
+        )
+        if ignorar_id is not None:
+            stmt = stmt.where(UsuarioModel.id != ignorar_id)
+        return (await self.session.execute(stmt)).first() is not None
+
     async def obter_por_email(self, email: str) -> Usuario | None:
         normalizado = Usuario.normalizar_email(email)
         stmt = select(UsuarioModel).where(UsuarioModel.email == normalizado)
@@ -391,7 +411,7 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
         )
 
     def _to_entity(self, model: UsuarioModel) -> Usuario:
-        usuario = Usuario(model.unidade_id, model.nome, model.email)
+        usuario = Usuario(model.unidade_id, model.nome, model.email, user_id=model.user_id)
         usuario.id = model.id
         usuario.senha_hash = model.senha_hash
         usuario.senha_alteracao_obrigatoria = model.senha_alteracao_obrigatoria
@@ -410,6 +430,7 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
             unidade_id=entity.unidade_id,
             nome=entity.nome,
             email=entity.email,
+            user_id=entity.user_id,
             senha_hash=entity.senha_hash,
             senha_alteracao_obrigatoria=entity.senha_alteracao_obrigatoria,
             perfil_id=entity.perfil_id,

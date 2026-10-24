@@ -85,9 +85,9 @@ function createSeed(): Database {
     { id: "mock-user-dev", nome: "Daniel Oliveira", email: "daniel.oliveira@example.com", ativo: true, perfil_id: standardProfile.id, responsavel_id: MANAGER_ID, created_at: "2026-02-01T12:00:00Z" },
     { id: "mock-user-standard", nome: "Ana Souza", email: "ana.souza@example.com", ativo: true, perfil_id: standardProfile.id, responsavel_id: MANAGER_ID, created_at: "2026-02-05T12:00:00Z" },
     { id: "mock-user-inactive", nome: "Rafael Lima", email: "rafael.lima@example.com", ativo: false, perfil_id: standardProfile.id, created_at: "2026-02-10T12:00:00Z" },
-  ];
+  ].map((user) => ({ ...user, user_id: user.user_id ?? null }));
   return {
-    schemaVersion: 10,
+    schemaVersion: 11,
     unidade: { id: UNIT_ID, nome: "Manaus", ativo: true },
     usuarios: users,
     perfis: [adminProfile, standardProfile, managerProfile, kpProfile],
@@ -193,6 +193,11 @@ function readDb(): Database {
       const developer = db.perfis.find((profile) => profile.codigo === "USUARIO_PADRAO");
       if (developer) developer.permissoes = [...new Set([...developer.permissoes, "times.consultar", "usuarios.perfil.consultar"])];
       db.schemaVersion = 10;
+      return writeDb(db);
+    }
+    if ((db.schemaVersion ?? 1) < 11) {
+      db.usuarios.forEach((user) => { user.user_id ??= null; });
+      db.schemaVersion = 11;
       return writeDb(db);
     }
     return db;
@@ -327,7 +332,8 @@ export const mockUsuarioApi = {
   criar(body: UsuarioFormValues) {
     return updateDb((db) => {
       const profileId = body.perfil_id || db.perfis.find((profile) => profile.codigo === "USUARIO_PADRAO")!.id;
-      const user: Usuario = { id: id("mock-user"), nome: body.nome, email: body.email, ativo: true, perfil_id: profileId, created_at: new Date().toISOString() };
+      const userId = garantirUserIdUnico(db, body.user_id ?? null);
+      const user: Usuario = { id: id("mock-user"), nome: body.nome, email: body.email, user_id: userId, ativo: true, perfil_id: profileId, created_at: new Date().toISOString() };
       db.usuarios.unshift(user);
       return user;
     });
@@ -336,6 +342,7 @@ export const mockUsuarioApi = {
     return updateDb((db) => {
       const user = db.usuarios.find((item) => item.id === userId);
       if (!user) throw new Error("Usuário não encontrado.");
+      user.user_id = garantirUserIdUnico(db, body.user_id ?? null, userId);
       user.nome = body.nome; user.email = body.email;
       if (body.perfil_id) user.perfil_id = body.perfil_id;
       return user;
@@ -425,12 +432,12 @@ export const mockTimesApi = {
     return db.membrosTime.filter((member) => member.time_id === teamId).map((member) => {
       const user = db.usuarios.find((item) => item.id === member.usuario_id);
       const profile = user && profileFor(db, user);
-      return { ...member, usuario_nome: user?.nome ?? member.usuario_nome, usuario_perfil: profile?.nome ?? member.usuario_perfil, usuario_perfil_codigo: profile?.codigo ?? member.usuario_perfil_codigo };
+      return { ...member, usuario_nome: user?.nome ?? member.usuario_nome, usuario_user_id: user?.user_id ?? null, usuario_perfil: profile?.nome ?? member.usuario_perfil, usuario_perfil_codigo: profile?.codigo ?? member.usuario_perfil_codigo };
     });
   },
   usuariosDisponiveis() { return readDb().usuarios.filter((user) => user.ativo); },
   adicionar(teamId: string, userId: string) {
-    return updateDb((db) => { let member = db.membrosTime.find((item) => item.time_id === teamId && item.usuario_id === userId); if (member) member.ativo = true; else { const user = db.usuarios.find((item) => item.id === userId); const profile = user && profileFor(db, user); member = { id: id("mock-member"), time_id: teamId, usuario_id: userId, usuario_nome: user?.nome, usuario_perfil: profile?.nome, usuario_perfil_codigo: profile?.codigo, ativo: true }; db.membrosTime.push(member); } return member; });
+    return updateDb((db) => { let member = db.membrosTime.find((item) => item.time_id === teamId && item.usuario_id === userId); if (member) member.ativo = true; else { const user = db.usuarios.find((item) => item.id === userId); const profile = user && profileFor(db, user); member = { id: id("mock-member"), time_id: teamId, usuario_id: userId, usuario_nome: user?.nome, usuario_user_id: user?.user_id ?? null, usuario_perfil: profile?.nome, usuario_perfil_codigo: profile?.codigo, ativo: true }; db.membrosTime.push(member); } return member; });
   },
   remover(teamId: string, userId: string) {
     updateDb((db) => { const member = db.membrosTime.find((item) => item.time_id === teamId && item.usuario_id === userId); if (member) member.ativo = false; });
@@ -500,6 +507,27 @@ function normalizarNomeMembro(value: string) {
 
 function normalizarEmailMembro(value: string) {
   return value.normalize("NFC").replace(/\s+/g, "").toLocaleLowerCase();
+}
+
+function normalizarUserId(value: string) {
+  return value.normalize("NFC").trim().toLocaleLowerCase();
+}
+
+function garantirUserIdUnico(db: Database, userId: string | null, ignorarId?: string) {
+  const normalized = userId ? normalizarUserId(userId) : "";
+  if (!normalized) return null;
+  const duplicado = db.usuarios.some((user) =>
+    user.id !== ignorarId && user.user_id && normalizarUserId(user.user_id) === normalized,
+  );
+  if (duplicado) {
+    throw new ApiError({
+      type: "about:blank",
+      title: "User ID duplicado.",
+      status: 409,
+      errors: [{ campo: "user_id", mensagem: "Já existe um usuário com este User ID nesta unidade." }],
+    });
+  }
+  return userId?.trim() || null;
 }
 
 export const mockProjetosApi = {
@@ -577,9 +605,10 @@ export const mockProjetosApi = {
       if (!identificador) return null; // A célula vazia já foi reportada na leitura.
       const nomeInformado = normalizarNomeMembro(identificador);
       const emailInformado = normalizarEmailMembro(identificador);
-      const found = usuarios.filter((user) => normalizarNomeMembro(user.nome) === nomeInformado || normalizarEmailMembro(user.email) === emailInformado);
+      const userIdInformado = normalizarUserId(identificador);
+      const found = usuarios.filter((user) => normalizarNomeMembro(user.nome) === nomeInformado || normalizarEmailMembro(user.email) === emailInformado || Boolean(user.user_id && normalizarUserId(user.user_id) === userIdInformado));
       const doTime = found.filter((user) => membros.has(user.id));
-      if (doTime.length === 1) return doTime[0].id;
+      if (found.length === 1 && doTime.length === 1) return doTime[0].id;
       const codigo = !found.length ? "pessoa_nao_encontrada" : found.length > 1 ? "pessoa_ambigua" : "pessoa_fora_do_time";
       const mensagem = { pessoa_nao_encontrada: "Pessoa não encontrada na unidade.", pessoa_ambigua: "Mais de uma pessoa corresponde a este valor.", pessoa_fora_do_time: "A pessoa precisa ser membro ativo do time." }[codigo];
       erros.push({ campo: `linha.${linha}.${campo}`, mensagem, codigo, linha, coluna, valor: identificador });

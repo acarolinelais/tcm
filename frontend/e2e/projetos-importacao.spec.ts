@@ -110,6 +110,32 @@ test("mostra os problemas de pessoas devolvidos pela API e não cria o projeto",
   await expect(page.getByRole("heading", { name: "Meus projetos" })).toHaveCount(0);
 });
 
+test("envia identificadores de usuário e bloqueia importação ambígua", async ({ page }) => {
+  await page.route("**/api/projetos/importar", (route) => route.fulfill({
+    status: 422,
+    contentType: "application/problem+json",
+    body: JSON.stringify({
+      title: "Planilha inválida.", status: 422, total_linhas: 1,
+      errors: [{ campo: "linha.2.assignees", mensagem: "Mais de uma pessoa corresponde a este valor.", codigo: "pessoa_ambigua", linha: 2, coluna: "Assignees", valor: "USR-001" }],
+    }),
+  }));
+
+  await page.goto("/projetos");
+  await page.getByRole("button", { name: "Novo projeto" }).click();
+  await page.locator('input[type="file"]').setInputFiles(planilha([
+    ["Clock", "Clock_001", "Low", "A", "New", "9.5", "USR-001", "BACK-002"],
+  ]));
+  const previa = page.getByRole("region", { name: "Prévia dos Test Cases" });
+  await expect(previa).toContainText("USR-001");
+  await page.getByLabel("Time").click();
+  await page.getByRole("option", { name: "Plataforma" }).click();
+  await page.getByRole("button", { name: "Criar projeto" }).click();
+
+  const alerta = page.getByRole("alert");
+  await expect(alerta).toContainText("USR-001");
+  await expect(page.getByRole("heading", { name: "Meus projetos" })).toHaveCount(0);
+});
+
 test("abrir o seletor de modelos com a prévia rolada não estica a página", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto("/projetos");
