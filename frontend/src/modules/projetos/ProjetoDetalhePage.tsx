@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRightLeft, Check, ClipboardList, Pencil, Plus, UploadCloud } from "lucide-react";
+import { ArrowLeft, ArrowRightLeft, Check, ClipboardList, Clock, Eye, Pencil, Play, Plus, UploadCloud, X, type LucideIcon } from "lucide-react";
 import { Link, useOutletContext, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
@@ -24,17 +24,19 @@ const dificuldades: DificuldadeCasoTeste[] = ["Low", "Medium", "High"];
 const situacoes: SituacaoCasoTeste[] = ["To-Do", "InProgress", "InReview", "Pass", "Fail"];
 const difficultyLabels: Record<DificuldadeCasoTeste, string> = { Low: "difficultyLow", Medium: "difficultyMedium", High: "difficultyHigh" };
 const situationLabels: Record<SituacaoCasoTeste, string> = { "To-Do": "situationTodo", InProgress: "situationInProgress", InReview: "situationInReview", Pass: "situationPass", Fail: "situationFail" };
-const situationBadgeClasses: Record<SituacaoCasoTeste, string> = {
-  "To-Do": "bg-slate-50 text-slate-700",
-  InProgress: "bg-blue-50 text-blue-800",
-  InReview: "bg-amber-50 text-amber-800",
-  Pass: "bg-green-50 text-green-800",
-  Fail: "bg-red-50 text-red-800",
+const situationBadges: Record<SituacaoCasoTeste, { badge: string; icon: string; Icon: LucideIcon }> = {
+  "To-Do": { badge: "bg-slate-100 text-slate-700", icon: "bg-slate-500", Icon: Clock },
+  InProgress: { badge: "bg-blue-50 text-blue-800", icon: "bg-blue-700", Icon: Play },
+  InReview: { badge: "bg-amber-50 text-amber-800", icon: "bg-amber-600", Icon: Eye },
+  Pass: { badge: "bg-green-50 text-green-800", icon: "bg-green-800", Icon: Check },
+  Fail: { badge: "bg-red-50 text-red-800", icon: "bg-red-700", Icon: X },
 };
+const situationBadgeBase = "h-7 w-fit gap-1.5 rounded-md border-0 px-2 py-0 text-sm font-medium shadow-none";
 
 function SituationBadgeContent({ situation, label }: { situation: SituacaoCasoTeste; label: string }) {
-  return <span className="inline-flex items-center gap-2.5">
-    {situation === "Pass" ? <span className="flex size-6 items-center justify-center rounded-full bg-green-800 text-white"><Check aria-hidden="true" className="size-4 stroke-[3]" /></span> : <span aria-hidden="true" className={`size-2.5 rounded-full ${situation === "Fail" ? "bg-red-600" : situation === "InReview" ? "bg-amber-500" : situation === "InProgress" ? "bg-blue-600" : "bg-slate-400"}`} />}
+  const { icon, Icon } = situationBadges[situation];
+  return <span className="inline-flex items-center gap-1.5">
+    <span aria-hidden="true" className={`flex size-4 shrink-0 items-center justify-center rounded-full text-white ${icon}`}><Icon className="size-2.5 stroke-[3]" /></span>
     <span>{label}</span>
   </span>;
 }
@@ -175,7 +177,7 @@ export function ProjetoDetalhePage() {
             const endDate = testCase.situation === "Pass" ? testCase.updated_at ?? testCase.created_at : null;
             return <TableRow key={testCase.id}>
               <TableCell className="font-medium">{testCase.tc_id}</TableCell>
-              <TableCell>{canManage || canEditOwn ? <Select value={testCase.situation} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "situation", value })}><SelectTrigger aria-label={`${t("tcSituation")} ${testCase.tc_id}`} className={`h-auto w-fit gap-2 rounded-lg border-0 px-3 py-1.5 text-sm shadow-none ${situationBadgeClasses[testCase.situation]}`}><SituationBadgeContent situation={testCase.situation} label={t(situationLabels[testCase.situation])} /></SelectTrigger><SelectContent>{situacoes.map((value) => <SelectItem key={value} value={value}>{t(situationLabels[value])}</SelectItem>)}</SelectContent></Select> : <Badge variant="secondary" className={`rounded-lg px-3 py-1.5 text-sm ${situationBadgeClasses[testCase.situation]}`}><SituationBadgeContent situation={testCase.situation} label={t(situationLabels[testCase.situation])} /></Badge>}</TableCell>
+              <TableCell>{canManage || canEditOwn ? <Select value={testCase.situation} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "situation", value })}><SelectTrigger aria-label={`${t("tcSituation")} ${testCase.tc_id}`} className={`${situationBadgeBase} ${situationBadges[testCase.situation].badge}`}><SituationBadgeContent situation={testCase.situation} label={t(situationLabels[testCase.situation])} /></SelectTrigger><SelectContent>{situacoes.map((value) => <SelectItem key={value} value={value}>{t(situationLabels[value])}</SelectItem>)}</SelectContent></Select> : <Badge variant="secondary" className={`${situationBadgeBase} ${situationBadges[testCase.situation].badge}`}><SituationBadgeContent situation={testCase.situation} label={t(situationLabels[testCase.situation])} /></Badge>}</TableCell>
               <TableCell className="text-muted-foreground">{nomesMembros[testCase.responsavel_id] ?? testCase.responsavel_id}</TableCell>
               <TableCell>{canEditOwn && !canManage ? <Select value={testCase.difficulty} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "difficulty", value })}><SelectTrigger aria-label={`${t("difficulty")} ${testCase.tc_id}`} className="h-8 w-28"><SelectValue /></SelectTrigger><SelectContent>{dificuldades.map((value) => <SelectItem key={value} value={value}>{t(difficultyLabels[value])}</SelectItem>)}</SelectContent></Select> : t(difficultyLabels[testCase.difficulty])}</TableCell>
               <TableCell>{canEditOwn && !canManage ? <Select value={testCase.category} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "category", value })}><SelectTrigger aria-label={`${t("category")} ${testCase.tc_id}`} className="h-8 w-20"><SelectValue /></SelectTrigger><SelectContent>{categorias.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select> : testCase.category}</TableCell>
