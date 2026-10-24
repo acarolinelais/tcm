@@ -87,6 +87,7 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             model.responsavel_id,
             model.backup_id,
             SituacaoCasoTeste(model.situation),
+            exigir_backup=False,
         )
         caso.id = model.id
         caso.ativo = model.ativo

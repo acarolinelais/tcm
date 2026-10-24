@@ -112,6 +112,14 @@ async def test_caso_persiste_com_responsaveis_e_tc_id_e_unico_no_projeto():
             assert await repository.existe_tc_id(unidade_id, projeto_id, "Clock_001")
             assert not await repository.existe_tc_id(uuid4(), projeto_id, "Clock_001")
 
+            caso.transferir_para_backup()
+            await repository.atualizar(caso)
+            await session.flush()
+            transferido = await repository.obter_por_id(unidade_id, caso.id)
+            assert transferido is not None
+            assert transferido.responsavel_id == backup_id
+            assert transferido.backup_id is None
+
             duplicado = CasoTeste(
                 unidade_id,
                 projeto_id,

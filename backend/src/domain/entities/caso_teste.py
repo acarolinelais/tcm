@@ -37,6 +37,8 @@ class CasoTeste(EntidadeTenant):
         responsavel_id: UUID,
         backup_id: UUID | None,
         situation: SituacaoCasoTeste = SituacaoCasoTeste.TO_DO,
+        *,
+        exigir_backup: bool = True,
     ) -> None:
         super().__init__(unidade_id)
         self.projeto_id = projeto_id
@@ -46,7 +48,8 @@ class CasoTeste(EntidadeTenant):
         self.situation = SituacaoCasoTeste(situation)
         self.responsavel_id = responsavel_id
         self.backup_id = backup_id
-        self._validar_responsaveis(responsavel_id, backup_id, exigir_backup=True)
+        # Na reidratação o backup pode faltar: transferir_para_backup() o deixa vazio.
+        self._validar_responsaveis(responsavel_id, backup_id, exigir_backup=exigir_backup)
 
     def atualizar_campos_do_responsavel(
         self,

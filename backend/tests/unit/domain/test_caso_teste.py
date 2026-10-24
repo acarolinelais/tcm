@@ -94,3 +94,18 @@ def test_transferir_sem_backup_levanta_erro():
 
     with pytest.raises(ValueError, match="não possui backup"):
         caso.transferir_para_backup()
+
+
+def test_reidratar_caso_sem_backup_nao_exige_backup():
+    caso = CasoTeste(
+        unidade_id=uuid4(),
+        projeto_id=uuid4(),
+        tc_id="Clock_001",
+        category=CategoriaCasoTeste.A,
+        difficulty=DificuldadeCasoTeste.LOW,
+        responsavel_id=uuid4(),
+        backup_id=None,
+        exigir_backup=False,
+    )
+
+    assert caso.backup_id is None
