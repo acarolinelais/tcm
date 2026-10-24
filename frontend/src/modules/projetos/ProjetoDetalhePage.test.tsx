@@ -66,6 +66,25 @@ describe("ProjetoDetalhePage", () => {
     expect(casosTesteApi.listar).toHaveBeenCalledWith("project-1", 1, DEFAULT_TABLE_PAGE_SIZE, { responsavelId: undefined, associadosAMim: true });
   });
 
+  it("filtra TCs por semana no cabeçalho e mantém as semanas das abas independentes", async () => {
+    vi.mocked(casosTesteApi.listar).mockImplementation(async (_id, page = 1, pageSize = 20, filtros) => ({ items: filtros?.semana ? [] : casos, total_count: filtros?.semana ? 0 : casos.length, page, page_size: pageSize }));
+    const user = userEvent.setup();
+    const { container } = renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO", permissoes: [...perfil.permissoes, "form_factor.consultar"] });
+    await screen.findByRole("row", { name: /Clock_001/ });
+    await user.click(within(container.querySelector("header")!).getByRole("button", { name: "Week: Select a week" }));
+    await user.click(within(await screen.findByRole("dialog", { name: "Week" })).getByRole("button", { name: "This week" }));
+    await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("project-1", 1, DEFAULT_TABLE_PAGE_SIZE, { responsavelId: undefined, associadosAMim: true, semana: semanaIso(new Date()) }));
+    expect(screen.queryByRole("row", { name: /Clock_001/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Clear filters" })).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Form Factor" }));
+    expect(screen.getByRole("button", { name: "Week: Select a week" })).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Test Cases" }));
+    await user.click(screen.getByRole("button", { name: /^Week: Week/ }));
+    await user.click(within(await screen.findByRole("dialog", { name: "Week" })).getByRole("button", { name: "Clear filters" }));
+    await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("project-1", 1, DEFAULT_TABLE_PAGE_SIZE, { responsavelId: undefined, associadosAMim: true }));
+    expect(await screen.findByRole("row", { name: /Clock_001/ })).toBeInTheDocument();
+  });
+
   it("erro de acesso prevalece sobre associação vazia antiga no cache", async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     client.setQueryData(["projetos", "project-1", "test-cases", 1, 1, { associadosAMim: true }, "unit-1", "user-1"], { items: [], total_count: 0 });
@@ -269,10 +288,11 @@ describe("ProjetoDetalhePage", () => {
     expect(screen.getByText("PASS")).toBeInTheDocument();
     expect(formFactorApi.listar).toHaveBeenCalledWith("project-1", expect.objectContaining({ page: 1, pageSize: DEFAULT_TABLE_PAGE_SIZE }));
 
-    await user.click(screen.getByRole("button", { name: "Week: Select a week" }));
+    await user.click(within(container.querySelector("header")!).getByRole("button", { name: "Week: Select a week" }));
     await user.click(within(await screen.findByRole("dialog", { name: "Week" })).getByRole("button", { name: "This week" }));
-    await user.type(screen.getByLabelText("One UI version"), "9.5");
-    await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("project-1", expect.objectContaining({ semana: semanaIso(new Date()), oneUi: "9.5" })));
+    expect(screen.queryByRole("textbox", { name: "One UI version" })).not.toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "One UI version" })).toBeInTheDocument();
+    await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("project-1", { page: 1, pageSize: DEFAULT_TABLE_PAGE_SIZE, semana: semanaIso(new Date()) }));
 
     const primeiroDoMes = new Date();
     primeiroDoMes.setDate(1);

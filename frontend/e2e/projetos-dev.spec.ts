@@ -94,6 +94,26 @@ test("entrada: falha mostra erro sem simular ausência", async ({ request, page 
   await expect(page.getByRole("heading", { name: "No associated projects or Test Cases" })).toHaveCount(0);
 });
 
+test("filtra pela semana da data final no cabeçalho e restaura os TCs ao limpar", async ({ request, page }) => {
+  const dados = await preparar(request, page);
+  const projeto = await dados.projeto("Semana");
+  const concluido = await dados.caso(projeto.id, "Concluido_001");
+  await dados.caso(projeto.id, "Pendente_001");
+  const atualizado = await request.put(`${api}/api/test-cases/${concluido.id}`, { data: { status: "Pass" }, headers: { Authorization: `Bearer ${dados.admin.access_token}` } });
+  expect(atualizado.ok()).toBeTruthy();
+  await page.goto("/projetos");
+  await expect(page.getByRole("row", { name: /Pendente_001/ })).toBeVisible();
+  const seletor = page.getByRole("button", { name: "Week: Select a week" });
+  expect(await seletor.evaluate((element) => Boolean(element.closest("header")))).toBe(true);
+  await seletor.click();
+  await page.getByRole("button", { name: "This week", exact: true }).click();
+  await expect(page.getByRole("row", { name: /Concluido_001/ })).toBeVisible();
+  await expect(page.getByRole("row", { name: /Pendente_001/ })).toHaveCount(0);
+  await page.getByRole("button", { name: /^Week: Week/ }).click();
+  await page.getByRole("button", { name: "Clear filters", exact: true }).click();
+  await expect(page.getByRole("row", { name: /Pendente_001/ })).toBeVisible();
+});
+
 test("acesso direto: projeto de outro time é negado", async ({ request, page }) => {
   const dados = await preparar(request, page);
   const setor = await post(request, "setores", { nome: `Fora ${crypto.randomUUID()}` }, dados.admin.access_token);

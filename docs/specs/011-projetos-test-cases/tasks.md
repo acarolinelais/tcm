@@ -1,5 +1,15 @@
 # 011. Projetos e Test Cases: Tasks
 
+## Manutenção de filtros de semana — 2026-10-24
+
+- [x] **M01. Posicionar o filtro semanal no cabeçalho das duas abas e remover o campo One UI de Form Factor.** Semanas independentes por aba; mudança e limpeza voltam à primeira página. Coluna One UI preservada.
+- [x] **M02. Consultar Test Cases pela semana da Data final no servidor e no mock.** Considerar Status Pass, limites locais convertidos para UTC, escopo pessoal/organizacional e contagem antes da paginação. Preservar os contratos sem filtro de semana e explicitar UTC na resposta dos timestamps.
+- [x] **M03. Verificar filtragem, limites, falhas e regressões.** Cobre CA-31, CA-32 e CA-33: semana/fuso inválidos, horário de verão, intervalo inclusivo/exclusivo, contagem/paginação, consulta pessoal, estado vazio com limpeza e seleções independentes entre abas.
+  - Backend: 360 testes passaram em PostgreSQL novo e separado do desenvolvimento; Ruff e formatação aprovados.
+  - Frontend: 137 testes passaram; lint e build aprovados.
+  - Navegador: 9 jornadas passaram em `projetos-dev.spec.ts`, `form-factor.spec.ts` e `projetos.spec.ts`, incluindo seleção/limpeza da semana com API real.
+
+
 - **Spec:** [spec.md](spec.md) · **Plan:** [plan.md](plan.md)
 
 > Uma task = um objetivo, ~30 min, verificável. Os testes vão junto com o código que eles cobrem.

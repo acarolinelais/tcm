@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import case, func, or_, select
@@ -26,6 +27,8 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
         responsavel_id: UUID | None = None,
         priorizar_responsavel_id: UUID | None = None,
         associado_usuario_id: UUID | None = None,
+        data_final_inicio: datetime | None = None,
+        data_final_fim: datetime | None = None,
     ) -> PagedResult[CasoTeste]:
         filtros = [
             CasoTesteModel.unidade_id == unidade_id,
@@ -33,6 +36,16 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
         ]
         if responsavel_id is not None:
             filtros.append(CasoTesteModel.responsavel_id == responsavel_id)
+        if data_final_inicio is not None and data_final_fim is not None:
+            data_final = func.coalesce(CasoTesteModel.updated_at, CasoTesteModel.created_at)
+            filtros.extend(
+                (
+                    CasoTesteModel.ativo.is_(True),
+                    CasoTesteModel.status == StatusCasoTeste.PASS.value,
+                    data_final >= data_final_inicio,
+                    data_final < data_final_fim,
+                )
+            )
         if associado_usuario_id is not None:
             filtros.extend(
                 (

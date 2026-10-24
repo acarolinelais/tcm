@@ -66,7 +66,7 @@ export function useAtualizarStatusProjeto() {
 }
 
 export function useCasosTeste(projetoId: string, page: number, pageSize: number,
-  filtros?: { responsavelId?: string; associadosAMim?: boolean }, perfil?: PerfilAtual, enabled = true) {
+  filtros?: { responsavelId?: string; associadosAMim?: boolean; semana?: string }, perfil?: PerfilAtual, enabled = true) {
   return useQuery({
     queryKey: ["projetos", projetoId, "test-cases", page, pageSize, filtros, perfil?.unidade_id, perfil?.id],
     queryFn: () => filtros ? casosTesteApi.listar(projetoId, page, pageSize, filtros) : casosTesteApi.listar(projetoId, page, pageSize),

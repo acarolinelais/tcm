@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -75,6 +75,12 @@ def to_response(caso: CasoTeste) -> CasoTesteResponse:
         responsavel_id=caso.responsavel_id,
         backup_id=caso.backup_id,
         ativo=caso.ativo,
-        created_at=caso.created_at,
-        updated_at=caso.updated_at,
+        created_at=_timestamp_utc(caso.created_at),
+        updated_at=_timestamp_utc(caso.updated_at),
     )
+
+
+def _timestamp_utc(valor: datetime | None) -> datetime | None:
+    if valor is None:
+        return None
+    return valor.replace(tzinfo=UTC) if valor.tzinfo is None else valor.astimezone(UTC)

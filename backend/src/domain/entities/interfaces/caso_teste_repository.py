@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
@@ -16,6 +17,8 @@ class CasoTesteRepository(RepositoryBase[CasoTeste], Protocol):
         responsavel_id: UUID | None = None,
         priorizar_responsavel_id: UUID | None = None,
         associado_usuario_id: UUID | None = None,
+        data_final_inicio: datetime | None = None,
+        data_final_fim: datetime | None = None,
     ) -> PagedResult[CasoTeste]: ...
 
     async def existe_tc_id(self, unidade_id: UUID, projeto_id: UUID, tc_id: str) -> bool: ...

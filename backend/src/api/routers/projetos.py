@@ -120,11 +120,19 @@ async def listar_test_cases(
     page_size: int = Query(20, ge=1, le=100),
     responsavel_id: UUID | None = Query(None),
     associados_a_mim: bool = Query(False),
+    semana: str | None = Query(None, pattern=r"^\d{4}-W\d{2}$"),
+    fuso_horario: str = Query("UTC", min_length=1, max_length=64),
     service: CasoTesteService = Depends(get_caso_teste_service),
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
     return await service.listar(
-        usuario_atual, projeto_id, page, page_size, responsavel_id, associados_a_mim
+        usuario_atual,
+        projeto_id,
+        page,
+        page_size,
+        responsavel_id,
+        associados_a_mim,
+        **({"semana": semana, "fuso_horario": fuso_horario} if semana else {}),
     )
 
 

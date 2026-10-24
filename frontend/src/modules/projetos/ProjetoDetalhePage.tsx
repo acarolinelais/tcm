@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRightLeft, Check, ClipboardList, Clock, Eye, Pencil, Play, Plus, UploadCloud, X, type LucideIcon } from "lucide-react";
+import { ArrowRightLeft, Check, ClipboardList, Clock, Eye, Pencil, Play, Plus, SearchX, UploadCloud, X, type LucideIcon } from "lucide-react";
 import { useOutletContext, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
@@ -13,7 +13,7 @@ import { DrawerClose, DrawerContent, DrawerHeader, DrawerTitle, Dialog } from "@
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyState, TableEmptyStatePanel, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
+import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyState, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
 import { TableRowActions } from "@/shared/ui/table-row-actions";
 import { WeekPicker } from "@/shared/ui/week-picker";
 
@@ -75,7 +75,7 @@ function ProjetoDetalhe() {
   const [responsavelId, setResponsavelId] = useState("");
   const [backupId, setBackupId] = useState("");
   const [semana, setSemana] = useState("");
-  const [oneUi, setOneUi] = useState("");
+  const [semanaCasos, setSemanaCasos] = useState("");
   const [arquivoSdf, setArquivoSdf] = useState<File | null>(null);
   const inputSdf = useRef<HTMLInputElement>(null);
   const abasRef = useRef<HTMLDivElement>(null);
@@ -89,10 +89,10 @@ function ProjetoDetalhe() {
   const podeConsultarFormFactor = admin || perfil.permissoes.includes("form_factor.consultar");
   const podeImportarSdf = admin || perfil.permissoes.includes("form_factor.importar");
   const projeto = useQuery({ queryKey: ["projetos", "detalhe", projetoId, perfil.unidade_id, perfil.id], queryFn: () => projetosApi.obter(projetoId), enabled: podeConsultar && Boolean(projetoId) });
-  const casos = useCasosTeste(projetoId, pagina, tamanhoPagina, { responsavelId: filtrosCaso.assignee || undefined, ...(dev ? { associadosAMim: true } : {}) }, perfil, Boolean(projeto.isSuccess && podeConsultarCasos && aba === "cases"));
+  const casos = useCasosTeste(projetoId, pagina, tamanhoPagina, { responsavelId: filtrosCaso.assignee || undefined, ...(dev ? { associadosAMim: true } : {}), ...(semanaCasos ? { semana: semanaCasos } : {}) }, perfil, Boolean(projeto.isSuccess && podeConsultarCasos && aba === "cases"));
   const associacao = useCasosTeste(projetoId, 1, 1, { associadosAMim: true }, perfil, dev && projeto.isSuccess && podeConsultarCasos);
   const membros = useQuery({ queryKey: ["projetos", projetoId, "membros", perfil.unidade_id, perfil.id], queryFn: async () => timesApi.membros(projeto.data!.time_id), enabled: projeto.isSuccess && podeConsultarCasos });
-  const resultados = useQuery({ queryKey: ["projetos", projetoId, "form-factor", pagina, tamanhoPagina, semana, oneUi, perfil.unidade_id, perfil.id], queryFn: () => formFactorApi.listar(projetoId, { page: pagina, pageSize: tamanhoPagina, semana: semana || undefined, oneUi: oneUi || undefined }), enabled: projeto.isSuccess && podeConsultarFormFactor && aba === "form-factor" });
+  const resultados = useQuery({ queryKey: ["projetos", projetoId, "form-factor", pagina, tamanhoPagina, semana, perfil.unidade_id, perfil.id], queryFn: () => formFactorApi.listar(projetoId, { page: pagina, pageSize: tamanhoPagina, semana: semana || undefined }), enabled: projeto.isSuccess && podeConsultarFormFactor && aba === "form-factor" });
 
   const saveCase = useMutation({
     mutationFn: () => editar
@@ -140,6 +140,7 @@ function ProjetoDetalhe() {
     setIndicador(ativa ? { left: ativa.offsetLeft, width: ativa.offsetWidth } : null);
   }, [aba, projeto.data, i18n.resolvedLanguage]);
   const mostrarAcoes = podeGerenciarCasos || Boolean(casos.data?.items.some((item) => item.responsavel_id === responsavelAtual));
+  const temFiltrosCaso = Boolean(semanaCasos || Object.values(filtrosCaso).some(Boolean));
   const casosFiltrados = (casos.isError ? [] : casos.data?.items ?? []).filter((item) => {
     const endDate = item.status === "Pass" ? item.updated_at ?? item.created_at : null;
     const dataFinal = endDate ? formatarDiaIso(new Date(endDate)) : "";
@@ -179,9 +180,10 @@ function ProjetoDetalhe() {
   if (dev && projeto.isSuccess && associacao.isSuccess && !associacao.isFetching && associacao.data.total_count === 0) return <ProjetosEntradaPage projetoSemCasosId={projetoId} />;
 
   return <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
-    <header className="mb-4 flex shrink-0 items-center gap-4">
+    <header className="mb-4 flex shrink-0 flex-wrap items-start gap-4">
       <div className="min-w-0 flex-1">{projeto.data ? <ProjetoSwitcher projetoId={projetoId} nome={projeto.data.nome} /> : <h1 className="truncate text-2xl font-medium text-primary">{t("loadingProjects")}</h1>}</div>
       {podeGerenciarCasos && aba === "cases" && <Button onClick={() => { limparCaso(); setCriarAberto(true); }}><Plus aria-hidden="true" className="size-4" />{t("newTestCase", { defaultValue: "Novo Test Case" })}</Button>}
+      {projeto.data && <div className="ml-auto grid shrink-0 gap-1 text-xs text-muted-foreground"><span aria-hidden="true">{t("week")}</span><WeekPicker label={t("week")} value={aba === "cases" ? semanaCasos : semana} onChange={(valor) => { if (aba === "cases") setSemanaCasos(valor); else setSemana(valor); setPagina(1); }} className="h-9 w-44" /></div>}
     </header>
 
     {projeto.isLoading ? <p role="status" className="py-8 text-sm text-muted-foreground">{t("loadingProjects")}</p> : projeto.isError || !projeto.data ? <p role="alert" className="py-8 text-sm text-muted-foreground">{t("projectNotFound", { defaultValue: "Projeto não encontrado ou sem acesso." })}</p> : <>
@@ -224,21 +226,20 @@ function ProjetoDetalhe() {
               ]} />}</TableCell>}
             </TableRow>;
           })}</TableBody> : null}
-          {!casos.isLoading && !casos.isError && !casosFiltrados.length && <TableBody>
-            <TableRow aria-hidden="true" className="border-0 hover:bg-transparent"><TableCell colSpan={mostrarAcoes ? 9 : 8} className="h-3 p-0" /></TableRow>
-            <TableRow><TableCell colSpan={mostrarAcoes ? 9 : 8} className="p-0"><TableEmptyStatePanel role="status" className="px-5 py-8 sm:px-8">
-              <div className="w-full max-w-md text-center"><div className="mx-auto mb-4 flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary"><ClipboardList aria-hidden="true" className="size-5" /></div><h2 className="text-base font-semibold text-foreground">{casos.data?.items.length ? t("noTestCasesResults", { defaultValue: "Nenhum Test Case corresponde aos filtros." }) : t("noTestCases", { defaultValue: "Nenhum Test Case cadastrado." })}</h2><p className="mx-auto mt-1.5 max-w-sm text-sm leading-6 text-muted-foreground">{casos.data?.items.length ? t("adjustFilters", { defaultValue: "Ajuste ou limpe os filtros para ver os resultados." }) : t("noTestCasesHint", { defaultValue: "Crie um caso de teste manualmente ou importe uma planilha na criação do projeto." })}</p></div>
-            </TableEmptyStatePanel></TableCell></TableRow>
-          </TableBody>}
         </Table>
+        {!casos.isLoading && !casos.isError && !casosFiltrados.length && <TableEmptyState>
+          <div role="status" className="w-full max-w-md text-center">
+            <div className="mx-auto mb-4 flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">{temFiltrosCaso ? <SearchX aria-hidden="true" className="size-5" /> : <ClipboardList aria-hidden="true" className="size-5" />}</div>
+            <h2 className="text-base font-semibold text-foreground">{t(temFiltrosCaso ? "noTestCasesResults" : "noTestCases")}</h2>
+            <p className="mx-auto mt-1.5 max-w-sm text-sm leading-6 text-muted-foreground">{t(temFiltrosCaso ? "adjustFilters" : "noTestCasesHint")}</p>
+            {temFiltrosCaso && <Button variant="outline" className="mt-4" onClick={() => { setSemanaCasos(""); setFiltrosCaso({ tcId: "", status: "", situation: "", assignee: "", difficulty: "", category: "", endDate: "", backup: "" }); setPagina(1); }}>{t("clearFilters")}</Button>}
+          </div>
+        </TableEmptyState>}
         {casos.isLoading && <p role="status" className="p-5 text-sm text-muted-foreground">{t("loading", { defaultValue: "Carregando…" })}</p>}
         {casos.isError && <p role="alert" className="p-5 text-sm text-destructive">{t("caseLoadError", { defaultValue: "Não foi possível carregar os Test Cases." })}</p>}
         <TablePagination page={pagina} pageSize={tamanhoPagina} totalCount={casos.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
       </TableLayout> : <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex flex-wrap gap-3"><div className="grid gap-1 text-xs text-muted-foreground"><span aria-hidden="true">{t("week")}</span><WeekPicker label={t("week")} value={semana} onChange={(valor) => { setSemana(valor); setPagina(1); }} className="h-9 w-44" /></div><label className="grid gap-1 text-xs text-muted-foreground">{t("oneUi", { defaultValue: "One UI" })}<Input value={oneUi} onChange={(event) => { setOneUi(event.target.value); setPagina(1); }} placeholder={projeto.data.one_ui} className="h-9 w-36" /></label></div>
-          {podeImportarSdf && <div className="flex items-center gap-2"><input ref={inputSdf} className="sr-only" type="file" accept=".xls,.xlsx" onChange={(event) => setArquivoSdf(event.target.files?.[0] ?? null)} /><Button variant="outline" onClick={() => inputSdf.current?.click()}><UploadCloud aria-hidden="true" className="size-4" />{arquivoSdf?.name ?? t("importSdf", { defaultValue: "Importar relatório SDF" })}</Button>{arquivoSdf && <Button disabled={importReport.isPending} onClick={() => importReport.mutate()}>{importReport.isPending ? t("saving") : t("import")}</Button>}</div>}
-        </div>
+        {podeImportarSdf && <div className="flex flex-wrap items-center gap-2"><input ref={inputSdf} className="sr-only" type="file" accept=".xls,.xlsx" onChange={(event) => setArquivoSdf(event.target.files?.[0] ?? null)} /><Button variant="outline" onClick={() => inputSdf.current?.click()}><UploadCloud aria-hidden="true" className="size-4" />{arquivoSdf?.name ?? t("importSdf", { defaultValue: "Importar relatório SDF" })}</Button>{arquivoSdf && <Button disabled={importReport.isPending} onClick={() => importReport.mutate()}>{importReport.isPending ? t("saving") : t("import")}</Button>}</div>}
         <TableLayout><Table containerClassName={resultados.data?.items.length ? "min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}><TableHeader><TableRow><TableHead>{t("tcId")}</TableHead><TableHead>{t("sdfId")}</TableHead><TableHead>{t("deviceModel")}</TableHead><TableHead>{t("result")}</TableHead><TableHead>{t("date")}</TableHead><TableHead>{t("oneUi")}</TableHead></TableRow></TableHeader>{resultados.data?.items.length ? <TableBody>{resultados.data.items.map((row, index) => <TableRow key={`${row.sdf_id}-${row.modelo_dispositivo_id}-${index}`}><TableCell className="font-medium">{row.tc_id}</TableCell><TableCell>{row.sdf_id}</TableCell><TableCell>{row.modelo_nome}</TableCell><TableCell>{row.resultado}</TableCell><TableCell>{formatDate(row.data_reportada)}</TableCell><TableCell>{row.one_ui}</TableCell></TableRow>)}</TableBody> : null}</Table>{!resultados.isLoading && !resultados.isError && !resultados.data?.items.length && <TableEmptyState><p role="status">{t("noFormFactorResults", { defaultValue: "Nenhum resultado Form Factor cadastrado." })}</p></TableEmptyState>}<TablePagination page={pagina} pageSize={tamanhoPagina} totalCount={resultados.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} /></TableLayout>
       </div>}
     </>}

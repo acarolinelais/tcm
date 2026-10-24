@@ -79,7 +79,7 @@ export const projetosApi = {
 };
 
 export const casosTesteApi = {
-  listar(projetoId: string, page = 1, pageSize = 20, filtros: { responsavelId?: string; associadosAMim?: boolean } = {}) {
+  listar(projetoId: string, page = 1, pageSize = 20, filtros: { responsavelId?: string; associadosAMim?: boolean; semana?: string } = {}) {
     return useMock
       ? Promise.resolve(mockCasosTesteApi.listar(projetoId, page, pageSize, filtros))
       : httpGet<PagedResult<CasoTeste>>(`/api/projetos/${projetoId}/test-cases`, {
@@ -87,6 +87,7 @@ export const casosTesteApi = {
         page_size: pageSize,
         ...(filtros.responsavelId ? { responsavel_id: filtros.responsavelId } : {}),
         ...(filtros.associadosAMim ? { associados_a_mim: "true" } : {}),
+        ...(filtros.semana ? { semana: filtros.semana, fuso_horario: Intl.DateTimeFormat().resolvedOptions().timeZone } : {}),
       });
   },
   obter(id: string) {

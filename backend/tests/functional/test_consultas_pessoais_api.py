@@ -41,3 +41,27 @@ async def test_parametros_invalidos_retornam_problem_details(api_client, casos, 
     assert resposta.status_code == 422
     assert resposta.headers["content-type"].startswith("application/problem+json")
     service.listar.assert_not_awaited()
+
+
+async def test_repassa_semana_e_fuso_para_consulta_de_casos(api_client):
+    usuario = UsuarioAutenticado(uuid4(), uuid4(), "USUARIO_PADRAO")
+    projeto_id = uuid4()
+    service = AsyncMock()
+    service.listar.return_value = PagedResult([], 1, 20, 0)
+    app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
+    app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
+    resposta = await api_client.get(
+        f"/api/projetos/{projeto_id}/test-cases",
+        params={"semana": "2026-W13", "fuso_horario": "America/Manaus", "associados_a_mim": True},
+    )
+    assert resposta.status_code == 200
+    service.listar.assert_awaited_once_with(
+        usuario,
+        projeto_id,
+        1,
+        20,
+        None,
+        True,
+        semana="2026-W13",
+        fuso_horario="America/Manaus",
+    )
