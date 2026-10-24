@@ -52,7 +52,7 @@ describe("UsuariosTable", () => {
       isLoading: false,
     });
     apiMocks.listarPerfis.mockResolvedValue([
-      { id: "standard", codigo: "USUARIO_PADRAO", nome: "Usuário padrão", descricao: null, permissoes: [] },
+      { id: "standard", codigo: "USUARIO_PADRAO", nome: "Developer", descricao: null, permissoes: [] },
       { id: "kp", codigo: "KP", nome: "Pessoa-chave", descricao: null, permissoes: [] },
     ]);
   });

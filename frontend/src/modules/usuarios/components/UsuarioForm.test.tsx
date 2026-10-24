@@ -10,7 +10,7 @@ const perfilApi = vi.hoisted(() => ({ listarPerfis: vi.fn(), atribuirPerfil: vi.
 vi.mock("@/modules/perfis/api/perfis.api", () => perfilApi);
 
 const profiles = [
-  { id: "default", nome: "Usuário padrão", descricao: null, codigo: "USUARIO_PADRAO", permissoes: [] },
+  { id: "default", nome: "Developer", descricao: null, codigo: "USUARIO_PADRAO", permissoes: [] },
   { id: "kp", nome: "Ponto focal", descricao: null, codigo: "KP", permissoes: [] },
   { id: "manager", nome: "Gerente", descricao: null, codigo: "GERENTE", permissoes: [] },
   { id: "custom", nome: "Auditoria", descricao: null, codigo: null, permissoes: [] },
@@ -84,7 +84,7 @@ describe("UsuarioForm", () => {
     await waitFor(() => expect(screen.getByRole("combobox", { name: "Profile" })).not.toBeDisabled());
     const options = [...container.querySelectorAll("select option")].map((option) => option.textContent);
     expect(options).toContain("Key Person");
-    expect(options).toContain("Standard user");
+    expect(options).toContain("Developer");
     expect(options).not.toContain("Gerente");
     expect(options).not.toContain("Auditoria");
   });

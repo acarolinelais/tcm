@@ -112,11 +112,10 @@ export function UsuarioForm({
             id="nome"
             className="mt-2.5"
             aria-invalid={Boolean(errors.nome)}
-            aria-describedby={errors.nome ? "user-name-hint user-name-error" : "user-name-hint"}
+            aria-describedby={errors.nome ? "user-name-error" : undefined}
             readOnly={!podeGerenciar}
             {...register("nome")}
           />
-          <p id="user-name-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("userNameHint")}</p>
           {errors.nome && <p id="user-name-error" className="mt-1.5 text-sm text-destructive">{errors.nome.message}</p>}
         </div>
         <div className="flex flex-col">
@@ -126,11 +125,10 @@ export function UsuarioForm({
             className="mt-2.5"
             type="email"
             aria-invalid={Boolean(errors.email)}
-            aria-describedby={errors.email ? "user-email-hint user-email-error" : "user-email-hint"}
+            aria-describedby={errors.email ? "user-email-error" : undefined}
             readOnly={!podeGerenciar}
             {...register("email")}
           />
-          <p id="user-email-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("userEmailHint")}</p>
           {errors.email && <p id="user-email-error" className="mt-1.5 text-sm text-destructive">{errors.email.message}</p>}
         </div>
         {podeSelecionarPerfil && (

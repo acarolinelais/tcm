@@ -24,7 +24,7 @@ export function EmBreve({ titulo, ilustracao }: EmBreveProps) {
       <div aria-hidden="true" className="pointer-events-none absolute -right-24 top-1/2 h-[28rem] w-[28rem] -translate-y-1/2 rounded-full bg-[#EEF4FF] sm:-right-20" />
       <div className="relative z-10 grid w-full items-center gap-8 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:gap-10">
         <div className="max-w-lg">
-          <span className="inline-flex items-center gap-2 rounded-full border border-[#DCE7FF] bg-[#F5F8FF] px-3 py-1.5 text-xs font-medium text-[#3478F6]">
+          <span className="inline-flex items-center gap-2 rounded-full border border-[#DCE7FF] bg-[#F5F8FF] px-3 py-1.5 text-xs font-medium text-primary">
             <Construction aria-hidden="true" className="size-4" />
             {t("inDevelopment")}
           </span>

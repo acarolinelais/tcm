@@ -67,7 +67,7 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
     setCriarAberto(true);
   }
   return <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
-    <header className="mb-7 flex shrink-0 items-center justify-between"><h1 className="text-2xl font-medium text-[#3478F6]">{t("teams")}</h1>{podeGerenciar && <Button onClick={abrirCriacaoTime}>{t("newTeam")}</Button>}</header>
+    <header className="mb-7 flex shrink-0 items-center justify-between"><h1 className="text-2xl font-medium text-primary">{t("teams")}</h1>{podeGerenciar && <Button onClick={abrirCriacaoTime}>{t("newTeam")}</Button>}</header>
     <TableLayout>
     <Table containerClassName={`min-h-0 ${times.data?.items.length ? "flex-1 overflow-auto" : "shrink-0 overflow-visible"}`}><TableHeader><TableRow>
       <TableHead><TableColumnFilter label={t("teams")} value={filtros.busca ?? ""} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, busca: value || undefined })); }} placeholder={t("searchTeam")} /></TableHead>
@@ -75,8 +75,8 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
       {podeGerenciarMembros && <TableHead>{t("members")}</TableHead>}<TableHead><TableColumnFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, ativo: value === "" ? undefined : value === "true" })); }} options={[{ value: "", label: t("all") }, { value: "true", label: t("active") }, { value: "false", label: t("inactive") }]} /></TableHead>{podeVisualizarDetalhe && <TableHead className="text-right">{t("actions")}</TableHead>}
     </TableRow></TableHeader>{Boolean(times.data?.items.length) && <TableBody>
       {timesVisiveis.map((time, index) => <TableRow key={time.id}>
-        <TableCell className="text-base font-medium text-foreground">{time.nome}</TableCell>
-        <TableCell className="text-base text-muted-foreground">{time.setor_nome ?? setorNome(time.setor_id)}</TableCell>
+        <TableCell className="font-medium text-foreground">{time.nome}</TableCell>
+        <TableCell className="text-muted-foreground">{time.setor_nome ?? setorNome(time.setor_id)}</TableCell>
         {podeGerenciarMembros && <TableCell>
           {(() => {
             const integrantes = (membrosPorTime[index]?.data ?? []).filter((membro) => membro.ativo).map((membro) => usuarioNome(membro.usuario_id));
@@ -107,7 +107,7 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
         <p className="mx-auto mt-1.5 max-w-xs text-sm leading-6 text-muted-foreground">
           {Object.values(filtros).some((value) => value !== undefined && value !== "") ? t("noTeamResults") : t("noTeamHint")}
         </p>
-        {Object.values(filtros).some((value) => value !== undefined && value !== "") ? <Button variant="outline" size="sm" className="mt-5" onClick={() => { setPagina(1); setFiltros({}); }}>{t("clearFilters")}</Button> : podeGerenciar && <Button size="sm" className="mt-5" onClick={() => setCriarAberto(true)}>{t("createFirstTeam")}</Button>}
+        {Object.values(filtros).some((value) => value !== undefined && value !== "") && <Button variant="outline" size="sm" className="mt-5" onClick={() => { setPagina(1); setFiltros({}); }}>{t("clearFilters")}</Button>}
       </div>}
     </TableEmptyState>}
     <TablePagination page={pagina} pageSize={tamanho} totalCount={times.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(n) => { setTamanho(n); setPagina(1); }} />
@@ -116,20 +116,18 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle>{t("newTeam")}</DrawerTitle>
-          <p className="mt-1.5 text-sm leading-5 text-muted-foreground">{t("newTeamDescription")}</p>
         </DrawerHeader>
         <form noValidate className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => { event.preventDefault(); const errors: typeof errosCriacao = {}; if (!nome.trim()) errors.nome = t("requiredField"); if (!setorSelecionadoParaCriar) errors.setor = t("requiredField"); setErrosCriacao(errors); if (Object.keys(errors).length) return; criar.mutate(); }}>
           <div className="flex-1 space-y-6 px-7 py-6">
             <div className="flex flex-col">
               <Label htmlFor="team-name">{t("teamName")}</Label>
-              <Input id="team-name" className="mt-2.5" aria-invalid={Boolean(errosCriacao.nome)} aria-describedby={errosCriacao.nome ? "team-name-hint team-name-error" : "team-name-hint"} value={nome} onChange={(e) => { setNome(e.target.value); setErrosCriacao((errors) => ({ ...errors, nome: undefined })); }} required maxLength={120} />
-              <p id="team-name-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("teamNameHint")}</p>
+              <Input id="team-name" className="mt-2.5" aria-invalid={Boolean(errosCriacao.nome)} aria-describedby={errosCriacao.nome ? "team-name-error" : undefined} value={nome} onChange={(e) => { setNome(e.target.value); setErrosCriacao((errors) => ({ ...errors, nome: undefined })); }} required maxLength={120} />
               {errosCriacao.nome && <p id="team-name-error" role="alert" className="mt-1.5 text-sm text-destructive">{errosCriacao.nome}</p>}
             </div>
             <div className="flex flex-col">
               <Label htmlFor="team-sector">{t("sector")}</Label>
-              {!admin && ehGerenteComEscopo && setores.isLoading ? <Input id="team-sector" className="mt-2.5" value={t("loadingSectors")} readOnly disabled aria-describedby="team-sector-hint" /> : setorUnicoGerenciado ? <Input id="team-sector" className="mt-2.5" value={setorUnicoGerenciado.nome} readOnly aria-describedby="team-sector-hint" /> : <Select value={setorId} onValueChange={(value) => { setSetorId(value === SELECT_EMPTY_VALUE ? "" : value); setErrosCriacao((errors) => ({ ...errors, setor: undefined })); }}>
-                <SelectTrigger id="team-sector" aria-invalid={Boolean(errosCriacao.setor)} aria-describedby={errosCriacao.setor ? "team-sector-hint team-sector-error" : "team-sector-hint"} className="mt-2.5 h-11 rounded-xl px-3.5">
+              {!admin && ehGerenteComEscopo && setores.isLoading ? <Input id="team-sector" className="mt-2.5" value={t("loadingSectors")} readOnly disabled /> : setorUnicoGerenciado ? <Input id="team-sector" className="mt-2.5" value={setorUnicoGerenciado.nome} readOnly /> : <Select value={setorId} onValueChange={(value) => { setSetorId(value === SELECT_EMPTY_VALUE ? "" : value); setErrosCriacao((errors) => ({ ...errors, setor: undefined })); }}>
+                <SelectTrigger id="team-sector" aria-invalid={Boolean(errosCriacao.setor)} aria-describedby={errosCriacao.setor ? "team-sector-error" : undefined} className="mt-2.5 h-11 rounded-xl px-3.5">
                   <SelectValue placeholder={t("selectSector")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -137,7 +135,6 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
                   {setoresAtivos.map((setor) => <SelectItem key={setor.id} value={setor.id}>{setor.nome}</SelectItem>)}
                 </SelectContent>
               </Select>}
-              <p id="team-sector-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("teamSectorHint")}</p>
               {errosCriacao.setor && <p id="team-sector-error" role="alert" className="mt-1.5 text-sm text-destructive">{errosCriacao.setor}</p>}
             </div>
           </div>
@@ -149,20 +146,18 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
       <DrawerContent>
         <DrawerHeader className="border-b border-border pb-5">
           <DrawerTitle>{timeAtual ? t("memberTitle", { name: timeAtual.nome }) : t("members")}</DrawerTitle>
-          <p className="mt-1.5 text-sm leading-5 text-muted-foreground">{t("manageTeamMembersDescription")}</p>
           <p className="mt-1 text-xs text-muted-foreground">{t("teamMembersCount", { count: (membros.data ?? []).filter((membro) => membro.ativo).length })}</p>
         </DrawerHeader>
         <div className="flex-1 space-y-7 overflow-y-auto px-7 py-6">
           <form className="space-y-4 rounded-2xl border border-border bg-[#FBFBFC] p-4" onSubmit={(event) => { event.preventDefault(); adicionar.mutate(); }}>
             <div>
               <h3 className="text-sm font-semibold text-foreground">{t("addMemberToTeam")}</h3>
-              <p className="mt-1 text-xs text-muted-foreground">{t("addMemberHint")}</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
               <div className="flex min-w-0 flex-col">
                 <Label htmlFor="team-member-user" className="text-xs text-muted-foreground">{t("selectUser")}</Label>
                 <Select value={usuarioId} onValueChange={(value) => setUsuarioId(value === SELECT_EMPTY_VALUE ? "" : value)}>
-                  <SelectTrigger id="team-member-user" aria-describedby="team-member-user-hint" className="mt-2.5 rounded-lg bg-white">
+                  <SelectTrigger id="team-member-user" className="mt-2.5 rounded-lg bg-white">
                     <SelectValue placeholder={t("selectUser")} />
                   </SelectTrigger>
                   <SelectContent>
@@ -170,7 +165,6 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
                     {(usuarios.data ?? []).filter((usuario) => usuario.ativo && !(membros.data ?? []).some((membro) => membro.usuario_id === usuario.id && membro.ativo)).map((usuario) => <SelectItem key={usuario.id} value={usuario.id}>{usuario.nome} · {usuario.email}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <p id="team-member-user-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("selectUserHint")}</p>
               </div>
               <Button type="submit" variant="outline" size="icon" aria-label={adicionar.isPending ? t("pleaseWait") : t("add")} title={adicionar.isPending ? t("pleaseWait") : t("add")} disabled={!usuarioId || adicionar.isPending} className="mt-[27px] text-primary hover:bg-primary/10 hover:text-primary">
                 <Plus aria-hidden="true" className="size-4" />

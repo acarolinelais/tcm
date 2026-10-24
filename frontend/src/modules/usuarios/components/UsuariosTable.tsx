@@ -42,7 +42,6 @@ export function UsuariosTable({
   onPageChange,
   onPageSizeChange,
   onEditar,
-  onNovoUsuario,
   onLimparFiltros,
   podeGerenciar = false,
   podeAtribuirPerfil = false,
@@ -80,7 +79,7 @@ export function UsuariosTable({
 
   return (
     <TableLayout>
-      <Table containerClassName={items.length > 0 ? "min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
+      <Table className="[&_tbody_td]:py-4" containerClassName={items.length > 0 ? "min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
         <TableHeader>
           <TableRow>
             <TableHead>
@@ -152,8 +151,8 @@ export function UsuariosTable({
         {items.length > 0 && <TableBody>
           {items.map((usuario) => (
             <TableRow key={usuario.id}>
-              <TableCell className="text-base font-medium text-foreground">{usuario.nome}</TableCell>
-              <TableCell className="text-base text-muted-foreground">{usuario.email}</TableCell>
+              <TableCell className="font-medium text-foreground">{usuario.nome}</TableCell>
+              <TableCell className="text-muted-foreground">{usuario.email}</TableCell>
               <TableCell>
                 <Badge
                   variant="secondary"
@@ -210,15 +209,11 @@ export function UsuariosTable({
                 ? t("noUsersResults")
                 : t("noUsersHint")}
             </p>
-            {temFiltro ? (
+            {temFiltro && (
               <Button variant="outline" size="sm" className="mt-5" onClick={onLimparFiltros}>
                 {t("clearFilters")}
               </Button>
-            ) : podeGerenciar ? (
-              <Button size="sm" className="mt-5" onClick={onNovoUsuario}>
-                {t("createFirstUser")}
-              </Button>
-            ) : null}
+            )}
           </div>
         </TableEmptyState>
       )}

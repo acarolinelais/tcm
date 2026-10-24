@@ -115,6 +115,41 @@ async def test_kp_consulta_membros_apenas_de_time_com_vinculo(contexto):
     usuarios.dados_por_usuarios.assert_awaited_once_with(kp.unidade_id, ())
 
 
+async def test_developer_consulta_membros_apenas_do_time_associado(contexto):
+    service, _, _, membros, usuarios, _, atual, time = contexto
+    developer = UsuarioAutenticado(
+        atual.id,
+        atual.unidade_id,
+        "USUARIO_PADRAO",
+        permissoes=frozenset({"projetos.consultar", "test_cases.consultar"}),
+        time_ids=(time.id,),
+    )
+    membros.listar_por_time.return_value = []
+
+    resposta = await service.listar_membros(developer, time.id)
+
+    assert resposta == []
+    membros.listar_por_time.assert_awaited_once_with(developer.unidade_id, time.id)
+    usuarios.dados_por_usuarios.assert_awaited_once_with(developer.unidade_id, ())
+
+
+async def test_developer_sem_vinculo_nao_consulta_membros_do_time(contexto):
+    service, _, _, membros, _, uow, atual, time = contexto
+    developer = UsuarioAutenticado(
+        atual.id,
+        atual.unidade_id,
+        "USUARIO_PADRAO",
+        permissoes=frozenset({"test_cases.consultar"}),
+        time_ids=(uuid4(),),
+    )
+
+    with pytest.raises(NotFoundException):
+        await service.listar_membros(developer, time.id)
+
+    membros.listar_por_time.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
 async def test_kp_sem_vinculo_nao_acessa_detalhe_de_time(contexto):
     service, _, _, membros, _, uow, atual, time = contexto
     kp = UsuarioAutenticado(

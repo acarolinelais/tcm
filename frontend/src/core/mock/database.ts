@@ -5,6 +5,18 @@ import type { Setor, SetorGerente } from "@/modules/setores/api/setores.api";
 import type { Time, TimeMembro } from "@/modules/times/api/times.api";
 import type { Usuario, UsuarioFormValues } from "@/modules/usuarios/model/usuario";
 import type { UsuarioFiltros } from "@/modules/usuarios/api/usuario.api";
+import type {
+  AtualizarCasoTesteInput,
+  AtualizarProjetoInput,
+  CasoTeste,
+  CriarCasoTesteInput,
+  CriarProjetoInput,
+  LinhaFormFactor,
+  ModeloDispositivo,
+  Projeto,
+  StatusProjeto,
+} from "@/modules/projetos/model/projeto";
+import { lerPlanilhaProjeto } from "@/modules/projetos/utils/planilha-projeto";
 import type { PagedResult } from "@/shared/types/paged-result";
 
 const STORAGE_KEY = "sdf.mock.database.v1";
@@ -23,6 +35,12 @@ interface Database {
   gerentesSetor: SetorGerente[];
   times: Time[];
   membrosTime: TimeMembro[];
+  projetos: Projeto[];
+  modelosDispositivo: ModeloDispositivo[];
+  projetoModelos: { projeto_id: string; modelo_dispositivo_id: string }[];
+  casosTeste: CasoTeste[];
+  formFactor: LinhaFormFactor[];
+  importacoesSdf: { importacao_id: string; projeto_id: string; importado_em: string }[];
   idiomaPorUsuario: Record<string, PerfilAtual["idioma_preferido"]>;
   senhasAlteradas: string[];
 }
@@ -37,6 +55,12 @@ const permissoes: Permissao[] = [
   ["times.criar", "Criar times", "times", "Teams", 3],
   ["times.gerenciar", "Gerenciar membros dos times", "times", "Teams", 3],
   ["perfis.gerenciar", "Gerenciar perfis e permissões", "perfis", "Profiles", 4],
+  ["projetos.consultar", "Consultar projetos", "projetos", "Projects", 5],
+  ["projetos.gerenciar", "Criar e gerenciar projetos", "projetos", "Projects", 5],
+  ["test_cases.consultar", "Consultar Test Cases do time", "test_cases", "Test Cases", 6],
+  ["test_cases.gerenciar", "Gerenciar Test Cases do time", "test_cases", "Test Cases", 6],
+  ["form_factor.consultar", "Consultar resultados Form Factor", "form_factor", "Form Factor", 7],
+  ["form_factor.importar", "Importar resultados SDF", "form_factor", "Form Factor", 7],
 ].map(([id, descricao, codigo, nome, ordem], index) => ({
   id: String(id), descricao: String(descricao), ordem: index + 1,
   modulo: { codigo: String(codigo), nome: String(nome), ordem: Number(ordem) },
@@ -45,10 +69,9 @@ const permissoes: Permissao[] = [
 function createSeed(): Database {
   const allPermissions = permissoes.map((item) => item.id);
   const adminProfile: Perfil = { id: "mock-profile-admin", nome: "Administrador", descricao: "Acesso completo à unidade.", codigo: "ADMIN_UNIDADE", permissoes: allPermissions };
-  const standardProfile: Perfil = { id: "mock-profile-standard", nome: "Usuário padrão", descricao: "Perfil padrão da unidade.", codigo: "USUARIO_PADRAO", permissoes: ["usuarios.consultar", "setores.consultar", "times.consultar"] };
-  const managerProfile: Perfil = { id: "mock-profile-manager", nome: "Gerente", descricao: "Gerencia pessoas e times do setor.", codigo: "GERENTE", permissoes: ["usuarios.consultar", "usuarios.perfil.consultar", "usuarios.gerenciar", "setores.consultar", "times.consultar", "times.criar", "times.gerenciar"] };
-  const kpProfile: Perfil = { id: "mock-profile-kp", nome: "KP", descricao: "Acompanha atividades dos times associados.", codigo: "KP", permissoes: ["usuarios.consultar", "setores.consultar", "times.consultar", "times.gerenciar"] };
-  const developerProfile: Perfil = { id: "mock-profile-developer", nome: "Desenvolvedor", descricao: "Perfil personalizado para demonstração.", codigo: null, permissoes: ["usuarios.consultar", "times.consultar"] };
+  const standardProfile: Perfil = { id: "mock-profile-standard", nome: "Developer", descricao: "Consulta projetos, TCs e Form Factor do time e atualiza somente os TCs atribuídos.", codigo: "USUARIO_PADRAO", permissoes: ["projetos.consultar", "test_cases.consultar", "form_factor.consultar"] };
+  const managerProfile: Perfil = { id: "mock-profile-manager", nome: "Gerente", descricao: "Gerencia pessoas e times do setor.", codigo: "GERENTE", permissoes: ["usuarios.consultar", "usuarios.perfil.consultar", "usuarios.gerenciar", "setores.consultar", "times.consultar", "times.criar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar"] };
+  const kpProfile: Perfil = { id: "mock-profile-kp", nome: "KP", descricao: "Acompanha atividades dos times associados.", codigo: "KP", permissoes: ["usuarios.consultar", "setores.consultar", "times.consultar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar"] };
   const sectors: Setor[] = [
     { id: "mock-sector-engineering", unidade_id: UNIT_ID, nome: "Engenharia", ativo: true },
     { id: "mock-sector-operations", unidade_id: UNIT_ID, nome: "Operações", ativo: true },
@@ -58,15 +81,15 @@ function createSeed(): Database {
     { id: ADMIN_ID, nome: "Administradora", email: "admin@sdfmanager.com", ativo: true, perfil_id: adminProfile.id, created_at: "2026-01-10T12:00:00Z" },
     { id: MANAGER_ID, nome: "Mariana Costa", email: "mariana.costa@example.com", ativo: true, perfil_id: managerProfile.id, created_at: "2026-01-12T12:00:00Z" },
     { id: "mock-user-kp", nome: "Kaique Pereira", email: "kaique.pereira@example.com", ativo: true, perfil_id: kpProfile.id, created_at: "2026-01-15T12:00:00Z" },
-    { id: "mock-user-dev", nome: "Daniel Oliveira", email: "daniel.oliveira@example.com", ativo: true, perfil_id: developerProfile.id, responsavel_id: MANAGER_ID, created_at: "2026-02-01T12:00:00Z" },
+    { id: "mock-user-dev", nome: "Daniel Oliveira", email: "daniel.oliveira@example.com", ativo: true, perfil_id: standardProfile.id, responsavel_id: MANAGER_ID, created_at: "2026-02-01T12:00:00Z" },
     { id: "mock-user-standard", nome: "Ana Souza", email: "ana.souza@example.com", ativo: true, perfil_id: standardProfile.id, responsavel_id: MANAGER_ID, created_at: "2026-02-05T12:00:00Z" },
     { id: "mock-user-inactive", nome: "Rafael Lima", email: "rafael.lima@example.com", ativo: false, perfil_id: standardProfile.id, created_at: "2026-02-10T12:00:00Z" },
   ];
   return {
-    schemaVersion: 4,
+    schemaVersion: 8,
     unidade: { id: UNIT_ID, nome: "Manaus", ativo: true },
     usuarios: users,
-    perfis: [adminProfile, standardProfile, managerProfile, kpProfile, developerProfile],
+    perfis: [adminProfile, standardProfile, managerProfile, kpProfile],
     permissoes,
     setores: sectors,
     gerentesSetor: [{ setor_id: sectors[0].id, usuario_id: MANAGER_ID, ativo: true }],
@@ -76,10 +99,21 @@ function createSeed(): Database {
       { id: "mock-team-inactive", setor_id: sectors[1].id, nome: "Time arquivado", gerente_id: null, ativo: false },
     ],
     membrosTime: [
-      { id: "mock-member-dev", time_id: TEAM_ID, usuario_id: "mock-user-dev", usuario_nome: "Daniel Oliveira", usuario_perfil: "Desenvolvedor", usuario_perfil_codigo: null, ativo: true },
+      { id: "mock-member-dev", time_id: TEAM_ID, usuario_id: "mock-user-dev", usuario_nome: "Daniel Oliveira", usuario_perfil: "Developer", usuario_perfil_codigo: "USUARIO_PADRAO", ativo: true },
       { id: "mock-member-kp", time_id: TEAM_ID, usuario_id: "mock-user-kp", usuario_nome: "Kaique Pereira", usuario_perfil: "KP", usuario_perfil_codigo: "KP", ativo: true },
-      { id: "mock-member-inactive", time_id: TEAM_ID, usuario_id: "mock-user-inactive", usuario_nome: "Rafael Lima", usuario_perfil: "Usuário padrão", usuario_perfil_codigo: "USUARIO_PADRAO", ativo: false },
+      { id: "mock-member-inactive", time_id: TEAM_ID, usuario_id: "mock-user-inactive", usuario_nome: "Rafael Lima", usuario_perfil: "Developer", usuario_perfil_codigo: "USUARIO_PADRAO", ativo: false },
     ],
+    projetos: [],
+    modelosDispositivo: [
+      { id: "mock-model-s27-ultra", unidade_id: UNIT_ID, nome: "S27 Ultra", ativo: true },
+      { id: "mock-model-s26-ultra", unidade_id: UNIT_ID, nome: "S26 Ultra", ativo: true },
+      { id: "mock-model-sep-lite", unidade_id: UNIT_ID, nome: "SEP Lite", ativo: true },
+      { id: "mock-model-tab-s11", unidade_id: UNIT_ID, nome: "Tab S11", ativo: true },
+    ],
+    projetoModelos: [],
+    casosTeste: [],
+    formFactor: [],
+    importacoesSdf: [],
     idiomaPorUsuario: {},
     senhasAlteradas: [],
   };
@@ -90,12 +124,57 @@ function readDb(): Database {
   if (!stored) return writeDb(createSeed());
   try {
     const db = JSON.parse(stored) as Database;
-    if ((db.schemaVersion ?? 1) < 4) {
+    if ((db.schemaVersion ?? 1) < 6) {
       // Align existing demo data once without overriding later permission edits.
       db.perfis.filter((profile) => profile.codigo === "KP").forEach((profile) => {
         profile.permissoes = [...new Set([...profile.permissoes, "usuarios.consultar", "setores.consultar", "times.consultar", "times.gerenciar"])];
       });
-      db.schemaVersion = 4;
+      db.permissoes = permissoes;
+      db.perfis.forEach((profile) => {
+        if (profile.codigo === "ADMIN_UNIDADE") profile.permissoes = permissoes.map((item) => item.id);
+        if (profile.codigo === "GERENTE" || profile.codigo === "KP") {
+          profile.permissoes = [...new Set([...profile.permissoes, "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar"] )];
+        }
+      });
+      db.projetos ??= [];
+      db.modelosDispositivo ??= [
+        { id: "mock-model-s27-ultra", unidade_id: db.unidade.id, nome: "S27 Ultra", ativo: true },
+        { id: "mock-model-s26-ultra", unidade_id: db.unidade.id, nome: "S26 Ultra", ativo: true },
+        { id: "mock-model-sep-lite", unidade_id: db.unidade.id, nome: "SEP Lite", ativo: true },
+        { id: "mock-model-tab-s11", unidade_id: db.unidade.id, nome: "Tab S11", ativo: true },
+      ];
+      db.projetoModelos ??= [];
+      db.casosTeste ??= [];
+      db.formFactor ??= [];
+      db.importacoesSdf ??= [];
+      db.schemaVersion = 6;
+      writeDb(db);
+    }
+    if ((db.schemaVersion ?? 1) < 7) {
+      const developer = db.perfis.find((profile) => profile.codigo === "USUARIO_PADRAO");
+      if (developer) {
+        developer.nome = "Developer";
+        developer.descricao = "Consulta projetos e TCs do time e atualiza somente os TCs atribuídos.";
+        developer.permissoes = ["projetos.consultar", "test_cases.consultar"];
+        const legacyDeveloper = db.perfis.find((profile) => profile.id === "mock-profile-developer");
+        if (legacyDeveloper) {
+          db.usuarios.filter((user) => user.perfil_id === legacyDeveloper.id).forEach((user) => { user.perfil_id = developer.id; });
+          db.perfis = db.perfis.filter((profile) => profile.id !== legacyDeveloper.id);
+        }
+        db.membrosTime.filter((member) => member.usuario_perfil_codigo === "USUARIO_PADRAO").forEach((member) => { member.usuario_perfil = "Developer"; });
+      }
+      db.schemaVersion = 7;
+      writeDb(db);
+    }
+    if ((db.schemaVersion ?? 1) < 8) {
+      const developer = db.perfis.find((profile) => profile.codigo === "USUARIO_PADRAO");
+      if (developer && !developer.permissoes.includes("form_factor.consultar")) {
+        developer.permissoes = [...developer.permissoes, "form_factor.consultar"];
+        if (developer.descricao === "Consulta projetos e TCs do time e atualiza somente os TCs atribuídos.") {
+          developer.descricao = "Consulta projetos, TCs e Form Factor do time e atualiza somente os TCs atribuídos.";
+        }
+      }
+      db.schemaVersion = 8;
       return writeDb(db);
     }
     return db;
@@ -337,6 +416,317 @@ export const mockTimesApi = {
   },
   remover(teamId: string, userId: string) {
     updateDb((db) => { const member = db.membrosTime.find((item) => item.time_id === teamId && item.usuario_id === userId); if (member) member.ativo = false; });
+  },
+};
+
+function mockProfile() {
+  const db = readDb();
+  const user = db.usuarios.find((item) => item.id === currentMockUserId());
+  if (!user) throw new Error("Sessão mock inválida.");
+  return { db, user, profile: profileFor(db, user) };
+}
+
+function requireMockPermission(permission: string) {
+  const { profile } = mockProfile();
+  if (profile?.codigo !== "ADMIN_UNIDADE" && !profile?.permissoes.includes(permission)) {
+    throw new Error("Você não tem permissão para esta ação.");
+  }
+}
+
+function projectInMockScope(project: Projeto) {
+  const { db, user, profile } = mockProfile();
+  if (profile?.codigo === "ADMIN_UNIDADE") return true;
+  if (profile?.codigo === "GERENTE") {
+    const sectors = new Set(db.gerentesSetor.filter((item) => item.usuario_id === user.id && item.ativo).map((item) => item.setor_id));
+    return db.times.some((team) => team.id === project.time_id && sectors.has(team.setor_id));
+  }
+  return db.membrosTime.some((member) => member.usuario_id === user.id && member.time_id === project.time_id && member.ativo);
+}
+
+function getMockProject(db: Database, projectId: string) {
+  const project = db.projetos.find((item) => item.id === projectId);
+  if (!project || !projectInMockScope(project)) throw new Error("Projeto não encontrado ou sem acesso.");
+  return project;
+}
+
+function createMockProject(input: CriarProjetoInput) {
+  const { db, user, profile } = mockProfile();
+  requireMockPermission("projetos.gerenciar");
+  const team = db.times.find((item) => item.id === input.time_id && item.ativo);
+  if (!team) throw new Error("Time não encontrado ou inativo.");
+  if (!canManageMockTeam(db, user.id, profile?.codigo, team)) throw new Error("O time está fora do seu escopo.");
+  const selectedModels = new Set(input.modelos_ids);
+  const models = db.modelosDispositivo.filter((model) => selectedModels.has(model.id) && model.unidade_id === db.unidade.id && model.ativo);
+  if (models.length !== selectedModels.size) throw new Error("Selecione apenas modelos de dispositivo ativos da unidade.");
+  const now = new Date().toISOString();
+  const project: Projeto = {
+    id: id("mock-project"), unidade_id: db.unidade.id, time_id: team.id,
+    app: input.app.trim(), one_ui: input.one_ui.trim(), nome: `${input.app.trim()} ${input.one_ui.trim()}`,
+    status: "Created", ativo: true, created_at: now, updated_at: now,
+  };
+  db.projetos.unshift(project);
+  input.modelos_ids.forEach((modelId) => db.projetoModelos.push({ projeto_id: project.id, modelo_dispositivo_id: modelId }));
+  writeDb(db);
+  return project;
+}
+
+function canManageMockTeam(db: Database, userId: string, profileCode: string | null | undefined, team: Time) {
+  return profileCode === "ADMIN_UNIDADE"
+    || (profileCode === "GERENTE" && db.gerentesSetor.some((manager) => manager.usuario_id === userId && manager.setor_id === team.setor_id && manager.ativo))
+    || (profileCode === "KP" && db.membrosTime.some((member) => member.usuario_id === userId && member.time_id === team.id && member.ativo));
+}
+
+function normalizarNomeMembro(value: string) {
+  return value.normalize("NFC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+}
+
+function normalizarEmailMembro(value: string) {
+  return value.normalize("NFC").replace(/\s+/g, "").toLocaleLowerCase();
+}
+
+export const mockProjetosApi = {
+  listar(pageNumber: number, pageSize: number) {
+    const { profile } = mockProfile();
+    if (profile?.codigo !== "ADMIN_UNIDADE" && !profile?.permissoes.includes("projetos.consultar") && !profile?.permissoes.includes("test_cases.consultar")) {
+      throw new Error("Você não tem permissão para consultar projetos.");
+    }
+    const { db } = mockProfile();
+    return page(db.projetos.filter((project) => project.ativo && projectInMockScope(project)), pageNumber, pageSize);
+  },
+  obter(projectId: string) {
+    const { profile } = mockProfile();
+    if (profile?.codigo !== "ADMIN_UNIDADE" && !profile?.permissoes.includes("projetos.consultar") && !profile?.permissoes.includes("test_cases.consultar")) {
+      throw new Error("Você não tem permissão para consultar projetos.");
+    }
+    const { db } = mockProfile();
+    return getMockProject(db, projectId);
+  },
+  criar(input: CriarProjetoInput) {
+    return createMockProject(input);
+  },
+  atualizar(projectId: string, input: AtualizarProjetoInput) {
+    requireMockPermission("projetos.gerenciar");
+    const { db, user, profile } = mockProfile();
+    const project = getMockProject(db, projectId);
+    if (!project.ativo) throw new Error("Projeto não encontrado.");
+    const currentTeam = db.times.find((item) => item.id === project.time_id);
+    if (!currentTeam || !canManageMockTeam(db, user.id, profile?.codigo, currentTeam)) throw new Error("O time está fora do seu escopo.");
+    project.app = input.app.trim();
+    project.one_ui = input.one_ui.trim();
+    project.nome = `${project.app} ${project.one_ui}`;
+    project.updated_at = new Date().toISOString();
+    writeDb(db);
+    return project;
+  },
+  excluir(projectId: string) {
+    requireMockPermission("projetos.gerenciar");
+    const { db, user, profile } = mockProfile();
+    const project = getMockProject(db, projectId);
+    const team = db.times.find((item) => item.id === project.time_id);
+    if (!team || !canManageMockTeam(db, user.id, profile?.codigo, team)) throw new Error("O time está fora do seu escopo.");
+    project.ativo = false;
+    project.updated_at = new Date().toISOString();
+    writeDb(db);
+  },
+  async importar(file: File, timeId: string, modelIds: string[], app?: string, oneUi?: string) {
+    requireMockPermission("projetos.gerenciar");
+    const planilha = await lerPlanilhaProjeto(file);
+    const { db, user, profile } = mockProfile();
+    const time = db.times.find((item) => item.id === timeId && item.ativo);
+    if (!time) throw new Error("Time não encontrado ou inativo.");
+    if (!canManageMockTeam(db, user.id, profile?.codigo, time)) throw new Error("O time está fora do seu escopo.");
+    const selectedModels = new Set(modelIds);
+    const models = db.modelosDispositivo.filter((model) => selectedModels.has(model.id) && model.unidade_id === db.unidade.id && model.ativo);
+    if (models.length !== selectedModels.size) throw new Error("Selecione apenas modelos de dispositivo ativos da unidade.");
+    const membros = db.membrosTime.filter((member) => member.time_id === time.id && member.ativo);
+    const usuarios = db.usuarios.filter((user) => user.ativo);
+    const atribuidos = planilha.casos.map((caso) => {
+      const resolver = (identificador: string, papel: string) => {
+        const nomeInformado = normalizarNomeMembro(identificador);
+        const emailInformado = normalizarEmailMembro(identificador);
+        const found = usuarios.filter((user) => (normalizarNomeMembro(user.nome) === nomeInformado || normalizarEmailMembro(user.email) === emailInformado) && membros.some((member) => member.usuario_id === user.id));
+        if (found.length !== 1) throw new Error(`Linha ${caso.linha}: ${papel} '${identificador}' não foi encontrado unicamente como membro ativo do time.`);
+        return found[0].id;
+      };
+      return { caso, responsavelId: resolver(caso.responsavel, "Responsável"), backupId: resolver(caso.backup, "Backup") };
+    });
+    if (atribuidos.some(({ responsavelId, backupId }) => responsavelId === backupId)) {
+      const line = atribuidos.find(({ responsavelId, backupId }) => responsavelId === backupId)!.caso.linha;
+      throw new Error(`Linha ${line}: responsável principal e backup devem ser pessoas distintas.`);
+    }
+    const nomeApp = planilha.app || app?.trim() || "";
+    const versao = planilha.one_ui || oneUi?.trim() || "";
+    const now = new Date().toISOString();
+    const projeto: Projeto = { id: id("mock-project"), unidade_id: db.unidade.id, time_id: time.id, app: nomeApp, one_ui: versao, nome: `${nomeApp} ${versao}`, status: "Created", ativo: true, created_at: now, updated_at: now };
+    const casos: CasoTeste[] = atribuidos.map(({ caso, responsavelId, backupId }) => ({ id: id("mock-test-case"), unidade_id: db.unidade.id, projeto_id: projeto.id, tc_id: caso.tc_id, category: caso.category, difficulty: caso.difficulty, situation: caso.situation, responsavel_id: responsavelId, backup_id: backupId, ativo: true, created_at: now, updated_at: now }));
+    db.projetos.unshift(projeto);
+    modelIds.forEach((modelId) => db.projetoModelos.push({ projeto_id: projeto.id, modelo_dispositivo_id: modelId }));
+    db.casosTeste.unshift(...casos);
+    writeDb(db);
+    return { projeto, quantidade_casos: atribuidos.length };
+  },
+  atualizarStatus(projectId: string, status: StatusProjeto) {
+    requireMockPermission("projetos.gerenciar");
+    const { db } = mockProfile();
+    const project = getMockProject(db, projectId);
+    project.status = status;
+    project.updated_at = new Date().toISOString();
+    writeDb(db);
+    return project;
+  },
+};
+
+function canManageMockProject(project: Projeto, permission: string) {
+  requireMockPermission(permission);
+  return projectInMockScope(project);
+}
+
+function getMockCase(db: Database, caseId: string) {
+  const testCase = db.casosTeste.find((item) => item.id === caseId);
+  if (!testCase) throw new Error("Test Case não encontrado.");
+  const project = getMockProject(db, testCase.projeto_id);
+  return { testCase, project };
+}
+
+export const mockCasosTesteApi = {
+  listar(projectId: string, pageNumber: number, pageSize: number, filtros: { responsavelId?: string } = {}) {
+    requireMockPermission("test_cases.consultar");
+    const { db, user } = mockProfile();
+    getMockProject(db, projectId);
+    const casosDoProjeto = db.casosTeste.filter((item) => item.projeto_id === projectId && item.ativo
+      && (!filtros.responsavelId || item.responsavel_id === filtros.responsavelId));
+    // Igual à API: os casos em que o usuário é o responsável principal vêm primeiro.
+    const prioridade = (item: (typeof casosDoProjeto)[number]) => (item.responsavel_id === user.id ? 0 : 1);
+    casosDoProjeto.sort((a, b) => prioridade(a) - prioridade(b) || a.tc_id.localeCompare(b.tc_id));
+    return page(casosDoProjeto, pageNumber, pageSize);
+  },
+  obter(caseId: string) {
+    requireMockPermission("test_cases.consultar");
+    const { db } = mockProfile();
+    return getMockCase(db, caseId).testCase;
+  },
+  criar(projectId: string, input: CriarCasoTesteInput) {
+    const { db } = mockProfile();
+    const project = getMockProject(db, projectId);
+    if (!canManageMockProject(project, "test_cases.gerenciar")) throw new Error("O projeto está fora do seu escopo.");
+    const tcId = input.tc_id.trim();
+    if (db.casosTeste.some((item) => item.projeto_id === projectId && item.tc_id.toLocaleLowerCase() === tcId.toLocaleLowerCase())) {
+      throw new Error(`O TC ID ${tcId} já foi cadastrado para este projeto.`);
+    }
+    const validMembers = new Set(db.membrosTime.filter((member) => member.time_id === project.time_id && member.ativo).map((member) => member.usuario_id));
+    if (!validMembers.has(input.responsavel_id) || !validMembers.has(input.backup_id) || input.responsavel_id === input.backup_id) {
+      throw new Error("Responsável e backup devem ser pessoas distintas que pertençam ao time do projeto.");
+    }
+    const now = new Date().toISOString();
+    const testCase: CasoTeste = {
+      id: id("mock-test-case"), unidade_id: db.unidade.id, projeto_id: projectId, tc_id: tcId,
+      category: input.category, difficulty: input.difficulty, situation: "To-Do",
+      responsavel_id: input.responsavel_id, backup_id: input.backup_id, ativo: true,
+      created_at: now, updated_at: now,
+    };
+    db.casosTeste.unshift(testCase);
+    writeDb(db);
+    return testCase;
+  },
+  atualizar(caseId: string, input: AtualizarCasoTesteInput) {
+    const { db, user, profile } = mockProfile();
+    const { testCase, project } = getMockCase(db, caseId);
+    if (profile?.codigo === "ADMIN_UNIDADE" || profile?.codigo === "GERENTE" || profile?.codigo === "KP") {
+      if (!canManageMockProject(project, "test_cases.gerenciar")) throw new Error("O projeto está fora do seu escopo.");
+      Object.assign(testCase, input);
+    } else {
+      if (!profile?.permissoes.includes("test_cases.consultar") || testCase.responsavel_id !== user.id) {
+        throw new Error("Somente o responsável principal pode editar os próprios campos do Test Case.");
+      }
+      const camposPermitidos = ["category", "difficulty", "situation"];
+      if (Object.keys(input).some((field) => !camposPermitidos.includes(field))) throw new Error("Você só pode editar Category, Difficulty e TC Situation.");
+      Object.assign(testCase, input);
+    }
+    testCase.updated_at = new Date().toISOString();
+    writeDb(db);
+    return testCase;
+  },
+  transferirParaBackup(caseId: string) {
+    const { db, user } = mockProfile();
+    requireMockPermission("test_cases.consultar");
+    const { testCase } = getMockCase(db, caseId);
+    if (testCase.responsavel_id !== user.id || !testCase.backup_id) throw new Error("O Test Case não pode ser transferido para o backup.");
+    testCase.responsavel_id = testCase.backup_id;
+    testCase.backup_id = null;
+    testCase.updated_at = new Date().toISOString();
+    writeDb(db);
+    return testCase;
+  },
+};
+
+export const mockModelosDispositivoApi = {
+  listar(pageNumber: number, pageSize: number, active?: boolean, search?: string) {
+    requireMockPermission("projetos.consultar");
+    const { db } = mockProfile();
+    let models = [...db.modelosDispositivo];
+    if (active !== undefined) models = models.filter((model) => model.ativo === active);
+    if (search) models = models.filter((model) => model.nome.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
+    return page(models, pageNumber, pageSize);
+  },
+  criar(nome: string) {
+    requireMockPermission("projetos.gerenciar");
+    return updateDb((db) => {
+      const normalized = nome.trim();
+      if (!normalized) throw new Error("O nome do modelo é obrigatório.");
+      if (db.modelosDispositivo.some((model) => model.nome.toLocaleLowerCase() === normalized.toLocaleLowerCase())) throw new Error("Já existe um modelo com esse nome.");
+      const model: ModeloDispositivo = { id: id("mock-model"), unidade_id: db.unidade.id, nome: normalized, ativo: true };
+      db.modelosDispositivo.unshift(model);
+      return model;
+    });
+  },
+  atualizar(modelId: string, body: { nome?: string; ativo?: boolean }) {
+    requireMockPermission("projetos.gerenciar");
+    return updateDb((db) => {
+      const model = db.modelosDispositivo.find((item) => item.id === modelId);
+      if (!model) throw new Error("Modelo de dispositivo não encontrado.");
+      const name = body.nome?.trim();
+      if (name && db.modelosDispositivo.some((item) => item.id !== modelId && item.nome.toLocaleLowerCase() === name.toLocaleLowerCase())) throw new Error("Já existe um modelo com esse nome.");
+      if (name) model.nome = name;
+      if (body.ativo !== undefined) model.ativo = body.ativo;
+      return model;
+    });
+  },
+  definirAtivo(modelId: string, active: boolean) {
+    return this.atualizar(modelId, { ativo: active });
+  },
+};
+
+function semanaIso(value: string) {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + 3 - ((date.getDay() + 6) % 7));
+  const firstThursday = new Date(date.getFullYear(), 0, 4);
+  const week = 1 + Math.round(((date.getTime() - firstThursday.getTime()) / 86400000 - 3 + ((firstThursday.getDay() + 6) % 7)) / 7);
+  return `${date.getFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+export const mockFormFactorApi = {
+  listar(projectId: string, pageNumber: number, pageSize: number, week?: string, oneUi?: string) {
+    requireMockPermission("form_factor.consultar");
+    const { db } = mockProfile();
+    getMockProject(db, projectId);
+    let rows = db.formFactor.filter((row) => {
+      const testCase = db.casosTeste.find((item) => item.projeto_id === projectId && item.tc_id === row.tc_id);
+      return Boolean(testCase);
+    });
+    if (week) rows = rows.filter((row) => semanaIso(row.data_reportada) === week);
+    if (oneUi) rows = rows.filter((row) => row.one_ui === oneUi);
+    return page(rows, pageNumber, pageSize);
+  },
+  importar(projectId: string, file: File) {
+    requireMockPermission("form_factor.importar");
+    const { db } = mockProfile();
+    getMockProject(db, projectId);
+    if (!file.size) throw new Error("O relatório está vazio.");
+    const importId = id("mock-sdf-import");
+    db.importacoesSdf.unshift({ importacao_id: importId, projeto_id: projectId, importado_em: new Date().toISOString() });
+    writeDb(db);
+    return { importacao_id: importId, quantidade_execucoes: 0, quantidade_resultados: 0 };
   },
 };
 

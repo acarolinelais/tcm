@@ -68,7 +68,7 @@ export function TimeDetalhePage({ modoAdmin = false }: { modoAdmin?: boolean }) 
       </Button>
       <div className="min-w-0 flex-1">
         <p className="text-sm text-muted-foreground">{t("teamDetails")}</p>
-        <h1 className="truncate text-2xl font-medium text-[#3478F6]">{time?.nome ?? t("team")}</h1>
+        <h1 className="truncate text-2xl font-medium text-primary">{time?.nome ?? t("team")}</h1>
       </div>
       {podeGerenciarMembros && time && <div className="ml-auto flex flex-wrap justify-end gap-2">
         <Button variant="outline" size="icon" aria-label={t("addMemberToTeam")} title={t("addMemberToTeam")} className="size-10" onClick={() => { setNovoMembroId(""); setAdicionarMembroAberto(true); }}>
@@ -112,14 +112,12 @@ export function TimeDetalhePage({ modoAdmin = false }: { modoAdmin?: boolean }) 
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle>{t("editTeam")}</DrawerTitle>
-          <p className="mt-1.5 text-sm leading-5 text-muted-foreground">{t("editTeamDescription")}</p>
         </DrawerHeader>
         <form className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => { event.preventDefault(); atualizarTime.mutate(); }}>
           <div className="flex-1 space-y-5 overflow-y-auto px-7 py-6">
             <div className="flex flex-col gap-2">
               <Label htmlFor="team-name">{t("teamName")}</Label>
               <Input id="team-name" value={nomeTime} onChange={(event) => setNomeTime(event.target.value)} maxLength={150} required />
-              <p className="text-xs leading-5 text-muted-foreground">{t("teamNameHint")}</p>
             </div>
           </div>
           <div className="flex justify-end gap-2 border-t border-border px-7 py-5">
@@ -133,7 +131,6 @@ export function TimeDetalhePage({ modoAdmin = false }: { modoAdmin?: boolean }) 
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle>{t("addMemberToTeam")}</DrawerTitle>
-          <p className="mt-1.5 text-sm leading-5 text-muted-foreground">{t("addMemberHint")}</p>
         </DrawerHeader>
         <form className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => { event.preventDefault(); adicionar.mutate(); }}>
           <div className="flex-1 space-y-5 overflow-y-auto px-7 py-6">
@@ -146,7 +143,6 @@ export function TimeDetalhePage({ modoAdmin = false }: { modoAdmin?: boolean }) 
                   {(usuariosDisponiveis.data ?? []).filter((usuario) => usuario.ativo && !(membros.data ?? []).some((membro) => membro.usuario_id === usuario.id && membro.ativo)).map((usuario) => <SelectItem key={usuario.id} value={usuario.id}>{usuario.nome} · {usuario.email}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <p className="text-xs leading-5 text-muted-foreground">{t("selectUserHint")}</p>
             </div>
           </div>
           <div className="flex justify-end gap-2 border-t border-border px-7 py-5">

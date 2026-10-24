@@ -39,7 +39,7 @@ function perfilAtual(perfil: "ADMIN_UNIDADE" | "GERENTE" | "USUARIO_PADRAO" | "K
     unidade_id: "unidade-1",
     unidade_nome: "Unidade",
     perfil_codigo: perfil,
-    perfil: admin ? "Administrador" : gerenteAtual ? "Gerente" : kp ? "KP" : "Usuário padrão",
+    perfil: admin ? "Administrador" : gerenteAtual ? "Gerente" : kp ? "KP" : "Developer",
     permissoes: admin
       ? ["usuarios.consultar", "usuarios.gerenciar", "perfis.gerenciar"]
       : gerenteAtual
@@ -63,7 +63,7 @@ test("admin transfere a responsabilidade pela conta na tabela de usuários", asy
   await page.route("**/api/auth/me", (route) => route.fulfill({ json: perfilAtual("ADMIN_UNIDADE") }));
   await page.route("**/api/perfis", (route) => route.fulfill({ json: [
     { id: "perfil-gerente", nome: "Gerente", codigo: "GERENTE", permissoes: [] },
-    { id: "perfil-padrao", nome: "Usuário padrão", codigo: "USUARIO_PADRAO", permissoes: [] },
+    { id: "perfil-padrao", nome: "Developer", codigo: "USUARIO_PADRAO", permissoes: [] },
   ] }));
   await page.route("**/api/usuarios?*", async (route) => {
     const url = new URL(route.request().url());
@@ -82,7 +82,7 @@ test("admin transfere a responsabilidade pela conta na tabela de usuários", asy
   await page.getByRole("option", { name: /Gerente Ana/ }).click();
   await page.getByRole("button", { name: "Salvar" }).click();
 
-  await expect(page.getByText("Responsável atualizado com sucesso.")).toBeVisible();
+  await expect(page.getByText("Responsável atualizado.")).toBeVisible();
   await expect(page.getByText("Gerente Ana")).toBeVisible();
 });
 

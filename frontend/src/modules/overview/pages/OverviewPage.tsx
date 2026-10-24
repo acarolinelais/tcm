@@ -5,6 +5,7 @@ import { useOverview } from "../hooks/useOverview";
 import { useOutletContext } from "react-router";
 import type { PerfilAtual } from "@/core/auth/api";
 import { useTranslation } from "react-i18next";
+import { Skeleton } from "@/shared/ui/skeleton";
 
 export function OverviewPage() {
   const perfil = useOutletContext<PerfilAtual>();
@@ -12,7 +13,16 @@ export function OverviewPage() {
   const { data, isLoading } = useOverview();
 
   if (isLoading || !data) {
-    return <p className="text-sm text-muted-foreground">{t("loading")}</p>;
+    return (
+      <div role="status" className="space-y-4">
+        <span className="sr-only">{t("loading")}</span>
+        <Skeleton className="h-36 w-full rounded-3xl" />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[300px_1fr]">
+          <Skeleton className="h-72 rounded-3xl" />
+          <Skeleton className="h-72 rounded-3xl" />
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -67,11 +67,10 @@ export function AlterarSenhaPage() {
             maxLength={128}
             required
             aria-invalid={Boolean(errosCampos.novaSenha)}
-            aria-describedby={errosCampos.novaSenha ? "nova-senha-hint nova-senha-error" : "nova-senha-hint"}
+            aria-describedby={errosCampos.novaSenha ? "nova-senha-error" : undefined}
             value={novaSenha}
             onChange={(event) => { setNovaSenha(event.target.value); setErrosCampos((errors) => ({ ...errors, novaSenha: undefined })); }}
           />
-          <p id="nova-senha-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("newPasswordHint")}</p>
           {errosCampos.novaSenha && <p id="nova-senha-error" role="alert" className="mt-1.5 text-sm text-destructive">{errosCampos.novaSenha}</p>}
         </div>
         <div className="flex flex-col">
@@ -84,11 +83,10 @@ export function AlterarSenhaPage() {
             maxLength={128}
             required
             aria-invalid={Boolean(errosCampos.confirmacao)}
-            aria-describedby={errosCampos.confirmacao ? "confirmacao-senha-hint confirmacao-senha-error" : "confirmacao-senha-hint"}
+            aria-describedby={errosCampos.confirmacao ? "confirmacao-senha-error" : undefined}
             value={confirmacao}
             onChange={(event) => { setConfirmacao(event.target.value); setErrosCampos((errors) => ({ ...errors, confirmacao: undefined })); }}
           />
-          <p id="confirmacao-senha-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("confirmPasswordHint")}</p>
           {errosCampos.confirmacao && <p id="confirmacao-senha-error" role="alert" className="mt-1.5 text-sm text-destructive">{errosCampos.confirmacao}</p>}
         </div>
         {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}

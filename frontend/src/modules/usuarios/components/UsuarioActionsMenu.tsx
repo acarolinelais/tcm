@@ -104,7 +104,7 @@ export function UsuarioActionsMenu({
         variant="destructive"
         isPending={inativar.isPending}
         onConfirm={() => {
-          inativar.mutate(usuario.id);
+          inativar.mutate(usuario.id, { onSuccess: () => toast.success(t("userDeactivated", { name: usuario.nome })) });
           setConfirmacaoAberta(false);
         }}
       />
@@ -162,7 +162,7 @@ export function UsuarioActionsMenu({
           role="menu"
           aria-label={t("rowActionsFor", { label: usuario.nome })}
           style={{ position: "fixed", top: posicao.top, right: posicao.right }}
-          className="z-50 min-w-40 rounded-xl border border-border bg-card p-1 shadow-lg"
+          className="popover-enter z-50 min-w-40 rounded-xl border border-border bg-card p-1 shadow-lg"
         >
           {(podeGerenciar || podeAtribuirPerfil) && <button
             type="button"

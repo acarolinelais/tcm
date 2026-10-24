@@ -13,6 +13,8 @@ dependencies = [
     "scalar-fastapi>=1.0",
     "argon2-cffi>=23.1",
     "pyjwt>=2.9",
+    "openpyxl>=3.1.5",
+    "python-multipart>=0.0.32",
 ]
 
 [dependency-groups]

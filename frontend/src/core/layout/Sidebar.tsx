@@ -3,6 +3,7 @@ import {
   Building2,
   CalendarDays,
   ChevronDown,
+  FolderKanban,
   Kanban,
   LayoutDashboard,
   PanelLeftClose,
@@ -34,15 +35,18 @@ export function Sidebar({
   const [adminAberto, setAdminAberto] = useState(estaNaAdmin);
   useEffect(() => setAdminAberto(estaNaAdmin), [estaNaAdmin]);
   const itens = [
-    { to: "/overview", label: t("overview"), description: t("overviewDescription"), Icon: LayoutDashboard },
-    { to: "/board", label: t("board"), description: t("boardDescription"), Icon: Kanban },
-    { to: "/timeline", label: t("timeline"), description: t("timelineDescription"), Icon: CalendarDays },
+    { to: "/overview", label: t("overview"), Icon: LayoutDashboard },
+    { to: "/board", label: t("board"), Icon: Kanban },
+    { to: "/timeline", label: t("timeline"), Icon: CalendarDays },
   ];
+  if (perfil.permissoes.includes("projetos.consultar") || perfil.permissoes.includes("test_cases.consultar")) {
+    itens.push({ to: "/projetos", label: t("myProjects"), Icon: FolderKanban });
+  }
   const itensAdmin = [
-    ["/admin/usuarios", t("users"), t("usersDescription"), Users],
-    ["/admin/setores", t("sectors"), t("sectorsDescription"), Building2],
-    ["/admin/times", t("teams"), t("teamsDescription"), UsersRound],
-    ["/admin/perfis", t("profiles"), t("profilesDescription"), ShieldCheck],
+    ["/admin/usuarios", t("users"), Users],
+    ["/admin/setores", t("sectors"), Building2],
+    ["/admin/times", t("teams"), UsersRound],
+    ["/admin/perfis", t("profiles"), ShieldCheck],
   ] as const;
   const transicaoRotulo = "overflow-hidden whitespace-nowrap transition-[max-width,opacity,transform] duration-300 ease-in-out motion-reduce:transition-none";
   const larguraRotulo = recolhida ? "max-w-0 -translate-x-1 opacity-0" : "max-w-[12rem] translate-x-0 opacity-100";
@@ -69,17 +73,16 @@ export function Sidebar({
             key={item.to}
             to={item.to}
             aria-label={recolhida ? item.label : undefined}
-            aria-describedby={`sidebar-tooltip-${item.to.slice(1)}`}
             className={({ isActive }) =>
               `group relative flex items-center rounded-xl py-2 text-sm transition-colors ${recolhida ? "w-10 justify-center gap-0 px-0" : "w-full gap-2 px-2"} ${
-                isActive ? "bg-[#EAF0FF] text-[#3478F6]" : "text-foreground hover:bg-secondary"
+                isActive ? "bg-[#EAF0FF] text-primary" : "text-foreground hover:bg-secondary"
               }`
             }
           >
             {({ isActive }) => <>
-              <item.Icon aria-hidden="true" className={`size-[18px] shrink-0 ${isActive ? "text-[#3478F6]" : "text-muted-foreground"}`} />
+              <item.Icon aria-hidden="true" className={`size-[18px] shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
               <span aria-hidden={recolhida} className={`${transicaoRotulo} truncate text-left ${larguraRotulo}`}>{item.label}</span>
-              <TooltipDescricao id={item.to.slice(1)} titulo={item.label} descricao={item.description} />
+              {recolhida && <TooltipRotulo titulo={item.label} />}
             </>}
           </NavLink>
         ))}
@@ -89,14 +92,13 @@ export function Sidebar({
               type="button"
               aria-expanded={adminAberto}
               aria-label={recolhida ? t("administration") : undefined}
-              aria-describedby="sidebar-tooltip-administration"
               onClick={() => setAdminAberto((aberto) => !aberto)}
               className={`group relative flex items-center rounded-xl py-2 text-left text-sm text-foreground hover:bg-secondary ${recolhida ? "w-10 justify-center px-0" : "w-full gap-2 px-2"}`}
             >
-              <Settings2 aria-hidden="true" className={`size-[18px] shrink-0 ${estaNaAdmin ? "text-[#3478F6]" : "text-muted-foreground"}`} />
+              <Settings2 aria-hidden="true" className={`size-[18px] shrink-0 ${estaNaAdmin ? "text-primary" : "text-muted-foreground"}`} />
               <span aria-hidden={recolhida} className={`${transicaoRotulo} flex-1 truncate ${larguraRotulo}`}>{t("administration")}</span>
               {!recolhida && <ChevronDown aria-hidden="true" className={`h-3.5 w-3.5 transition-transform duration-200 ease-in-out motion-reduce:transition-none ${adminAberto ? "rotate-180" : ""}`} />}
-              <TooltipDescricao id="administration" titulo={t("administration")} descricao={t("administrationDescription")} />
+              {recolhida && <TooltipRotulo titulo={t("administration")} />}
             </button>
             <div
               aria-hidden={!adminAberto}
@@ -104,18 +106,17 @@ export function Sidebar({
               className={`grid w-full transition-[grid-template-rows,opacity] duration-200 ease-in-out motion-reduce:transition-none ${adminAberto ? "grid-rows-[1fr] opacity-100" : "pointer-events-none grid-rows-[0fr] opacity-0"}`}
             >
               <div className="min-h-0 w-full">
-                {itensAdmin.map(([to, label, description, Icon]) => (
+                {itensAdmin.map(([to, label, Icon]) => (
                   <NavLink
                     key={to}
                     to={to}
                     aria-label={recolhida ? label : undefined}
-                    aria-describedby={`sidebar-tooltip-${to.replaceAll("/", "-")}`}
-                    className={({ isActive }) => `group relative flex items-center rounded-xl py-2 text-sm ${recolhida ? "w-10 justify-center px-0" : "ml-3 w-[calc(100%-0.75rem)] gap-2 px-2"} ${isActive ? "bg-[#EAF0FF] text-[#3478F6]" : "text-foreground hover:bg-secondary"}`}
+                    className={({ isActive }) => `group relative flex items-center rounded-xl py-2 text-sm ${recolhida ? "w-10 justify-center px-0" : "ml-3 w-[calc(100%-0.75rem)] gap-2 px-2"} ${isActive ? "bg-[#EAF0FF] text-primary" : "text-foreground hover:bg-secondary"}`}
                   >
                     {({ isActive }) => <>
-                      <Icon aria-hidden="true" className={`size-4 shrink-0 ${isActive ? "text-[#3478F6]" : "text-muted-foreground"}`} />
+                      <Icon aria-hidden="true" className={`size-4 shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
                       <span aria-hidden={recolhida} className={`${transicaoRotulo} truncate ${larguraRotulo}`}>{label}</span>
-                      <TooltipDescricao id={to.replaceAll("/", "-")} titulo={label} descricao={description} />
+                      {recolhida && <TooltipRotulo titulo={label} />}
                     </>}
                   </NavLink>
                 ))}
@@ -124,17 +125,17 @@ export function Sidebar({
           </>
         )}
         {perfil.perfil_codigo !== "ADMIN_UNIDADE" && ((perfil.perfil_codigo === "GERENTE" && perfil.permissoes.includes("times.consultar") && perfil.setores_gerenciados.length > 0) || (perfil.perfil_codigo === "KP" && perfil.permissoes.includes("times.consultar") && perfil.times.length > 0)) && (
-          <NavLink to="/times" aria-label={recolhida ? t("teams") : undefined} aria-describedby="sidebar-tooltip-teams" className={({ isActive }) => `group relative flex items-center rounded-xl py-2 text-sm ${recolhida ? "w-10 justify-center px-0" : "w-full gap-2 px-2"} ${isActive ? "bg-[#EAF0FF] text-[#3478F6]" : "text-foreground hover:bg-secondary"}`}>
+          <NavLink to="/times" aria-label={recolhida ? t("teams") : undefined} className={({ isActive }) => `group relative flex items-center rounded-xl py-2 text-sm ${recolhida ? "w-10 justify-center px-0" : "w-full gap-2 px-2"} ${isActive ? "bg-[#EAF0FF] text-primary" : "text-foreground hover:bg-secondary"}`}>
             {({ isActive }) => <>
-              <UsersRound aria-hidden="true" className={`size-[18px] shrink-0 ${isActive ? "text-[#3478F6]" : "text-muted-foreground"}`} />
+              <UsersRound aria-hidden="true" className={`size-[18px] shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
               <span aria-hidden={recolhida} className={`${transicaoRotulo} ${larguraRotulo}`}>{t("teams")}</span>
-              <TooltipDescricao id="teams" titulo={t("teams")} descricao={t("teamsDescription")} />
+              {recolhida && <TooltipRotulo titulo={t("teams")} />}
             </>}
           </NavLink>
         )}
         {(perfil.perfil_codigo === "GERENTE" || perfil.perfil_codigo === "KP") && perfil.permissoes.includes("usuarios.consultar") && (
-          <NavLink to="/usuarios" aria-label={recolhida ? t("users") : undefined} aria-describedby="sidebar-tooltip-users" className={({ isActive }) => `group relative flex items-center rounded-xl py-2 text-sm ${recolhida ? "w-10 justify-center px-0" : "w-full gap-2 px-2"} ${isActive ? "bg-[#EAF0FF] text-[#3478F6]" : "text-foreground hover:bg-secondary"}`}>
-            {({ isActive }) => <><Users aria-hidden="true" className={`size-[18px] shrink-0 ${isActive ? "text-[#3478F6]" : "text-muted-foreground"}`} /><span aria-hidden={recolhida} className={`${transicaoRotulo} ${larguraRotulo}`}>{t("users")}</span><TooltipDescricao id="users" titulo={t("users")} descricao={t("usersDescription")} /></>}
+          <NavLink to="/usuarios" aria-label={recolhida ? t("users") : undefined} className={({ isActive }) => `group relative flex items-center rounded-xl py-2 text-sm ${recolhida ? "w-10 justify-center px-0" : "w-full gap-2 px-2"} ${isActive ? "bg-[#EAF0FF] text-primary" : "text-foreground hover:bg-secondary"}`}>
+            {({ isActive }) => <><Users aria-hidden="true" className={`size-[18px] shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`} /><span aria-hidden={recolhida} className={`${transicaoRotulo} ${larguraRotulo}`}>{t("users")}</span>{recolhida && <TooltipRotulo titulo={t("users")} />}</>}
           </NavLink>
         )}
       </nav>
@@ -143,13 +144,12 @@ export function Sidebar({
         <NavLink
           to="/documentation"
           aria-label={recolhida ? t("documentation") : undefined}
-          aria-describedby="sidebar-tooltip-documentation"
-          className={({ isActive }) => `group relative flex items-center rounded-xl py-2.5 text-sm font-normal leading-5 tracking-normal ${recolhida ? "w-10 justify-center px-0" : "w-full gap-3 px-2"} ${isActive ? "bg-[#EAF0FF] text-[#3478F6]" : "text-[#454442] hover:bg-secondary"}`}
+          className={({ isActive }) => `group relative flex items-center rounded-xl py-2.5 text-sm font-normal leading-5 tracking-normal ${recolhida ? "w-10 justify-center px-0" : "w-full gap-3 px-2"} ${isActive ? "bg-[#EAF0FF] text-primary" : "text-[#454442] hover:bg-secondary"}`}
         >
           {({ isActive }) => <>
-            <SquareTerminal aria-hidden="true" className={`h-5 w-5 shrink-0 ${isActive ? "text-[#3478F6]" : ""}`} />
+            <SquareTerminal aria-hidden="true" className={`h-5 w-5 shrink-0 ${isActive ? "text-primary" : ""}`} />
             <span aria-hidden={recolhida} className={`${transicaoRotulo} ${larguraRotulo}`}>{t("documentation")}</span>
-            <TooltipDescricao id="documentation" titulo={t("documentation")} descricao={t("documentationDescription")} />
+            {recolhida && <TooltipRotulo titulo={t("documentation")} />}
           </>}
         </NavLink>
       </div>
@@ -157,15 +157,14 @@ export function Sidebar({
   );
 }
 
-function TooltipDescricao({ id, titulo, descricao }: { id: string; titulo: string; descricao: string }) {
+// Só aparece com a sidebar recolhida; o nome acessível já vem do aria-label do link.
+function TooltipRotulo({ titulo }: { titulo: string }) {
   return (
     <span
-      id={`sidebar-tooltip-${id}`}
-      role="tooltip"
-      className="pointer-events-none invisible absolute left-full top-1/2 z-50 ml-3 w-56 -translate-y-1/2 rounded-xl border border-border bg-card p-3 text-left opacity-0 shadow-lg transition-all duration-150 group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100 motion-reduce:transition-none"
+      aria-hidden="true"
+      className="pointer-events-none invisible absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-2.5 py-1.5 text-sm text-foreground opacity-0 shadow-lg transition-[opacity,visibility] duration-150 group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100 motion-reduce:transition-none"
     >
-      <span className="block text-sm font-medium text-foreground">{titulo}</span>
-      <span className="mt-1 block whitespace-normal text-xs leading-5 text-muted-foreground">{descricao}</span>
+      {titulo}
     </span>
   );
 }

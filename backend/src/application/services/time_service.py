@@ -186,6 +186,11 @@ class TimeServiceImpl:
                 and usuario_atual.pode("times.consultar")
                 and id in usuario_atual.time_ids
             )
+            and not (
+                usuario_atual.perfil_codigo == "USUARIO_PADRAO"
+                and usuario_atual.pode("test_cases.consultar")
+                and id in usuario_atual.time_ids
+            )
         ):
             raise NotFoundException("Time não encontrado.")
         membros = await self._membro_repo.listar_por_time(usuario_atual.unidade_id, id)
