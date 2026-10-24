@@ -42,6 +42,9 @@ mude o componente compartilhado (e este documento), não a tela isolada.
 ## 3. Filtros
 
 - Filtro de coluna fica **no cabeçalho**, com `TableColumnFilter`: `options` para um conjunto fechado (status, categoria, pessoa) ou texto livre (sem `options`).
+- Coluna de data filtra com `type="date"`, que abre o `Calendar` do shadcn (`shared/ui/calendar.tsx`, react-day-picker) no popover do cabeçalho. Escolher o dia aplica o filtro. O valor é o dia em `AAAA-MM-DD` (`formatarDiaIso`/`lerDiaIso` de `shared/lib/utils`), comparado com a data da linha no fuso do navegador, nunca por texto na data formatada. Não use `<input type="date">` nativo.
+- Filtro por semana usa o `WeekPicker` (`shared/ui/week-picker.tsx`): Calendar com número da semana ISO clicável, a semana inteira destacada e os botões "Limpar filtros" e "Esta semana". O valor é `AAAA-Www` (`semanaIso`). Não use `<input type="week">` nativo.
+- Popovers usam `bg-card`: o token `bg-popover` não existe no tema.
 - Toda lista de opções começa com `{ value: "", label: t("all") }`.
 - Filtro ativo muda o ícone do cabeçalho para `Filter` e a cor para `text-primary`. Não crie outro indicador.
 - Busca global (quando existir) fica acima da tabela, alinhada à esquerda. Ações primárias (ex.: "Novo") ficam à direita.

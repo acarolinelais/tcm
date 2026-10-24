@@ -24,7 +24,7 @@ test("importa novo relatório SDF e mantém disponíveis os resultados anteriore
   await page.getByRole("tab", { name: "Form Factor" }).click();
   await expect(page.getByText("SDF-OLD")).toBeVisible();
   await page.locator('input[type="file"]').setInputFiles({ name: "sdf-report.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from("report") });
-  await page.getByRole("button", { name: "import" }).click();
+  await page.getByRole("button", { name: "Importar", exact: true }).click();
 
   await expect(page.getByText("Relatório importado: 1 execuções e 4 resultados.")).toBeVisible();
   await expect(page.getByText("SDF-OLD")).toBeVisible();
@@ -51,7 +51,7 @@ test("recusa relatório fora do escopo e mantém o resultado salvo", async ({ pa
   await page.getByRole("tab", { name: "Form Factor" }).click();
   await expect(page.getByText("SDF-KEEP")).toBeVisible();
   await page.locator('input[type="file"]').setInputFiles({ name: "out-of-scope.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from("report") });
-  await page.getByRole("button", { name: "import" }).click();
+  await page.getByRole("button", { name: "Importar", exact: true }).click();
 
   await expect(page.getByText("O projeto está fora do escopo permitido.")).toBeVisible();
   await expect(page.getByText("SDF-KEEP")).toBeVisible();

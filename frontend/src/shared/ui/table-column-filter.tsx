@@ -4,6 +4,9 @@ import { createPortal } from "react-dom";
 import { ChevronDown, Filter, Search, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { formatarDiaIso, lerDiaIso } from "@/shared/lib/utils";
+import { Calendar } from "@/shared/ui/calendar";
+
 export interface TableFilterOption {
   value: string;
   label: string;
@@ -15,12 +18,15 @@ export function TableColumnFilter({
   onChange,
   options,
   placeholder,
+  type = "text",
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options?: TableFilterOption[];
   placeholder?: string;
+  /** "date": o valor é um dia no formato AAAA-MM-DD, escolhido num Calendar. */
+  type?: "text" | "date";
 }) {
   const { t } = useTranslation();
   const [aberto, setAberto] = useState(false);
@@ -61,7 +67,7 @@ export function TableColumnFilter({
     }
     const bounds = triggerRef.current?.getBoundingClientRect();
     if (bounds) {
-      const alturaMenu = options ? Math.min(300, options.length * 38 + 8) : 132;
+      const alturaMenu = options ? Math.min(300, options.length * 38 + 8) : type === "date" ? 340 : 132;
       const top = bounds.bottom + alturaMenu > window.innerHeight
         ? Math.max(8, bounds.top - alturaMenu - 6)
         : bounds.bottom + 6;
@@ -96,7 +102,7 @@ export function TableColumnFilter({
       {aberto && createPortal(
         <div
           ref={menuRef}
-          role="menu"
+          role={type === "date" ? "dialog" : "menu"}
           aria-label={t("filter", { label })}
           style={{ position: "fixed", top: posicao.top, right: posicao.right }}
           className="popover-enter z-50 min-w-48 rounded-xl border border-border bg-card p-1.5 shadow-lg"
@@ -119,12 +125,38 @@ export function TableColumnFilter({
                 </button>
               ))}
             </div>
+          ) : type === "date" ? (
+            <div>
+              <Calendar
+                mode="single"
+                selected={value ? lerDiaIso(value) : undefined}
+                defaultMonth={value ? lerDiaIso(value) : undefined}
+                onSelect={(dia) => {
+                  onChange(dia ? formatarDiaIso(dia) : "");
+                  setAberto(false);
+                }}
+                autoFocus
+              />
+              <div className="flex justify-end border-t border-border px-1 pt-1.5">
+                <button
+                  type="button"
+                  className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary"
+                  onClick={() => {
+                    onChange("");
+                    setAberto(false);
+                  }}
+                >
+                  {t("clearFilters")}
+                </button>
+              </div>
+            </div>
           ) : (
             <form className="w-64 space-y-2" onSubmit={aplicarTexto}>
               <label className="flex h-9 items-center gap-2 rounded-lg border border-border px-2.5">
                 <Search aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <input
                   autoFocus
+                  aria-label={label}
                   value={rascunho}
                   onChange={(event) => setRascunho(event.target.value)}
                   placeholder={placeholder ?? t("filterPlaceholder", { label })}

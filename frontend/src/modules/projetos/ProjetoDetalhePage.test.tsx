@@ -9,6 +9,7 @@ import { ProjetoDetalhePage } from "./ProjetoDetalhePage";
 import { casosTesteApi, formFactorApi, projetosApi } from "./api/projetos.api";
 import { timesApi } from "@/modules/times/api/times.api";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/ui/table";
+import { formatarDiaIso, semanaIso } from "@/shared/lib/utils";
 
 vi.mock("./api/projetos.api", () => ({
   projetosApi: { obter: vi.fn() }, casosTesteApi: { listar: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), transferirParaBackup: vi.fn() },
@@ -73,7 +74,7 @@ describe("ProjetoDetalhePage", () => {
     expect(within(casoAlheio).queryByRole("button", { name: /Actions for Clock_002/i })).not.toBeInTheDocument();
 
     await user.click(within(proprioCaso).getByRole("button", { name: /Actions for Clock_001/i }));
-    await user.click(await screen.findByRole("menuitem", { name: /Transferir ao backup/i }));
+    await user.click(await screen.findByRole("menuitem", { name: /Transfer to backup/i }));
     expect(vi.mocked(casosTesteApi.transferirParaBackup).mock.calls[0][0]).toBe("case-1");
 
     await user.click(screen.getByRole("button", { name: /Filter by Assignee/i }));
@@ -83,6 +84,29 @@ describe("ProjetoDetalhePage", () => {
     await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("project-1", 1, DEFAULT_TABLE_PAGE_SIZE, { responsavelId: "user-2" }));
     expect(screen.queryByRole("row", { name: /Clock_001/ })).not.toBeInTheDocument();
     expect(screen.getByRole("row", { name: /Clock_002/ })).toBeInTheDocument();
+  });
+
+  it("filtra os casos pela data final escolhida no calendário", async () => {
+    const hoje = new Date();
+    hoje.setHours(12, 0, 0, 0);
+    const outroDia = new Date(hoje);
+    outroDia.setDate(hoje.getDate() === 1 ? 2 : 1);
+    vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [casos[0], { ...casos[1], updated_at: hoje.toISOString() }], page: 1, page_size: 10, total_count: 2 });
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("row", { name: /Clock_002/ });
+    const escolherDia = async (dia: Date) => {
+      await user.click(screen.getByRole("button", { name: /Filter by End date/i }));
+      const calendario = await screen.findByRole("dialog", { name: /End date/i });
+      await user.click(within(calendario.querySelector(`[data-day="${formatarDiaIso(dia)}"]`) as HTMLElement).getByRole("button"));
+    };
+
+    await escolherDia(hoje);
+    expect(screen.getByRole("row", { name: /Clock_002/ })).toBeInTheDocument();
+    expect(screen.queryByRole("row", { name: /Clock_001/ })).not.toBeInTheDocument();
+
+    await escolherDia(outroDia);
+    expect(screen.queryByRole("row", { name: /Clock_002/ })).not.toBeInTheDocument();
   });
 
   it("permite ao responsável atualizar somente categoria, dificuldade e situação do próprio caso", async () => {
@@ -169,9 +193,21 @@ describe("ProjetoDetalhePage", () => {
     expect(screen.getByText("PASS")).toBeInTheDocument();
     expect(formFactorApi.listar).toHaveBeenCalledWith("project-1", expect.objectContaining({ page: 1, pageSize: DEFAULT_TABLE_PAGE_SIZE }));
 
-    await user.type(screen.getByLabelText("Semana"), "2026-W12");
+    await user.click(screen.getByRole("button", { name: "Week: Select a week" }));
+    await user.click(within(await screen.findByRole("dialog", { name: "Week" })).getByRole("button", { name: "This week" }));
     await user.type(screen.getByLabelText("One UI version"), "9.5");
-    await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("project-1", expect.objectContaining({ semana: "2026-W12", oneUi: "9.5" })));
+    await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("project-1", expect.objectContaining({ semana: semanaIso(new Date()), oneUi: "9.5" })));
+
+    const primeiroDoMes = new Date();
+    primeiroDoMes.setDate(1);
+    await user.click(screen.getByRole("button", { name: /^Week: Week \d+/ }));
+    const calendario = await screen.findByRole("dialog", { name: "Week" });
+    await user.click(within(calendario.querySelector(`[data-day="${formatarDiaIso(primeiroDoMes)}"]`) as HTMLElement).getByRole("button"));
+    await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("project-1", expect.objectContaining({ semana: semanaIso(primeiroDoMes) })));
+
+    await user.click(screen.getByRole("button", { name: /^Week: Week \d+/ }));
+    await user.click(within(await screen.findByRole("dialog", { name: "Week" })).getByRole("button", { name: "Clear filters" }));
+    await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("project-1", expect.objectContaining({ semana: undefined })));
 
     const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]');
     expect(fileInput).not.toBeNull();
