@@ -70,7 +70,9 @@ async def test_developer_lista_todos_test_cases_do_projeto_visivel(contexto):
 
     await service.listar(developer, projeto.id, 1, 10)
 
-    casos.listar_por_projeto.assert_awaited_once_with(developer.unidade_id, projeto.id, 1, 10, None)
+    casos.listar_por_projeto.assert_awaited_once_with(
+        developer.unidade_id, projeto.id, 1, 10, None, priorizar_responsavel_id=developer_id
+    )
 
 
 async def test_lista_repassa_filtro_de_responsavel_ao_repositorio(contexto):
@@ -81,7 +83,7 @@ async def test_lista_repassa_filtro_de_responsavel_ao_repositorio(contexto):
     await service.listar(admin, projeto.id, 1, 10, responsavel_id)
 
     casos.listar_por_projeto.assert_awaited_once_with(
-        admin.unidade_id, projeto.id, 1, 10, responsavel_id
+        admin.unidade_id, projeto.id, 1, 10, responsavel_id, priorizar_responsavel_id=admin.id
     )
 
 

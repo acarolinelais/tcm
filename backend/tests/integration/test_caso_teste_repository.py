@@ -110,6 +110,26 @@ async def test_caso_persiste_com_responsaveis_e_tc_id_e_unico_no_projeto():
             assert sem_resultados.items == []
             assert sem_resultados.total_count == 0
             assert await repository.existe_tc_id(unidade_id, projeto_id, "Clock_001")
+
+            # Clock_000 vem antes por TC ID, mas o usuário é só backup dele: Clock_001 sobe.
+            await repository.adicionar(
+                CasoTeste(
+                    unidade_id,
+                    projeto_id,
+                    "Clock_000",
+                    CategoriaCasoTeste.A,
+                    DificuldadeCasoTeste.LOW,
+                    backup_id,
+                    responsavel_id,
+                )
+            )
+            await session.flush()
+            sem_prioridade = await repository.listar_por_projeto(unidade_id, projeto_id, 1, 10)
+            assert [c.tc_id for c in sem_prioridade.items] == ["Clock_000", "Clock_001"]
+            priorizada = await repository.listar_por_projeto(
+                unidade_id, projeto_id, 1, 10, priorizar_responsavel_id=responsavel_id
+            )
+            assert [c.tc_id for c in priorizada.items] == ["Clock_001", "Clock_000"]
             assert not await repository.existe_tc_id(uuid4(), projeto_id, "Clock_001")
 
             caso.transferir_para_backup()

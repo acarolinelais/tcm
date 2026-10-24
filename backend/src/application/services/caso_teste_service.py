@@ -59,7 +59,12 @@ class CasoTesteServiceImpl:
         self._exigir_permissao(usuario_atual, "test_cases.consultar")
         await self._obter_projeto_visivel(usuario_atual, projeto_id)
         casos = await self._caso_repo.listar_por_projeto(
-            usuario_atual.unidade_id, projeto_id, page, page_size, responsavel_id
+            usuario_atual.unidade_id,
+            projeto_id,
+            page,
+            page_size,
+            responsavel_id,
+            priorizar_responsavel_id=usuario_atual.id,
         )
         return casos.map(to_response)
 

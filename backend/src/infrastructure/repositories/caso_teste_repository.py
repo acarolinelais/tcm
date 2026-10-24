@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 
 from src.domain.common.paged_result import PagedResult
 from src.domain.entities.caso_teste import (
@@ -23,6 +23,7 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
         page: int,
         page_size: int,
         responsavel_id: UUID | None = None,
+        priorizar_responsavel_id: UUID | None = None,
     ) -> PagedResult[CasoTeste]:
         filtros = [
             CasoTesteModel.unidade_id == unidade_id,
@@ -35,12 +36,18 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
                 select(func.count()).select_from(CasoTesteModel).where(*filtros)
             )
         ).scalar_one()
+        ordenacao = [CasoTesteModel.tc_id, CasoTesteModel.id]
+        if priorizar_responsavel_id is not None:
+            # Casos em que o usuário é o responsável principal vêm primeiro; ser backup não conta.
+            ordenacao.insert(
+                0, case((CasoTesteModel.responsavel_id == priorizar_responsavel_id, 0), else_=1)
+            )
         modelos = (
             (
                 await self.session.execute(
                     select(CasoTesteModel)
                     .where(*filtros)
-                    .order_by(CasoTesteModel.tc_id, CasoTesteModel.id)
+                    .order_by(*ordenacao)
                     .offset((page - 1) * page_size)
                     .limit(page_size)
                 )

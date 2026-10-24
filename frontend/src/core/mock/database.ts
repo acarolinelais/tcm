@@ -591,10 +591,13 @@ function getMockCase(db: Database, caseId: string) {
 export const mockCasosTesteApi = {
   listar(projectId: string, pageNumber: number, pageSize: number, filtros: { responsavelId?: string } = {}) {
     requireMockPermission("test_cases.consultar");
-    const { db } = mockProfile();
+    const { db, user } = mockProfile();
     getMockProject(db, projectId);
     const casosDoProjeto = db.casosTeste.filter((item) => item.projeto_id === projectId && item.ativo
       && (!filtros.responsavelId || item.responsavel_id === filtros.responsavelId));
+    // Igual à API: os casos em que o usuário é o responsável principal vêm primeiro.
+    const prioridade = (item: (typeof casosDoProjeto)[number]) => (item.responsavel_id === user.id ? 0 : 1);
+    casosDoProjeto.sort((a, b) => prioridade(a) - prioridade(b) || a.tc_id.localeCompare(b.tc_id));
     return page(casosDoProjeto, pageNumber, pageSize);
   },
   obter(caseId: string) {
