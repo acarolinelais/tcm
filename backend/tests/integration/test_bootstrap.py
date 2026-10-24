@@ -138,6 +138,8 @@ async def test_migration_seed_permissoes_de_projetos_por_perfil():
                 "projetos.consultar",
                 "test_cases.consultar",
                 "form_factor.consultar",
+                "times.consultar",
+                "usuarios.perfil.consultar",
             }
     finally:
         await engine.dispose()
