@@ -10,28 +10,58 @@ from src.domain.entities.caso_teste import (
     SituacaoCasoTeste,
 )
 
-CABECALHOS_OBRIGATORIOS = (
-    "app",
-    "tc id",
-    "difficulty",
-    "category",
-    "tc situation",
-    "one ui",
-    "assignees",
-    "backup",
-)
+# Cabeçalho normalizado → nome exibido nas mensagens quando a coluna não existe na planilha.
+CABECALHOS_OBRIGATORIOS = {
+    "app": "App",
+    "tc id": "TC ID",
+    "difficulty": "Difficulty",
+    "category": "Category",
+    "tc situation": "TC Situation",
+    "one ui": "One UI",
+    "assignees": "Assignees",
+    "backup": "Backup",
+}
+
+# Valor normalizado → opção, montado uma vez para não refazer a cada linha.
+_OPCOES = {
+    enum: {item.value.casefold(): item for item in enum}
+    for enum in (CategoriaCasoTeste, DificuldadeCasoTeste, SituacaoCasoTeste)
+}
 
 
 @dataclass(frozen=True)
 class ErroImportacaoPlanilha:
-    linha: int
+    linha: int | None
     campo: str
     mensagem: str
+    # Membros estruturados do ADR 0033; o relatório SDF ainda não os preenche.
+    codigo: str | None = None
+    coluna: str | None = None
+    valor: str | None = None
+    parametros: dict[str, object] | None = None
+
+
+@dataclass(frozen=True)
+class PessoasDaLinha:
+    linha: int
+    responsavel: str
+    backup: str
 
 
 class PlanilhaProjetoInvalida(ValueError):
-    def __init__(self, erros: tuple[ErroImportacaoPlanilha, ...]) -> None:
+    def __init__(
+        self,
+        erros: tuple[ErroImportacaoPlanilha, ...],
+        total_linhas: int | None = None,
+        pessoas: tuple[PessoasDaLinha, ...] = (),
+        colunas: dict[str, str] | None = None,
+    ) -> None:
         self.erros = erros
+        self.total_linhas = total_linhas
+        # Responsável e backup de cada linha lida, para o service validá-los mesmo com outros
+        # problemas na planilha e devolver tudo de uma vez (ADR 0033).
+        self.pessoas = pessoas
+        self.colunas = colunas or {}
         super().__init__("A planilha possui dados inválidos.")
 
 
@@ -51,6 +81,15 @@ class PlanilhaProjetoValidada:
     app: str
     one_ui: str
     casos: tuple[LinhaCasoTesteImportada, ...]
+    total_linhas: int
+    # Cabeçalho normalizado → texto como está na planilha, para as mensagens do service.
+    colunas: dict[str, str]
+
+
+def _erro_geral(
+    codigo: str, mensagem: str, campo: str = "planilha", coluna: str | None = None
+) -> ErroImportacaoPlanilha:
+    return ErroImportacaoPlanilha(None, campo, mensagem, codigo, coluna)
 
 
 def validar_planilha_projeto(conteudo: bytes) -> PlanilhaProjetoValidada:
@@ -59,40 +98,84 @@ def validar_planilha_projeto(conteudo: bytes) -> PlanilhaProjetoValidada:
         planilha = workbook.active
     except (BadZipFile, InvalidFileException, OSError, ValueError) as erro:
         raise PlanilhaProjetoInvalida(
-            (ErroImportacaoPlanilha(1, "arquivo", "O arquivo não é uma planilha Excel válida."),)
+            (
+                _erro_geral(
+                    "arquivo_invalido", "O arquivo não é uma planilha Excel válida.", "arquivo"
+                ),
+            )
         ) from erro
 
     linhas = planilha.iter_rows(values_only=True)
     cabecalho = next(linhas, None)
     if cabecalho is None:
         workbook.close()
-        raise PlanilhaProjetoInvalida(
-            (ErroImportacaoPlanilha(1, "cabecalho", "A planilha está vazia."),)
-        )
+        raise PlanilhaProjetoInvalida((_erro_geral("planilha_vazia", "A planilha está vazia."),))
 
     mapa_cabecalhos: dict[str, int] = {}
+    colunas: dict[str, str] = dict(CABECALHOS_OBRIGATORIOS)
     erros: list[ErroImportacaoPlanilha] = []
     for indice, valor in enumerate(cabecalho):
         if valor is None:
             continue
         nome = _normalizar_cabecalho(valor)
         if nome in mapa_cabecalhos:
-            erros.append(ErroImportacaoPlanilha(1, nome, "O cabeçalho está duplicado."))
+            erros.append(
+                _erro_geral(
+                    "cabecalho_duplicado", "O cabeçalho está duplicado.", nome, _texto(valor)
+                )
+            )
         mapa_cabecalhos[nome] = indice
-    for nome in CABECALHOS_OBRIGATORIOS:
+        colunas[nome] = _texto(valor)
+    for nome, exibido in CABECALHOS_OBRIGATORIOS.items():
         if nome not in mapa_cabecalhos:
-            erros.append(ErroImportacaoPlanilha(1, nome, "Coluna obrigatória não encontrada."))
+            erros.append(
+                _erro_geral(
+                    "coluna_obrigatoria_ausente",
+                    "Coluna obrigatória não encontrada.",
+                    nome,
+                    exibido,
+                )
+            )
     if erros:
         workbook.close()
         raise PlanilhaProjetoInvalida(tuple(erros))
 
+    def erro_linha(numero, nome, codigo, mensagem, valor="", **parametros):
+        return ErroImportacaoPlanilha(
+            numero, nome, mensagem, codigo, colunas[nome], valor or None, parametros or None
+        )
+
+    def opcao(numero, nome, valor, enum):
+        if not valor:
+            erros.append(
+                erro_linha(numero, nome, "valor_obrigatorio", f"{colunas[nome]} é obrigatório.")
+            )
+            return None
+        encontrada = _OPCOES[enum].get(valor.casefold())
+        if encontrada is None:
+            esperados = [item.value for item in enum]
+            erros.append(
+                erro_linha(
+                    numero,
+                    nome,
+                    "valor_invalido",
+                    f"Use {', '.join(esperados)}.",
+                    valor,
+                    esperados=esperados,
+                )
+            )
+        return encontrada
+
     valores_app: list[str] = []
     valores_one_ui: list[str] = []
     casos: list[LinhaCasoTesteImportada] = []
-    tc_ids_vistos: set[str] = set()
+    primeira_linha_por_tc_id: dict[str, int] = {}
+    total_linhas = 0
+    pessoas: list[PessoasDaLinha] = []
     for numero_linha, valores in enumerate(linhas, start=2):
         if not any(_texto(valor) for valor in valores):
             continue
+        total_linhas += 1
         campos = {
             nome: _texto(valores[indice] if indice < len(valores) else None)
             for nome, indice in mapa_cabecalhos.items()
@@ -103,75 +186,70 @@ def validar_planilha_projeto(conteudo: bytes) -> PlanilhaProjetoValidada:
             valores_one_ui.append(campos["one ui"])
 
         tc_id = campos["tc id"]
-        category = _categoria(campos["category"])
-        difficulty = _dificuldade(campos["difficulty"])
-        situation = _situacao(campos["tc situation"])
-        responsavel = campos["assignees"]
-        backup = campos["backup"]
         if not tc_id:
-            erros.append(ErroImportacaoPlanilha(numero_linha, "tc id", "TC ID é obrigatório."))
-        elif tc_id in tc_ids_vistos:
             erros.append(
-                ErroImportacaoPlanilha(numero_linha, "tc id", "TC ID duplicado na planilha.")
+                erro_linha(numero_linha, "tc id", "valor_obrigatorio", "TC ID é obrigatório.")
             )
-        else:
-            tc_ids_vistos.add(tc_id)
-        if category is None:
-            erros.append(ErroImportacaoPlanilha(numero_linha, "category", "Use A, B ou C."))
-        if difficulty is None:
+        elif tc_id in primeira_linha_por_tc_id:
             erros.append(
-                ErroImportacaoPlanilha(numero_linha, "difficulty", "Use Low, Medium ou High.")
-            )
-        if situation is None:
-            erros.append(
-                ErroImportacaoPlanilha(
+                erro_linha(
                     numero_linha,
-                    "tc situation",
-                    "Use To-Do, InProgress, InReview, Pass ou Fail.",
+                    "tc id",
+                    "tc_id_duplicado",
+                    "TC ID duplicado na planilha.",
+                    tc_id,
+                    primeira_linha=primeira_linha_por_tc_id[tc_id],
                 )
             )
+        else:
+            primeira_linha_por_tc_id[tc_id] = numero_linha
+        category = opcao(numero_linha, "category", campos["category"], CategoriaCasoTeste)
+        difficulty = opcao(numero_linha, "difficulty", campos["difficulty"], DificuldadeCasoTeste)
+        situation = opcao(numero_linha, "tc situation", campos["tc situation"], SituacaoCasoTeste)
+        responsavel = campos["assignees"]
+        backup = campos["backup"]
+        pessoas.append(PessoasDaLinha(numero_linha, responsavel, backup))
         if not responsavel:
             erros.append(
-                ErroImportacaoPlanilha(numero_linha, "assignees", "Responsável é obrigatório.")
+                erro_linha(
+                    numero_linha, "assignees", "valor_obrigatorio", "Responsável é obrigatório."
+                )
             )
         if not backup:
-            erros.append(ErroImportacaoPlanilha(numero_linha, "backup", "Backup é obrigatório."))
-        if (
-            tc_id
-            and category is not None
-            and difficulty is not None
-            and situation is not None
-            and responsavel
-            and backup
-        ):
+            erros.append(
+                erro_linha(numero_linha, "backup", "valor_obrigatorio", "Backup é obrigatório.")
+            )
+        if tc_id and category and difficulty and situation and responsavel and backup:
             casos.append(
                 LinhaCasoTesteImportada(
-                    numero_linha,
-                    tc_id,
-                    category,
-                    difficulty,
-                    situation,
-                    responsavel,
-                    backup,
+                    numero_linha, tc_id, category, difficulty, situation, responsavel, backup
                 )
             )
 
     workbook.close()
-    if not valores_app:
-        erros.append(ErroImportacaoPlanilha(1, "app", "Informe o App em pelo menos uma linha."))
-    if not valores_one_ui:
-        erros.append(
-            ErroImportacaoPlanilha(1, "one ui", "Informe a versão One UI em pelo menos uma linha.")
-        )
-    if not casos:
-        erros.append(
-            ErroImportacaoPlanilha(
-                1, "tc id", "A planilha precisa conter ao menos um Test Case válido."
+    if not total_linhas:
+        erros.append(_erro_geral("sem_casos", "A planilha precisa conter ao menos um Test Case."))
+    else:
+        if not valores_app:
+            erros.append(
+                _erro_geral(
+                    "app_ausente", "Informe o App em pelo menos uma linha.", "app", colunas["app"]
+                )
             )
-        )
+        if not valores_one_ui:
+            erros.append(
+                _erro_geral(
+                    "one_ui_ausente",
+                    "Informe a versão One UI em pelo menos uma linha.",
+                    "one ui",
+                    colunas["one ui"],
+                )
+            )
     if erros:
-        raise PlanilhaProjetoInvalida(tuple(erros))
-    return PlanilhaProjetoValidada(valores_app[0], valores_one_ui[0], tuple(casos))
+        raise PlanilhaProjetoInvalida(tuple(erros), total_linhas, tuple(pessoas), colunas)
+    return PlanilhaProjetoValidada(
+        valores_app[0], valores_one_ui[0], tuple(casos), total_linhas, colunas
+    )
 
 
 def _normalizar_cabecalho(valor: object) -> str:
@@ -182,22 +260,3 @@ def _texto(valor: object) -> str:
     if valor is None:
         return ""
     return str(valor).strip()
-
-
-def _categoria(valor: str) -> CategoriaCasoTeste | None:
-    try:
-        return CategoriaCasoTeste(valor.upper())
-    except ValueError:
-        return None
-
-
-def _dificuldade(valor: str) -> DificuldadeCasoTeste | None:
-    opcoes = {item.value.casefold(): item for item in DificuldadeCasoTeste}
-    return opcoes.get(valor.casefold())
-
-
-def _situacao(valor: str) -> SituacaoCasoTeste | None:
-    if not valor:
-        return SituacaoCasoTeste.TO_DO
-    opcoes = {item.value.casefold(): item for item in SituacaoCasoTeste}
-    return opcoes.get(valor.casefold())

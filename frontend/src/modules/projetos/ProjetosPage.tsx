@@ -1,11 +1,11 @@
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Download, Eye, FileSpreadsheet, FileUp, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ArrowLeft, Eye, FileSpreadsheet, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Link, useNavigate, useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import type { PerfilAtual } from "@/core/auth/api";
-import { formatDate } from "@/core/i18n/format";
+import { formatDate, formatNumber } from "@/core/i18n/format";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -20,6 +20,10 @@ import { TableColumnFilter } from "@/shared/ui/table-column-filter";
 import { toast } from "@/shared/lib/toast";
 import { ApiError } from "@/shared/api/problem-details";
 import { lerPlanilhaProjeto, PlanilhaProjetoError, type PlanilhaProjeto } from "./utils/planilha-projeto";
+import { errosDaApi, type ErroPlanilhaExibivel } from "./utils/formatar-erro-planilha";
+import { ErrosPlanilha } from "./components/ErrosPlanilha";
+import { PreviaPlanilha } from "./components/PreviaPlanilha";
+import { ExcelIcon, UploadFileIcon } from "./components/icones-importacao";
 import { timesApi } from "@/modules/times/api/times.api";
 import { modelosDispositivoApi, projetosApi, type Projeto, type StatusProjeto } from "./api/projetos.api";
 
@@ -52,7 +56,8 @@ export function ProjetosPage() {
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [previa, setPrevia] = useState<PlanilhaProjeto | null>(null);
   const [lendoArquivo, setLendoArquivo] = useState(false);
-  const [errosImportacao, setErrosImportacao] = useState<{ campo: string; mensagem: string }[]>([]);
+  const [errosImportacao, setErrosImportacao] = useState<ErroPlanilhaExibivel[]>([]);
+  const [totalLinhasComErro, setTotalLinhasComErro] = useState<number | undefined>();
   const [arrastando, setArrastando] = useState(false);
   const [projetoEditando, setProjetoEditando] = useState<Projeto | null>(null);
   const [projetoExcluindo, setProjetoExcluindo] = useState<Projeto | null>(null);
@@ -60,6 +65,9 @@ export function ProjetosPage() {
   const [edicaoOneUi, setEdicaoOneUi] = useState("");
   const inputArquivo = useRef<HTMLInputElement>(null);
 
+  // Com problemas na planilha, o envio só confere: o servidor devolve também os problemas de
+  // responsável e backup, que a prévia não consegue verificar, e não cria nada (CA-26, CA-27).
+  const conferirPlanilha = modo === "planilha" && errosImportacao.length > 0;
   const timesDisponiveis = times.data?.items ?? timesVazios;
   const opcoesModelos = useMemo(() => (modelos.data?.items ?? []).map((model) => ({ value: model.id, label: model.nome })), [modelos.data?.items]);
   const nomeTime = useMemo(() => Object.fromEntries([...perfil.times, ...timesDisponiveis].map((time) => [time.id, time.nome])), [perfil.times, timesDisponiveis]);
@@ -87,11 +95,14 @@ export function ProjetosPage() {
       await client.invalidateQueries({ queryKey: ["projetos"] });
       setCriacaoAberta(false);
       limparFormulario();
-      toast.success(modo === "planilha" ? t("projectImportSuccess", { name: result.projeto.nome, count: result.quantidade_casos }) : t("projectCreateSuccess"));
+      toast.success(modo === "planilha"
+        ? t("projectImportSuccess", { name: result.projeto.nome, count: result.quantidade_casos, countLabel: formatNumber(result.quantidade_casos) })
+        : t("projectCreateSuccess"));
     },
     onError: (error) => {
       if (modo === "planilha" && error instanceof ApiError && error.problem.errors?.length) {
-        setErrosImportacao(error.problem.errors);
+        setErrosImportacao(errosDaApi(error.problem));
+        setTotalLinhasComErro(error.problem.total_linhas);
         toast.error(t("projectImportValidationError"));
         return;
       }
@@ -116,7 +127,7 @@ export function ProjetosPage() {
   });
 
   function limparFormulario() {
-    setTimeId(""); setApp(""); setOneUi(""); setModelosIds([]); setArquivo(null); setPrevia(null); setLendoArquivo(false); setErrosImportacao([]); setModo("planilha");
+    setTimeId(""); setApp(""); setOneUi(""); setModelosIds([]); setArquivo(null); setPrevia(null); setLendoArquivo(false); setErrosImportacao([]); setTotalLinhasComErro(undefined); setModo("planilha");
   }
   async function selecionarArquivo(file?: File) {
     if (!file) return;
@@ -127,6 +138,7 @@ export function ProjetosPage() {
     setOneUi("");
     setPrevia(null);
     setErrosImportacao([]);
+    setTotalLinhasComErro(undefined);
     setLendoArquivo(true);
     try {
       const parsed = await lerPlanilhaProjeto(file);
@@ -134,8 +146,10 @@ export function ProjetosPage() {
       setApp(parsed.app);
       setOneUi(parsed.one_ui);
     } catch (error) {
-      if (error instanceof PlanilhaProjetoError) setErrosImportacao(error.errors);
-      else setErrosImportacao([{ campo: "arquivo", mensagem: t("projectFileReadError") }]);
+      if (error instanceof PlanilhaProjetoError) {
+        setErrosImportacao(error.errors);
+        setTotalLinhasComErro(error.totalLinhas);
+      } else setErrosImportacao([{ codigo: null, mensagem: t("projectFileReadError"), linha: null, coluna: null, valor: null }]);
     } finally {
       setLendoArquivo(false);
     }
@@ -144,7 +158,7 @@ export function ProjetosPage() {
     const XLSX = await import("@e965/xlsx");
     const worksheet = XLSX.utils.aoa_to_sheet([
       ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI", "Assignees", "Backup"],
-      ["Clock", "Clock_0001", "Low", "A", "To-Do", "9.5", "nome ou e-mail do membro do time", "nome ou e-mail do backup"],
+      ["Clock", "Clock_0001", "Low", "A", "New", "9.5", "nome ou e-mail do membro do time", "nome ou e-mail do backup"],
     ]);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Test Cases");
@@ -197,30 +211,31 @@ export function ProjetosPage() {
         <Button variant="outline" size="icon" aria-label={t("backToProjects")} onClick={() => { setCriacaoAberta(false); limparFormulario(); }}><ArrowLeft aria-hidden="true" className="size-4" /></Button>
         <h1 className="text-2xl font-medium text-primary">{t("newProject")}</h1>
       </header>
-      <div className="min-h-0 flex-1 overflow-auto">
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-7 inline-flex rounded-xl border border-border bg-[#F7F8FA] p-1" role="tablist" aria-label={t("projectCreationMethod")}>
+      <div className="thin-scroll min-h-0 flex-1 overflow-auto">
+        {/* min-h-full + flex: sem arquivo, a área de soltar ocupa o espaço livre em vez de criar rolagem. */}
+        <div className="mx-auto flex min-h-full max-w-[52.5rem] flex-col">
+          <div className="mb-4 inline-flex self-start rounded-xl border border-border bg-[#F7F8FA] p-1" role="tablist" aria-label={t("projectCreationMethod")}>
             <button role="tab" aria-selected={modo === "planilha"} type="button" onClick={() => setModo("planilha")} className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-colors ${modo === "planilha" ? "bg-white font-medium text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}><FileSpreadsheet aria-hidden="true" className="size-4" />{t("importSpreadsheet")}</button>
             <button role="tab" aria-selected={modo === "manual"} type="button" onClick={() => setModo("manual")} className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-colors ${modo === "manual" ? "bg-white font-medium text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}><Plus aria-hidden="true" className="size-4" />{t("createManually")}</button>
           </div>
-          {modo === "planilha" ? <section aria-label={t("uploadSpreadsheet")}>
-            <h2 className="mb-4 text-base font-medium text-foreground">{t("uploadSpreadsheet")}</h2>
-            {!arquivo ? <div onDragOver={(event) => { event.preventDefault(); setArrastando(true); }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setArrastando(false); }} onDrop={(event) => { event.preventDefault(); setArrastando(false); void selecionarArquivo(event.dataTransfer.files[0]); }} className={`flex min-h-64 w-full flex-col items-center justify-center rounded-2xl border border-dashed px-6 py-10 text-center transition-colors sm:min-h-72 ${arrastando ? "border-primary bg-primary/5" : "border-[#CBD5E1] bg-white"}`}>
-              <FileUp aria-hidden="true" className="mb-4 size-10 text-foreground/75" />
-              <p className="text-base text-foreground">{t("dragSpreadsheet")} <button type="button" onClick={() => inputArquivo.current?.click()} className="font-medium text-primary underline underline-offset-2 hover:text-primary/80">{t("chooseSpreadsheet")}</button></p>
-            </div> : <div className="flex items-center gap-4 rounded-2xl border border-border p-5"><FileSpreadsheet aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{arquivo.name}</p><p className="mt-1 text-xs text-muted-foreground">{(arquivo.size / 1024 / 1024).toFixed(2)} MB</p></div><Button type="button" variant="outline" size="icon" aria-label={t("removeFile")} onClick={() => { setArquivo(null); setPrevia(null); setErrosImportacao([]); setApp(""); setOneUi(""); }}><X aria-hidden="true" className="size-4" /></Button></div>}
+          {modo === "planilha" ? <section aria-label={t("uploadSpreadsheet")} className="flex flex-1 flex-col">
+            <h2 className="mb-3 text-lg font-medium leading-6 text-[#454442]">{t("uploadSpreadsheet")}</h2>
+            {!arquivo ? <div onDragOver={(event) => { event.preventDefault(); setArrastando(true); }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setArrastando(false); }} onDrop={(event) => { event.preventDefault(); setArrastando(false); void selecionarArquivo(event.dataTransfer.files[0]); }} data-arrastando={arrastando} className={`dropzone-tracejada flex max-h-[28rem] min-h-36 w-full flex-1 flex-col items-center justify-center px-6 py-8 text-center transition-colors ${arrastando ? "bg-primary/5" : "bg-white"}`}>
+              <UploadFileIcon aria-hidden="true" className="mb-4 h-11 w-9 text-[#454442]" />
+              <p className="text-base font-medium text-[#454442]">{t("dragSpreadsheet")} <button type="button" onClick={() => inputArquivo.current?.click()} className="font-medium text-primary underline underline-offset-4 hover:text-primary/80">{t("chooseSpreadsheet")}</button></p>
+            </div> : <div className="flex items-center gap-4 rounded-[20px] border border-[#DDDDDD] p-5"><ExcelIcon aria-hidden="true" className="size-7 shrink-0" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{arquivo.name}</p><p className="mt-1 text-xs text-muted-foreground">{(arquivo.size / 1024 / 1024).toFixed(2)} MB</p></div><Button type="button" variant="outline" size="icon" aria-label={t("removeFile")} onClick={() => { setArquivo(null); setPrevia(null); setErrosImportacao([]); setTotalLinhasComErro(undefined); setApp(""); setOneUi(""); }}><X aria-hidden="true" className="size-4" /></Button></div>}
             <input ref={inputArquivo} className="sr-only" type="file" accept={extensoesAceitas} onChange={(event) => { void selecionarArquivo(event.target.files?.[0]); event.target.value = ""; }} />
-            <div className="mt-3 flex justify-between gap-4 text-xs leading-5 text-muted-foreground"><p>{t("spreadsheetFormats")}</p><p className="shrink-0">{t("spreadsheetMaxSize")}</p></div>
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-[#F1F3F5] px-5 py-4 sm:px-6">
-              <div className="flex items-start gap-3"><FileSpreadsheet aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-emerald-700" /><div><p className="text-sm font-medium text-foreground">{t("spreadsheetTemplateTitle")}</p><p className="mt-1 max-w-xl text-xs leading-5 text-muted-foreground">{t("spreadsheetTemplateDescription")}</p></div></div>
-              <Button type="button" variant="outline" onClick={downloadTemplate}><Download aria-hidden="true" className="size-4" />{t("downloadTemplate")}</Button>
+            <div className="mt-2.5 flex justify-between gap-4 px-2 text-sm leading-5 text-[#777777]"><p>{t("spreadsheetFormats")}</p><p className="shrink-0">{t("spreadsheetMaxSize")}</p></div>
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-[20px] bg-[#F3F5F7] px-5 py-5 sm:px-8">
+              <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-2 text-base font-medium leading-6 text-[#454442]"><ExcelIcon aria-hidden="true" className="size-6 shrink-0" />{t("spreadsheetTemplateTitle")}</p>
+                <p className="mt-1.5 max-w-[28rem] text-sm leading-5 text-[#777777]">{t("spreadsheetTemplateDescription")}</p>
+              </div>
+              <Button type="button" variant="outline" onClick={downloadTemplate} className="h-9 rounded-[10px] border-[#DDDDDD] bg-white px-4 text-sm font-medium text-[#454442]">{t("downloadTemplate")}</Button>
             </div>
             {lendoArquivo && <p role="status" className="mt-4 text-sm text-muted-foreground">{t("readingSpreadsheet")}</p>}
-            {errosImportacao.length > 0 && <div role="alert" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4"><h2 className="text-sm font-semibold text-destructive">{t("projectImportValidationError")}</h2><ul className="mt-2 space-y-1 text-sm text-destructive">{errosImportacao.map((erro, index) => <li key={`${erro.campo}-${index}`}>{erro.campo}: {erro.mensagem}</li>)}</ul></div>}
-            {previa && <section aria-label={t("spreadsheetPreview")} className="mt-6 overflow-hidden rounded-2xl border border-border bg-white">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-[#F7F8FA] px-5 py-4"><div><h2 className="text-sm font-semibold">{t("spreadsheetPreview")}</h2><p className="mt-1 text-xs text-muted-foreground">{t("project")}: {previa.app} {previa.one_ui}</p></div><span className="text-xs text-muted-foreground">{t("testCaseCount", { count: previa.casos.length })}</span></div>
-              <div className="max-h-72 overflow-auto"><Table><TableHeader><TableRow><TableHead>{t("tcId")}</TableHead><TableHead>{t("category")}</TableHead><TableHead>{t("difficulty")}</TableHead><TableHead>{t("tcSituation")}</TableHead><TableHead>{t("assignee")}</TableHead><TableHead>{t("backup")}</TableHead></TableRow></TableHeader><TableBody>{previa.casos.map((caso) => <TableRow key={`${caso.linha}-${caso.tc_id}`}><TableCell className="font-medium">{caso.tc_id}</TableCell><TableCell>{caso.category}</TableCell><TableCell>{caso.difficulty}</TableCell><TableCell>{caso.situation}</TableCell><TableCell>{caso.responsavel}</TableCell><TableCell>{caso.backup}</TableCell></TableRow>)}</TableBody></Table></div>
-            </section>}
+            {errosImportacao.length > 0 && <ErrosPlanilha erros={errosImportacao} totalLinhas={totalLinhasComErro} />}
+            {previa && <PreviaPlanilha previa={previa} />}
           </section> : <section className="rounded-2xl border border-border bg-white p-5 sm:p-7"><div className="mb-6"><h2 className="text-base font-semibold">{t("projectDetails")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("projectNameFormulaHint")}</p></div><div className="grid gap-5 sm:grid-cols-2"><div><Label htmlFor="project-app">{t("app")}</Label><Input id="project-app" value={app} onChange={(event) => setApp(event.target.value)} className="mt-2" placeholder={t("appPlaceholder")} maxLength={80} /></div><div><Label htmlFor="project-oneui">{t("oneUi")}</Label><Input id="project-oneui" value={oneUi} onChange={(event) => setOneUi(event.target.value)} className="mt-2" placeholder="9.5" maxLength={40} /></div></div><p className="mt-3 text-sm text-muted-foreground">{app.trim() && oneUi.trim() ? `${t("projectNamePreview")}: ${app.trim()} ${oneUi.trim()}` : t("projectNamePreviewHint")}</p></section>}
 
           {(modo === "manual" || arquivo) && <section className="mt-7 border-t border-border pt-6">
@@ -239,7 +254,7 @@ export function ProjetosPage() {
           </section>}
         </div>
       </div>
-      <footer className="mt-6 flex shrink-0 items-center justify-end gap-4 border-t border-border pt-5"><div className="flex gap-2"><Button variant="outline" onClick={() => { setCriacaoAberta(false); limparFormulario(); }}>{t("cancel")}</Button><Button disabled={queryMutation.isPending || lendoArquivo || !timeId || (modo === "manual" ? !app.trim() || !oneUi.trim() : !arquivo || !previa || errosImportacao.length > 0)} onClick={() => queryMutation.mutate()}>{queryMutation.isPending ? t("saving") : t("createProject")}</Button></div></footer>
+      <footer className="mt-6 flex shrink-0 items-center justify-end gap-4 border-t border-border pt-5"><div className="flex gap-2"><Button variant="outline" onClick={() => { setCriacaoAberta(false); limparFormulario(); }}>{t("cancel")}</Button><Button disabled={queryMutation.isPending || lendoArquivo || !timeId || (modo === "manual" ? !app.trim() || !oneUi.trim() : !arquivo)} onClick={() => queryMutation.mutate()}>{queryMutation.isPending ? t("saving") : conferirPlanilha ? t("checkSpreadsheet") : t("createProject")}</Button></div></footer>
     </>}
     <Dialog open={Boolean(projetoEditando)} onOpenChange={(open) => { if (!open && !editarProjeto.isPending) setProjetoEditando(null); }}>
       <DrawerContent>

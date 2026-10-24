@@ -8,7 +8,12 @@ from openpyxl import Workbook
 from src.application.services.importacao_sdf_service import ImportacaoSdfServiceImpl
 from src.domain.common.exceptions import ConflictException
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
-from src.domain.entities.caso_teste import CasoTeste, CategoriaCasoTeste, DificuldadeCasoTeste
+from src.domain.entities.caso_teste import (
+    CasoTeste,
+    CategoriaCasoTeste,
+    DificuldadeCasoTeste,
+    SituacaoCasoTeste,
+)
 from src.domain.entities.modelo_dispositivo import ModeloDispositivo
 from src.domain.entities.projeto import Projeto
 from src.domain.entities.projeto_modelo import ProjetoModelo
@@ -52,6 +57,7 @@ def contexto():
         DificuldadeCasoTeste.LOW,
         uuid4(),
         uuid4(),
+        SituacaoCasoTeste.NEW,
     )
     projeto_repo.obter_por_id.return_value = projeto
     time_repo.obter_por_id.return_value = time

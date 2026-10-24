@@ -56,7 +56,7 @@ describe("translation resources", () => {
     expect(resources["pt-BR"].translation.difficultyLow).toBe("Baixa");
     expect(resources["pt-BR"].translation.difficultyMedium).toBe("Média");
     expect(resources["pt-BR"].translation.difficultyHigh).toBe("Alta");
-    expect(resources["pt-BR"].translation.situationInProgress).toBe("Em andamento");
+    expect(resources["pt-BR"].translation.statusInProgress).toBe("Em andamento");
     expect(resources["pt-BR"].translation.addDeviceModel).toBe("Novo modelo de dispositivo");
     expect(resources["pt-BR"].translation.deviceModelName).toBe("Nome do modelo");
   });

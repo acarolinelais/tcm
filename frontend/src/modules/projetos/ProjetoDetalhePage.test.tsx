@@ -19,8 +19,8 @@ vi.mock("@/modules/times/api/times.api", () => ({ timesApi: { membros: vi.fn() }
 
 const projeto = { id: "project-1", unidade_id: "unit-1", time_id: "team-1", nome: "Clock 9.5", app: "Clock", one_ui: "9.5", status: "Created" as const, ativo: true, created_at: null, updated_at: null };
 const casos = [
-  { id: "case-1", unidade_id: "unit-1", projeto_id: "project-1", tc_id: "Clock_001", category: "A" as const, difficulty: "Low" as const, situation: "To-Do" as const, responsavel_id: "user-1", backup_id: "backup-1", ativo: true, created_at: null, updated_at: null },
-  { id: "case-2", unidade_id: "unit-1", projeto_id: "project-1", tc_id: "Clock_002", category: "B" as const, difficulty: "Medium" as const, situation: "Pass" as const, responsavel_id: "user-2", backup_id: null, ativo: true, created_at: null, updated_at: null },
+  { id: "case-1", unidade_id: "unit-1", projeto_id: "project-1", tc_id: "Clock_001", category: "A" as const, difficulty: "Low" as const, situation: "New" as const, status: "To-Do" as const, responsavel_id: "user-1", backup_id: "backup-1", ativo: true, created_at: null, updated_at: null },
+  { id: "case-2", unidade_id: "unit-1", projeto_id: "project-1", tc_id: "Clock_002", category: "B" as const, difficulty: "Medium" as const, situation: "New Step" as const, status: "Pass" as const, responsavel_id: "user-2", backup_id: null, ativo: true, created_at: null, updated_at: null },
 ];
 const perfil: PerfilAtual = {
   id: "user-1", nome: "Dev", email: "dev@example.com", unidade_id: "unit-1", unidade_nome: "Unidade",
@@ -134,7 +134,7 @@ describe("ProjetoDetalhePage", () => {
     expect(screen.queryByRole("button", { name: "Clock 9.5" })).not.toBeInTheDocument();
   });
 
-  it("permite ao responsável atualizar somente categoria, dificuldade e situação do próprio caso", async () => {
+  it("permite ao responsável atualizar somente categoria, dificuldade e status do próprio caso", async () => {
     const user = userEvent.setup();
     renderPage();
     const proprioCaso = await screen.findByRole("row", { name: /Clock_001/ });
@@ -147,9 +147,13 @@ describe("ProjetoDetalhePage", () => {
     await user.click(await screen.findByRole("option", { name: "High" }));
     await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { difficulty: "High" }));
 
-    await user.click(within(proprioCaso).getByRole("combobox", { name: "TC Situation Clock_001" }));
+    await user.click(within(proprioCaso).getByRole("combobox", { name: "Status Clock_001" }));
     await user.click(await screen.findByRole("option", { name: "In Progress" }));
-    await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { situation: "InProgress" }));
+    await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { status: "InProgress" }));
+
+    // TC Situation é só da gestão: o responsável vê o valor, sem controle de edição.
+    expect(within(proprioCaso).queryByRole("combobox", { name: "TC Situation Clock_001" })).not.toBeInTheDocument();
+    expect(within(proprioCaso).getByText("New")).toBeInTheDocument();
 
     expect(within(proprioCaso).queryByRole("button", { name: /^Edit$/i })).not.toBeInTheDocument();
   });
@@ -164,14 +168,18 @@ describe("ProjetoDetalhePage", () => {
     await user.type(within(drawer).getByLabelText("TC ID"), "Clock_003");
 
     const selects = within(drawer).getAllByRole("combobox");
-    await user.click(selects[2]);
-    await user.click(await screen.findByRole("option", { name: /Daniel Oliveira/ }));
     await user.click(selects[3]);
+    await user.click(await screen.findByRole("option", { name: /Daniel Oliveira/ }));
+    await user.click(selects[4]);
     await user.click(await screen.findByRole("option", { name: /Kaique Pereira/ }));
+    // Sem TC Situation o caso não pode ser salvo.
+    expect(within(drawer).getByRole("button", { name: "Save" })).toBeDisabled();
+    await user.click(within(drawer).getByLabelText("TC Situation"));
+    await user.click(await screen.findByRole("option", { name: "Without Changes" }));
     await user.click(within(drawer).getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(casosTesteApi.criar).toHaveBeenCalledWith("project-1", {
-      tc_id: "Clock_003", category: "A", difficulty: "Low", responsavel_id: "user-1", backup_id: "backup-1",
+      tc_id: "Clock_003", category: "A", difficulty: "Low", situation: "Without Changes", responsavel_id: "user-1", backup_id: "backup-1",
     }));
   });
 
@@ -187,16 +195,20 @@ describe("ProjetoDetalhePage", () => {
       await screen.findByRole("heading", { name: "Clock 9.5" });
       expect(await screen.findByRole("button", { name: /New Test Case/i })).toBeInTheDocument();
       const otherCase = await screen.findByRole("row", { name: /Clock_002/ });
+      await user.click(within(otherCase).getByRole("combobox", { name: "TC Situation Clock_002" }));
+      await user.click(await screen.findByRole("option", { name: "New" }));
+      await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-2", { situation: "New" }));
       await user.click(within(otherCase).getByRole("button", { name: /Actions for Clock_002/i }));
       await user.click(await screen.findByRole("menuitem", { name: "Edit" }));
       const drawer = screen.getByRole("dialog");
       const selects = within(drawer).getAllByRole("combobox");
-      await user.click(selects[3]);
-      await user.click(await screen.findByRole("option", { name: /Daniel Oliveira/ }));
       await user.click(selects[4]);
+      await user.click(await screen.findByRole("option", { name: /Daniel Oliveira/ }));
+      await user.click(selects[5]);
       await user.click(await screen.findByRole("option", { name: /Kaique Pereira/ }));
       await user.click(within(drawer).getByRole("button", { name: "Save" }));
-      await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-2", expect.objectContaining({ responsavel_id: "user-1", backup_id: "backup-1" })));
+      // Só os campos alterados vão na requisição, para não desfazer mudanças de outra pessoa.
+      await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-2", { responsavel_id: "user-1", backup_id: "backup-1" }));
       unmount();
       vi.mocked(casosTesteApi.atualizar).mockClear();
     }

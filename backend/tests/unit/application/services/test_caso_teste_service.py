@@ -14,6 +14,7 @@ from src.domain.entities.caso_teste import (
     CategoriaCasoTeste,
     DificuldadeCasoTeste,
     SituacaoCasoTeste,
+    StatusCasoTeste,
 )
 from src.domain.entities.projeto import Projeto
 from src.domain.entities.time import Time
@@ -43,6 +44,7 @@ def request_criar(responsavel_id=None, backup_id=None, tc_id="Clock_001"):
         tc_id=tc_id,
         category=CategoriaCasoTeste.A,
         difficulty=DificuldadeCasoTeste.LOW,
+        situation=SituacaoCasoTeste.WITHOUT_CHANGES,
         responsavel_id=responsavel_id or uuid4(),
         backup_id=backup_id or uuid4(),
     )
@@ -98,7 +100,8 @@ async def test_criar_caso_valido_com_responsavel_e_backup_do_time(contexto):
     caso = casos.adicionar.call_args.args[0]
     assert resposta.id == caso.id
     assert resposta.tc_id == "Clock_001"
-    assert resposta.situation is SituacaoCasoTeste.TO_DO
+    assert resposta.situation is SituacaoCasoTeste.WITHOUT_CHANGES
+    assert resposta.status is StatusCasoTeste.TO_DO
     assert resposta.responsavel_id == request.responsavel_id
     assert resposta.backup_id == request.backup_id
     assert casos.existe_tc_id.await_count == 1
@@ -201,6 +204,7 @@ async def test_atualizar_caso_proprio_permite_campos_do_responsavel(contexto):
         DificuldadeCasoTeste.LOW,
         responsavel.id,
         uuid4(),
+        SituacaoCasoTeste.NEW,
     )
     caso.created_at = datetime(2026, 1, 1, tzinfo=UTC)
     casos.obter_por_id.return_value = caso
@@ -211,13 +215,14 @@ async def test_atualizar_caso_proprio_permite_campos_do_responsavel(contexto):
         AtualizarCasoTesteRequest(
             category=CategoriaCasoTeste.B,
             difficulty=DificuldadeCasoTeste.MEDIUM,
-            situation=SituacaoCasoTeste.IN_PROGRESS,
+            status=StatusCasoTeste.IN_PROGRESS,
         ),
     )
 
     assert resposta.category is CategoriaCasoTeste.B
     assert resposta.difficulty is DificuldadeCasoTeste.MEDIUM
-    assert resposta.situation is SituacaoCasoTeste.IN_PROGRESS
+    assert resposta.status is StatusCasoTeste.IN_PROGRESS
+    assert resposta.situation is SituacaoCasoTeste.NEW
     assert resposta.created_at == caso.created_at
     casos.atualizar.assert_awaited_once_with(caso)
     uow.commit.assert_awaited_once()
@@ -240,6 +245,7 @@ async def test_responsavel_nao_edita_atribuicao_nem_caso_de_outra_pessoa(context
         DificuldadeCasoTeste.LOW,
         uuid4(),
         uuid4(),
+        SituacaoCasoTeste.NEW,
     )
     casos.obter_por_id.return_value = caso
 
@@ -260,6 +266,13 @@ async def test_responsavel_nao_edita_atribuicao_nem_caso_de_outra_pessoa(context
             caso.id,
             AtualizarCasoTesteRequest(responsavel_id=uuid4()),
         )
+    with pytest.raises(ForbiddenException, match="responsável só pode editar"):
+        await service.atualizar(
+            responsavel,
+            caso.id,
+            AtualizarCasoTesteRequest(situation=SituacaoCasoTeste.NEW_STEP),
+        )
+    assert caso.situation is SituacaoCasoTeste.NEW
     casos.atualizar.assert_not_awaited()
     uow.commit.assert_not_awaited()
 
@@ -277,6 +290,7 @@ async def test_gestor_pode_reatribuir_caso_a_membros_ativos(contexto):
         DificuldadeCasoTeste.LOW,
         uuid4(),
         uuid4(),
+        SituacaoCasoTeste.NEW,
     )
     casos.obter_por_id.return_value = caso
 
@@ -290,6 +304,34 @@ async def test_gestor_pode_reatribuir_caso_a_membros_ativos(contexto):
     assert resposta.backup_id == backup_id
     assert membros.obter_por_time_e_usuario.await_count == 2
     casos.atualizar.assert_awaited_once_with(caso)
+    uow.commit.assert_awaited_once()
+
+
+async def test_gestor_altera_situation_e_status(contexto):
+    service, casos, _, _, membros, _, uow, admin, projeto, _ = contexto
+    caso = CasoTeste(
+        admin.unidade_id,
+        projeto.id,
+        "Clock_001",
+        CategoriaCasoTeste.A,
+        DificuldadeCasoTeste.LOW,
+        uuid4(),
+        uuid4(),
+        SituacaoCasoTeste.NEW,
+    )
+    casos.obter_por_id.return_value = caso
+
+    resposta = await service.atualizar(
+        admin,
+        caso.id,
+        AtualizarCasoTesteRequest(
+            situation=SituacaoCasoTeste.NEW_STEP, status=StatusCasoTeste.PASS
+        ),
+    )
+
+    assert resposta.situation is SituacaoCasoTeste.NEW_STEP
+    assert resposta.status is StatusCasoTeste.PASS
+    membros.obter_por_time_e_usuario.assert_not_awaited()
     uow.commit.assert_awaited_once()
 
 
@@ -311,6 +353,7 @@ async def test_responsavel_transfere_para_backup_e_backup_fica_vazio(contexto):
         DificuldadeCasoTeste.LOW,
         responsavel.id,
         backup_id,
+        SituacaoCasoTeste.NEW,
     )
     casos.obter_por_id.return_value = caso
 
@@ -339,6 +382,7 @@ async def test_usuario_que_nao_e_responsavel_nao_transfere_caso(contexto):
         DificuldadeCasoTeste.LOW,
         uuid4(),
         uuid4(),
+        SituacaoCasoTeste.NEW,
     )
     casos.obter_por_id.return_value = caso
 
@@ -366,6 +410,7 @@ async def test_transferir_sem_backup_falha_sem_persistir(contexto):
         DificuldadeCasoTeste.LOW,
         usuario.id,
         uuid4(),
+        SituacaoCasoTeste.NEW,
     )
     caso.backup_id = None
     casos.obter_por_id.return_value = caso
@@ -382,3 +427,24 @@ def test_atualizacao_vazia_ou_com_campo_extra_e_rejeitada():
         AtualizarCasoTesteRequest()
     with pytest.raises(ValidationError):
         AtualizarCasoTesteRequest(nome="outro")
+
+
+@pytest.mark.parametrize("situation", [None, "To-Do", "Changed"])
+def test_criar_sem_situation_valida_e_rejeitado(situation):
+    dados = {
+        "tc_id": "Clock_001",
+        "category": "A",
+        "difficulty": "Low",
+        "responsavel_id": uuid4(),
+        "backup_id": uuid4(),
+    }
+    if situation is not None:
+        dados["situation"] = situation
+
+    with pytest.raises(ValidationError, match="situation"):
+        CriarCasoTesteRequest(**dados)
+
+
+def test_atualizar_com_status_invalido_e_rejeitado():
+    with pytest.raises(ValidationError, match="status"):
+        AtualizarCasoTesteRequest(status="New")

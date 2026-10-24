@@ -89,7 +89,8 @@ async def test_importacoes_distintas_preservam_execucoes_e_resultados_anteriores
                     tc_id="Clock_001",
                     category="A",
                     difficulty="Low",
-                    situation="To-Do",
+                    situation="New",
+                    status="To-Do",
                     responsavel_id=usuario_id,
                     backup_id=None,
                 )

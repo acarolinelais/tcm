@@ -19,9 +19,11 @@ test("cria projeto manualmente, atribui casos e transfere um caso ao backup", as
   });
   await page.route(`**/api/projetos/${projectId}`, (route) => route.fulfill({ json: project }));
   await page.route(`**/api/projetos/${projectId}/test-cases?*`, (route) => route.fulfill({ json: { items: cases, page: 1, page_size: 10, total_count: cases.length } }));
+  let createdBody: Record<string, string> = {};
   await page.route(`**/api/projetos/${projectId}/test-cases`, async (route) => {
     const body = route.request().postDataJSON();
-    cases = [{ ...caseItem, tc_id: body.tc_id, responsavel_id: body.responsavel_id, backup_id: body.backup_id }];
+    createdBody = body;
+    cases = [{ ...caseItem, tc_id: body.tc_id, situation: body.situation, responsavel_id: body.responsavel_id, backup_id: body.backup_id }];
     await route.fulfill({ json: cases[0] });
   });
   await page.route("**/api/times/team-1/membros", (route) => route.fulfill({ json: [
@@ -49,13 +51,19 @@ test("cria projeto manualmente, atribui casos e transfere um caso ao backup", as
   await page.getByRole("button", { name: "Novo caso de teste" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("ID do TC").fill("Clock_001");
+  await dialog.getByLabel("Situação do TC").click();
+  await page.getByRole("option", { name: "Novo passo" }).click();
   const selects = dialog.getByRole("combobox");
-  await selects.nth(2).click();
-  await page.getByRole("option", { name: "Gerente Ana" }).click();
   await selects.nth(3).click();
+  await page.getByRole("option", { name: "Gerente Ana" }).click();
+  await selects.nth(4).click();
   await page.getByRole("option", { name: "Kaique Pereira" }).click();
   await dialog.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByRole("row", { name: /Clock_001/ })).toBeVisible();
+  expect(createdBody).toMatchObject({ situation: "New Step" });
+  expect(createdBody).not.toHaveProperty("status");
+  await expect(page.getByRole("row", { name: /Clock_001/ })).toContainText("A fazer");
+  await expect(page.getByRole("combobox", { name: "Situação do TC Clock_001" })).toContainText("Novo passo");
   await page.getByRole("row", { name: /Clock_001/ }).getByRole("button", { name: /Clock_001/ }).click();
   await page.getByRole("menuitem", { name: "Transferir ao backup" }).click();
   await expect(page.getByText("Test Case transferido para o backup.")).toBeVisible();

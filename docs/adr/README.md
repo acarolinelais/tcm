@@ -44,3 +44,4 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0030](0030-modo-mock-frontend.md) | Modo mock persistido no frontend | Aceito |
 | [0031](0031-administrador-edita-permissoes-de-perfis-seedados.md) | Administrador edita permissões de perfis seedados | Aceito |
 | [0032](0032-permissao-para-consultar-perfis-de-usuarios-no-escopo.md) | Permissão para consultar perfis de usuários no escopo | Aceito |
+| [0033](0033-erros-de-planilha-com-codigo-estruturado.md) | Erros de planilha com código estruturado e texto montado no frontend | Aceito |

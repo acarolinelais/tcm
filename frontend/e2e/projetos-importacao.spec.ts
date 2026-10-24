@@ -3,15 +3,16 @@ import * as XLSX from "@e965/xlsx";
 
 import { project, setupProjectSession, setupTeamsAndModels } from "./projetos-fixtures";
 
-function planilhaValida() {
+const cabecalho = ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI", "Assignees", "Backup"];
+
+function planilha(linhas: unknown[][]) {
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
-    ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI", "Assignees", "Backup"],
-    ["Clock", "Clock_001", "Low", "A", "To-Do", "9.5", "Gerente Ana", "Kaique Pereira"],
-    ["", "Clock_002", "Medium", "B", "InProgress", "", "Gerente Ana", "Kaique Pereira"],
-  ]), "Cases");
-  return Buffer.from(XLSX.write(workbook, { type: "array", bookType: "xlsx" }));
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([cabecalho, ...linhas]), "Cases");
+  return { name: "clock.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from(XLSX.write(workbook, { type: "array", bookType: "xlsx" })) };
 }
+
+const casos = (total: number) => Array.from({ length: total }, (_, index) =>
+  [index ? "" : "Clock", `Clock_${String(index + 1).padStart(3, "0")}`, "Low", "A", "New", index ? "" : "9.5", "Gerente Ana", "Kaique Pereira"]);
 
 test.beforeEach(async ({ page }) => {
   await setupProjectSession(page);
@@ -19,45 +20,104 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/api/projetos?*", (route) => route.fulfill({ json: { items: [], page: 1, page_size: 10, total_count: 0 } }));
 });
 
-test("importa planilha e informa o número de Test Cases criados", async ({ page }) => {
+test("pagina a prévia e informa quantos Test Cases foram criados", async ({ page }) => {
   await page.route("**/api/projetos/importar", async (route) => {
     expect(route.request().method()).toBe("POST");
     expect(route.request().headers()["content-type"]).toContain("multipart/form-data");
-    await route.fulfill({ json: { projeto: project, quantidade_casos: 2 } });
+    await route.fulfill({ json: { projeto: project, quantidade_casos: 45 } });
   });
 
   await page.goto("/projetos");
   await page.getByRole("button", { name: "Novo projeto" }).click();
-  await page.locator('input[type="file"]').setInputFiles({ name: "clock.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: planilhaValida() });
-  await expect(page.getByRole("region", { name: "Prévia dos Test Cases" })).toContainText("Clock_002");
+  await page.locator('input[type="file"]').setInputFiles(planilha(casos(45)));
+  const previa = page.getByRole("region", { name: "Prévia dos Test Cases" });
+  await expect(previa).toContainText("45 Test Cases");
+  await expect(previa).toContainText("Página 1 de 3");
+  await expect(previa).not.toContainText("Clock_021");
+  await previa.getByRole("button", { name: "Última página" }).click();
+  await expect(previa).toContainText("Clock_045");
+  await expect(previa).toContainText("Página 3 de 3");
   await page.getByLabel("Time").click();
   await page.getByRole("option", { name: "Plataforma" }).click();
   await page.getByRole("button", { name: "Criar projeto" }).click();
 
-  await expect(page.getByText("Clock 9.5 importado com 2 casos de teste.")).toBeVisible();
+  await expect(page.getByText("Planilha importada com sucesso: 45 Test Cases criados em Clock 9.5.")).toBeVisible();
 });
 
-test("mostra erro por linha e não cria projeto quando a planilha é inválida", async ({ page }) => {
+test("mostra os problemas da planilha agrupados por linha e confere as pessoas no servidor", async ({ page }) => {
   let submitted = false;
-  await page.route("**/api/projetos/importar", async (route) => {
+  await page.route("**/api/projetos/importar", (route) => {
     submitted = true;
-    await route.fulfill({
+    return route.fulfill({
       status: 422,
       contentType: "application/problem+json",
-      body: JSON.stringify({ title: "Planilha inválida", status: 422, errors: [{ campo: "linha.3.tc_id", mensagem: "TC ID já cadastrado no projeto." }] }),
+      body: JSON.stringify({
+        title: "Planilha inválida.", status: 422, total_linhas: 2,
+        errors: [
+          { campo: "linha.2.tc situation", mensagem: "x", codigo: "valor_invalido", linha: 2, coluna: "TC Situation", valor: "To-Do", parametros: { esperados: ["New", "New Step", "Without Changes"] } },
+          { campo: "linha.2.backup", mensagem: "x", codigo: "pessoa_fora_do_time", linha: 2, coluna: "Backup", valor: "Kaique Pereira" },
+        ],
+      }),
     });
   });
 
   await page.goto("/projetos");
   await page.getByRole("button", { name: "Novo projeto" }).click();
-  await page.locator('input[type="file"]').setInputFiles({ name: "invalid.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: planilhaValida() });
+  await page.locator('input[type="file"]').setInputFiles(planilha([
+    ["Clock", "Clock_001", "Low", "A", "To-Do", "9.5", "Gerente Ana", "Kaique Pereira"],
+    ["", "Clock_001", "Low", "", "New", "", "Gerente Ana", "Kaique Pereira"],
+  ]));
+
+  const alerta = page.getByRole("alert");
+  await expect(alerta).toContainText("2 de 2 linhas precisam de ajuste. Nada foi criado.");
+  await expect(alerta).toContainText('Coluna TC Situation: "To-Do" não é válido. Use New, New Step ou Without Changes.');
+  await expect(alerta.getByRole("heading", { name: "Linha 3" })).toBeVisible();
+  await expect(alerta).toContainText('Coluna TC ID: "Clock_001" já aparece na linha 2.');
+  await expect(alerta).toContainText("Coluna Category: a célula está vazia.");
+  await expect(alerta).not.toContainText("linha.");
+  await expect(page.getByRole("button", { name: "Conferir planilha" })).toBeDisabled();
+  expect(submitted).toBe(false);
+
+  await page.getByLabel("Time").click();
+  await page.getByRole("option", { name: "Plataforma" }).click();
+  await page.getByRole("button", { name: "Conferir planilha" }).click();
+  await expect(alerta).toContainText('Coluna Backup: "Kaique Pereira" não é membro ativo do time selecionado.');
+  expect(submitted).toBe(true);
+});
+
+test("mostra os problemas de pessoas devolvidos pela API e não cria o projeto", async ({ page }) => {
+  await page.route("**/api/projetos/importar", (route) => route.fulfill({
+    status: 422,
+    contentType: "application/problem+json",
+    body: JSON.stringify({
+      title: "Planilha inválida.", status: 422, total_linhas: 2,
+      errors: [{ campo: "linha.3.assignees", mensagem: "A pessoa precisa ser membro ativo do time.", codigo: "pessoa_fora_do_time", linha: 3, coluna: "Assignees", valor: "Gerente Ana" }],
+    }),
+  }));
+
+  await page.goto("/projetos");
+  await page.getByRole("button", { name: "Novo projeto" }).click();
+  await page.locator('input[type="file"]').setInputFiles(planilha(casos(2)));
+  // Espera a leitura terminar: a prévia muda o layout e fecharia a lista de times aberta.
   await expect(page.getByRole("region", { name: "Prévia dos Test Cases" })).toContainText("Clock_002");
   await page.getByLabel("Time").click();
   await page.getByRole("option", { name: "Plataforma" }).click();
-  await expect(page.getByRole("button", { name: "Criar projeto" })).toBeEnabled();
   await page.getByRole("button", { name: "Criar projeto" }).click();
 
-  await expect(page.getByRole("alert")).toContainText("linha.3.tc_id: TC ID já cadastrado no projeto.");
-  expect(submitted).toBe(true);
+  const alerta = page.getByRole("alert").filter({ hasText: "Linha 3" });
+  await expect(alerta).toContainText("1 de 2 linhas precisa de ajuste. Nada foi criado.");
+  await expect(alerta).toContainText('Coluna Assignees: "Gerente Ana" não é membro ativo do time selecionado.');
   await expect(page.getByRole("heading", { name: "Meus projetos" })).toHaveCount(0);
+});
+
+test("abrir o seletor de modelos com a prévia rolada não estica a página", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("/projetos");
+  await page.getByRole("button", { name: "Novo projeto" }).click();
+  await page.locator('input[type="file"]').setInputFiles(planilha(casos(150)));
+  await expect(page.getByRole("region", { name: "Prévia dos Test Cases" })).toContainText("Clock_001");
+  await page.getByRole("button", { name: "Modelos de dispositivo" }).click();
+  await expect(page.getByRole("option", { name: "S27 Ultra" })).toBeVisible();
+
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(720);
 });

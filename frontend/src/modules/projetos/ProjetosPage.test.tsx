@@ -31,7 +31,7 @@ function planilhaFile() {
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
     ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI", "Assignees", "Backup"],
-    ["Clock", "Clock_001", "Low", "A", "To-Do", "9.5", "Daniel Oliveira", "Kaique Pereira"],
+    ["Clock", "Clock_001", "Low", "A", "New", "9.5", "Daniel Oliveira", "Kaique Pereira"],
   ]), "Cases");
   return new File([XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as BlobPart], "casos.xlsx");
 }
@@ -94,7 +94,8 @@ describe("ProjetosPage", () => {
   it("apresenta os erros de validação associados às linhas da planilha", async () => {
     vi.mocked(projetosApi.importar).mockRejectedValue(new ApiError({
       type: "about:blank", title: "Planilha inválida", status: 422,
-      errors: [{ campo: "linha.3.tc id", mensagem: "TC ID duplicado na planilha." }],
+      total_linhas: 4,
+      errors: [{ campo: "linha.3.assignees", mensagem: "x", codigo: "pessoa_fora_do_time", linha: 3, coluna: "Assignees", valor: "Rafael Lima" }],
     }));
     const user = userEvent.setup();
     const { container } = renderPage();
@@ -108,7 +109,10 @@ describe("ProjetosPage", () => {
     await user.click(await screen.findByRole("option", { name: "Plataforma" }));
     await user.click(screen.getByRole("button", { name: "Create project" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("linha.3.tc id: TC ID duplicado na planilha.");
+    const alerta = await screen.findByRole("alert");
+    expect(alerta).toHaveTextContent("1 of 4 rows needs changes. Nothing was created.");
+    expect(alerta).toHaveTextContent('Row 3Assignees column: "Rafael Lima" isn\'t an active member of the selected team.');
+    expect(alerta).not.toHaveTextContent("linha.3");
   });
 
   it("bloqueia o envio quando o arquivo não é uma planilha válida", async () => {
@@ -117,9 +121,39 @@ describe("ProjetosPage", () => {
     await user.click(await screen.findByRole("button", { name: /New project/i }));
     await user.upload(container.querySelector('input[type="file"]')!, new File(["invalid"], "invalid.xlsx"));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("linha.1.app: Coluna obrigatória não encontrada.");
-    expect(screen.getByRole("button", { name: "Create project" })).toBeDisabled();
+    const alerta = await screen.findByRole("alert");
+    expect(alerta).toHaveTextContent("Whole spreadsheet");
+    expect(alerta).toHaveTextContent("The header is missing the TC Situation column.");
+    expect(alerta).not.toHaveTextContent("linha.1");
+    expect(screen.getByRole("button", { name: "Check spreadsheet" })).toBeDisabled();
     expect(projetosApi.importar).not.toHaveBeenCalled();
+  });
+
+  it("com problemas na prévia, confere a planilha no servidor e mostra também os problemas de pessoas", async () => {
+    vi.mocked(projetosApi.importar).mockRejectedValue(new ApiError({
+      type: "about:blank", title: "Planilha inválida.", status: 422, total_linhas: 1,
+      errors: [
+        { campo: "linha.2.tc situation", mensagem: "x", codigo: "valor_invalido", linha: 2, coluna: "TC Situation", valor: "To-Do", parametros: { esperados: ["New", "New Step", "Without Changes"] } },
+        { campo: "linha.2.assignees", mensagem: "x", codigo: "pessoa_fora_do_time", linha: 2, coluna: "Assignees", valor: "Daniel Oliveira" },
+      ],
+    }));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+      ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI", "Assignees", "Backup"],
+      ["Clock", "Clock_001", "Low", "A", "To-Do", "9.5", "Daniel Oliveira", "Kaique Pereira"],
+    ]), "Cases");
+    const user = userEvent.setup();
+    const { container } = renderPage();
+    await user.click(await screen.findByRole("button", { name: /New project/i }));
+    await user.upload(container.querySelector('input[type="file"]')!, new File([XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as BlobPart], "casos.xlsx"));
+    expect(await screen.findByRole("alert")).not.toHaveTextContent("Assignees column");
+    await user.click(screen.getByLabelText("Team"));
+    await user.click(await screen.findByRole("option", { name: "Plataforma" }));
+    await user.click(screen.getByRole("button", { name: "Check spreadsheet" }));
+
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent('Assignees column: "Daniel Oliveira" isn\'t an active member of the selected team.'));
+    expect(screen.getByRole("alert")).toHaveTextContent('TC Situation column: "To-Do" isn\'t valid.');
+    expect(toastMock.success).not.toHaveBeenCalled();
   });
 
   it("mostra quantos casos foram criados ao importar a planilha", async () => {
@@ -133,6 +167,31 @@ describe("ProjetosPage", () => {
     await user.click(screen.getByRole("button", { name: "Create project" }));
 
     await waitFor(() => expect(projetosApi.importar).toHaveBeenCalledWith(expect.any(File), "team-1", [], "Clock", "9.5"));
-    expect(toastMock.success).toHaveBeenCalledWith(expect.stringContaining("4"));
+    expect(toastMock.success).toHaveBeenCalledWith("Spreadsheet imported: 4 Test Cases created in Clock 9.5.");
+  });
+
+  it("baixa o modelo de planilha com TC Situation New e sem coluna de Status", async () => {
+    let blob: Blob | undefined;
+    vi.stubGlobal("URL", { ...URL, createObjectURL: vi.fn((arquivo: Blob) => { blob = arquivo; return "blob:modelo"; }), revokeObjectURL: vi.fn() });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: /New project/i }));
+    await user.click(screen.getByRole("button", { name: /Download template/i }));
+
+    await waitFor(() => expect(blob).toBeDefined());
+    // O Blob do jsdom não tem arrayBuffer(); o FileReader tem.
+    const bytes = await new Promise<ArrayBuffer>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.readAsArrayBuffer(blob!);
+    });
+    const workbook = XLSX.read(bytes, { type: "array" });
+    const [cabecalho, exemplo] = XLSX.utils.sheet_to_json<string[]>(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+    expect(cabecalho).toContain("TC Situation");
+    expect(cabecalho).not.toContain("Status");
+    expect(exemplo[cabecalho.indexOf("TC Situation")]).toBe("New");
+    clickSpy.mockRestore();
+    vi.unstubAllGlobals();
   });
 });

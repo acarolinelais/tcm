@@ -8,6 +8,7 @@ from src.domain.entities.caso_teste import (
     CategoriaCasoTeste,
     DificuldadeCasoTeste,
     SituacaoCasoTeste,
+    StatusCasoTeste,
 )
 from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
 from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
@@ -94,6 +95,7 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             model.responsavel_id,
             model.backup_id,
             SituacaoCasoTeste(model.situation),
+            StatusCasoTeste(model.status),
             exigir_backup=False,
         )
         caso.id = model.id
@@ -111,6 +113,7 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             category=entity.category.value,
             difficulty=entity.difficulty.value,
             situation=entity.situation.value,
+            status=entity.status.value,
             responsavel_id=entity.responsavel_id,
             backup_id=entity.backup_id,
             ativo=entity.ativo,

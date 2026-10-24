@@ -17,6 +17,16 @@ class DificuldadeCasoTeste(StrEnum):
 
 
 class SituacaoCasoTeste(StrEnum):
+    """TC Situation: origem do caso em relação a projetos anteriores."""
+
+    NEW = "New"
+    NEW_STEP = "New Step"
+    WITHOUT_CHANGES = "Without Changes"
+
+
+class StatusCasoTeste(StrEnum):
+    """Progresso do caso no projeto."""
+
     TO_DO = "To-Do"
     IN_PROGRESS = "InProgress"
     IN_REVIEW = "InReview"
@@ -36,7 +46,8 @@ class CasoTeste(EntidadeTenant):
         difficulty: DificuldadeCasoTeste,
         responsavel_id: UUID,
         backup_id: UUID | None,
-        situation: SituacaoCasoTeste = SituacaoCasoTeste.TO_DO,
+        situation: SituacaoCasoTeste,
+        status: StatusCasoTeste = StatusCasoTeste.TO_DO,
         *,
         exigir_backup: bool = True,
     ) -> None:
@@ -46,6 +57,7 @@ class CasoTeste(EntidadeTenant):
         self.category = CategoriaCasoTeste(category)
         self.difficulty = DificuldadeCasoTeste(difficulty)
         self.situation = SituacaoCasoTeste(situation)
+        self.status = StatusCasoTeste(status)
         self.responsavel_id = responsavel_id
         self.backup_id = backup_id
         # Na reidratação o backup pode faltar: transferir_para_backup() o deixa vazio.
@@ -53,11 +65,11 @@ class CasoTeste(EntidadeTenant):
 
     def atualizar_campos_do_responsavel(
         self,
-        situation: SituacaoCasoTeste,
+        status: StatusCasoTeste,
         category: CategoriaCasoTeste,
         difficulty: DificuldadeCasoTeste,
     ) -> None:
-        self.situation = SituacaoCasoTeste(situation)
+        self.status = StatusCasoTeste(status)
         self.category = CategoriaCasoTeste(category)
         self.difficulty = DificuldadeCasoTeste(difficulty)
 
@@ -66,13 +78,15 @@ class CasoTeste(EntidadeTenant):
         responsavel_id: UUID,
         backup_id: UUID | None,
         situation: SituacaoCasoTeste,
+        status: StatusCasoTeste,
         category: CategoriaCasoTeste,
         difficulty: DificuldadeCasoTeste,
     ) -> None:
         self._validar_responsaveis(responsavel_id, backup_id, exigir_backup=False)
         self.responsavel_id = responsavel_id
         self.backup_id = backup_id
-        self.atualizar_campos_do_responsavel(situation, category, difficulty)
+        self.situation = SituacaoCasoTeste(situation)
+        self.atualizar_campos_do_responsavel(status, category, difficulty)
 
     def transferir_para_backup(self) -> None:
         if self.backup_id is None:

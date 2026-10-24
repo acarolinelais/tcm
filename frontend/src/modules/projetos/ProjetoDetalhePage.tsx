@@ -23,27 +23,29 @@ import { toast } from "@/shared/lib/toast";
 import { formatarDiaIso } from "@/shared/lib/utils";
 
 import { casosTesteApi, formFactorApi, projetosApi, type CasoTeste, type CategoriaCasoTeste, type DificuldadeCasoTeste, type SituacaoCasoTeste } from "./api/projetos.api";
+import { CATEGORIAS_CASO_TESTE as categorias, DIFICULDADES_CASO_TESTE as dificuldades, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, type StatusCasoTeste } from "./model/projeto";
 
-const categorias: CategoriaCasoTeste[] = ["A", "B", "C"];
-const dificuldades: DificuldadeCasoTeste[] = ["Low", "Medium", "High"];
-const situacoes: SituacaoCasoTeste[] = ["To-Do", "InProgress", "InReview", "Pass", "Fail"];
 const difficultyLabels: Record<DificuldadeCasoTeste, string> = { Low: "difficultyLow", Medium: "difficultyMedium", High: "difficultyHigh" };
-const situationLabels: Record<SituacaoCasoTeste, string> = { "To-Do": "situationTodo", InProgress: "situationInProgress", InReview: "situationInReview", Pass: "situationPass", Fail: "situationFail" };
-const situationBadges: Record<SituacaoCasoTeste, { badge: string; icon: string; Icon: LucideIcon }> = {
+const statusBadges: Record<StatusCasoTeste, { badge: string; icon: string; Icon: LucideIcon }> = {
   "To-Do": { badge: "bg-slate-100 text-slate-700", icon: "bg-slate-500", Icon: Clock },
   InProgress: { badge: "bg-blue-50 text-blue-800", icon: "bg-blue-700", Icon: Play },
   InReview: { badge: "bg-amber-50 text-amber-800", icon: "bg-amber-600", Icon: Eye },
   Pass: { badge: "bg-green-50 text-green-800", icon: "bg-green-800", Icon: Check },
   Fail: { badge: "bg-red-50 text-red-800", icon: "bg-red-700", Icon: X },
 };
-const situationBadgeBase = "h-7 w-fit gap-1.5 rounded-md border-0 px-2 py-0 text-sm font-medium shadow-none";
+const statusBadgeBase = "h-7 w-fit gap-1.5 rounded-md border-0 px-2 py-0 text-sm font-medium shadow-none";
 
-function SituationBadgeContent({ situation, label }: { situation: SituacaoCasoTeste; label: string }) {
-  const { icon, Icon } = situationBadges[situation];
+function StatusBadgeContent({ status, label }: { status: StatusCasoTeste; label: string }) {
+  const { icon, Icon } = statusBadges[status];
   return <span className="inline-flex items-center gap-1.5">
     <span aria-hidden="true" className={`flex size-4 shrink-0 items-center justify-center rounded-full text-white ${icon}`}><Icon className="size-2.5 stroke-[3]" /></span>
     <span>{label}</span>
   </span>;
+}
+
+/** Só os campos que mudaram: reenviar o resto desfaria edições feitas por outra pessoa enquanto o drawer estava aberto. */
+function camposAlterados(original: CasoTeste, editado: Pick<CasoTeste, "category" | "difficulty" | "situation" | "status" | "responsavel_id" | "backup_id">) {
+  return Object.fromEntries(Object.entries(editado).filter(([campo, valor]) => original[campo as keyof typeof editado] !== valor)) as Partial<typeof editado>;
 }
 
 export function ProjetoDetalhePage() {
@@ -60,13 +62,14 @@ function ProjetoDetalhe() {
   const [aba, setAba] = useState<"cases" | "form-factor">(perfil.perfil_codigo === "ADMIN_UNIDADE" || perfil.permissoes.includes("test_cases.consultar") ? "cases" : "form-factor");
   const [pagina, setPagina] = useState(1);
   const [tamanhoPagina, setTamanhoPagina] = useState(DEFAULT_TABLE_PAGE_SIZE);
-  const [filtrosCaso, setFiltrosCaso] = useState({ tcId: "", situation: "", assignee: "", difficulty: "", category: "", endDate: "", backup: "" });
+  const [filtrosCaso, setFiltrosCaso] = useState({ tcId: "", status: "", situation: "", assignee: "", difficulty: "", category: "", endDate: "", backup: "" });
   const [criarAberto, setCriarAberto] = useState(false);
   const [editar, setEditar] = useState<CasoTeste | null>(null);
   const [tcId, setTcId] = useState("");
   const [category, setCategory] = useState<CategoriaCasoTeste>("A");
   const [difficulty, setDifficulty] = useState<DificuldadeCasoTeste>("Low");
-  const [situation, setSituation] = useState<SituacaoCasoTeste>("To-Do");
+  const [situation, setSituation] = useState<SituacaoCasoTeste | "">("");
+  const [status, setStatus] = useState<StatusCasoTeste>("To-Do");
   const [responsavelId, setResponsavelId] = useState("");
   const [backupId, setBackupId] = useState("");
   const [semana, setSemana] = useState("");
@@ -89,13 +92,13 @@ function ProjetoDetalhe() {
 
   const saveCase = useMutation({
     mutationFn: () => editar
-      ? casosTesteApi.atualizar(editar.id, { category, difficulty, situation, responsavel_id: responsavelId, backup_id: backupId || null })
-      : casosTesteApi.criar(projetoId, { tc_id: tcId.trim(), category, difficulty, responsavel_id: responsavelId, backup_id: backupId }),
+      ? casosTesteApi.atualizar(editar.id, camposAlterados(editar, { category, difficulty, situation: situation || editar.situation, status, responsavel_id: responsavelId, backup_id: backupId || null }))
+      : casosTesteApi.criar(projetoId, { tc_id: tcId.trim(), category, difficulty, situation: situation as SituacaoCasoTeste, responsavel_id: responsavelId, backup_id: backupId }),
     onSuccess: async () => { await client.invalidateQueries({ queryKey: ["projetos", projetoId, "test-cases"] }); setCriarAberto(false); setEditar(null); toast.success(t("caseSaveSuccess", { defaultValue: "Test Case salvo." })); },
     onError: (error) => toast.error(error instanceof Error ? error.message : t("caseSaveError", { defaultValue: "Não foi possível salvar o Test Case." })),
   });
   const updateMemberCase = useMutation({
-    mutationFn: ({ id, field, value }: { id: string; field: "category" | "difficulty" | "situation"; value: string }) => casosTesteApi.atualizar(id, { [field]: value } as Pick<CasoTeste, typeof field>),
+    mutationFn: ({ id, field, value }: { id: string; field: "category" | "difficulty" | "situation" | "status"; value: string }) => casosTesteApi.atualizar(id, { [field]: value } as Pick<CasoTeste, typeof field>),
     // A célula muda na hora; se a API recusar, o cache volta ao que era.
     onMutate: async ({ id, field, value }) => {
       const queryKey = ["projetos", projetoId, "test-cases"];
@@ -127,16 +130,17 @@ function ProjetoDetalhe() {
   const nomesMembros = useMemo(() => Object.fromEntries((membros.data ?? []).map((member) => [member.usuario_id, member.usuario_nome ?? member.usuario_id])), [membros.data]);
   const membrosAtivos = (membros.data ?? []).filter((member) => member.ativo);
   const responsavelAtual = perfil.id;
-  const camposFaltando = !tcId.trim() || !responsavelId || !backupId;
+  const camposFaltando = !tcId.trim() || !situation || !responsavelId || !backupId;
   useLayoutEffect(() => {
     const ativa = abasRef.current?.querySelector<HTMLElement>('[aria-selected="true"]');
     setIndicador(ativa ? { left: ativa.offsetLeft, width: ativa.offsetWidth } : null);
   }, [aba, projeto.data, i18n.resolvedLanguage]);
   const mostrarAcoes = podeGerenciarCasos || Boolean(casos.data?.items.some((item) => item.responsavel_id === responsavelAtual));
   const casosFiltrados = (casos.data?.items ?? []).filter((item) => {
-    const endDate = item.situation === "Pass" ? item.updated_at ?? item.created_at : null;
+    const endDate = item.status === "Pass" ? item.updated_at ?? item.created_at : null;
     const dataFinal = endDate ? formatarDiaIso(new Date(endDate)) : "";
     return item.tc_id.toLocaleLowerCase().includes(filtrosCaso.tcId.toLocaleLowerCase())
+      && (!filtrosCaso.status || item.status === filtrosCaso.status)
       && (!filtrosCaso.situation || item.situation === filtrosCaso.situation)
       && (!filtrosCaso.assignee || item.responsavel_id === filtrosCaso.assignee)
       && (!filtrosCaso.difficulty || item.difficulty === filtrosCaso.difficulty)
@@ -150,15 +154,16 @@ function ProjetoDetalhe() {
   };
 
   function limparCaso() {
-    setTcId(""); setCategory("A"); setDifficulty("Low"); setSituation("To-Do"); setResponsavelId(""); setBackupId(""); setEditar(null);
+    setTcId(""); setCategory("A"); setDifficulty("Low"); setSituation(""); setStatus("To-Do"); setResponsavelId(""); setBackupId(""); setEditar(null);
   }
 
-  function abrirEdicao(testCase: CasoTeste, changes: Partial<Pick<CasoTeste, "category" | "difficulty" | "situation">> = {}) {
+  function abrirEdicao(testCase: CasoTeste) {
     setEditar(testCase);
     setTcId(testCase.tc_id);
-    setCategory(changes.category ?? testCase.category);
-    setDifficulty(changes.difficulty ?? testCase.difficulty);
-    setSituation(changes.situation ?? testCase.situation);
+    setCategory(testCase.category);
+    setDifficulty(testCase.difficulty);
+    setSituation(testCase.situation);
+    setStatus(testCase.status);
     setResponsavelId(testCase.responsavel_id);
     setBackupId(testCase.backup_id ?? "");
     setCriarAberto(true);
@@ -181,10 +186,11 @@ function ProjetoDetalhe() {
       </div>
 
       {aba === "cases" && podeConsultarCasos ? <TableLayout>
-        <Table containerClassName={casos.data?.items.length ? "tc-table-scroll min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
+        <Table containerClassName={casos.data?.items.length ? "thin-scroll min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
           <TableHeader><TableRow>
             <TableHead><TableColumnFilter label={t("tcId")} value={filtrosCaso.tcId} onChange={(value) => alterarFiltroCaso("tcId", value)} /></TableHead>
-            <TableHead><TableColumnFilter label={t("status")} value={filtrosCaso.situation} onChange={(value) => alterarFiltroCaso("situation", value)} options={[{ value: "", label: t("all") }, ...situacoes.map((value) => ({ value, label: t(situationLabels[value]) }))]} /></TableHead>
+            <TableHead><TableColumnFilter label={t("status")} value={filtrosCaso.status} onChange={(value) => alterarFiltroCaso("status", value)} options={[{ value: "", label: t("all") }, ...STATUS_CASO_TESTE.map((value) => ({ value, label: t(ROTULO_STATUS[value]) }))]} /></TableHead>
+            <TableHead><TableColumnFilter label={t("tcSituation")} value={filtrosCaso.situation} onChange={(value) => alterarFiltroCaso("situation", value)} options={[{ value: "", label: t("all") }, ...SITUACOES_CASO_TESTE.map((value) => ({ value, label: t(ROTULO_SITUACAO[value]) }))]} /></TableHead>
             <TableHead><TableColumnFilter label={t("assignee")} value={filtrosCaso.assignee} onChange={(value) => alterarFiltroCaso("assignee", value)} options={[{ value: "", label: t("all") }, ...(membros.data ?? []).filter((member) => member.ativo).map((member) => ({ value: member.usuario_id, label: member.usuario_nome ?? member.usuario_id }))]} /></TableHead>
             <TableHead><TableColumnFilter label={t("difficulty")} value={filtrosCaso.difficulty} onChange={(value) => alterarFiltroCaso("difficulty", value)} options={[{ value: "", label: t("all") }, ...dificuldades.map((value) => ({ value, label: t(difficultyLabels[value]) }))]} /></TableHead>
             <TableHead><TableColumnFilter label={t("category")} value={filtrosCaso.category} onChange={(value) => alterarFiltroCaso("category", value)} options={[{ value: "", label: t("all") }, ...categorias.map((value) => ({ value, label: value }))]} /></TableHead>
@@ -195,10 +201,11 @@ function ProjetoDetalhe() {
           {casosFiltrados.length ? <TableBody>{casosFiltrados.map((testCase) => {
             const canManage = podeGerenciarCasos;
             const canEditOwn = testCase.responsavel_id === responsavelAtual;
-            const endDate = testCase.situation === "Pass" ? testCase.updated_at ?? testCase.created_at : null;
+            const endDate = testCase.status === "Pass" ? testCase.updated_at ?? testCase.created_at : null;
             return <TableRow key={testCase.id}>
               <TableCell className="font-medium">{testCase.tc_id}</TableCell>
-              <TableCell>{canManage || canEditOwn ? <Select value={testCase.situation} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "situation", value })}><SelectTrigger aria-label={`${t("tcSituation")} ${testCase.tc_id}`} className={`${situationBadgeBase} ${situationBadges[testCase.situation].badge}`}><SituationBadgeContent situation={testCase.situation} label={t(situationLabels[testCase.situation])} /></SelectTrigger><SelectContent>{situacoes.map((value) => <SelectItem key={value} value={value}>{t(situationLabels[value])}</SelectItem>)}</SelectContent></Select> : <Badge variant="secondary" className={`${situationBadgeBase} ${situationBadges[testCase.situation].badge}`}><SituationBadgeContent situation={testCase.situation} label={t(situationLabels[testCase.situation])} /></Badge>}</TableCell>
+              <TableCell>{canManage || canEditOwn ? <Select value={testCase.status} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "status", value })}><SelectTrigger aria-label={`${t("status")} ${testCase.tc_id}`} className={`${statusBadgeBase} ${statusBadges[testCase.status].badge}`}><StatusBadgeContent status={testCase.status} label={t(ROTULO_STATUS[testCase.status])} /></SelectTrigger><SelectContent>{STATUS_CASO_TESTE.map((value) => <SelectItem key={value} value={value}>{t(ROTULO_STATUS[value])}</SelectItem>)}</SelectContent></Select> : <Badge variant="secondary" className={`${statusBadgeBase} ${statusBadges[testCase.status].badge}`}><StatusBadgeContent status={testCase.status} label={t(ROTULO_STATUS[testCase.status])} /></Badge>}</TableCell>
+              <TableCell>{canManage ? <Select value={testCase.situation} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "situation", value })}><SelectTrigger aria-label={`${t("tcSituation")} ${testCase.tc_id}`} className="h-8 w-40"><SelectValue /></SelectTrigger><SelectContent>{SITUACOES_CASO_TESTE.map((value) => <SelectItem key={value} value={value}>{t(ROTULO_SITUACAO[value])}</SelectItem>)}</SelectContent></Select> : <span className="text-muted-foreground">{t(ROTULO_SITUACAO[testCase.situation])}</span>}</TableCell>
               <TableCell className="text-muted-foreground">{nomesMembros[testCase.responsavel_id] ?? testCase.responsavel_id}</TableCell>
               <TableCell>{canEditOwn && !canManage ? <Select value={testCase.difficulty} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "difficulty", value })}><SelectTrigger aria-label={`${t("difficulty")} ${testCase.tc_id}`} className="h-8 w-28"><SelectValue /></SelectTrigger><SelectContent>{dificuldades.map((value) => <SelectItem key={value} value={value}>{t(difficultyLabels[value])}</SelectItem>)}</SelectContent></Select> : t(difficultyLabels[testCase.difficulty])}</TableCell>
               <TableCell>{canEditOwn && !canManage ? <Select value={testCase.category} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "category", value })}><SelectTrigger aria-label={`${t("category")} ${testCase.tc_id}`} className="h-8 w-20"><SelectValue /></SelectTrigger><SelectContent>{categorias.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select> : testCase.category}</TableCell>
@@ -211,8 +218,8 @@ function ProjetoDetalhe() {
             </TableRow>;
           })}</TableBody> : null}
           {!casos.isLoading && !casos.isError && !casosFiltrados.length && <TableBody>
-            <TableRow aria-hidden="true" className="border-0 hover:bg-transparent"><TableCell colSpan={mostrarAcoes ? 8 : 7} className="h-3 p-0" /></TableRow>
-            <TableRow><TableCell colSpan={mostrarAcoes ? 8 : 7} className="p-0"><TableEmptyStatePanel role="status" className="px-5 py-8 sm:px-8">
+            <TableRow aria-hidden="true" className="border-0 hover:bg-transparent"><TableCell colSpan={mostrarAcoes ? 9 : 8} className="h-3 p-0" /></TableRow>
+            <TableRow><TableCell colSpan={mostrarAcoes ? 9 : 8} className="p-0"><TableEmptyStatePanel role="status" className="px-5 py-8 sm:px-8">
               <div className="w-full max-w-md text-center"><div className="mx-auto mb-4 flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary"><ClipboardList aria-hidden="true" className="size-5" /></div><h2 className="text-base font-semibold text-foreground">{casos.data?.items.length ? t("noTestCasesResults", { defaultValue: "Nenhum Test Case corresponde aos filtros." }) : t("noTestCases", { defaultValue: "Nenhum Test Case cadastrado." })}</h2><p className="mx-auto mt-1.5 max-w-sm text-sm leading-6 text-muted-foreground">{casos.data?.items.length ? t("adjustFilters", { defaultValue: "Ajuste ou limpe os filtros para ver os resultados." }) : t("noTestCasesHint", { defaultValue: "Crie um caso de teste manualmente ou importe uma planilha na criação do projeto." })}</p></div>
             </TableEmptyStatePanel></TableCell></TableRow>
           </TableBody>}
@@ -236,7 +243,8 @@ function ProjetoDetalhe() {
             <div className="grid gap-2"><Label htmlFor="case-tc-id">{t("tcId")}</Label><Input id="case-tc-id" value={tcId} onChange={(event) => setTcId(event.target.value)} maxLength={120} disabled={Boolean(editar)} required /></div>
             <div className="grid gap-2"><Label>{t("category")}</Label><Select value={category} onValueChange={(value) => setCategory(value as CategoriaCasoTeste)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{categorias.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></div>
             <div className="grid gap-2"><Label>{t("difficulty")}</Label><Select value={difficulty} onValueChange={(value) => setDifficulty(value as DificuldadeCasoTeste)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{dificuldades.map((value) => <SelectItem key={value} value={value}>{t(difficultyLabels[value])}</SelectItem>)}</SelectContent></Select></div>
-            {editar && <div className="grid gap-2"><Label>{t("tcSituation")}</Label><Select value={situation} onValueChange={(value) => setSituation(value as SituacaoCasoTeste)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{situacoes.map((value) => <SelectItem key={value} value={value}>{t(situationLabels[value])}</SelectItem>)}</SelectContent></Select></div>}
+            <div className="grid gap-2"><Label htmlFor="case-situation">{t("tcSituation")}</Label><Select value={situation} onValueChange={(value) => setSituation(value as SituacaoCasoTeste)}><SelectTrigger id="case-situation" aria-required="true"><SelectValue placeholder={t("tcSituationRequired")} /></SelectTrigger><SelectContent>{SITUACOES_CASO_TESTE.map((value) => <SelectItem key={value} value={value}>{t(ROTULO_SITUACAO[value])}</SelectItem>)}</SelectContent></Select></div>
+            {editar && <div className="grid gap-2"><Label htmlFor="case-status">{t("status")}</Label><Select value={status} onValueChange={(value) => setStatus(value as StatusCasoTeste)}><SelectTrigger id="case-status"><SelectValue /></SelectTrigger><SelectContent>{STATUS_CASO_TESTE.map((value) => <SelectItem key={value} value={value}>{t(ROTULO_STATUS[value])}</SelectItem>)}</SelectContent></Select></div>}
             <div className="grid gap-2"><Label>{t("assignee")}</Label><Select value={responsavelId} onValueChange={setResponsavelId}><SelectTrigger><SelectValue placeholder={t("selectUser")} /></SelectTrigger><SelectContent>{membrosAtivos.map((member) => <SelectItem key={member.usuario_id} value={member.usuario_id}>{member.usuario_nome ?? member.usuario_id}</SelectItem>)}</SelectContent></Select></div>
             <div className="grid gap-2"><Label>{t("backup")}</Label><Select value={backupId} onValueChange={setBackupId}><SelectTrigger><SelectValue placeholder={t("selectUser")} /></SelectTrigger><SelectContent>{membrosAtivos.filter((member) => member.usuario_id !== responsavelId).map((member) => <SelectItem key={member.usuario_id} value={member.usuario_id}>{member.usuario_nome ?? member.usuario_id}</SelectItem>)}</SelectContent></Select></div>
           </div>

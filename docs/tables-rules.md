@@ -19,6 +19,7 @@ mude o componente compartilhado (e este documento), não a tela isolada.
 ```
 
 - `TableLayout` ocupa a altura disponível. O cabeçalho é `sticky`, e só o corpo da tabela rola, nunca a página inteira.
+- Contêineres com rolagem (tabela, prévia, formulário longo) usam a classe `thin-scroll` (`core/global.css`): barra fina, sem setas.
 - Com itens, o container recebe `min-h-0 flex-1 overflow-auto`. Sem itens, recebe `shrink-0 overflow-visible`, para o estado vazio não ficar espremido.
 - Não sobrescreva o visual do cabeçalho (fundo `#EAF0FF`, cantos arredondados, `uppercase`, `font-semibold`, `tracking-wide`) nem o padding das células (`px-5 py-5`) em telas isoladas.
 - Primeira coluna é o identificador da linha (nome, TC ID), em `font-medium`, e pode ser um link para o detalhe. As colunas secundárias usam `text-muted-foreground`.
@@ -33,6 +34,7 @@ mude o componente compartilhado (e este documento), não a tela isolada.
   const [pagina, setPagina] = useState(1);
   const [tamanho, setTamanho] = useState(DEFAULT_TABLE_PAGE_SIZE);
   ```
+- O `TablePagination` tem primeira, anterior, próxima e última página e mostra "Página X de Y".
 - Trocar o tamanho da página volta para a página 1: `onPageSizeChange={(n) => { setTamanho(n); setPagina(1); }}`.
 - Trocar qualquer filtro também volta para a página 1.
 - A paginação é feita pelo servidor quando o endpoint devolve `PagedResult` (ADR 0004). Página e tamanho entram na `queryKey` do TanStack Query.
@@ -75,18 +77,18 @@ Toda tabela trata os quatro estados, e cada um tem a sua mensagem:
 
 ## 6. Status e badges
 
-- Status de domínio aparece como badge, nunca como texto solto. Para status de progresso (situação de TC, status de projeto), use o padrão "pill com ícone":
+- Status de domínio aparece como badge, nunca como texto solto. Para status de progresso (status de TC, status de projeto), use o padrão "pill com ícone":
   - Container `h-7 w-fit gap-1.5 rounded-md px-2 text-sm font-medium` com fundo claro da cor (`bg-green-50 text-green-800`).
   - À esquerda, um círculo cheio `size-4 rounded-full` na cor forte (`bg-green-800`), com ícone lucide branco `size-2.5 stroke-[3]` e `aria-hidden`.
   - Mapa de cores: To-Do/neutro = slate · em andamento = blue · em revisão = amber · sucesso = green · falha = red.
-  - Referência: `situationBadges` em `modules/projetos/ProjetoDetalhePage.tsx`.
+  - Referência: `statusBadges` em `modules/projetos/ProjetoDetalhePage.tsx`.
 - Ativo/inativo: `Badge variant="secondary"`, com `bg-emerald-50 text-emerald-700` quando ativo.
 - A cor nunca é a única pista: o rótulo em texto sempre aparece junto.
 - Quando o usuário pode alterar o status, o badge vira o próprio `SelectTrigger` (mesmas classes, `border-0 shadow-none`), com `aria-label` do tipo `"<campo> <identificador>"`. Quem não pode alterar vê o mesmo badge, só para leitura.
 
 ## 7. Edição inline
 
-- Só para campos de baixo risco que o usuário edita com frequência (situação, categoria, dificuldade). Todo o resto vai para o drawer de edição.
+- Só para campos de baixo risco que o usuário edita com frequência (status, categoria, dificuldade). Todo o resto vai para o drawer de edição.
 - Grava ao mudar o valor (mutation do TanStack Query), sem botão "salvar". Em caso de erro, mostra um toast e o valor volta ao anterior.
 - Sempre com `aria-label` que identifica a linha: `` `${t("difficulty")} ${testCase.tc_id}` ``.
 
