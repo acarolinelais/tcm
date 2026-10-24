@@ -57,8 +57,8 @@ export function MultiSelectCombobox({ label, placeholder, options, value, onValu
               />
             </Combobox.Chips>}
           </Combobox.Value>
-          <Combobox.Trigger aria-label={label} className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <ChevronDown aria-hidden="true" className="size-4" />
+          <Combobox.Trigger aria-label={label} className="group inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <ChevronDown aria-hidden="true" className="size-4 transition-transform duration-200 ease-in-out group-data-[popup-open]:rotate-180 motion-reduce:transition-none" />
           </Combobox.Trigger>
         </Combobox.InputGroup>
         <Combobox.Portal>

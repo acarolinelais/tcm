@@ -43,7 +43,7 @@ export function WeekPicker({ label, value, onChange, className }: WeekPickerProp
           type="button"
           aria-label={t("weekValue", { week: week.weekNumber, year: valor.slice(0, 4) })}
           className={cn(
-            "inline-flex size-8 items-center justify-center rounded-lg text-xs tabular-nums transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "inline-flex size-8 items-center justify-center rounded-lg text-xs tabular-nums transition-colors hover:bg-secondary hover:text-foreground active:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             valor === value && "font-semibold text-primary",
           )}
           onClick={() => escolher(valor)}
@@ -89,10 +89,10 @@ export function WeekPicker({ label, value, onChange, className }: WeekPickerProp
               autoFocus
             />
             <div className="flex justify-between border-t border-border px-1 pt-1.5">
-              <button type="button" className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary" onClick={() => escolher("")}>
+              <button type="button" className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary active:bg-secondary" onClick={() => escolher("")}>
                 {t("clearFilters")}
               </button>
-              <button type="button" className="rounded-lg px-3 py-1.5 text-xs font-medium text-primary hover:bg-secondary" onClick={() => escolher(semanaIso(new Date()))}>
+              <button type="button" className="rounded-lg px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-secondary active:bg-secondary" onClick={() => escolher(semanaIso(new Date()))}>
                 {t("thisWeek")}
               </button>
             </div>

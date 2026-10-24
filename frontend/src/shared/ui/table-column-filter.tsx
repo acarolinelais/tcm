@@ -5,6 +5,7 @@ import { ChevronDown, Filter, Search, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { formatarDiaIso, lerDiaIso } from "@/shared/lib/utils";
+import { usePresenca } from "@/shared/lib/use-presenca";
 import { Calendar } from "@/shared/ui/calendar";
 
 export interface TableFilterOption {
@@ -34,6 +35,7 @@ export function TableColumnFilter({
   const [posicao, setPosicao] = useState({ top: 0, right: 8 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { montado, saindo } = usePresenca(aberto);
 
   useEffect(() => {
     if (!aberto) return;
@@ -93,15 +95,18 @@ export function TableColumnFilter({
         aria-label={t("filterBy", { label })}
         aria-haspopup="menu"
         aria-expanded={aberto}
-        className={`inline-flex items-center gap-1.5 text-left text-sm font-semibold uppercase tracking-wide transition-colors ${ativo ? "text-primary" : "text-foreground hover:text-primary"}`}
+        className={`group inline-flex items-center gap-1.5 text-left text-sm font-semibold uppercase tracking-wide transition-colors ${ativo ? "text-primary" : "text-foreground hover:text-primary"}`}
         onClick={alternarMenu}
       >
         {label}
-        {ativo ? <Filter aria-hidden="true" className="h-3.5 w-3.5" /> : <ChevronDown aria-hidden="true" className="h-3.5 w-3.5" />}
+        {ativo ? <Filter aria-hidden="true" className="h-3.5 w-3.5" /> : <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 transition-transform duration-200 ease-in-out group-aria-expanded:rotate-180 motion-reduce:transition-none" />}
       </button>
-      {aberto && createPortal(
+      {montado && createPortal(
         <div
           ref={menuRef}
+          data-saindo={saindo}
+          aria-hidden={saindo || undefined}
+          inert={saindo}
           role={type === "date" ? "dialog" : "menu"}
           aria-label={t("filter", { label })}
           style={{ position: "fixed", top: posicao.top, right: posicao.right }}
@@ -115,7 +120,7 @@ export function TableColumnFilter({
                   type="button"
                   role="menuitemradio"
                   aria-checked={value === option.value}
-                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-secondary ${value === option.value ? "font-medium text-primary" : "text-foreground"}`}
+                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-secondary active:bg-secondary ${value === option.value ? "font-medium text-primary" : "text-foreground"}`}
                   onClick={() => {
                     onChange(option.value);
                     setAberto(false);
@@ -140,7 +145,7 @@ export function TableColumnFilter({
               <div className="flex justify-end border-t border-border px-1 pt-1.5">
                 <button
                   type="button"
-                  className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary"
+                  className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary active:bg-secondary"
                   onClick={() => {
                     onChange("");
                     setAberto(false);
@@ -171,7 +176,7 @@ export function TableColumnFilter({
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
-                  className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary"
+                  className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary active:bg-secondary"
                   onClick={() => {
                     setRascunho("");
                     onChange("");

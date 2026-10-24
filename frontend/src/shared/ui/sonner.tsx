@@ -21,7 +21,7 @@ export function Toaster() {
           title: "text-sm font-medium leading-5 text-foreground",
           description: "text-sm leading-[1.45] text-muted-foreground",
           icon: "mt-0.5",
-          closeButton: "h-5 w-5 rounded-md border-0 bg-transparent text-muted-foreground hover:bg-secondary hover:text-foreground",
+          closeButton: "h-5 w-5 rounded-md border-0 bg-transparent text-muted-foreground hover:bg-secondary active:bg-secondary hover:text-foreground",
         },
       }}
     />
