@@ -85,7 +85,7 @@ function createSeed(): Database {
     { id: "mock-user-dev", nome: "Daniel Oliveira", email: "daniel.oliveira@example.com", ativo: true, perfil_id: standardProfile.id, responsavel_id: MANAGER_ID, created_at: "2026-02-01T12:00:00Z" },
     { id: "mock-user-standard", nome: "Ana Souza", email: "ana.souza@example.com", ativo: true, perfil_id: standardProfile.id, responsavel_id: MANAGER_ID, created_at: "2026-02-05T12:00:00Z" },
     { id: "mock-user-inactive", nome: "Rafael Lima", email: "rafael.lima@example.com", ativo: false, perfil_id: standardProfile.id, created_at: "2026-02-10T12:00:00Z" },
-  ].map((user) => ({ ...user, user_id: user.user_id ?? null }));
+  ].map((user: Usuario) => ({ ...user, user_id: user.user_id ?? null }));
   return {
     schemaVersion: 11,
     unidade: { id: UNIT_ID, nome: "Manaus", ativo: true },
