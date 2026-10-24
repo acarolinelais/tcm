@@ -56,7 +56,8 @@ test("cria projeto manualmente, atribui casos e transfere um caso ao backup", as
   await page.getByRole("option", { name: "Kaique Pereira" }).click();
   await dialog.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByRole("row", { name: /Clock_001/ })).toBeVisible();
-  await page.getByRole("button", { name: "Transferir ao backup" }).click();
+  await page.getByRole("row", { name: /Clock_001/ }).getByRole("button", { name: /Clock_001/ }).click();
+  await page.getByRole("menuitem", { name: "Transferir ao backup" }).click();
   await expect(page.getByText("Test Case transferido para o backup.")).toBeVisible();
   await expect(page.getByRole("row", { name: /Clock_001/ })).toContainText("Kaique Pereira");
 });
