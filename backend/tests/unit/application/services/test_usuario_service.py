@@ -60,9 +60,7 @@ async def test_criar_usuario_valido_chama_adicionar_e_commit(service, repo, uow,
 
 
 async def test_criar_usuario_salva_user_id_normalizado(service, repo, uow, usuario_atual):
-    request = CriarUsuarioRequest(
-        nome="Ana", email="ana@example.com", user_id="  USR-001  "
-    )
+    request = CriarUsuarioRequest(nome="Ana", email="ana@example.com", user_id="  USR-001  ")
 
     resposta = await service.criar(usuario_atual, request)
 
@@ -102,9 +100,7 @@ async def test_atualizar_usuario_define_user_id_e_recusa_duplicidade(
         await service.atualizar(
             usuario_atual,
             usuario.id,
-            AtualizarUsuarioRequest(
-                nome="Ana", email="ana@example.com", user_id="USR-001"
-            ),
+            AtualizarUsuarioRequest(nome="Ana", email="ana@example.com", user_id="USR-001"),
         )
 
     repo.atualizar.assert_not_awaited()

@@ -282,9 +282,7 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
             stmt = stmt.where(UsuarioModel.id != ignorar_id)
         return (await self.session.execute(stmt)).first() is not None
 
-    async def existe_user_id(
-        self, unidade_id: UUID, user_id: str, ignorar_id: UUID | None
-    ) -> bool:
+    async def existe_user_id(self, unidade_id: UUID, user_id: str, ignorar_id: UUID | None) -> bool:
         normalizado = Usuario.normalizar_user_id(user_id)
         if normalizado is None:
             return False
