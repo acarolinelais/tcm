@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/di
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyState, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
+import { PageSkeleton } from "@/shared/ui/skeleton";
 import { criarPerfil, listarPerfis, listarPermissoes, salvarPermissoes } from "./api/perfis.api";
 import type { Perfil, Permissao } from "./api/perfis.api";
 import { PerfilAcoesMenu } from "./PerfilAcoesMenu";
@@ -199,7 +200,7 @@ export function PerfisPage() {
     return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
   }
   if (perfis.isLoading || permissoes.isLoading) {
-    return <p className="p-6 text-sm text-muted-foreground">{t("loading")}</p>;
+    return <PageSkeleton />;
   }
   if (perfis.error instanceof ApiError && perfis.error.problem.status === 403) {
     return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;

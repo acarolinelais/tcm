@@ -18,6 +18,7 @@ export function LoginPage() {
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const emailRef = useRef<HTMLInputElement>(null);
   const senhaRef = useRef<HTMLInputElement>(null);
+  const [erros, setErros] = useState<{ email?: string; senha?: string }>({});
   const [carregando, setCarregando] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -26,15 +27,16 @@ export function LoginPage() {
   async function enviar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      toast.error(email.trim() ? t("invalidEmail") : t("emailRequired"));
+      setErros({ email: email.trim() ? t("invalidEmail") : t("emailRequired") });
       emailRef.current?.focus();
       return;
     }
     if (!senha) {
-      toast.error(t("passwordRequired"));
+      setErros({ senha: t("passwordRequired") });
       senhaRef.current?.focus();
       return;
     }
+    setErros({});
     setCarregando(true);
     try {
       await login(email, senha);
@@ -75,16 +77,18 @@ export function LoginPage() {
             <div className="space-y-5">
               <label className="flex flex-col gap-4 text-sm font-medium text-foreground">
                 <span>{t("email")}</span>
-                <Input ref={emailRef} required type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} className="h-11 rounded-xl border-border bg-white px-3.5" />
+                <Input ref={emailRef} required type="email" autoComplete="username" spellCheck={false} value={email} onChange={(event) => { setEmail(event.target.value); setErros((atual) => ({ ...atual, email: undefined })); }} aria-invalid={Boolean(erros.email)} aria-describedby={erros.email ? "login-email-error" : undefined} className="h-11 rounded-xl border-border bg-white px-3.5 aria-[invalid=true]:border-destructive" />
+                {erros.email && <span id="login-email-error" role="alert" className="-mt-2 text-xs font-normal text-destructive">{erros.email}</span>}
               </label>
               <label className="flex flex-col gap-4 text-sm font-medium text-foreground">
                 <span>{t("password")}</span>
                 <span className="relative block">
-                  <Input ref={senhaRef} required type={mostrarSenha ? "text" : "password"} autoComplete="current-password" value={senha} onChange={(event) => setSenha(event.target.value)} className="h-11 rounded-xl border-border bg-white px-3.5 pr-11" />
+                  <Input ref={senhaRef} required type={mostrarSenha ? "text" : "password"} autoComplete="current-password" value={senha} onChange={(event) => { setSenha(event.target.value); setErros((atual) => ({ ...atual, senha: undefined })); }} aria-invalid={Boolean(erros.senha)} aria-describedby={erros.senha ? "login-senha-error" : undefined} className="h-11 rounded-xl border-border bg-white px-3.5 pr-11 aria-[invalid=true]:border-destructive" />
                   <button type="button" onClick={() => setMostrarSenha((visivel) => !visivel)} aria-label={mostrarSenha ? t("hidePassword") : t("showPassword")} aria-pressed={mostrarSenha} className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-xl text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                     {mostrarSenha ? <EyeOff aria-hidden="true" className="h-4 w-4" /> : <Eye aria-hidden="true" className="h-4 w-4" />}
                   </button>
                 </span>
+                {erros.senha && <span id="login-senha-error" role="alert" className="-mt-2 text-xs font-normal text-destructive">{erros.senha}</span>}
               </label>
             </div>
 

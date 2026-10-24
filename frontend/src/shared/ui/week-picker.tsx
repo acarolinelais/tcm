@@ -69,7 +69,7 @@ export function WeekPicker({ label, value, onChange, className }: WeekPickerProp
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner align="start" sideOffset={4} className="z-[70] outline-none">
-          <Popover.Popup aria-label={label} className="popover-enter rounded-xl border border-border bg-card p-1.5 text-card-foreground shadow-lg outline-none">
+          <Popover.Popup aria-label={label} className="base-popup rounded-xl border border-border bg-card p-1.5 text-card-foreground shadow-lg outline-none">
             <Calendar
               showWeekNumber
               ISOWeek

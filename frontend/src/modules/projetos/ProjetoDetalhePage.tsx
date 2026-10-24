@@ -1,10 +1,11 @@
-import { useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRightLeft, Check, ClipboardList, Clock, Eye, Pencil, Play, Plus, UploadCloud, X, type LucideIcon } from "lucide-react";
 import { useOutletContext, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import type { PerfilAtual } from "@/core/auth/api";
+import { formatDate } from "@/core/i18n/format";
 import { timesApi } from "@/modules/times/api/times.api";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
@@ -52,7 +53,7 @@ export function ProjetoDetalhePage() {
 }
 
 function ProjetoDetalhe() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const perfil = useOutletContext<PerfilAtual>();
   const { projetoId = "" } = useParams();
   const client = useQueryClient();
@@ -72,6 +73,8 @@ function ProjetoDetalhe() {
   const [oneUi, setOneUi] = useState("");
   const [arquivoSdf, setArquivoSdf] = useState<File | null>(null);
   const inputSdf = useRef<HTMLInputElement>(null);
+  const abasRef = useRef<HTMLDivElement>(null);
+  const [indicador, setIndicador] = useState<{ left: number; width: number } | null>(null);
 
   const admin = perfil.perfil_codigo === "ADMIN_UNIDADE";
   const podeConsultar = admin || perfil.permissoes.includes("projetos.consultar") || perfil.permissoes.includes("test_cases.consultar");
@@ -93,8 +96,19 @@ function ProjetoDetalhe() {
   });
   const updateMemberCase = useMutation({
     mutationFn: ({ id, field, value }: { id: string; field: "category" | "difficulty" | "situation"; value: string }) => casosTesteApi.atualizar(id, { [field]: value } as Pick<CasoTeste, typeof field>),
-    onSuccess: () => client.invalidateQueries({ queryKey: ["projetos", projetoId, "test-cases"] }),
-    onError: (error) => toast.error(error instanceof Error ? error.message : t("caseUpdateError", { defaultValue: "Não foi possível atualizar o Test Case." })),
+    // A célula muda na hora; se a API recusar, o cache volta ao que era.
+    onMutate: async ({ id, field, value }) => {
+      const queryKey = ["projetos", projetoId, "test-cases"];
+      await client.cancelQueries({ queryKey });
+      const anteriores = client.getQueriesData<Awaited<ReturnType<typeof casosTesteApi.listar>>>({ queryKey });
+      client.setQueriesData<Awaited<ReturnType<typeof casosTesteApi.listar>>>({ queryKey }, (old) => old && { ...old, items: old.items.map((item) => item.id === id ? { ...item, [field]: value } : item) });
+      return { anteriores };
+    },
+    onError: (error, _input, contexto) => {
+      contexto?.anteriores.forEach(([queryKey, dados]) => client.setQueryData(queryKey, dados));
+      toast.error(error instanceof Error ? error.message : t("caseUpdateError", { defaultValue: "Não foi possível atualizar o Test Case." }));
+    },
+    onSettled: () => client.invalidateQueries({ queryKey: ["projetos", projetoId, "test-cases"] }),
   });
   const transfer = useMutation({
     mutationFn: casosTesteApi.transferirParaBackup,
@@ -113,6 +127,11 @@ function ProjetoDetalhe() {
   const nomesMembros = useMemo(() => Object.fromEntries((membros.data ?? []).map((member) => [member.usuario_id, member.usuario_nome ?? member.usuario_id])), [membros.data]);
   const membrosAtivos = (membros.data ?? []).filter((member) => member.ativo);
   const responsavelAtual = perfil.id;
+  const camposFaltando = !tcId.trim() || !responsavelId || !backupId;
+  useLayoutEffect(() => {
+    const ativa = abasRef.current?.querySelector<HTMLElement>('[aria-selected="true"]');
+    setIndicador(ativa ? { left: ativa.offsetLeft, width: ativa.offsetWidth } : null);
+  }, [aba, projeto.data, i18n.resolvedLanguage]);
   const mostrarAcoes = podeGerenciarCasos || Boolean(casos.data?.items.some((item) => item.responsavel_id === responsavelAtual));
   const casosFiltrados = (casos.data?.items ?? []).filter((item) => {
     const endDate = item.situation === "Pass" ? item.updated_at ?? item.created_at : null;
@@ -154,9 +173,11 @@ function ProjetoDetalhe() {
     </header>
 
     {projeto.isLoading ? <p role="status" className="py-8 text-sm text-muted-foreground">{t("loadingProjects")}</p> : projeto.isError || !projeto.data ? <p role="alert" className="py-8 text-sm text-muted-foreground">{t("projectNotFound", { defaultValue: "Projeto não encontrado ou sem acesso." })}</p> : <>
-      <div className="mb-5 flex shrink-0 gap-4 border-b border-border" role="tablist" aria-label={t("projectTabs", { defaultValue: "Abas do projeto" })}>
-        {podeConsultarCasos && <button type="button" role="tab" aria-selected={aba === "cases"} onClick={() => { setAba("cases"); setPagina(1); }} className={`-mb-px border-b-2 px-0.5 pb-1.5 text-lg transition-colors ${aba === "cases" ? "border-primary text-primary" : "border-transparent text-foreground hover:text-primary"}`}>{t("testCasesTab")}</button>}
-        {(podeConsultarFormFactor || podeImportarSdf) && <button type="button" role="tab" aria-selected={aba === "form-factor"} onClick={() => { setAba("form-factor"); setPagina(1); }} className={`-mb-px border-b-2 px-0.5 pb-1.5 text-lg transition-colors ${aba === "form-factor" ? "border-primary text-primary" : "border-transparent text-foreground hover:text-primary"}`}>{t("formFactor", { defaultValue: "Form Factor" })}</button>}
+      <div ref={abasRef} className="relative mb-5 flex shrink-0 gap-4 border-b border-border" role="tablist" aria-label={t("projectTabs", { defaultValue: "Abas do projeto" })}>
+        {podeConsultarCasos && <button type="button" role="tab" aria-selected={aba === "cases"} onClick={() => { setAba("cases"); setPagina(1); }} className={`px-0.5 pb-2 text-lg transition-colors ${aba === "cases" ? "text-primary" : "text-foreground hover:text-primary"}`}>{t("testCasesTab")}</button>}
+        {(podeConsultarFormFactor || podeImportarSdf) && <button type="button" role="tab" aria-selected={aba === "form-factor"} onClick={() => { setAba("form-factor"); setPagina(1); }} className={`px-0.5 pb-2 text-lg transition-colors ${aba === "form-factor" ? "text-primary" : "text-foreground hover:text-primary"}`}>{t("formFactor", { defaultValue: "Form Factor" })}</button>}
+        {/* Uma barra só, que desliza até a aba ativa. */}
+        {indicador && <span aria-hidden="true" className="absolute -bottom-px left-0 h-0.5 rounded-full bg-primary transition-[translate,width] duration-200 ease-out motion-reduce:transition-none" style={{ width: indicador.width, translate: `${indicador.left}px 0` }} />}
       </div>
 
       {aba === "cases" && podeConsultarCasos ? <TableLayout>
@@ -181,7 +202,7 @@ function ProjetoDetalhe() {
               <TableCell className="text-muted-foreground">{nomesMembros[testCase.responsavel_id] ?? testCase.responsavel_id}</TableCell>
               <TableCell>{canEditOwn && !canManage ? <Select value={testCase.difficulty} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "difficulty", value })}><SelectTrigger aria-label={`${t("difficulty")} ${testCase.tc_id}`} className="h-8 w-28"><SelectValue /></SelectTrigger><SelectContent>{dificuldades.map((value) => <SelectItem key={value} value={value}>{t(difficultyLabels[value])}</SelectItem>)}</SelectContent></Select> : t(difficultyLabels[testCase.difficulty])}</TableCell>
               <TableCell>{canEditOwn && !canManage ? <Select value={testCase.category} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "category", value })}><SelectTrigger aria-label={`${t("category")} ${testCase.tc_id}`} className="h-8 w-20"><SelectValue /></SelectTrigger><SelectContent>{categorias.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select> : testCase.category}</TableCell>
-              <TableCell className="text-muted-foreground">{endDate ? new Date(endDate).toLocaleDateString() : "—"}</TableCell>
+              <TableCell className="text-muted-foreground">{endDate ? formatDate(endDate) : "—"}</TableCell>
               <TableCell className="text-muted-foreground">{testCase.backup_id ? nomesMembros[testCase.backup_id] ?? testCase.backup_id : "—"}</TableCell>
               {mostrarAcoes && <TableCell className="text-right">{(canManage || canEditOwn) && <TableRowActions label={testCase.tc_id} actions={[
                 ...(canManage ? [{ label: t("edit"), icon: Pencil, onSelect: () => abrirEdicao(testCase) }] : []),
@@ -204,7 +225,7 @@ function ProjetoDetalhe() {
           <div className="flex flex-wrap gap-3"><div className="grid gap-1 text-xs text-muted-foreground"><span aria-hidden="true">{t("week")}</span><WeekPicker label={t("week")} value={semana} onChange={(valor) => { setSemana(valor); setPagina(1); }} className="h-9 w-44" /></div><label className="grid gap-1 text-xs text-muted-foreground">{t("oneUi", { defaultValue: "One UI" })}<Input value={oneUi} onChange={(event) => { setOneUi(event.target.value); setPagina(1); }} placeholder={projeto.data.one_ui} className="h-9 w-36" /></label></div>
           {podeImportarSdf && <div className="flex items-center gap-2"><input ref={inputSdf} className="sr-only" type="file" accept=".xls,.xlsx" onChange={(event) => setArquivoSdf(event.target.files?.[0] ?? null)} /><Button variant="outline" onClick={() => inputSdf.current?.click()}><UploadCloud aria-hidden="true" className="size-4" />{arquivoSdf?.name ?? t("importSdf", { defaultValue: "Importar relatório SDF" })}</Button>{arquivoSdf && <Button disabled={importReport.isPending} onClick={() => importReport.mutate()}>{importReport.isPending ? t("saving") : t("import")}</Button>}</div>}
         </div>
-        <TableLayout><Table containerClassName={resultados.data?.items.length ? "min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}><TableHeader><TableRow><TableHead>{t("tcId")}</TableHead><TableHead>{t("sdfId")}</TableHead><TableHead>{t("deviceModel")}</TableHead><TableHead>{t("result")}</TableHead><TableHead>{t("date")}</TableHead><TableHead>{t("oneUi")}</TableHead></TableRow></TableHeader>{resultados.data?.items.length ? <TableBody>{resultados.data.items.map((row, index) => <TableRow key={`${row.sdf_id}-${row.modelo_dispositivo_id}-${index}`}><TableCell className="font-medium">{row.tc_id}</TableCell><TableCell>{row.sdf_id}</TableCell><TableCell>{row.modelo_nome}</TableCell><TableCell>{row.resultado}</TableCell><TableCell>{new Date(row.data_reportada).toLocaleDateString()}</TableCell><TableCell>{row.one_ui}</TableCell></TableRow>)}</TableBody> : null}</Table>{!resultados.isLoading && !resultados.isError && !resultados.data?.items.length && <TableEmptyState><p role="status">{t("noFormFactorResults", { defaultValue: "Nenhum resultado Form Factor cadastrado." })}</p></TableEmptyState>}<TablePagination page={pagina} pageSize={tamanhoPagina} totalCount={resultados.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} /></TableLayout>
+        <TableLayout><Table containerClassName={resultados.data?.items.length ? "min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}><TableHeader><TableRow><TableHead>{t("tcId")}</TableHead><TableHead>{t("sdfId")}</TableHead><TableHead>{t("deviceModel")}</TableHead><TableHead>{t("result")}</TableHead><TableHead>{t("date")}</TableHead><TableHead>{t("oneUi")}</TableHead></TableRow></TableHeader>{resultados.data?.items.length ? <TableBody>{resultados.data.items.map((row, index) => <TableRow key={`${row.sdf_id}-${row.modelo_dispositivo_id}-${index}`}><TableCell className="font-medium">{row.tc_id}</TableCell><TableCell>{row.sdf_id}</TableCell><TableCell>{row.modelo_nome}</TableCell><TableCell>{row.resultado}</TableCell><TableCell>{formatDate(row.data_reportada)}</TableCell><TableCell>{row.one_ui}</TableCell></TableRow>)}</TableBody> : null}</Table>{!resultados.isLoading && !resultados.isError && !resultados.data?.items.length && <TableEmptyState><p role="status">{t("noFormFactorResults", { defaultValue: "Nenhum resultado Form Factor cadastrado." })}</p></TableEmptyState>}<TablePagination page={pagina} pageSize={tamanhoPagina} totalCount={resultados.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} /></TableLayout>
       </div>}
     </>}
 
@@ -219,7 +240,7 @@ function ProjetoDetalhe() {
             <div className="grid gap-2"><Label>{t("assignee")}</Label><Select value={responsavelId} onValueChange={setResponsavelId}><SelectTrigger><SelectValue placeholder={t("selectUser")} /></SelectTrigger><SelectContent>{membrosAtivos.map((member) => <SelectItem key={member.usuario_id} value={member.usuario_id}>{member.usuario_nome ?? member.usuario_id}</SelectItem>)}</SelectContent></Select></div>
             <div className="grid gap-2"><Label>{t("backup")}</Label><Select value={backupId} onValueChange={setBackupId}><SelectTrigger><SelectValue placeholder={t("selectUser")} /></SelectTrigger><SelectContent>{membrosAtivos.filter((member) => member.usuario_id !== responsavelId).map((member) => <SelectItem key={member.usuario_id} value={member.usuario_id}>{member.usuario_nome ?? member.usuario_id}</SelectItem>)}</SelectContent></Select></div>
           </div>
-          <div className="flex justify-end gap-2 border-t border-border px-7 py-5"><DrawerClose asChild><Button type="button" variant="outline">{t("cancel")}</Button></DrawerClose><Button type="submit" disabled={saveCase.isPending || !tcId.trim() || !responsavelId || !backupId}>{saveCase.isPending ? t("saving") : t("save")}</Button></div>
+          <div className="flex items-center justify-end gap-2 border-t border-border px-7 py-5">{camposFaltando && <p id="case-required-fields" className="mr-auto text-xs leading-5 text-muted-foreground">{t("caseRequiredFields")}</p>}<DrawerClose asChild><Button type="button" variant="outline">{t("cancel")}</Button></DrawerClose><Button type="submit" aria-describedby={camposFaltando ? "case-required-fields" : undefined} disabled={saveCase.isPending || camposFaltando}>{saveCase.isPending ? t("saving") : t("save")}</Button></div>
         </form>
       </DrawerContent>
     </Dialog>

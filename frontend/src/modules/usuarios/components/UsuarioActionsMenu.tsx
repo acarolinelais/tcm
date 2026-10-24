@@ -104,7 +104,7 @@ export function UsuarioActionsMenu({
         variant="destructive"
         isPending={inativar.isPending}
         onConfirm={() => {
-          inativar.mutate(usuario.id);
+          inativar.mutate(usuario.id, { onSuccess: () => toast.success(t("userDeactivated", { name: usuario.nome })) });
           setConfirmacaoAberta(false);
         }}
       />

@@ -26,7 +26,7 @@ export function ProjetoSwitcher({ projetoId, nome }: { projetoId: string; nome: 
         </Menu.Trigger>
         <Menu.Portal>
           <Menu.Positioner align="start" sideOffset={6} className="z-[70] outline-none">
-            <Menu.Popup aria-label={t("switchProject")} className="popover-enter max-h-80 min-w-56 overflow-y-auto rounded-xl border border-border bg-card p-1 text-sm text-card-foreground shadow-lg outline-none">
+            <Menu.Popup aria-label={t("switchProject")} className="base-popup max-h-80 min-w-56 overflow-y-auto rounded-xl border border-border bg-card p-1 text-sm text-card-foreground shadow-lg outline-none">
               <Menu.RadioGroup value={projetoId} onValueChange={(id: string) => navigate(`/projetos/${id}`)}>
                 {projetos.data?.items.map((projeto) => (
                   <Menu.RadioItem

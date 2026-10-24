@@ -159,6 +159,18 @@ body {
   transform-origin: var(--radix-select-content-transform-origin);
 }
 
+/* Popups do Base UI: transição (interrompível) que entra e sai pelo mesmo caminho, a partir do gatilho. */
+.base-popup {
+  transform-origin: var(--transform-origin);
+  transition: opacity 140ms cubic-bezier(0.2, 0, 0, 1), scale 140ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.base-popup[data-starting-style],
+.base-popup[data-ending-style] {
+  opacity: 0;
+  scale: 0.96;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dialog-overlay[data-state],
   .dialog-content[data-state],
@@ -166,5 +178,9 @@ body {
   .drawer-content[data-state],
   .popover-enter {
     animation: none;
+  }
+
+  .base-popup {
+    transition-property: opacity;
   }
 }

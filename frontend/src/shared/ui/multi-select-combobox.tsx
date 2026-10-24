@@ -61,7 +61,7 @@ export function MultiSelectCombobox({ label, placeholder, options, value, onValu
         </Combobox.InputGroup>
         <Combobox.Portal>
           <Combobox.Positioner align="start" sideOffset={4} className="z-[70] w-[var(--anchor-width)] outline-none">
-            <Combobox.Popup aria-label={label} className="overflow-hidden rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
+            <Combobox.Popup aria-label={label} className="base-popup overflow-hidden rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
               <Combobox.Empty><div className="px-3 py-5 text-center text-sm text-muted-foreground">{emptyLabel}</div></Combobox.Empty>
               <Combobox.List className="max-h-56 overflow-y-auto">
                 {(option: Option) => <Combobox.Item key={option.value} value={option.value} className="flex cursor-pointer select-none items-center gap-2 rounded-lg px-2.5 py-2 text-sm outline-none data-[highlighted]:bg-secondary data-[selected]:font-medium">
