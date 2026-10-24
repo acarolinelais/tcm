@@ -28,8 +28,7 @@ const perfil: PerfilAtual = {
   time_atual_id: "team-1", tem_multiplos_times: false, senha_alteracao_obrigatoria: false, idioma_preferido: "en",
 };
 
-function renderPage(currentProfile = perfil) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+function renderPage(currentProfile = perfil, client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })) {
   function ContextOutlet() { return <Outlet context={currentProfile} />; }
   // MemoryRouter declarativo: o createMemoryRouter navega com um Request que o jsdom rejeita.
   return render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/projetos/project-1"]}><Routes><Route element={<ContextOutlet />}><Route path="projetos/:projetoId" element={<ProjetoDetalhePage />} /></Route></Routes></MemoryRouter></QueryClientProvider>);
@@ -55,6 +54,46 @@ describe("ProjetoDetalhePage", () => {
       { id: "m3", time_id: "team-1", usuario_id: "user-2", usuario_nome: "Outro desenvolvedor", usuario_perfil: "Developer", usuario_perfil_codigo: null, ativo: true },
       { id: "m2", time_id: "team-1", usuario_id: "backup-1", usuario_nome: "Kaique Pereira", usuario_perfil: "KP", usuario_perfil_codigo: "KP", ativo: true },
     ]);
+  });
+
+  it("consulta os casos como principal ou backup sem conceder edição ao backup", async () => {
+    const backup = { ...casos[1], backup_id: "user-1" };
+    vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [casos[0], backup], page: 1, page_size: 20, total_count: 2 });
+    renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO" });
+    const row = await screen.findByRole("row", { name: /Clock_002/ });
+    expect(within(row).queryByRole("combobox")).not.toBeInTheDocument();
+    expect(within(row).queryByRole("button", { name: /Actions for/ })).not.toBeInTheDocument();
+    expect(casosTesteApi.listar).toHaveBeenCalledWith("project-1", 1, DEFAULT_TABLE_PAGE_SIZE, { responsavelId: undefined, associadosAMim: true });
+  });
+
+  it("erro de acesso prevalece sobre associação vazia antiga no cache", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(["projetos", "project-1", "test-cases", 1, 1, { associadosAMim: true }, "unit-1", "user-1"], { items: [], total_count: 0 });
+    vi.mocked(projetosApi.obter).mockRejectedValue(new Error("403"));
+    renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO" }, client);
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(casosTesteApi.listar).not.toHaveBeenCalled();
+    expect(projetosApi.listar).not.toHaveBeenCalled();
+  });
+
+  it("oculta nome do projeto em cache quando revalidação nega o acesso", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(["projetos", "detalhe", "project-1", "unit-1", "user-1"], projeto);
+    vi.mocked(projetosApi.obter).mockRejectedValue(new Error("404"));
+    renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO" }, client);
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Clock 9.5" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+  });
+
+  it("oculta casos antigos quando a atualização da consulta é negada", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(["projetos", "project-1", "test-cases", 1, DEFAULT_TABLE_PAGE_SIZE, { associadosAMim: true }, "unit-1", "user-1"], { items: casos, total_count: 2 });
+    vi.mocked(casosTesteApi.listar).mockRejectedValue(new Error("403"));
+    renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO" }, client);
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByText("Clock_001")).not.toBeInTheDocument();
+    expect(screen.queryByText("Clock_002")).not.toBeInTheDocument();
   });
 
   it("restringe edição inline e transferência aos casos atribuídos ao usuário", async () => {

@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, or_, select
 
 from src.domain.common.paged_result import PagedResult
 from src.domain.entities.caso_teste import (
@@ -25,6 +25,7 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
         page_size: int,
         responsavel_id: UUID | None = None,
         priorizar_responsavel_id: UUID | None = None,
+        associado_usuario_id: UUID | None = None,
     ) -> PagedResult[CasoTeste]:
         filtros = [
             CasoTesteModel.unidade_id == unidade_id,
@@ -32,6 +33,16 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
         ]
         if responsavel_id is not None:
             filtros.append(CasoTesteModel.responsavel_id == responsavel_id)
+        if associado_usuario_id is not None:
+            filtros.extend(
+                (
+                    CasoTesteModel.ativo.is_(True),
+                    or_(
+                        CasoTesteModel.responsavel_id == associado_usuario_id,
+                        CasoTesteModel.backup_id == associado_usuario_id,
+                    ),
+                )
+            )
         total = (
             await self.session.execute(
                 select(func.count()).select_from(CasoTesteModel).where(*filtros)

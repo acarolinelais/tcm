@@ -503,13 +503,15 @@ function normalizarEmailMembro(value: string) {
 }
 
 export const mockProjetosApi = {
-  listar(pageNumber: number, pageSize: number) {
+  listar(pageNumber: number, pageSize: number, associadosAMim = false) {
     const { profile } = mockProfile();
     if (profile?.codigo !== "ADMIN_UNIDADE" && !profile?.permissoes.includes("projetos.consultar") && !profile?.permissoes.includes("test_cases.consultar")) {
       throw new Error("Você não tem permissão para consultar projetos.");
     }
-    const { db } = mockProfile();
-    return page(db.projetos.filter((project) => project.ativo && projectInMockScope(project)), pageNumber, pageSize);
+    const { db, user } = mockProfile();
+    return page(db.projetos.filter((project) => project.ativo && project.unidade_id === db.unidade.id && projectInMockScope(project)
+      && (!associadosAMim || db.casosTeste.some((item) => item.projeto_id === project.id && item.unidade_id === db.unidade.id && item.ativo && (item.responsavel_id === user.id || item.backup_id === user.id))))
+      .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "") || a.id.localeCompare(b.id)), pageNumber, pageSize);
   },
   obter(projectId: string) {
     const { profile } = mockProfile();
@@ -637,11 +639,13 @@ function getMockCase(db: Database, caseId: string) {
 }
 
 export const mockCasosTesteApi = {
-  listar(projectId: string, pageNumber: number, pageSize: number, filtros: { responsavelId?: string } = {}) {
+  listar(projectId: string, pageNumber: number, pageSize: number, filtros: { responsavelId?: string; associadosAMim?: boolean } = {}) {
     requireMockPermission("test_cases.consultar");
     const { db, user } = mockProfile();
-    getMockProject(db, projectId);
+    if (!getMockProject(db, projectId).ativo) throw new Error("Projeto não encontrado.");
     const casosDoProjeto = db.casosTeste.filter((item) => item.projeto_id === projectId && item.ativo
+      && item.unidade_id === db.unidade.id
+      && (!filtros.associadosAMim || item.responsavel_id === user.id || item.backup_id === user.id)
       && (!filtros.responsavelId || item.responsavel_id === filtros.responsavelId));
     // Igual à API: os casos em que o usuário é o responsável principal vêm primeiro.
     const prioridade = (item: (typeof casosDoProjeto)[number]) => (item.responsavel_id === user.id ? 0 : 1);

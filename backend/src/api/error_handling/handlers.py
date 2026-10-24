@@ -31,7 +31,7 @@ async def handle_validation_error(request: Request, exc: RequestValidationError)
         for e in exc.errors()
     ]
     problem = ProblemDetails(
-        title="Dados inválidos.", status=status.HTTP_422_UNPROCESSABLE_ENTITY, errors=errors
+        title="Dados inválidos.", status=status.HTTP_422_UNPROCESSABLE_CONTENT, errors=errors
     )
     return _response(problem)
 
@@ -54,7 +54,7 @@ async def handle_forbidden(request: Request, exc: ForbiddenException) -> JSONRes
 
 async def handle_invalid_input(request: Request, exc: InvalidInputException) -> JSONResponse:
     problem = ProblemDetails(
-        title="Dados inválidos.", status=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        title="Dados inválidos.", status=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
     )
     return _response(problem)
 
@@ -81,7 +81,7 @@ async def handle_spreadsheet_validation_error(request: Request, exc: Exception) 
     ]
     problem = ProblemDetails(
         title="Planilha inválida.",
-        status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status=status.HTTP_422_UNPROCESSABLE_CONTENT,
         errors=errors,
         total_linhas=getattr(exc, "total_linhas", None),
     )

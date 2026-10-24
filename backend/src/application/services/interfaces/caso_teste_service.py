@@ -21,6 +21,8 @@ class CasoTesteService(Protocol):
         projeto_id: UUID,
         page: int,
         page_size: int,
+        responsavel_id: UUID | None = None,
+        associados_a_mim: bool = False,
     ) -> PagedResult[CasoTesteResponse]: ...
 
     async def criar(

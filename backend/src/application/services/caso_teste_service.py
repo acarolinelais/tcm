@@ -55,6 +55,7 @@ class CasoTesteServiceImpl:
         page: int,
         page_size: int,
         responsavel_id: UUID | None = None,
+        associados_a_mim: bool = False,
     ) -> PagedResult[CasoTesteResponse]:
         self._exigir_permissao(usuario_atual, "test_cases.consultar")
         await self._obter_projeto_visivel(usuario_atual, projeto_id)
@@ -65,6 +66,7 @@ class CasoTesteServiceImpl:
             page_size,
             responsavel_id,
             priorizar_responsavel_id=usuario_atual.id,
+            **({"associado_usuario_id": usuario_atual.id} if associados_a_mim else {}),
         )
         return casos.map(to_response)
 
@@ -191,7 +193,7 @@ class CasoTesteServiceImpl:
         self, usuario_atual: UsuarioAutenticado, projeto_id: UUID
     ) -> tuple[Projeto, Time]:
         projeto = await self._projeto_repo.obter_por_id(usuario_atual.unidade_id, projeto_id)
-        if projeto is None:
+        if projeto is None or not projeto.ativo:
             raise NotFoundException("Projeto não encontrado.")
         time = await self._time_repo.obter_por_id(usuario_atual.unidade_id, projeto.time_id)
         if time is None:

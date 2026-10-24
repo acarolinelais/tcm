@@ -37,7 +37,7 @@ export function Sidebar({
     { to: "/timeline", label: t("timeline"), Icon: TimelineIcon },
   ];
   if (perfil.permissoes.includes("projetos.consultar") || perfil.permissoes.includes("test_cases.consultar")) {
-    itens.push({ to: "/projetos", label: t("myProjects"), Icon: ProjectsIcon });
+    itens.push({ to: "/projetos", label: t(perfil.perfil_codigo === "USUARIO_PADRAO" ? "projectsNav" : "myProjects"), Icon: ProjectsIcon });
   }
   const itensAdmin = [
     ["/admin/usuarios", t("users"), UsersIcon],

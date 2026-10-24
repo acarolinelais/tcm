@@ -147,7 +147,7 @@ async def test_listar_test_cases_retorna_paginacao(api_client):
 
     assert response.status_code == 200
     assert response.json()["page_size"] == 20
-    service.listar.assert_awaited_once_with(usuario, projeto_id, 1, 20, None)
+    service.listar.assert_awaited_once_with(usuario, projeto_id, 1, 20, None, False)
 
 
 async def test_listar_test_cases_repassa_filtro_de_responsavel(api_client):
@@ -166,7 +166,7 @@ async def test_listar_test_cases_repassa_filtro_de_responsavel(api_client):
     )
 
     assert response.status_code == 200
-    service.listar.assert_awaited_once_with(usuario, projeto_id, 1, 20, responsavel_id)
+    service.listar.assert_awaited_once_with(usuario, projeto_id, 1, 20, responsavel_id, False)
 
 
 async def test_obter_test_case_retorna_200(api_client):

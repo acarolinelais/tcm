@@ -68,7 +68,7 @@ async def test_listar_projetos_retorna_paginacao(api_client):
 
     assert response.status_code == 200
     assert response.json()["page"] == 2
-    service.listar.assert_awaited_once_with(usuario, 2, 15)
+    service.listar.assert_awaited_once_with(usuario, 2, 15, False)
 
 
 async def test_consultar_projeto_retorna_200(api_client):

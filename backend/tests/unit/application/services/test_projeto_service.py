@@ -52,6 +52,39 @@ async def test_admin_cria_projeto_em_time_da_unidade(contexto):
     uow.commit.assert_awaited_once_with()
 
 
+@pytest.mark.parametrize("perfil", ["USUARIO_PADRAO", "KP", "GERENTE", "ADMIN_UNIDADE"])
+async def test_listar_associados_resolve_identidade_e_escopo(contexto, perfil):
+    service, projetos, _, _, _, _, admin, time, _ = contexto
+    usuario = UsuarioAutenticado(
+        admin.id,
+        admin.unidade_id,
+        perfil,
+        permissoes=frozenset({"test_cases.consultar"}),
+        time_ids=(time.id,),
+        times_gerenciados=(time.id,),
+    )
+    projetos.listar_associados_por_times.return_value = PagedResult([], 1, 1, 0)
+
+    resposta = await service.listar(usuario, 1, 1, True)
+
+    assert resposta.total_count == 0
+    projetos.listar_associados_por_times.assert_awaited_once_with(
+        usuario.unidade_id,
+        None if perfil == "ADMIN_UNIDADE" else (time.id,),
+        usuario.id,
+        1,
+        1,
+    )
+
+
+async def test_listar_associados_sem_permissao_nao_consulta_repositorio(contexto):
+    service, projetos, _, _, _, _, admin, _, _ = contexto
+    usuario = UsuarioAutenticado(admin.id, admin.unidade_id, "USUARIO_PADRAO")
+    with pytest.raises(ForbiddenException):
+        await service.listar(usuario, 1, 20, True)
+    projetos.listar_associados_por_times.assert_not_awaited()
+
+
 @pytest.mark.parametrize("perfil", ["GERENTE", "KP"])
 async def test_gerente_e_kp_criam_projeto_no_escopo(contexto, perfil):
     service, projetos, _, _, _, uow, admin, time, request = contexto

@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { PerfilAtual } from "@/core/auth/api";
 
 import {
   casosTesteApi,
@@ -13,6 +14,25 @@ import {
 
 export const projetosQueryKey = ["projetos"] as const;
 export const modelosQueryKey = ["modelos-dispositivo"] as const;
+
+export function useProjetosPessoais(perfil: PerfilAtual, enabled = true) {
+  return useQuery({
+    queryKey: ["projetos", "pessoais", perfil.unidade_id, perfil.id],
+    queryFn: () => projetosApi.listar(1, 1, true),
+    refetchOnMount: "always",
+    enabled,
+  });
+}
+
+export function useProjetosSeletor(perfil: PerfilAtual) {
+  const pessoal = perfil.perfil_codigo === "USUARIO_PADRAO";
+  return useInfiniteQuery({
+    queryKey: ["projetos", "seletor", perfil.unidade_id, perfil.id, pessoal],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => pessoal ? projetosApi.listar(pageParam, 100, true) : projetosApi.listar(pageParam, 100),
+    getNextPageParam: (last) => last.page * last.page_size < last.total_count ? last.page + 1 : undefined,
+  });
+}
 
 export function useProjetos(page: number, pageSize: number) {
   return useQuery({
@@ -45,11 +65,12 @@ export function useAtualizarStatusProjeto() {
   });
 }
 
-export function useCasosTeste(projetoId: string, page: number, pageSize: number) {
+export function useCasosTeste(projetoId: string, page: number, pageSize: number,
+  filtros?: { responsavelId?: string; associadosAMim?: boolean }, perfil?: PerfilAtual, enabled = true) {
   return useQuery({
-    queryKey: ["projetos", projetoId, "test-cases", page, pageSize],
-    queryFn: () => casosTesteApi.listar(projetoId, page, pageSize),
-    enabled: Boolean(projetoId),
+    queryKey: ["projetos", projetoId, "test-cases", page, pageSize, filtros, perfil?.unidade_id, perfil?.id],
+    queryFn: () => filtros ? casosTesteApi.listar(projetoId, page, pageSize, filtros) : casosTesteApi.listar(projetoId, page, pageSize),
+    enabled: Boolean(projetoId) && enabled,
   });
 }
 
@@ -64,16 +85,18 @@ export function useCriarCasoTeste(projetoId: string) {
 export function useAtualizarCasoTeste(projetoId: string) {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: ["projetos", projetoId, "atualizar-caso"],
     mutationFn: ({ id, input }: { id: string; input: AtualizarCasoTesteInput }) => casosTesteApi.atualizar(id, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "test-cases"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projetos"] }),
   });
 }
 
 export function useTransferirCasoTeste(projetoId: string) {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: ["projetos", projetoId, "transferir-caso"],
     mutationFn: (id: string) => casosTesteApi.transferirParaBackup(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "test-cases"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projetos"] }),
   });
 }
 

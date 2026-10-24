@@ -39,10 +39,11 @@ router = APIRouter(prefix="/api/projetos", tags=["projetos"])
 async def listar_projetos(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    associados_a_mim: bool = Query(False),
     service: ProjetoService = Depends(get_projeto_service),
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
-    return await service.listar(usuario_atual, page, page_size)
+    return await service.listar(usuario_atual, page, page_size, associados_a_mim)
 
 
 @router.post("", response_model=ProjetoResponse, status_code=201)
@@ -118,10 +119,13 @@ async def listar_test_cases(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     responsavel_id: UUID | None = Query(None),
+    associados_a_mim: bool = Query(False),
     service: CasoTesteService = Depends(get_caso_teste_service),
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
-    return await service.listar(usuario_atual, projeto_id, page, page_size, responsavel_id)
+    return await service.listar(
+        usuario_atual, projeto_id, page, page_size, responsavel_id, associados_a_mim
+    )
 
 
 @router.post("/{projeto_id}/test-cases", response_model=CasoTesteResponse, status_code=201)
