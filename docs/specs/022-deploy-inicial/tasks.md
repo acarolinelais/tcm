@@ -8,11 +8,11 @@
 
 ## Fase 1: imagem da API
 
-- [ ] **T01. Expor a rota de saúde da API**
+- [x] **T01. Expor a rota de saúde da API**
   - Arquivos: `backend/src/api/routers/health.py`, `backend/src/api/main.py`, `backend/tests/functional/test_health_api.py`
   - Cobre: CA-01, CA-06
   - Verificação: `cd backend && uv run pytest tests/functional/test_health_api.py` → `GET /api/health` responde 200 `{ "status": "ok" }` sem token; rota inexistente segue em 404.
-- [ ] **T02. Criar a imagem da API**
+- [x] **T02. Criar a imagem da API**
   - Arquivos: `backend/Dockerfile`, `backend/.dockerignore`
   - Cobre: CA-01, CA-11
   - Verificação: `docker build -t tcm-backend backend` → imagem construída sem `tests/` nem `.venv`; `docker run --rm tcm-backend id -u` → diferente de 0; `docker run --rm tcm-backend python -c "import src.api.main"` falha só por falta de `DATABASE_URL` (dependências presentes).
