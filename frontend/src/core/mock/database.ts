@@ -17,6 +17,7 @@ import type {
   StatusProjeto,
 } from "@/modules/projetos/model/projeto";
 import { lerPlanilhaProjeto } from "@/modules/projetos/utils/planilha-projeto";
+import { ApiError, type ProblemDetailsError } from "@/shared/api/problem-details";
 import type { PagedResult } from "@/shared/types/paged-result";
 
 const STORAGE_KEY = "sdf.mock.database.v1";
@@ -86,7 +87,7 @@ function createSeed(): Database {
     { id: "mock-user-inactive", nome: "Rafael Lima", email: "rafael.lima@example.com", ativo: false, perfil_id: standardProfile.id, created_at: "2026-02-10T12:00:00Z" },
   ];
   return {
-    schemaVersion: 8,
+    schemaVersion: 9,
     unidade: { id: UNIT_ID, nome: "Manaus", ativo: true },
     usuarios: users,
     perfis: [adminProfile, standardProfile, managerProfile, kpProfile],
@@ -175,6 +176,16 @@ function readDb(): Database {
         }
       }
       db.schemaVersion = 8;
+      writeDb(db);
+    }
+    if ((db.schemaVersion ?? 1) < 9) {
+      // O progresso que estava em `situation` passa para `status`; casos existentes recebem New.
+      db.casosTeste.forEach((testCase) => {
+        const legado = testCase as unknown as { situation: string; status?: string };
+        legado.status ??= legado.situation;
+        legado.situation = "New";
+      });
+      db.schemaVersion = 9;
       return writeDb(db);
     }
     return db;
@@ -538,27 +549,37 @@ export const mockProjetosApi = {
     const selectedModels = new Set(modelIds);
     const models = db.modelosDispositivo.filter((model) => selectedModels.has(model.id) && model.unidade_id === db.unidade.id && model.ativo);
     if (models.length !== selectedModels.size) throw new Error("Selecione apenas modelos de dispositivo ativos da unidade.");
-    const membros = db.membrosTime.filter((member) => member.time_id === time.id && member.ativo);
+    const membros = new Set(db.membrosTime.filter((member) => member.time_id === time.id && member.ativo).map((member) => member.usuario_id));
     const usuarios = db.usuarios.filter((user) => user.ativo);
-    const atribuidos = planilha.casos.map((caso) => {
-      const resolver = (identificador: string, papel: string) => {
-        const nomeInformado = normalizarNomeMembro(identificador);
-        const emailInformado = normalizarEmailMembro(identificador);
-        const found = usuarios.filter((user) => (normalizarNomeMembro(user.nome) === nomeInformado || normalizarEmailMembro(user.email) === emailInformado) && membros.some((member) => member.usuario_id === user.id));
-        if (found.length !== 1) throw new Error(`Linha ${caso.linha}: ${papel} '${identificador}' não foi encontrado unicamente como membro ativo do time.`);
-        return found[0].id;
-      };
-      return { caso, responsavelId: resolver(caso.responsavel, "Responsável"), backupId: resolver(caso.backup, "Backup") };
+    // Mesmo contrato do backend (ADR 0033): coleta os problemas de pessoas de todas as linhas.
+    const erros: ProblemDetailsError[] = [];
+    const resolver = (linha: number, campo: "assignees" | "backup", coluna: string, identificador: string) => {
+      const nomeInformado = normalizarNomeMembro(identificador);
+      const emailInformado = normalizarEmailMembro(identificador);
+      const found = usuarios.filter((user) => normalizarNomeMembro(user.nome) === nomeInformado || normalizarEmailMembro(user.email) === emailInformado);
+      if (found.length === 1 && membros.has(found[0].id)) return found[0].id;
+      const codigo = !found.length ? "pessoa_nao_encontrada" : found.length > 1 ? "pessoa_ambigua" : "pessoa_fora_do_time";
+      erros.push({ campo: `linha.${linha}.${campo}`, mensagem: codigo, codigo, linha, coluna, valor: identificador });
+      return null;
+    };
+    const atribuidos = planilha.casos.flatMap((caso) => {
+      const responsavelId = resolver(caso.linha, "assignees", planilha.colunas.assignees, caso.responsavel);
+      const backupId = resolver(caso.linha, "backup", planilha.colunas.backup, caso.backup);
+      if (!responsavelId || !backupId) return [];
+      if (responsavelId === backupId) {
+        erros.push({ campo: `linha.${caso.linha}.backup`, mensagem: "responsavel_igual_backup", codigo: "responsavel_igual_backup", linha: caso.linha, coluna: planilha.colunas.backup, valor: caso.backup });
+        return [];
+      }
+      return [{ caso, responsavelId, backupId }];
     });
-    if (atribuidos.some(({ responsavelId, backupId }) => responsavelId === backupId)) {
-      const line = atribuidos.find(({ responsavelId, backupId }) => responsavelId === backupId)!.caso.linha;
-      throw new Error(`Linha ${line}: responsável principal e backup devem ser pessoas distintas.`);
+    if (erros.length) {
+      throw new ApiError({ type: "about:blank", title: "Planilha inválida.", status: 422, errors: erros, total_linhas: planilha.totalLinhas });
     }
     const nomeApp = planilha.app || app?.trim() || "";
     const versao = planilha.one_ui || oneUi?.trim() || "";
     const now = new Date().toISOString();
     const projeto: Projeto = { id: id("mock-project"), unidade_id: db.unidade.id, time_id: time.id, app: nomeApp, one_ui: versao, nome: `${nomeApp} ${versao}`, status: "Created", ativo: true, created_at: now, updated_at: now };
-    const casos: CasoTeste[] = atribuidos.map(({ caso, responsavelId, backupId }) => ({ id: id("mock-test-case"), unidade_id: db.unidade.id, projeto_id: projeto.id, tc_id: caso.tc_id, category: caso.category, difficulty: caso.difficulty, situation: caso.situation, responsavel_id: responsavelId, backup_id: backupId, ativo: true, created_at: now, updated_at: now }));
+    const casos: CasoTeste[] = atribuidos.map(({ caso, responsavelId, backupId }) => ({ id: id("mock-test-case"), unidade_id: db.unidade.id, projeto_id: projeto.id, tc_id: caso.tc_id, category: caso.category, difficulty: caso.difficulty, situation: caso.situation, status: "To-Do", responsavel_id: responsavelId, backup_id: backupId, ativo: true, created_at: now, updated_at: now }));
     db.projetos.unshift(projeto);
     modelIds.forEach((modelId) => db.projetoModelos.push({ projeto_id: projeto.id, modelo_dispositivo_id: modelId }));
     db.casosTeste.unshift(...casos);
@@ -620,7 +641,7 @@ export const mockCasosTesteApi = {
     const now = new Date().toISOString();
     const testCase: CasoTeste = {
       id: id("mock-test-case"), unidade_id: db.unidade.id, projeto_id: projectId, tc_id: tcId,
-      category: input.category, difficulty: input.difficulty, situation: "To-Do",
+      category: input.category, difficulty: input.difficulty, situation: input.situation, status: "To-Do",
       responsavel_id: input.responsavel_id, backup_id: input.backup_id, ativo: true,
       created_at: now, updated_at: now,
     };
@@ -638,8 +659,8 @@ export const mockCasosTesteApi = {
       if (!profile?.permissoes.includes("test_cases.consultar") || testCase.responsavel_id !== user.id) {
         throw new Error("Somente o responsável principal pode editar os próprios campos do Test Case.");
       }
-      const camposPermitidos = ["category", "difficulty", "situation"];
-      if (Object.keys(input).some((field) => !camposPermitidos.includes(field))) throw new Error("Você só pode editar Category, Difficulty e TC Situation.");
+      const camposPermitidos = ["category", "difficulty", "status"];
+      if (Object.keys(input).some((field) => !camposPermitidos.includes(field))) throw new Error("Você só pode editar Status, Category e Difficulty.");
       Object.assign(testCase, input);
     }
     testCase.updated_at = new Date().toISOString();

@@ -37,7 +37,9 @@ export function MultiSelectCombobox({ label, placeholder, options, value, onValu
           if (!open && eventDetails.reason === "item-press") eventDetails.cancel();
         }}
       >
-        <Combobox.InputGroup className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-xl border border-input bg-background px-3 py-1.5 text-sm outline-none transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30">
+        {/* relative: o Base UI insere um "Dismiss" visualmente oculto com position absolute; sem um
+            ancestral posicionado ele vaza do painel com rolagem e estica a página. */}
+        <Combobox.InputGroup className="relative flex min-h-10 flex-wrap items-center gap-1.5 rounded-xl border border-input bg-background px-3 py-1.5 text-sm outline-none transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30">
           <Combobox.Value>
             {(selectedValues: string[]) => <Combobox.Chips aria-label={selectedValues.length ? label : undefined} className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
               {selectedValues.map((selectedValue) => {
@@ -61,9 +63,9 @@ export function MultiSelectCombobox({ label, placeholder, options, value, onValu
         </Combobox.InputGroup>
         <Combobox.Portal>
           <Combobox.Positioner align="start" sideOffset={4} className="z-[70] w-[var(--anchor-width)] outline-none">
-            <Combobox.Popup aria-label={label} className="base-popup overflow-hidden rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
+            <Combobox.Popup aria-label={label} className="base-popup overflow-hidden rounded-xl border border-border bg-card p-1 text-card-foreground shadow-lg">
               <Combobox.Empty><div className="px-3 py-5 text-center text-sm text-muted-foreground">{emptyLabel}</div></Combobox.Empty>
-              <Combobox.List className="max-h-56 overflow-y-auto">
+              <Combobox.List className="max-h-[min(14rem,calc(var(--available-height)-1rem))] overflow-y-auto overscroll-contain">
                 {(option: Option) => <Combobox.Item key={option.value} value={option.value} className="flex cursor-pointer select-none items-center gap-2 rounded-lg px-2.5 py-2 text-sm outline-none data-[highlighted]:bg-secondary data-[selected]:font-medium">
                   <Combobox.ItemIndicator className="inline-flex size-4 shrink-0 items-center justify-center text-primary"><Check aria-hidden="true" className="size-4" /></Combobox.ItemIndicator>
                   <span>{option.label}</span>

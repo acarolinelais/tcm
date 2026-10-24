@@ -1,6 +1,12 @@
 export interface ProblemDetailsError {
   campo: string;
   mensagem: string;
+  /** Membros de extensão dos erros de planilha (ADR 0033). */
+  codigo?: string;
+  linha?: number | null;
+  coluna?: string | null;
+  valor?: string | null;
+  parametros?: Record<string, unknown> | null;
 }
 
 export interface ProblemDetails {
@@ -9,6 +15,7 @@ export interface ProblemDetails {
   status: number;
   detail?: string;
   errors?: ProblemDetailsError[];
+  total_linhas?: number;
 }
 
 export class ApiError extends Error {

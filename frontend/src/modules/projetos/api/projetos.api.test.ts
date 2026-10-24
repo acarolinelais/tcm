@@ -45,11 +45,11 @@ describe("APIs de projetos", () => {
   });
 
   it("cria e atualiza Test Cases nos endpoints do projeto", async () => {
-    const body = { tc_id: "Clock_001", category: "A" as const, difficulty: "Low" as const, responsavel_id: "user-1", backup_id: "user-2" };
+    const body = { tc_id: "Clock_001", category: "A" as const, difficulty: "Low" as const, situation: "New" as const, responsavel_id: "user-1", backup_id: "user-2" };
     await casosTesteApi.criar("project-1", body);
     expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/test-cases", expect.objectContaining({ method: "POST", body: JSON.stringify(body) }));
-    await casosTesteApi.atualizar("case-1", { situation: "InProgress" });
-    expect(fetch).toHaveBeenLastCalledWith("/api/test-cases/case-1", expect.objectContaining({ method: "PUT", body: JSON.stringify({ situation: "InProgress" }) }));
+    await casosTesteApi.atualizar("case-1", { situation: "New Step", status: "InProgress" });
+    expect(fetch).toHaveBeenLastCalledWith("/api/test-cases/case-1", expect.objectContaining({ method: "PUT", body: JSON.stringify({ situation: "New Step", status: "InProgress" }) }));
   });
 
   it("consulta Test Cases e transfere o responsável para o backup", async () => {

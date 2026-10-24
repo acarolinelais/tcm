@@ -120,7 +120,8 @@ Cada item de `errors[]` mantém `campo` e `mensagem` (ADR 0006) e ganha os membr
 - `modules/projetos/components/PreviaPlanilha.tsx` e `components/ErrosPlanilha.tsx` (novos) — tabelas paginadas com `TablePagination`; erros com resumo, gerais separados e agrupamento por linha (skill `table-rules`).
 - `modules/projetos/ProjetosPage.tsx` — usa os dois componentes e o novo texto de sucesso.
 - `modules/projetos/ProjetoDetalhePage.tsx` — colunas, filtros e badges de TC Situation e Status; campo TC Situation no cadastro manual; edição de TC Situation só para a gestão.
-- `core/mock/database.ts` — campos novos, regra de edição e chave de armazenamento `v2` (descarta dados mock no formato antigo).
+- `core/mock/database.ts` — campos novos, regra de edição e migração `schemaVersion` 9 (o progresso antigo vai para `status` e os casos recebem `New`), seguindo o mecanismo de migração que a base mock já usa.
+- `shared/ui/table.tsx` e `docs/tables-rules.md` — `TablePagination` ganha primeira/última página e "Página X de Y" para todas as tabelas (regra: mudar o componente compartilhado, não a tela).
 - `core/i18n/resources.ts` — rótulos, opções, toast e um texto por código de erro em en, pt e ko.
 - `e2e/projetos-importacao.spec.ts`, `e2e/projetos.spec.ts` e `e2e/projetos-fixtures.ts` — fixtures com TC Situation e cenários de prévia paginada e erros.
 

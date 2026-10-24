@@ -187,31 +187,31 @@
 
 ## Fase 6: frontend, prévia paginada e mensagens amigáveis
 
-- [ ] **T40. Atualizar modelo, cliente de API e base mock**
+- [x] **T40. Atualizar modelo, cliente de API e base mock**
   - Arquivos: `frontend/src/modules/projetos/model/projeto.ts`, `api/projetos.api.ts`, `api/projetos.api.test.ts`, `frontend/src/core/mock/database.ts`, `core/mock/database.test.ts`
   - Cobre: CA-06, CA-16, CA-23
-  - Verificação: `cd frontend && npm test -- --run src/modules/projetos/api src/core/mock` → tipos `StatusCasoTeste`/`SituacaoCasoTeste` e `ErroPlanilha`; mock usa a chave `v2`, cria casos com `situation` informada e `status` `To-Do` e recusa `situation` vinda do responsável.
-- [ ] **T41. Validar a planilha no navegador com os mesmos códigos**
+  - Verificação: `cd frontend && npm test -- --run src/modules/projetos/api src/core/mock` → tipos `StatusCasoTeste`/`SituacaoCasoTeste` e `ErroPlanilha`; mock migra os dados para o `schemaVersion` 9, cria casos com `situation` informada e `status` `To-Do` e recusa `situation` vinda do responsável.
+- [x] **T41. Validar a planilha no navegador com os mesmos códigos**
   - Arquivos: `frontend/src/modules/projetos/utils/planilha-projeto.ts`, `utils/planilha-projeto.test.ts`, `utils/formatar-erro-planilha.ts`, `utils/formatar-erro-planilha.test.ts`, `frontend/src/core/i18n/resources.ts`, `core/i18n/resources.test.ts`
   - Cobre: CA-21, CA-22, CA-27–CA-30
   - Verificação: `cd frontend && npm test -- --run src/modules/projetos/utils src/core/i18n` → parser emite os mesmos códigos do backend (TC Situation obrigatório, `Status` ignorado, duplicado com primeira linha, erro geral sem linha, `totalLinhas`); cada código gera texto em en, pt e ko com coluna, valor e esperados, sem chave técnica.
-- [ ] **T42. Paginar a prévia da planilha**
+- [x] **T42. Paginar a prévia da planilha**
   - Arquivos: `frontend/src/modules/projetos/components/PreviaPlanilha.tsx`, `components/PreviaPlanilha.test.tsx`, `ProjetosPage.tsx`
   - Cobre: CA-24
   - Verificação: `cd frontend && npm test -- --run src/modules/projetos/components/PreviaPlanilha` → 1.000 casos mostram o total, 20 por página, primeira/anterior/próxima/última e página atual de total; coluna TC Situation sem Status (skill `table-rules`).
-- [ ] **T43. Mostrar os erros da planilha agrupados e paginados**
+- [x] **T43. Mostrar os erros da planilha agrupados e paginados**
   - Arquivos: `frontend/src/modules/projetos/components/ErrosPlanilha.tsx`, `components/ErrosPlanilha.test.tsx`, `ProjetosPage.tsx`
   - Cobre: CA-14, CA-26–CA-29
   - Verificação: `cd frontend && npm test -- --run src/modules/projetos/components/ErrosPlanilha` → resumo "X de Y linhas", problemas gerais separados, uma entrada por linha com todos os problemas, 20 linhas por página e criação bloqueada; o mesmo componente exibe erros da prévia e do 422 do servidor.
-- [ ] **T44. Atualizar toast de sucesso e modelo de planilha para download**
+- [x] **T44. Atualizar toast de sucesso e modelo de planilha para download**
   - Arquivos: `frontend/src/modules/projetos/ProjetosPage.tsx`, `ProjetosPage.test.tsx`, `core/i18n/resources.ts`
   - Cobre: CA-25
   - Verificação: `cd frontend && npm test -- --run src/modules/projetos/ProjetosPage` → toast "Planilha importada com sucesso: N Test Cases criados em <projeto>" nos três idiomas; modelo baixado traz TC Situation `New` e não traz Status.
-- [ ] **T45. Exibir e editar TC Situation e Status no detalhe do projeto**
+- [x] **T45. Exibir e editar TC Situation e Status no detalhe do projeto**
   - Arquivos: `frontend/src/modules/projetos/ProjetoDetalhePage.tsx`, `ProjetoDetalhePage.test.tsx`, `core/i18n/resources.ts`
   - Cobre: CA-06, CA-09, CA-10, CA-15, CA-16
   - Verificação: `cd frontend && npm test -- --run src/modules/projetos/ProjetoDetalhePage` → tabela tem colunas, filtros e badges de TC Situation e Status; cadastro manual exige TC Situation; gestão edita os dois; responsável edita só Status, Category e Difficulty.
-- [ ] **T46. Cobrir o novo fluxo de importação e edição ponta a ponta**
+- [x] **T46. Cobrir o novo fluxo de importação e edição ponta a ponta**
   - Arquivos: `frontend/e2e/projetos-importacao.spec.ts`, `e2e/projetos.spec.ts`, `e2e/projetos-fixtures.ts`
   - Cobre: CA-12, CA-21, CA-24–CA-27
   - Verificação: `cd frontend && npm run e2e -- projetos-importacao.spec.ts projetos.spec.ts` → planilha com muitas linhas pagina a prévia e mostra o toast com a quantidade; planilha inválida mostra erros agrupados no idioma da interface; caso manual é criado com TC Situation e Status `To-Do`.
@@ -224,3 +224,4 @@
 - Reavaliar extração de validação compartilhada de textos se a duplicação entre entidades crescer nas fases de schemas/importadores.
 - Dar a `PlanilhaProjetoInvalida` e `RelatorioSdfInvalido` uma base comum (`erros`, `total_linhas`) e tipar o handler de planilha nela, removendo o `getattr(exc, "total_linhas", None)` (simplify da Fase 5; toca o validador SDF, fora do bloco).
 - Migrar os erros do relatório SDF para o formato do ADR 0033 (`linha=None` em problemas gerais e `codigo`); assim o handler deixa de condicionar os membros de extensão a `codigo` (simplify da Fase 5; muda o fluxo SDF).
+- Extrair um hook `useClientPagination(items)` em `shared` para a paginação no cliente (estado de página/tamanho, `slice` e volta à página 1), hoje repetida em `PreviaPlanilha`, `ErrosPlanilha`, `TimeDetalhePage` e `PerfisPage` (simplify da Fase 6; toca telas fora do bloco).

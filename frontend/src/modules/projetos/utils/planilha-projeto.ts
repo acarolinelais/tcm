@@ -1,4 +1,4 @@
-import type { CategoriaCasoTeste, DificuldadeCasoTeste, SituacaoCasoTeste } from "../model/projeto";
+import { CATEGORIAS_CASO_TESTE, DIFICULDADES_CASO_TESTE, SITUACOES_CASO_TESTE, type CategoriaCasoTeste, type DificuldadeCasoTeste, type ErroPlanilha, type SituacaoCasoTeste } from "../model/projeto";
 
 type ExcelWorkbook = import("@e965/xlsx").WorkBook;
 
@@ -12,25 +12,34 @@ export interface CasoTestePlanilha {
   backup: string;
 }
 
+type CabecalhoObrigatorio = "app" | "tc id" | "difficulty" | "category" | "tc situation" | "one ui" | "assignees" | "backup";
+
 export interface PlanilhaProjeto {
   app: string;
   one_ui: string;
   casos: CasoTestePlanilha[];
-}
-
-export interface ErroPlanilhaProjeto {
-  campo: string;
-  mensagem: string;
+  totalLinhas: number;
+  /** Cabeçalho normalizado → texto como está na planilha, para as mensagens. */
+  colunas: Record<CabecalhoObrigatorio, string>;
 }
 
 export class PlanilhaProjetoError extends Error {
-  constructor(readonly errors: ErroPlanilhaProjeto[]) {
+  constructor(readonly errors: ErroPlanilha[], readonly totalLinhas?: number) {
     super("A planilha possui dados inválidos.");
     this.name = "PlanilhaProjetoError";
   }
 }
 
-const cabecalhosObrigatorios = ["app", "tc id", "difficulty", "category", "tc situation", "one ui", "assignees", "backup"];
+// Mesmas regras e códigos do validador do backend (ADR 0033).
+const cabecalhosObrigatorios: Record<CabecalhoObrigatorio, string> = {
+  app: "App", "tc id": "TC ID", difficulty: "Difficulty", category: "Category",
+  "tc situation": "TC Situation", "one ui": "One UI", assignees: "Assignees", backup: "Backup",
+};
+const opcoes: Record<"category" | "difficulty" | "tc situation", readonly string[]> = {
+  category: CATEGORIAS_CASO_TESTE,
+  difficulty: DIFICULDADES_CASO_TESTE,
+  "tc situation": SITUACOES_CASO_TESTE,
+};
 
 function texto(value: unknown): string {
   if (value === null || value === undefined) return "";
@@ -41,8 +50,12 @@ function cabecalho(value: unknown): string {
   return texto(value).toLocaleLowerCase().replaceAll("_", " ").split(/\s+/).filter(Boolean).join(" ");
 }
 
-function falha(errors: ErroPlanilhaProjeto[]): never {
-  throw new PlanilhaProjetoError(errors);
+function geral(codigo: ErroPlanilha["codigo"], coluna: string | null = null): ErroPlanilha {
+  return { codigo, linha: null, coluna, valor: null };
+}
+
+function falha(errors: ErroPlanilha[], totalLinhas?: number): never {
+  throw new PlanilhaProjetoError(errors, totalLinhas);
 }
 
 function lerBytes(file: File): Promise<ArrayBuffer> {
@@ -55,72 +68,103 @@ function lerBytes(file: File): Promise<ArrayBuffer> {
   });
 }
 
+type SheetJs = typeof import("@e965/xlsx");
+
+/**
+ * Um hyperlink com referência corrompida (o Excel "repara" esses arquivos ao abrir) faz o SheetJS
+ * descartar a aba inteira sem erro. Os links não importam para a importação: removemos e relemos.
+ */
+function semHyperlinks(XLSX: SheetJs, bytes: ArrayBuffer): Uint8Array {
+  const zip = XLSX.CFB.read(new Uint8Array(bytes), { type: "array" });
+  zip.FileIndex.forEach((entry: { content?: Uint8Array; size: number }, index: number) => {
+    if (!entry.content || !/\/xl\/worksheets\/[^/]+\.xml$/i.test(zip.FullPaths[index])) return;
+    const xml = new TextDecoder().decode(entry.content);
+    const limpo = xml.replace(/<hyperlinks>[\s\S]*?<\/hyperlinks>/, "");
+    if (limpo === xml) return;
+    entry.content = new TextEncoder().encode(limpo);
+    entry.size = entry.content.length;
+  });
+  return XLSX.CFB.write(zip, { type: "array", fileType: "zip" });
+}
+
 export async function lerPlanilhaProjeto(file: File): Promise<PlanilhaProjeto> {
   const XLSX = await import("@e965/xlsx");
   let workbook: ExcelWorkbook;
   try {
-    workbook = XLSX.read(await lerBytes(file), { type: "array", cellDates: false });
+    const bytes = await lerBytes(file);
+    workbook = XLSX.read(bytes, { type: "array", cellDates: false });
+    if (workbook.SheetNames.length && !workbook.Sheets[workbook.SheetNames[0]]) {
+      workbook = XLSX.read(semHyperlinks(XLSX, bytes), { type: "array", cellDates: false });
+    }
   } catch {
-    return falha([{ campo: "arquivo", mensagem: "O arquivo não é uma planilha Excel válida." }]);
+    return falha([geral("arquivo_invalido")]);
   }
 
   const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-  if (!firstSheet) return falha([{ campo: "cabecalho", mensagem: "A planilha está vazia." }]);
-  const rows = XLSX.utils.sheet_to_json<unknown[]>(firstSheet, { header: 1, raw: false, defval: "", blankrows: false });
-  if (!rows.length) return falha([{ campo: "cabecalho", mensagem: "A planilha está vazia." }]);
-  const headers = rows[0].map(cabecalho);
+  if (!firstSheet) return falha([geral("planilha_vazia")]);
+  // blankrows mantém as linhas vazias para o número da linha bater com o editor de planilhas.
+  const rows = XLSX.utils.sheet_to_json<unknown[]>(firstSheet, { header: 1, raw: false, defval: "", blankrows: true });
+  if (!rows.length) return falha([geral("planilha_vazia")]);
   const indexes = new Map<string, number>();
-  const errors: ErroPlanilhaProjeto[] = [];
-  headers.forEach((name, index) => {
+  const colunas: Record<string, string> = { ...cabecalhosObrigatorios };
+  const errors: ErroPlanilha[] = [];
+  rows[0].forEach((value, index) => {
+    const name = cabecalho(value);
     if (!name) return;
-    if (indexes.has(name)) errors.push({ campo: `linha.1.${name}`, mensagem: "O cabeçalho está duplicado." });
+    if (indexes.has(name)) errors.push(geral("cabecalho_duplicado", texto(value)));
     indexes.set(name, index);
+    colunas[name] = texto(value);
   });
-  for (const name of cabecalhosObrigatorios) {
-    if (!indexes.has(name)) errors.push({ campo: `linha.1.${name}`, mensagem: "Coluna obrigatória não encontrada." });
+  for (const [name, exibido] of Object.entries(cabecalhosObrigatorios)) {
+    if (!indexes.has(name)) errors.push(geral("coluna_obrigatoria_ausente", exibido));
   }
   if (errors.length) return falha(errors);
 
   const casos: CasoTestePlanilha[] = [];
-  const idsVistos = new Set<string>();
+  const primeiraLinhaPorTcId = new Map<string, number>();
   let app = "";
   let oneUi = "";
+  let totalLinhas = 0;
   rows.slice(1).forEach((row, index) => {
-    const lineNumber = index + 2;
-    const get = (name: string) => texto(row[indexes.get(name)!]);
+    const linha = index + 2;
+    const get = (name: CabecalhoObrigatorio) => texto(row[indexes.get(name)!]);
     if (!row.some((value) => texto(value))) return;
-    const appDaLinha = get("app");
-    const oneUiDaLinha = get("one ui");
-    if (!app && appDaLinha) app = appDaLinha;
-    if (!oneUi && oneUiDaLinha) oneUi = oneUiDaLinha;
+    totalLinhas += 1;
+    if (!app) app = get("app");
+    if (!oneUi) oneUi = get("one ui");
+
+    const erro = (name: CabecalhoObrigatorio, codigo: ErroPlanilha["codigo"], valor = "", parametros?: ErroPlanilha["parametros"]) =>
+      errors.push({ codigo, linha, coluna: colunas[name], valor: valor || null, ...(parametros && { parametros }) });
+    const opcao = <T extends string>(name: keyof typeof opcoes): T | null => {
+      const valor = get(name);
+      if (!valor) { erro(name, "valor_obrigatorio"); return null; }
+      const encontrada = opcoes[name].find((item) => item.toLocaleLowerCase() === valor.toLocaleLowerCase());
+      if (!encontrada) erro(name, "valor_invalido", valor, { esperados: [...opcoes[name]] });
+      return (encontrada ?? null) as T | null;
+    };
 
     const tcId = get("tc id");
-    const categoryValue = get("category").toUpperCase();
-    const difficultyValue = get("difficulty").toLocaleLowerCase();
-    const situationValue = (get("tc situation") || "To-Do").toLocaleLowerCase();
-    const category = (["A", "B", "C"].includes(categoryValue) ? categoryValue : null) as CategoriaCasoTeste | null;
-    const difficulty = ({ low: "Low", medium: "Medium", high: "High" } as const)[difficultyValue as "low" | "medium" | "high"];
-    const situation = ({ "to-do": "To-Do", inprogress: "InProgress", inreview: "InReview", pass: "Pass", fail: "Fail" } as const)[situationValue as "to-do" | "inprogress" | "inreview" | "pass" | "fail"];
+    if (!tcId) erro("tc id", "valor_obrigatorio");
+    else if (primeiraLinhaPorTcId.has(tcId)) erro("tc id", "tc_id_duplicado", tcId, { primeira_linha: primeiraLinhaPorTcId.get(tcId) });
+    else primeiraLinhaPorTcId.set(tcId, linha);
+    const category = opcao<CategoriaCasoTeste>("category");
+    const difficulty = opcao<DificuldadeCasoTeste>("difficulty");
+    const situation = opcao<SituacaoCasoTeste>("tc situation");
     const responsavel = get("assignees");
     const backup = get("backup");
-
-    if (!tcId) errors.push({ campo: `linha.${lineNumber}.tc id`, mensagem: "TC ID é obrigatório." });
-    else if (idsVistos.has(tcId)) errors.push({ campo: `linha.${lineNumber}.tc id`, mensagem: "TC ID duplicado na planilha." });
-    else idsVistos.add(tcId);
-    if (!category) errors.push({ campo: `linha.${lineNumber}.category`, mensagem: "Use A, B ou C." });
-    if (!difficulty) errors.push({ campo: `linha.${lineNumber}.difficulty`, mensagem: "Use Low, Medium ou High." });
-    if (!situation) errors.push({ campo: `linha.${lineNumber}.tc situation`, mensagem: "Use To-Do, InProgress, InReview, Pass ou Fail." });
-    if (!responsavel) errors.push({ campo: `linha.${lineNumber}.assignees`, mensagem: "Responsável é obrigatório." });
-    if (!backup) errors.push({ campo: `linha.${lineNumber}.backup`, mensagem: "Backup é obrigatório." });
+    if (!responsavel) erro("assignees", "valor_obrigatorio");
+    if (!backup) erro("backup", "valor_obrigatorio");
 
     if (tcId && category && difficulty && situation && responsavel && backup) {
-      casos.push({ linha: lineNumber, tc_id: tcId, category, difficulty, situation, responsavel, backup });
+      casos.push({ linha, tc_id: tcId, category, difficulty, situation, responsavel, backup });
     }
   });
 
-  if (!app) errors.push({ campo: "linha.1.app", mensagem: "Informe o App em pelo menos uma linha." });
-  if (!oneUi) errors.push({ campo: "linha.1.one ui", mensagem: "Informe a versão One UI em pelo menos uma linha." });
-  if (!casos.length) errors.push({ campo: "linha.1.tc id", mensagem: "A planilha precisa conter ao menos um Test Case válido." });
-  if (errors.length) return falha(errors);
-  return { app, one_ui: oneUi, casos };
+  if (!totalLinhas) errors.push(geral("sem_casos"));
+  else {
+    if (!app) errors.push(geral("app_ausente", colunas.app));
+    if (!oneUi) errors.push(geral("one_ui_ausente", colunas["one ui"]));
+  }
+  if (errors.length) return falha(errors, totalLinhas);
+  return { app, one_ui: oneUi, casos, totalLinhas, colunas: colunas as PlanilhaProjeto["colunas"] };
 }
