@@ -379,8 +379,8 @@ async def test_consulta_form_factor_global_usa_times_do_escopo(perfil):
 @pytest.mark.parametrize(
     "perfil,permissoes",
     [
-        ("ADMIN_UNIDADE", {"form_factor.consultar"}),
         ("DEV", {"form_factor.consultar"}),
+        ("ADMIN_UNIDADE", set()),
         ("KP", set()),
         ("GERENTE", set()),
     ],

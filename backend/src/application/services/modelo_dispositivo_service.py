@@ -48,7 +48,13 @@ class ModeloDispositivoServiceImpl:
         busca: str | None = None,
     ) -> PagedResult[ModeloDispositivoOpcaoResponse]:
         """Modelos ativos para o seletor de projetos, sem exigir a gestão do catálogo."""
-        self._exigir_permissao(usuario_atual, PERMISSAO_GERENCIAR, "projetos.gerenciar")
+        if (
+            PERMISSAO_GERENCIAR not in usuario_atual.permissoes
+            and not usuario_atual.pode("projetos.gerenciar")
+        ):
+            raise ForbiddenException(
+                "Você não tem permissão para consultar modelos de dispositivo."
+            )
         modelos = await self._repo.listar_paginado(
             usuario_atual.unidade_id, page, page_size, True, busca
         )
@@ -93,7 +99,11 @@ class ModeloDispositivoServiceImpl:
 
     @staticmethod
     def _exigir_permissao(usuario_atual: UsuarioAutenticado, *permissoes: str) -> None:
-        if not any(usuario_atual.pode(permissao) for permissao in permissoes):
+        if PERMISSAO_GERENCIAR in permissoes:
+            permitido = PERMISSAO_GERENCIAR in usuario_atual.permissoes
+        else:
+            permitido = any(usuario_atual.pode(permissao) for permissao in permissoes)
+        if not permitido:
             raise ForbiddenException(
                 "Você não tem permissão para gerenciar modelos de dispositivo."
             )

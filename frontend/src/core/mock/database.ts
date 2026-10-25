@@ -82,9 +82,9 @@ const permissoes: Permissao[] = [
   ["projetos.gerenciar", "Criar e gerenciar projetos", "projetos", "Projects", 5],
   ["test_cases.consultar", "Consultar Test Cases do time", "test_cases", "Test Cases", 6],
   ["test_cases.gerenciar", "Gerenciar Test Cases do time", "test_cases", "Test Cases", 6],
-  ["form_factor.consultar", "Consultar resultados Form Factor", "form_factor", "Form Factor", 7],
+  ["form_factor.consultar", "Consultar Resumo e histórico Form Factor dos projetos no escopo permitido, incluindo Resultados Gerais para Administrador, Gerente e KP", "form_factor", "Form Factor", 7],
   ["form_factor.importar", "Importar resultados SDF", "form_factor", "Form Factor", 7],
-  ["modelos_dispositivo.gerenciar", "Cadastrar e gerenciar o catálogo de modelos de dispositivo", "modelos_dispositivo", "Device models", 8],
+  ["modelos_dispositivo.gerenciar", "Cadastrar, editar, ativar e inativar modelos no catálogo da unidade", "modelos_dispositivo", "Device models", 8],
 ].map(([id, descricao, codigo, nome, ordem], index) => ({
   id: String(id), descricao: String(descricao), ordem: index + 1,
   modulo: { codigo: String(codigo), nome: String(nome), ordem: Number(ordem) },
@@ -92,7 +92,7 @@ const permissoes: Permissao[] = [
 
 function createSeed(): Database {
   const allPermissions = permissoes.map((item) => item.id);
-  const adminProfile: Perfil = { id: "mock-profile-admin", nome: "Administrador", descricao: "Acesso completo à unidade.", codigo: "ADMIN_UNIDADE", permissoes: allPermissions };
+  const adminProfile: Perfil = { id: "mock-profile-admin", nome: "Administrador", descricao: "Acesso completo à unidade.", codigo: "ADMIN_UNIDADE", permissoes: allPermissions.filter((permission) => permission !== "modelos_dispositivo.gerenciar") };
   const standardProfile: Perfil = { id: "mock-profile-standard", nome: "Developer", descricao: "Consulta projetos, TCs e Form Factor do time e atualiza somente os TCs atribuídos.", codigo: "USUARIO_PADRAO", permissoes: ["projetos.consultar", "test_cases.consultar", "form_factor.consultar", "times.consultar", "usuarios.perfil.consultar"] };
   const managerProfile: Perfil = { id: "mock-profile-manager", nome: "Gerente", descricao: "Gerencia pessoas e times do setor.", codigo: "GERENTE", permissoes: ["usuarios.consultar", "usuarios.perfil.consultar", "usuarios.gerenciar", "setores.consultar", "times.consultar", "times.criar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar", "form_factor.consultar"] };
   const kpProfile: Perfil = { id: "mock-profile-kp", nome: "KP", descricao: "Acompanha atividades dos times associados.", codigo: "KP", permissoes: ["usuarios.consultar", "setores.consultar", "times.consultar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar", "modelos_dispositivo.gerenciar", "form_factor.consultar"] };
@@ -110,7 +110,7 @@ function createSeed(): Database {
     { id: "mock-user-inactive", nome: "Rafael Lima", email: "rafael.lima@example.com", ativo: false, perfil_id: standardProfile.id, created_at: "2026-02-10T12:00:00Z" },
   ].map((user: Usuario) => ({ ...user, user_id: user.user_id ?? null }));
   return {
-    schemaVersion: 13,
+    schemaVersion: 14,
     unidade: { id: UNIT_ID, nome: "Manaus", ativo: true },
     usuarios: users,
     perfis: [adminProfile, standardProfile, managerProfile, kpProfile],
@@ -223,7 +223,7 @@ function readDb(): Database {
     if ((db.schemaVersion ?? 1) < 12) {
       // Mesma seed da migration a2b3c4d5e6f7: descrição nos modelos e gestão do catálogo pelo KP.
       db.permissoes = permissoes;
-      db.perfis.filter((profile) => profile.codigo === "KP" || profile.codigo === "ADMIN_UNIDADE").forEach((profile) => {
+      db.perfis.filter((profile) => profile.codigo === "KP").forEach((profile) => {
         profile.permissoes = [...new Set([...profile.permissoes, "modelos_dispositivo.gerenciar"])];
       });
       db.modelosDispositivo.forEach((model) => {
@@ -239,6 +239,14 @@ function readDb(): Database {
         profile.permissoes = [...new Set([...profile.permissoes, "form_factor.consultar"])];
       });
       db.schemaVersion = 13;
+      return writeDb(db);
+    }
+    if ((db.schemaVersion ?? 1) < 14) {
+      db.permissoes = permissoes;
+      db.perfis.filter((profile) => profile.codigo === "ADMIN_UNIDADE").forEach((profile) => {
+        profile.permissoes = profile.permissoes.filter((permission) => permission !== "modelos_dispositivo.gerenciar");
+      });
+      db.schemaVersion = 14;
       return writeDb(db);
     }
     return db;
@@ -491,6 +499,13 @@ function mockProfile() {
 function requireMockPermission(permission: string) {
   const { profile } = mockProfile();
   if (profile?.codigo !== "ADMIN_UNIDADE" && !profile?.permissoes.includes(permission)) {
+    throw new Error("Você não tem permissão para esta ação.");
+  }
+}
+
+function requireExplicitMockPermission(permission: string) {
+  const { profile } = mockProfile();
+  if (!profile?.permissoes.includes(permission)) {
     throw new Error("Você não tem permissão para esta ação.");
   }
 }
@@ -791,7 +806,7 @@ const nomeModeloDuplicado = () => new ApiError({ type: "about:blank", title: "Co
 
 export const mockModelosDispositivoApi = {
   listar(pageNumber: number, pageSize: number, active?: boolean, search?: string) {
-    requireMockPermission("modelos_dispositivo.gerenciar");
+    requireExplicitMockPermission("modelos_dispositivo.gerenciar");
     const { db } = mockProfile();
     let models = [...db.modelosDispositivo];
     if (active !== undefined) models = models.filter((model) => model.ativo === active);
@@ -801,12 +816,12 @@ export const mockModelosDispositivoApi = {
   },
   listarOpcoes(pageNumber: number, pageSize: number) {
     const { db, profile } = mockProfile();
-    if (!profile?.permissoes.includes("projetos.gerenciar")) requireMockPermission("modelos_dispositivo.gerenciar");
+    if (profile?.codigo !== "ADMIN_UNIDADE" && !profile?.permissoes.includes("projetos.gerenciar")) requireExplicitMockPermission("modelos_dispositivo.gerenciar");
     const models = db.modelosDispositivo.filter((model) => model.ativo).map(({ id: modelId, nome, descricao }) => ({ id: modelId, nome, descricao }));
     return page(models, pageNumber, pageSize);
   },
   criar(body: { nome: string; descricao: string | null }) {
-    requireMockPermission("modelos_dispositivo.gerenciar");
+    requireExplicitMockPermission("modelos_dispositivo.gerenciar");
     return updateDb((db) => {
       const normalized = body.nome.trim();
       if (!normalized) throw new Error("O nome do modelo é obrigatório.");
@@ -818,7 +833,7 @@ export const mockModelosDispositivoApi = {
     });
   },
   atualizar(modelId: string, body: { nome?: string; descricao?: string | null; ativo?: boolean }) {
-    requireMockPermission("modelos_dispositivo.gerenciar");
+    requireExplicitMockPermission("modelos_dispositivo.gerenciar");
     return updateDb((db) => {
       const model = db.modelosDispositivo.find((item) => item.id === modelId);
       if (!model) throw new Error("Modelo de dispositivo não encontrado.");
@@ -848,9 +863,10 @@ function semanaIso(value: string) {
 function projetosMockFormFactorGlobal(db: Database) {
   const { user, profile } = mockProfile();
   if (
-    !profile || !profile.codigo || !["GERENTE", "KP"].includes(profile.codigo) ||
+    !profile || !profile.codigo || !["ADMIN_UNIDADE", "GERENTE", "KP"].includes(profile.codigo) ||
     !profile.permissoes.includes("form_factor.consultar")
   ) throw new Error("Você não tem permissão para consultar Resultados Gerais.");
+  if (profile.codigo === "ADMIN_UNIDADE") return db.projetos.filter((project) => project.ativo);
   const setoresGerenciados = new Set(db.gerentesSetor
     .filter((item) => item.usuario_id === user.id && item.ativo)
     .map((item) => item.setor_id));

@@ -425,11 +425,13 @@ describe("base mock de projetos", () => {
 
     mockProjetosApi.listar(1, 10);
     const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-    expect(migrado.schemaVersion).toBe(13);
+    expect(migrado.schemaVersion).toBe(14);
     const kp = migrado.perfis.find((profile: { codigo: string }) => profile.codigo === "KP");
     const gerente = migrado.perfis.find((profile: { codigo: string }) => profile.codigo === "GERENTE");
     expect(kp.permissoes).toContain("modelos_dispositivo.gerenciar");
     expect(gerente.permissoes).not.toContain("modelos_dispositivo.gerenciar");
+    const admin = migrado.perfis.find((profile: { codigo: string }) => profile.codigo === "ADMIN_UNIDADE");
+    expect(admin.permissoes).not.toContain("modelos_dispositivo.gerenciar");
     expect(migrado.modelosDispositivo.every((model: { descricao: unknown }) => model.descricao === null)).toBe(true);
   });
 
@@ -442,7 +444,7 @@ describe("base mock de projetos", () => {
 
     mockProjetosApi.listar(1, 10);
     const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-    expect(migrado.schemaVersion).toBe(13);
+    expect(migrado.schemaVersion).toBe(14);
     const kp = migrado.perfis.find((profile: { codigo: string }) => profile.codigo === "KP");
     const gerente = migrado.perfis.find((profile: { codigo: string }) => profile.codigo === "GERENTE");
     expect(kp.permissoes).toContain("form_factor.consultar");

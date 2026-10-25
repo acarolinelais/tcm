@@ -127,12 +127,16 @@ class FormFactorServiceImpl:
         )
         return to_global_resultados_response(modelos, responsaveis, dados)
 
-    def _time_ids_form_factor_global(self, usuario_atual: UsuarioAutenticado) -> tuple[UUID, ...]:
+    def _time_ids_form_factor_global(
+        self, usuario_atual: UsuarioAutenticado
+    ) -> tuple[UUID, ...] | None:
         if (
-            usuario_atual.perfil_codigo not in {"GERENTE", "KP"}
+            usuario_atual.perfil_codigo not in {"ADMIN_UNIDADE", "GERENTE", "KP"}
             or "form_factor.consultar" not in usuario_atual.permissoes
         ):
             raise ForbiddenException("Você não tem permissão para consultar Resultados Gerais.")
+        if usuario_atual.perfil_codigo == "ADMIN_UNIDADE":
+            return None  # None instrui o repositório a consultar todos os times da unidade.
         time_ids = (
             usuario_atual.times_gerenciados
             if usuario_atual.perfil_codigo == "GERENTE"

@@ -20,10 +20,10 @@
   - Verificação: `cd backend && SDF_TEST_DATABASE_URL=... uv run pytest tests/integration/test_resultado_form_factor_repository.py -k global_resultados` → cada rodada aparece uma vez, filtros e ordenação são determinísticos e projetos fora do escopo não aparecem.
 
 ## Fase 2: autorização, serviço e API
-- [x] **T04. Aplicar permissão e escopo de Gerente/KP no serviço global**
+- [x] **T04. Aplicar permissão e escopo de Administrador/Gerente/KP no serviço global**
   - Arquivos: `backend/src/application/services/form_factor_service.py`, sua interface e `backend/tests/unit/application/services/test_form_factor_service.py`.
   - Cobre: CA-01, CA-09, CA-11.
-  - Verificação: `cd backend && uv run pytest tests/unit/application/services/test_form_factor_service.py -k global` → Gerente consulta setores gerenciados, KP consulta seus times e outros perfis/perfis sem permissão são recusados.
+  - Verificação: `cd backend && uv run pytest tests/unit/application/services/test_form_factor_service.py -k global` → Administrador consulta a unidade, Gerente consulta setores gerenciados, KP consulta seus times e outros perfis/perfis sem permissão são recusados.
 - [x] **T05. Mapear DTOs globais para respostas paginadas**
   - Arquivos: schemas Form Factor globais e `backend/tests/unit/application/schemas/test_form_factor_global_schema.py`.
   - Cobre: CA-01..08.
@@ -50,10 +50,10 @@
   - Arquivos: `ResultadosGeraisPage.tsx`, rota e testes da página.
   - Cobre: CA-01, CA-03..08, CA-10.
   - Verificação: `cd frontend && npm test -- src/modules/projetos/ResultadosGeraisPage.test.tsx` → semana, projeto, filtros, paginação e seleção da visão atualizam a consulta e a página volta para 1 ao filtrar.
-- [x] **T11. Adicionar entrada de navegação localizada e limitada a Gerente/KP**
+- [x] **T11. Adicionar entrada de navegação localizada e limitada a Administrador/Gerente/KP**
   - Arquivos: `frontend/src/core/layout/Sidebar.tsx`, ícone, `frontend/src/core/router.tsx` ou rotas do módulo, traduções e testes da sidebar/rota.
   - Cobre: CA-01, CA-09.
-  - Verificação: `cd frontend && npm test -- src/core/layout/Sidebar.test.tsx src/modules/projetos/routes.test.ts` → Gerente/KP autorizados veem a opção; outros perfis não a veem nem acessam a tela.
+  - Verificação: `cd frontend && npm test -- src/core/layout/Sidebar.test.tsx src/modules/projetos/routes.test.ts` → Administrador/Gerente/KP autorizados veem a opção; outros perfis não a veem nem acessam a tela.
 - [x] **T12. Implementar consultas globais equivalentes no mock persistido**
   - Arquivos: `frontend/src/core/mock/database.ts` e `frontend/src/core/mock/database.test.ts`.
   - Cobre: CA-01..11.

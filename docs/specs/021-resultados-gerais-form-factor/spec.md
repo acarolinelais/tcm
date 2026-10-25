@@ -15,8 +15,8 @@ Disponibilizar uma tela única de Resultados Gerais que reúna os Form Factors d
 - Como **membro com acesso a Form Factor**, quero identificar o projeto e os modelos aplicáveis a cada Test Case para interpretar os resultados sem confundir ausência de resultado com modelo não utilizado.
 
 ## Regras de negócio
-- RN-01: A navegação apresenta uma opção **Resultados Gerais** (General Results), disponível somente para perfis **Gerente** e **KP** com permissão de consulta de Form Factor.
-- RN-02: A tela reúne dados apenas dos projetos ativos aos quais o perfil atual tem acesso: o Gerente consulta projetos dos setores sob sua gestão e o KP consulta projetos dos seus times.
+- RN-01: A navegação apresenta uma opção **Resultados Gerais** (General Results), disponível para perfis **Administrador**, **Gerente** e **KP** com permissão de consulta de Form Factor.
+- RN-02: A tela reúne dados apenas dos projetos ativos aos quais o perfil atual tem acesso: o Administrador consulta toda a unidade, o Gerente consulta projetos dos setores sob sua gestão e o KP consulta projetos dos seus times.
 - RN-03: A visão **Resumo** apresenta uma linha por Test Case e o resultado mais recente de cada modelo aplicável ao projeto daquele caso.
 - RN-04: O Resumo inclui uma coluna de Projeto para distinguir Test Cases com identificadores iguais em projetos diferentes.
 - RN-05: As colunas de modelos formam a união dos modelos usados nos projetos presentes no resultado. Para cada linha, modelo não associado ao projeto é indicado como **N/A**; modelo associado sem resultado é indicado como vazio.
@@ -30,7 +30,7 @@ Disponibilizar uma tela única de Resultados Gerais que reúna os Form Factors d
 ## Critérios de aceite
 > Use o formato Dado / Quando / Então. Inclua cenários de falha.
 
-- **CA-01:** Dado um usuário Gerente ou KP com permissão de consulta de Form Factor, quando abre Resultados Gerais, então vê a visão Resumo com dados dos projetos acessíveis ao seu perfil e uma coluna que identifica o projeto de cada Test Case.
+- **CA-01:** Dado um usuário Administrador, Gerente ou KP com permissão de consulta de Form Factor, quando abre Resultados Gerais, então vê a visão Resumo com dados dos projetos acessíveis ao seu perfil e uma coluna que identifica o projeto de cada Test Case.
 - **CA-02:** Dado que os projetos acessíveis usam conjuntos diferentes de modelos, quando a tela é exibida, então há uma coluna por modelo da união e cada linha distingue modelos não associados (**N/A**) de modelos associados ainda sem resultado.
 - **CA-03:** Dado um Test Case com várias rodadas para o mesmo modelo, quando consulta o Resumo, então vê somente o resultado mais recente por modelo, sem perder os demais resultados do histórico.
 - **CA-04:** Dado um usuário com acesso a projetos sem resultado, quando abre o Resumo sem filtro de semana, então os Test Cases desses projetos também aparecem com as células de resultado vazias.
@@ -38,7 +38,7 @@ Disponibilizar uma tela única de Resultados Gerais que reúna os Form Factors d
 - **CA-06:** Dado um usuário que seleciona **Ver todos os resultados**, quando há várias execuções para o mesmo Test Case, então cada execução aparece em sua própria linha com projeto, origem, data e resultados por modelo.
 - **CA-07:** Dado uma lista global, quando o usuário filtra por projeto, Test Case, responsável, modelo ou resultado, ou por SDF ID/origem na visão detalhada, então só permanecem os registros correspondentes e a página volta para a primeira.
 - **CA-08:** Dado mais resultados do que cabem numa página ou uma quantidade de modelos que exceda a largura da tela, quando o usuário navega pela lista, então consegue acessar todas as páginas e colunas sem perder a relação entre cabeçalho e linha.
-- **CA-09 (falha):** Dado um usuário que não seja Gerente ou KP, ou que não tenha permissão de consulta de Form Factor, quando tenta abrir Resultados Gerais ou consultar seus dados, então o acesso é recusado sem revelar projetos ou resultados.
+- **CA-09 (falha):** Dado um usuário que não seja Administrador, Gerente ou KP, ou que não tenha permissão de consulta de Form Factor, quando tenta abrir Resultados Gerais ou consultar seus dados, então o acesso é recusado sem revelar projetos ou resultados.
 - **CA-10 (falha):** Dado um filtro que não corresponde a nenhum registro, quando é aplicado, então a tela informa que não encontrou resultados e permite limpar os filtros.
 - **CA-11 (falha):** Dado projetos ou resultados de outra unidade ou fora do escopo organizacional do usuário, quando a tela é consultada, então esses dados não aparecem, mesmo que um filtro tente alcançá-los.
 

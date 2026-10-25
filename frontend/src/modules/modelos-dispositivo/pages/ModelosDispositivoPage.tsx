@@ -21,7 +21,7 @@ import type { ModeloDispositivo, ModeloDispositivoFiltros } from "../model/model
 const PERMISSAO_GERENCIAR_MODELOS = "modelos_dispositivo.gerenciar";
 
 function podeGerenciarModelos(perfil: PerfilAtual) {
-  return perfil.perfil_codigo === "ADMIN_UNIDADE" || perfil.permissoes.includes(PERMISSAO_GERENCIAR_MODELOS);
+  return perfil.permissoes.includes(PERMISSAO_GERENCIAR_MODELOS);
 }
 
 const formatarData = (valor: string | null) => (valor ? formatDate(valor) : "—");

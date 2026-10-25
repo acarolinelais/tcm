@@ -32,9 +32,9 @@ class ResultadoFormFactorRepositoryImpl(
     model = ResultadoFormFactorModel
 
     async def listar_responsaveis_form_factor_global(
-        self, unidade_id: UUID, time_ids: tuple[UUID, ...], projeto_id: UUID | None = None
+        self, unidade_id: UUID, time_ids: tuple[UUID, ...] | None, projeto_id: UUID | None = None
     ) -> tuple[FormFactorResponsavelGlobal, ...]:
-        if not time_ids:
+        if time_ids == ():
             return ()
         linhas = (
             await self.session.execute(
@@ -50,7 +50,7 @@ class ResultadoFormFactorRepositoryImpl(
                     ProjetoModel.ativo.is_(True),
                     TimeModel.unidade_id == unidade_id,
                     TimeModel.ativo.is_(True),
-                    TimeModel.id.in_(time_ids),
+                    TimeModel.id.in_(time_ids) if time_ids is not None else True,
                     ProjetoModel.id == projeto_id if projeto_id is not None else True,
                 )
                 .distinct()
@@ -63,9 +63,9 @@ class ResultadoFormFactorRepositoryImpl(
         )
 
     async def listar_modelos_form_factor_global(
-        self, unidade_id: UUID, time_ids: tuple[UUID, ...], projeto_id: UUID | None = None
+        self, unidade_id: UUID, time_ids: tuple[UUID, ...] | None, projeto_id: UUID | None = None
     ) -> tuple[FormFactorModeloGlobal, ...]:
-        if not time_ids:
+        if time_ids == ():
             return ()
         linhas = (
             await self.session.execute(
@@ -85,7 +85,7 @@ class ResultadoFormFactorRepositoryImpl(
                     ProjetoModel.ativo.is_(True),
                     TimeModel.unidade_id == unidade_id,
                     TimeModel.ativo.is_(True),
-                    TimeModel.id.in_(time_ids),
+                    TimeModel.id.in_(time_ids) if time_ids is not None else True,
                     ProjetoModel.id == projeto_id if projeto_id is not None else True,
                 )
                 .distinct()
@@ -121,7 +121,7 @@ class ResultadoFormFactorRepositoryImpl(
     ):
         filtros = [
             CasoTesteModel.unidade_id == unidade_id,
-            ProjetoModel.time_id.in_(time_ids),
+            *([ProjetoModel.time_id.in_(time_ids)] if time_ids is not None else []),
             CasoTesteModel.ativo.is_(True),
             ProjetoModel.unidade_id == unidade_id,
             ProjetoModel.ativo.is_(True),
@@ -183,7 +183,7 @@ class ResultadoFormFactorRepositoryImpl(
     async def listar_form_factor_global(
         self,
         unidade_id: UUID,
-        time_ids: tuple[UUID, ...],
+        time_ids: tuple[UUID, ...] | None,
         page: int,
         page_size: int,
         inicio: datetime | None = None,
@@ -195,7 +195,7 @@ class ResultadoFormFactorRepositoryImpl(
         modelo_dispositivo_id: UUID | None = None,
         resultado: str | None = None,
     ) -> PagedResult[FormFactorLinhaGlobal]:
-        if not time_ids:
+        if time_ids == ():
             return PagedResult([], page, page_size, 0)
         filtros = self._global_filtros_caso(
             unidade_id,
@@ -348,7 +348,7 @@ class ResultadoFormFactorRepositoryImpl(
     async def listar_execucoes_form_factor_global(
         self,
         unidade_id: UUID,
-        time_ids: tuple[UUID, ...],
+        time_ids: tuple[UUID, ...] | None,
         page: int,
         page_size: int,
         inicio: datetime | None = None,
@@ -361,13 +361,13 @@ class ResultadoFormFactorRepositoryImpl(
         resultado: str | None = None,
         origem: str | None = None,
     ) -> PagedResult[FormFactorExecucaoLinhaGlobal]:
-        if not time_ids:
+        if time_ids == ():
             return PagedResult([], page, page_size, 0)
         filtros = [
             ExecucaoSdfModel.unidade_id == unidade_id,
             ExecucaoSdfModel.ativo.is_(True),
             CasoTesteModel.unidade_id == unidade_id,
-            ProjetoModel.time_id.in_(time_ids),
+            *([ProjetoModel.time_id.in_(time_ids)] if time_ids is not None else []),
             CasoTesteModel.ativo.is_(True),
             ProjetoModel.unidade_id == unidade_id,
             ProjetoModel.ativo.is_(True),
