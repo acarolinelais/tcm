@@ -1,6 +1,6 @@
 # 0021. Escopo de gestão de times definido pelo setor
 
-- **Status:** Aceito
+- **Status:** Aceito; escopo do gerente em projetos, Test Cases, membros e Form Factor ampliado por [0036](0036-escopo-gerente-inclui-times-em-que-participa.md)
 - **Data:** 2026-10-23
 - **ADRs relacionados:** 0013, 0018, 0020
 
