@@ -1,12 +1,14 @@
 import type { PerfilAtual } from "@/core/auth/api";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { httpPost } from "@/core/api/http-client";
 import { clearTokens } from "@/core/auth/session";
-import { ChevronDown, CircleArrowRight } from "lucide-react";
+import { ChevronDown, CircleArrowRight, Search } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LanguageSelector } from "@/core/i18n/LanguageSelector";
 import { useDismiss } from "@/shared/lib/use-dismiss";
+import { ChevronIcon } from "./sidebar-icons";
+import { rotaPai, rotuloDaRota } from "./voltar";
 
 export function Navbar({ perfil }: { perfil: PerfilAtual }) {
   const { t } = useTranslation();
@@ -14,6 +16,7 @@ export function Navbar({ perfil }: { perfil: PerfilAtual }) {
   const [menuAberto, setMenuAberto] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   useDismiss(menuRef, menuAberto, useCallback(() => setMenuAberto(false), []));
+  const voltar = useVoltar();
   async function sair() {
     try {
       await httpPost<void>("/api/auth/logout", {});
@@ -23,16 +26,33 @@ export function Navbar({ perfil }: { perfil: PerfilAtual }) {
     }
   }
   return (
-    <header className="col-span-2 col-start-1 row-start-1 flex h-8 items-center justify-end">
-      <div className="flex shrink-0 items-center gap-5">
-        <LanguageSelector perfil={perfil} />
+    // Layout do Figma (TCM, node 2090:199): voltar à esquerda, alinhado ao card; idioma e usuário à direita.
+    <header className="col-start-2 row-start-1 grid h-8 min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,33.375rem)_minmax(0,1fr)] items-center gap-4">
+      {voltar ? (
+        <button
+          type="button"
+          onClick={voltar.ir}
+          aria-label={t("backTo", { page: t(voltar.rotulo) })}
+          className="flex min-w-0 items-center gap-1 rounded-lg py-1 pr-2 text-[15px] leading-[21px] text-[#454442] transition-colors hover:text-primary active:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <ChevronIcon aria-hidden="true" className="shrink-0 rotate-90" />
+          <span className="truncate">{t(voltar.rotulo)}</span>
+        </button>
+      ) : <span />}
+      {/* Só visual por enquanto (Figma): ainda não existe busca no app. */}
+      <label className="hidden h-[37px] items-center gap-2.5 rounded-full border border-[#F7F8FA] bg-white px-5 md:flex">
+        <Search aria-hidden="true" className="size-[13px] shrink-0 text-[#A1A19F]" strokeWidth={1.75} />
+        <input type="search" aria-label={t("searchKeyword")} placeholder={t("searchKeyword")} className="min-w-0 flex-1 bg-transparent text-[15px] leading-[21px] text-[#454442] outline-none placeholder:text-[#A1A19F]" />
+      </label>
+      <div className="flex shrink-0 items-center justify-end gap-6 md:col-start-3">
+        <LanguageSelector perfil={perfil} className="gap-2 text-[15px] text-[#454442]" />
         <div ref={menuRef} className="relative">
           <button type="button" aria-haspopup="menu" aria-expanded={menuAberto} onClick={() => setMenuAberto(!menuAberto)} title={t("userMenu")} className="flex items-center gap-1.5">
-            <span aria-hidden="true" className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#8880F7] text-[10px] font-medium text-white">
+            <span aria-hidden="true" className="flex size-[21px] items-center justify-center rounded-full bg-[#8880F7] text-[11px] font-medium text-white">
               {perfil.nome.slice(0, 1).toUpperCase()}
             </span>
-            <span className="max-w-40 truncate text-sm font-medium">{perfil.nome.split(" ")[0]}</span>
-            <ChevronDown aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
+            <span className="max-w-40 truncate text-[15px] font-medium text-[#454442]">{perfil.nome.split(" ")[0]}</span>
+            <ChevronDown aria-hidden="true" className="size-3.5 text-[#454442]" />
           </button>
           {menuAberto && <div role="menu" aria-label={perfil.email} className="popover-enter absolute right-0 top-10 z-50 min-w-44 rounded-xl border border-border bg-card p-1.5 shadow-lg">
             <p aria-hidden="true" className="truncate px-2 py-1.5 text-xs text-muted-foreground">{perfil.email}</p>
@@ -45,4 +65,12 @@ export function Navbar({ perfil }: { perfil: PerfilAtual }) {
       </div>
     </header>
   );
+}
+
+/** Nas páginas fora da sidebar (ex.: detalhe de projeto), volta para a página principal delas. */
+function useVoltar() {
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const destino = rotaPai(pathname);
+  return destino ? { rotulo: rotuloDaRota(destino), ir: () => navigate(destino) } : null;
 }
