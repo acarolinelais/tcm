@@ -72,6 +72,7 @@ function ProjetoDetalhe() {
   const [arquivoSdf, setArquivoSdf] = useState<File | null>(null);
   const inputSdf = useRef<HTMLInputElement>(null);
   const abasRef = useRef<HTMLDivElement>(null);
+  const visoesFormFactorRef = useRef<HTMLElement>(null);
   const [indicador, setIndicador] = useState<{ left: number; width: number } | null>(null);
 
   const admin = perfil.perfil_codigo === "ADMIN_UNIDADE";
@@ -177,32 +178,48 @@ function ProjetoDetalhe() {
   if (projeto.isError) return <p role="alert" className="p-6 text-sm">{t("projectNotFound")}</p>;
   if (dev && projeto.isSuccess && associacao.isSuccess && !associacao.isFetching && associacao.data.total_count === 0) return <ProjetosEntradaPage projetoSemCasosId={projetoId} />;
 
-  return <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
+  return <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-[#EEEEF1] bg-card px-4 py-5 sm:rounded-[42px] sm:px-11 sm:py-10">
     <header className="mb-4 flex shrink-0 flex-wrap items-start gap-4">
       <div className="min-w-0 flex-1">{projeto.data ? <ProjetoSwitcher projetoId={projetoId} nome={projeto.data.nome} /> : <h1 className="truncate text-2xl font-medium text-primary">{t("loadingProjects")}</h1>}</div>
-      {projeto.data && <div className="ml-auto grid shrink-0 gap-1 text-xs text-muted-foreground"><span aria-hidden="true">{t("week")}</span><WeekPicker label={t("week")} value={aba === "cases" ? semanaCasos : semana} onChange={(valor) => { if (aba === "cases") setSemanaCasos(valor); else setSemana(valor); setPagina(1); }} className="h-9 w-44" /></div>}
+      {projeto.data && <div className="ml-auto grid w-full shrink-0 gap-1 sm:w-auto"><WeekPicker label={t("week")} value={aba === "cases" ? semanaCasos : semana} onChange={(valor) => { if (aba === "cases") setSemanaCasos(valor); else setSemana(valor); setPagina(1); }} className="w-full sm:w-auto" /></div>}
     </header>
 
     {projeto.isLoading ? <p role="status" className="py-8 text-sm text-muted-foreground">{t("loadingProjects")}</p> : projeto.isError || !projeto.data ? <p role="alert" className="py-8 text-sm text-muted-foreground">{t("projectNotFound", { defaultValue: "Projeto não encontrado ou sem acesso." })}</p> : <>
       {/* A ação da aba mora na barra de abas: o cabeçalho não muda de layout ao trocar de aba. */}
-      <div className="mb-5 flex shrink-0 items-end justify-between gap-4 border-b border-border">
-      <div ref={abasRef} className="relative flex gap-4" role="tablist" aria-label={t("projectTabs", { defaultValue: "Abas do projeto" })}>
-        {podeConsultarCasos && <button type="button" role="tab" aria-selected={aba === "cases"} onClick={() => { setAba("cases"); setPagina(1); }} className={`px-0.5 pb-2 text-lg transition-colors ${aba === "cases" ? "text-primary" : "text-foreground hover:text-primary"}`}>{t("testCasesTab")}</button>}
-        {(podeConsultarFormFactor || podeImportarSdf) && <button type="button" role="tab" aria-selected={aba === "form-factor"} onClick={() => { setAba("form-factor"); setPagina(1); }} className={`px-0.5 pb-2 text-lg transition-colors ${aba === "form-factor" ? "text-primary" : "text-foreground hover:text-primary"}`}>{t("formFactor", { defaultValue: "Form Factor" })}</button>}
+      <div className="mb-5 flex shrink-0 flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-border">
+      <div ref={abasRef} onKeyDown={(event) => {
+        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+        const abasDisponiveis = [
+          ...(podeConsultarCasos ? ["cases" as const] : []),
+          ...(podeConsultarFormFactor || podeImportarSdf ? ["form-factor" as const] : []),
+        ];
+        if (abasDisponiveis.length < 2) return;
+        event.preventDefault();
+        const indiceAtual = abasDisponiveis.indexOf(aba);
+        const indiceSeguinte = event.key === "Home" ? 0
+          : event.key === "End" ? abasDisponiveis.length - 1
+            : (indiceAtual + (event.key === "ArrowRight" ? 1 : -1) + abasDisponiveis.length) % abasDisponiveis.length;
+        const proximaAba = abasDisponiveis[indiceSeguinte];
+        setAba(proximaAba);
+        setPagina(1);
+        requestAnimationFrame(() => abasRef.current?.querySelector<HTMLButtonElement>(`[data-tab="${proximaAba}"]`)?.focus());
+      }} className="relative flex gap-4" role="tablist" aria-label={t("projectTabs", { defaultValue: "Abas do projeto" })}>
+        {podeConsultarCasos && <button id="project-cases-tab" data-tab="cases" type="button" role="tab" tabIndex={aba === "cases" ? 0 : -1} aria-selected={aba === "cases"} onClick={() => { setAba("cases"); setPagina(1); }} className={`px-0.5 pb-2 text-base transition-colors sm:text-lg ${aba === "cases" ? "text-primary" : "text-foreground hover:text-primary"}`}>{t("testCasesTab")}</button>}
+        {(podeConsultarFormFactor || podeImportarSdf) && <button id="project-form-factor-tab" data-tab="form-factor" type="button" role="tab" tabIndex={aba === "form-factor" ? 0 : -1} aria-selected={aba === "form-factor"} onClick={() => { setAba("form-factor"); setPagina(1); }} className={`px-0.5 pb-2 text-base transition-colors sm:text-lg ${aba === "form-factor" ? "text-primary" : "text-foreground hover:text-primary"}`}>{t("formFactor", { defaultValue: "Form Factor" })}</button>}
         {/* Uma barra só, que desliza até a aba ativa. */}
         {indicador && <span aria-hidden="true" className="absolute -bottom-px left-0 h-0.5 rounded-full bg-primary transition-[translate,width] duration-200 ease-out motion-reduce:transition-none" style={{ width: indicador.width, translate: `${indicador.left}px 0` }} />}
       </div>
-      {podeGerenciarCasos && aba === "cases" && <Button size="sm" className="mb-2" onClick={() => { limparCaso(); setCriarAberto(true); }}><Plus aria-hidden="true" className="size-4" />{t("newTestCase", { defaultValue: "Novo Test Case" })}</Button>}
-      {podeImportarSdf && aba === "form-factor" && <div className="mb-2 flex flex-wrap items-center justify-end gap-2"><input ref={inputSdf} className="sr-only" type="file" accept=".xls,.xlsx" onChange={(event) => setArquivoSdf(event.target.files?.[0] ?? null)} /><Button size="sm" variant="outline" onClick={() => inputSdf.current?.click()}><UploadCloud aria-hidden="true" className="size-4" />{arquivoSdf?.name ?? t("importSdf", { defaultValue: "Importar relatório SDF" })}</Button>{arquivoSdf && <Button size="sm" disabled={importReport.isPending} onClick={() => importReport.mutate()}>{importReport.isPending ? t("saving") : t("import")}</Button>}</div>}
+      {podeGerenciarCasos && aba === "cases" && <Button size="sm" className="mb-2 max-sm:w-full" onClick={() => { limparCaso(); setCriarAberto(true); }}><Plus aria-hidden="true" className="size-4" />{t("newTestCase", { defaultValue: "Novo Test Case" })}</Button>}
+      {podeImportarSdf && aba === "form-factor" && <div className="mb-2 flex w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end"><input ref={inputSdf} className="sr-only" type="file" accept=".xls,.xlsx" onChange={(event) => setArquivoSdf(event.target.files?.[0] ?? null)} /><Button size="sm" variant="outline" className="h-auto min-h-8 whitespace-normal text-left leading-tight sm:h-8" onClick={() => inputSdf.current?.click()}><UploadCloud aria-hidden="true" className="size-4 shrink-0" />{arquivoSdf?.name ?? t("importSdf", { defaultValue: "Importar relatório SDF" })}</Button>{arquivoSdf && <Button size="sm" disabled={importReport.isPending} onClick={() => importReport.mutate()}>{importReport.isPending ? t("saving") : t("import")}</Button>}</div>}
       </div>
 
-      {aba === "cases" && podeConsultarCasos ? <TableLayout>
+      {aba === "cases" && podeConsultarCasos ? <div id="project-cases-panel" role="tabpanel" aria-labelledby="project-cases-tab" className="flex min-h-0 flex-1 flex-col"><TableLayout>
         <Table containerClassName={casos.data?.items.length ? "thin-scroll min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
           <TableHeader><TableRow>
             <TableHead><TableColumnFilter label={t("tcId")} value={filtrosCaso.tcId} onChange={(value) => alterarFiltroCaso("tcId", value)} /></TableHead>
             <TableHead><TableColumnFilter label={t("status")} value={filtrosCaso.status} onChange={(value) => alterarFiltroCaso("status", value)} options={[{ value: "", label: t("all") }, ...STATUS_CASO_TESTE.map((value) => ({ value, label: t(ROTULO_STATUS[value]) }))]} /></TableHead>
             <TableHead><TableColumnFilter label={t("tcSituation")} value={filtrosCaso.situation} onChange={(value) => alterarFiltroCaso("situation", value)} options={[{ value: "", label: t("all") }, ...SITUACOES_CASO_TESTE.map((value) => ({ value, label: t(ROTULO_SITUACAO[value]) }))]} /></TableHead>
-            <TableHead><TableColumnFilter label={t("assignee")} value={filtrosCaso.assignee} onChange={(value) => alterarFiltroCaso("assignee", value)} options={[{ value: "", label: t("all") }, ...opcoesAssignee]} /></TableHead>
+            <TableHead><TableColumnFilter label={t("assignee")} value={filtrosCaso.assignee} onChange={(value) => alterarFiltroCaso("assignee", value)} options={[{ value: "", label: t("all") }, ...opcoesAssignee]} searchable /></TableHead>
             <TableHead><TableColumnFilter label={t("difficulty")} value={filtrosCaso.difficulty} onChange={(value) => alterarFiltroCaso("difficulty", value)} options={[{ value: "", label: t("all") }, ...dificuldades.map((value) => ({ value, label: t(difficultyLabels[value]) }))]} /></TableHead>
             <TableHead><TableColumnFilter label={t("category")} value={filtrosCaso.category} onChange={(value) => alterarFiltroCaso("category", value)} options={[{ value: "", label: t("all") }, ...categorias.map((value) => ({ value, label: value }))]} /></TableHead>
             <TableHead><TableColumnFilter label={t("endDate", { defaultValue: "Data final" })} value={filtrosCaso.endDate} onChange={(value) => alterarFiltroCaso("endDate", value)} type="date" /></TableHead>
@@ -233,14 +250,27 @@ function ProjetoDetalhe() {
         {casos.isLoading && <p role="status" className="p-5 text-sm text-muted-foreground">{t("loading", { defaultValue: "Carregando…" })}</p>}
         {casos.isError && <p role="alert" className="p-5 text-sm text-destructive">{t("caseLoadError", { defaultValue: "Não foi possível carregar os Test Cases." })}</p>}
         <TablePagination page={pagina} pageSize={tamanhoPagina} totalCount={casos.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
-      </TableLayout> : <div className="flex min-h-0 flex-1 flex-col gap-4">
-        <nav className="flex shrink-0 gap-4 border-b border-border" aria-label={t("formFactorViews", { defaultValue: "Form Factor views" })}>
-          <button type="button" aria-current={visaoFormFactor === "summary" ? "page" : undefined} onClick={() => { setVisaoFormFactor("summary"); setPagina(1); }} className={`pb-2 text-sm ${visaoFormFactor === "summary" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}>{t("formFactorSummary", { defaultValue: "Summary" })}</button>
-          <button type="button" aria-current={visaoFormFactor === "results" ? "page" : undefined} onClick={() => { setVisaoFormFactor("results"); setPagina(1); }} className={`pb-2 text-sm ${visaoFormFactor === "results" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}>{t("formFactorResults", { defaultValue: "Results" })}</button>
-        </nav>
-        {visaoFormFactor === "results" ? <FormFactorResultadosTabela dados={historico.data} carregando={historico.isLoading} erro={historico.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} filtros={filtrosResultados} onFiltroChange={(campo, valor) => { setFiltrosResultados((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} /> : <>
+      </TableLayout></div> : <div id="project-form-factor-panel" role="tabpanel" aria-labelledby="project-form-factor-tab" className="flex min-h-0 flex-1 flex-col gap-4">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
+          <nav ref={visoesFormFactorRef} onKeyDown={(event) => {
+            if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+            event.preventDefault();
+            const next = event.key === "Home" ? "summary"
+              : event.key === "End" ? "results"
+                : visaoFormFactor === "summary" ? "results" : "summary";
+            setVisaoFormFactor(next);
+            setPagina(1);
+            requestAnimationFrame(() => visoesFormFactorRef.current?.querySelector<HTMLButtonElement>(`[data-view="${next}"]`)?.focus());
+          }} className="inline-flex w-fit items-center rounded-xl border border-border/70 bg-muted/70 p-1" role="tablist" aria-label={t("formFactorViews", { defaultValue: "Form Factor views" })}>
+            <button id="form-factor-summary-tab" data-view="summary" type="button" role="tab" tabIndex={visaoFormFactor === "summary" ? 0 : -1} aria-selected={visaoFormFactor === "summary"} aria-controls="form-factor-summary-panel" onClick={() => { setVisaoFormFactor("summary"); setPagina(1); }} className={`min-h-9 rounded-lg px-3.5 text-sm font-medium transition-[background-color,color,box-shadow,scale] duration-150 active:scale-[.98] motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${visaoFormFactor === "summary" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{t("formFactorSummary", { defaultValue: "Summary" })}</button>
+            <button id="form-factor-results-tab" data-view="results" type="button" role="tab" tabIndex={visaoFormFactor === "results" ? 0 : -1} aria-selected={visaoFormFactor === "results"} aria-controls="form-factor-results-panel" onClick={() => { setVisaoFormFactor("results"); setPagina(1); }} className={`min-h-9 rounded-lg px-3.5 text-sm font-medium transition-[background-color,color,box-shadow,scale] duration-150 active:scale-[.98] motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${visaoFormFactor === "results" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{t("formFactorResults", { defaultValue: "Results" })}</button>
+          </nav>
+          <p className="text-sm text-muted-foreground">{t(visaoFormFactor === "summary" ? "formFactorSummaryHint" : "formFactorResultsHint", { defaultValue: visaoFormFactor === "summary" ? "Latest result per test case and model." : "Every recorded run, one row per execution." })}</p>
+        </div>
+        <div id="form-factor-summary-panel" role="tabpanel" aria-labelledby="form-factor-summary-tab" hidden={visaoFormFactor !== "summary"} className="flex min-h-0 flex-1 flex-col">
         <FormFactorTabela dados={resultados.data} carregando={resultados.isLoading} erro={resultados.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} assignee={assigneeFormFactor} onAssigneeChange={(valor) => { setAssigneeFormFactor(valor); setPagina(1); }} tcId={filtrosResumo.tcId} sdfId={filtrosResumo.sdfId} onFiltroTexto={(campo, valor) => { setFiltrosResumo((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} modeloDispositivoId={filtrosResumo.modeloDispositivoId} resultadoFiltro={filtrosResumo.resultado} onFiltroResultado={(modeloId, valor) => { setFiltrosResumo({ ...filtrosResumo, modeloDispositivoId: valor ? modeloId : "", resultado: valor }); setPagina(1); }} podeRegistrar={podeImportarSdf} onRegistrar={(linha) => setLinhaManual(linha)} temFiltros={Boolean(semana || assigneeFormFactor || filtrosResumo.tcId || filtrosResumo.sdfId || filtrosResumo.resultado)} onLimparFiltros={() => { setSemana(""); setAssigneeFormFactor(""); setFiltrosResumo({ tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" }); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
-        </>}
+        </div>
+        <div id="form-factor-results-panel" role="tabpanel" aria-labelledby="form-factor-results-tab" hidden={visaoFormFactor !== "results"} className="flex min-h-0 flex-1 flex-col"><FormFactorResultadosTabela dados={historico.data} carregando={historico.isLoading} erro={historico.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} filtros={filtrosResultados} onFiltroChange={(campo, valor) => { setFiltrosResultados((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} /></div>
       </div>}
     </>}
 

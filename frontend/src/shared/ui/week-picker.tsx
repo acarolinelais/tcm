@@ -1,5 +1,5 @@
 import { Popover } from "@base-ui/react/popover";
-import { CalendarDays } from "lucide-react";
+import { ChevronDown, Clock3 } from "lucide-react";
 import { useState } from "react";
 import type { WeekNumberProps } from "react-day-picker";
 import { useTranslation } from "react-i18next";
@@ -28,7 +28,12 @@ export function WeekPicker({ label, value, onChange, className }: WeekPickerProp
   const { t } = useTranslation();
   const [aberto, setAberto] = useState(false);
   const selecionada = value ? diasDaSemana(value) : null;
-  const texto = selecionada ? t("weekValue", { week: selecionada.semana, year: selecionada.ano }) : t("selectWeek");
+  const texto = selecionada
+    ? `${t("week", { defaultValue: "Week" })} ${selecionada.semana}`
+    : t("week", { defaultValue: "Week" });
+  const descricaoAcessivel = selecionada
+    ? t("weekValue", { week: selecionada.semana, year: selecionada.ano })
+    : t("selectWeek");
 
   function escolher(proximo: string) {
     onChange(proximo);
@@ -57,15 +62,17 @@ export function WeekPicker({ label, value, onChange, className }: WeekPickerProp
   return (
     <Popover.Root open={aberto} onOpenChange={setAberto}>
       <Popover.Trigger
-        aria-label={`${label}: ${texto}`}
+        aria-label={`${label}: ${descricaoAcessivel}`}
         className={cn(
-          "flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-left text-sm outline-none transition-colors focus-visible:border-primary/50 focus-visible:ring-1 focus-visible:ring-primary/40",
-          !selecionada && "text-muted-foreground",
+          "inline-flex h-8 w-full items-center justify-start gap-2 rounded-md border border-border bg-background px-3 text-left text-sm font-medium text-foreground outline-none transition-colors hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-fit",
           className,
         )}
       >
-        <span className="truncate">{texto}</span>
-        <CalendarDays aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+        <span className="inline-flex min-w-0 items-center gap-3">
+          <Clock3 aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+          <span>{texto}</span>
+        </span>
+        <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner align="start" sideOffset={4} className="z-[70] outline-none">

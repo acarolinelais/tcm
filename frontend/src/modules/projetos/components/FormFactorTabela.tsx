@@ -42,7 +42,7 @@ export function FormFactorTabela({ dados, carregando, erro, identificadoresMembr
   const modelos = dados?.modelos ?? [];
 
   return <TableLayout>
-    <Table containerClassName={linhas.length ? "thin-scroll min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
+    <Table className="min-w-max" containerClassName={linhas.length ? "thin-scroll min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
       <TableHeader><TableRow>
         <TableHead><TableColumnFilter label={t("tcId")} value={tcId} onChange={(valor) => onFiltroTexto?.("tcId", valor)} /></TableHead>
         <TableHead><TableColumnFilter label={t("sdfId")} value={sdfId} onChange={(valor) => onFiltroTexto?.("sdfId", valor)} /></TableHead>
@@ -51,7 +51,7 @@ export function FormFactorTabela({ dados, carregando, erro, identificadoresMembr
         <TableHead>{t("date")}</TableHead>
         {podeRegistrar && <TableHead className="text-right">{t("actions")}</TableHead>}
       </TableRow></TableHeader>
-      {linhas.length ? <TableBody>{linhas.map((linha) => <TableRow key={linha.caso_teste_id}>
+      {linhas.length ? <TableBody>{linhas.map((linha) => <TableRow key={linha.caso_teste_id} className="transition-colors duration-150 hover:bg-muted/30 motion-reduce:transition-none">
         <TableCell className="font-medium">{linha.tc_id}</TableCell>
         <TableCell className="text-muted-foreground">{linha.sdf_id ?? "—"}</TableCell>
         <TableCell className="text-muted-foreground">{identificadoresMembros[linha.responsavel_id] ?? "—"}</TableCell>

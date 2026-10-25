@@ -105,8 +105,8 @@ export function TablePagination({
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   return (
-    <div className={cn("flex shrink-0 items-center justify-end gap-5 border-t border-border pt-3", className)}>
-      <div className="flex items-center gap-1">
+    <div className={cn("flex shrink-0 flex-col-reverse items-stretch gap-2 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-end sm:gap-5", className)}>
+      <div className="flex flex-wrap items-center justify-center gap-1">
         <Button
           variant="ghost"
           size="icon"
@@ -127,7 +127,7 @@ export function TablePagination({
         >
           <ChevronLeft aria-hidden="true" className="h-4 w-4" />
         </Button>
-        <span aria-current="page" className="min-w-6 px-1 text-center text-sm font-medium tabular-nums text-foreground">
+        <span aria-current="page" className="order-first w-full px-1 text-center text-sm font-medium tabular-nums text-foreground sm:order-none sm:w-auto">
           {t("pageOfTotal", { page, total: totalPages })}
         </span>
         <Button
@@ -151,7 +151,7 @@ export function TablePagination({
           <ChevronsRight aria-hidden="true" className="h-4 w-4" />
         </Button>
       </div>
-      <label className="flex items-center gap-3 text-xs text-muted-foreground">
+      <label className="flex items-center justify-center gap-3 text-xs text-muted-foreground">
         {t("itemsPerPage")}
         <Select value={String(pageSize)} onValueChange={(value) => onPageSizeChange(Number(value))}>
           <SelectTrigger aria-label={t("pageSize")} className="h-8 w-auto gap-1 rounded-lg border-border px-2 pr-2 text-xs">

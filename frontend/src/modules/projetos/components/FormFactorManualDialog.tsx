@@ -37,13 +37,14 @@ export function FormFactorManualDialog({ aberto, onAbertoChange, linha, modelos,
       <DialogHeader>
         <DialogTitle>{t("recordResultsTitle", { defaultValue: "Record Form Factor results" })}</DialogTitle>
         <p className="text-sm text-muted-foreground">{t("tcId")}: <span className="font-medium text-foreground">{linha?.tc_id ?? "—"}</span></p>
+        <p className="text-sm leading-relaxed text-muted-foreground">{t("manualResultsHint", { defaultValue: "Choose a result for each model you tested. Models left blank are not included." })}</p>
       </DialogHeader>
       <form className="space-y-5" onSubmit={salvar}>
-        <div className="space-y-3">
+        <div className="space-y-2">
           {modelos.map((modelo) => {
             const value = resultados[modelo.id] ?? "unselected";
-            return <div key={modelo.id} className="grid grid-cols-[minmax(0,1fr)_9rem] items-center gap-3">
-              <Label htmlFor={`manual-result-${modelo.id}`} className="truncate">{modelo.nome}</Label>
+            return <div key={modelo.id} className="grid grid-cols-[minmax(0,1fr)_9rem] items-center gap-3 rounded-xl border border-border/70 bg-muted/20 px-3 py-2.5 transition-colors hover:bg-muted/40">
+              <Label htmlFor={`manual-result-${modelo.id}`} className="truncate text-sm font-medium">{modelo.nome}</Label>
               <Select
                 value={value}
                 onValueChange={(next) => setResultados((current) => {

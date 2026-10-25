@@ -385,8 +385,10 @@ describe("ProjetoDetalhePage", () => {
     renderPage(admin);
     await screen.findByRole("heading", { name: "Clock 9.5" });
     await user.click(screen.getByRole("tab", { name: "Form Factor" }));
-    await user.click(await screen.findByRole("button", { name: "Results" }));
+    screen.getByRole("tab", { name: "Summary" }).focus();
+    await user.keyboard("{ArrowRight}");
 
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Results" })).toHaveFocus());
     expect(await screen.findByRole("columnheader", { name: "Origin" })).toBeInTheDocument();
     expect(screen.getAllByRole("row", { name: /Clock_001/ })).toHaveLength(2);
     expect(formFactorApi.listarResultados).toHaveBeenCalledWith("project-1", expect.objectContaining({ page: 1 }));

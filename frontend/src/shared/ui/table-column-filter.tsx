@@ -49,6 +49,11 @@ export function TableColumnFilter({
   const menuRef = useRef<HTMLDivElement>(null);
   const { montado, saindo } = usePresenca(aberto);
 
+  function fecharEDevolverFoco() {
+    setAberto(false);
+    triggerRef.current?.focus();
+  }
+
   useEffect(() => {
     if (!aberto) return;
 
@@ -61,8 +66,7 @@ export function TableColumnFilter({
 
     function fecharComEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        setAberto(false);
-        triggerRef.current?.focus();
+        fecharEDevolverFoco();
       }
     }
 
@@ -74,9 +78,15 @@ export function TableColumnFilter({
     };
   }, [aberto]);
 
+  useEffect(() => {
+    if (!aberto || !montado || type === "date") return;
+    const primeiroControle = menuRef.current?.querySelector<HTMLElement>("input, button");
+    primeiroControle?.focus();
+  }, [aberto, montado, type]);
+
   function alternarMenu() {
     if (aberto) {
-      setAberto(false);
+      fecharEDevolverFoco();
       return;
     }
     const bounds = triggerRef.current?.getBoundingClientRect();
@@ -95,7 +105,7 @@ export function TableColumnFilter({
   function aplicarTexto(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     onChange(rascunho.trim());
-    setAberto(false);
+    fecharEDevolverFoco();
   }
 
   const ativo = multiple ? selectedValues.length > 0 : Boolean(value);
@@ -106,9 +116,9 @@ export function TableColumnFilter({
         ref={triggerRef}
         type="button"
         aria-label={t("filterBy", { label: accessibleLabel ?? label })}
-        aria-haspopup="menu"
+        aria-haspopup="dialog"
         aria-expanded={aberto}
-        className={`group inline-flex items-center gap-1.5 text-left text-sm font-semibold uppercase tracking-wide transition-colors ${ativo ? "text-primary" : "text-foreground hover:text-primary"}`}
+        className={`group inline-flex min-h-9 items-center gap-1.5 rounded-md px-1 text-left text-sm font-semibold uppercase tracking-wide transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${ativo ? "text-primary" : "text-foreground hover:text-primary"}`}
         onClick={alternarMenu}
       >
         {label}
@@ -120,15 +130,31 @@ export function TableColumnFilter({
           data-saindo={saindo}
           aria-hidden={saindo || undefined}
           inert={saindo}
-          role={type === "date" ? "dialog" : "menu"}
+          role="dialog"
           aria-label={t("filter", { label: accessibleLabel ?? label })}
           style={{ position: "fixed", top: posicao.top, right: posicao.right }}
-          className="popover-enter z-50 w-[min(18rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] rounded-xl border border-border bg-card p-1.5 shadow-lg"
+          onBlur={(event) => {
+            const proximoAlvo = event.relatedTarget;
+            if (proximoAlvo instanceof Node && (menuRef.current?.contains(proximoAlvo) || triggerRef.current?.contains(proximoAlvo))) return;
+            setAberto(false);
+          }}
+          className="popover-enter z-50 max-h-[calc(100dvh-1rem)] w-[min(18rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] overflow-y-auto rounded-xl border border-border bg-card p-1.5 shadow-lg"
         >
           {options ? (
             <div>
               {searchable && <label className="mb-1 flex h-9 items-center gap-2 rounded-lg border border-border px-2.5"><Search aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" /><input aria-label={t("searchOptions", { defaultValue: "Search options" })} value={buscaOpcao} onChange={(event) => setBuscaOpcao(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm outline-none" /></label>}
-              <div className="max-h-72 overflow-y-auto">
+              <div role="menu" aria-label={t("filter", { label: accessibleLabel ?? label })} className="max-h-56 overflow-y-auto" onKeyDown={(event) => {
+                if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+                if (!(event.target as HTMLElement).closest("[role^='menuitem']")) return;
+                const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>("[role^='menuitem']"));
+                const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+                if (currentIndex < 0 || !items.length) return;
+                event.preventDefault();
+                const nextIndex = event.key === "Home" ? 0
+                  : event.key === "End" ? items.length - 1
+                    : (currentIndex + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
+                items[nextIndex]?.focus();
+              }}>
               {options.filter((option) => !searchable || `${option.label} ${option.searchText ?? ""}`.toLocaleLowerCase().includes(buscaOpcao.toLocaleLowerCase())).map((option) => (
                 <button
                   key={option.value || "all"}
@@ -144,7 +170,7 @@ export function TableColumnFilter({
                       onSelectedValuesChange?.(next);
                     } else {
                       onChange(option.value);
-                      setAberto(false);
+                      fecharEDevolverFoco();
                     }
                   }}
                 >
@@ -162,7 +188,7 @@ export function TableColumnFilter({
                 defaultMonth={value ? lerDiaIso(value) : undefined}
                 onSelect={(dia) => {
                   onChange(dia ? formatarDiaIso(dia) : "");
-                  setAberto(false);
+                  fecharEDevolverFoco();
                 }}
                 autoFocus
               />
@@ -172,7 +198,7 @@ export function TableColumnFilter({
                   className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary active:bg-secondary"
                   onClick={() => {
                     onChange("");
-                    setAberto(false);
+                    fecharEDevolverFoco();
                   }}
                 >
                   {t("clearFilters")}
@@ -204,7 +230,7 @@ export function TableColumnFilter({
                   onClick={() => {
                     setRascunho("");
                     onChange("");
-                    setAberto(false);
+                    fecharEDevolverFoco();
                   }}
                 >
                   {t("clearFilters")}

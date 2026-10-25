@@ -19,7 +19,7 @@ export function FormFactorResultadosTabela({ dados, carregando, erro, identifica
   const { t } = useTranslation();
   const items = erro ? [] : dados?.items ?? [];
   return <TableLayout>
-    <Table containerClassName={items.length ? "thin-scroll min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
+    <Table className="min-w-max" containerClassName={items.length ? "thin-scroll min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
       <TableHeader><TableRow>
         <TableHead><TableColumnFilter label={t("tcId")} value={filtros.tcId} onChange={(v) => onFiltroChange("tcId", v)} /></TableHead>
         <TableHead><TableColumnFilter label={t("sdfId")} value={filtros.sdfId} onChange={(v) => onFiltroChange("sdfId", v)} /></TableHead>
@@ -28,7 +28,7 @@ export function FormFactorResultadosTabela({ dados, carregando, erro, identifica
         {dados?.modelos.map((modelo) => <TableHead key={modelo.id}><div className="flex items-center gap-1">{modelo.nome}<TableColumnFilter label="" accessibleLabel={t("filterResultForModel", { defaultValue: "Result for {{model}}", model: modelo.nome })} value={filtros.modeloDispositivoId === modelo.id ? filtros.resultado : ""} onChange={(v) => { onFiltroChange("modeloDispositivoId", v ? modelo.id : ""); onFiltroChange("resultado", v); }} options={[{ value: "", label: t("all") }, { value: "PASS", label: "PASS" }, { value: "FAIL", label: "FAIL" }]} /></div></TableHead>)}
         <TableHead>{t("date")}</TableHead>
       </TableRow></TableHeader>
-      {items.length > 0 && <TableBody>{items.map((execucao) => <TableRow key={execucao.execucao_id}>
+      {items.length > 0 && <TableBody>{items.map((execucao) => <TableRow key={execucao.execucao_id} className="transition-colors duration-150 hover:bg-muted/30 motion-reduce:transition-none">
         <TableCell className="font-medium">{execucao.tc_id}</TableCell>
         <TableCell className="text-muted-foreground">{execucao.sdf_id ?? "—"}</TableCell>
         <TableCell className="text-muted-foreground">{identificadoresMembros[execucao.responsavel_id] ?? "—"}</TableCell>
@@ -39,7 +39,7 @@ export function FormFactorResultadosTabela({ dados, carregando, erro, identifica
           if (!/^(pass|fail)$/i.test(resultado)) return <TableCell key={modelo.id}>{resultado}</TableCell>;
           return <TableCell key={modelo.id}><StatusPill status={resultado.toLowerCase() === "pass" ? "Pass" : "Fail"} label={resultado} /></TableCell>;
         })}
-        <TableCell className="text-muted-foreground">{formatDate(execucao.data_reportada)}</TableCell>
+        <TableCell className="whitespace-nowrap text-muted-foreground">{formatDate(execucao.data_reportada, { dateStyle: "short", timeStyle: "short" })}</TableCell>
       </TableRow>)}</TableBody>}
     </Table>
     {carregando && <p role="status" className="p-5 text-sm text-muted-foreground">{t("loading")}</p>}
