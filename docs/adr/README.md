@@ -38,11 +38,12 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0024](0024-responsavel-por-usuario.md) | Responsável direto por usuários criados por gerente | Aceito |
 | [0025](0025-idioma-preferido-por-conta.md) | Idioma preferido por conta | Aceito |
 | [0026](0026-perfil-kp-com-escopo-por-associacao.md) | Perfil KP com escopo por participação em times | Aceito |
-| [0027](0027-fluxo-de-branches-e-pull-requests.md) | Fluxo de branches (`main` + `dev`) e convenção de commits | Aceito |
-| [0028](0028-ci-com-github-actions.md) | Verificação contínua e proteção de branches no GitHub | Aceito |
+| [0027](0027-fluxo-de-branches-e-pull-requests.md) | Fluxo de branches (`main` + `dev`) e convenção de commits | Aceito; commit direto na `dev` substituído por 0035 |
+| [0028](0028-ci-com-github-actions.md) | Verificação contínua e proteção de branches no GitHub | Aceito; regras da `dev` substituídas por 0035 |
 | [0029](0029-git-hooks-versionados.md) | Git hooks versionados no repositório | Aceito |
 | [0030](0030-modo-mock-frontend.md) | Modo mock persistido no frontend | Aceito |
 | [0031](0031-administrador-edita-permissoes-de-perfis-seedados.md) | Administrador edita permissões de perfis seedados | Aceito |
 | [0032](0032-permissao-para-consultar-perfis-de-usuarios-no-escopo.md) | Permissão para consultar perfis de usuários no escopo | Aceito |
 | [0033](0033-erros-de-planilha-com-codigo-estruturado.md) | Erros de planilha com código estruturado e texto montado no frontend | Aceito |
 | [0034](0034-paginacao-padrao-vinte-itens.md) | Paginação padrão de 20 itens | Aceito |
+| [0035](0035-commits-diretos-na-dev.md) | Commits diretos na `dev` | Aceito |

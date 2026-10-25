@@ -66,8 +66,9 @@ Documentação em PT-BR. Termos de domínio no código em português; termos té
 ## Git
 - Commits **sem** `Co-Authored-By` nem qualquer atribuição ao Claude.
 - Só commite quando o usuário pedir.
-- **Nunca** commite nem dê push direto em `main` ou `dev`. Uma spec = uma branch `feat/NNN-nome` criada a
-  partir da `dev` atualizada = um PR para a `dev`. Demais regras (hotfix, merge) no ADR 0027.
+- **Nunca** commite nem dê push direto na `main`. A `dev` aceita commit direto para mudanças pequenas
+  (ADR 0035), mas uma spec continua sendo uma branch `feat/NNN-nome` criada a partir da `dev` atualizada
+  = um PR para a `dev`. Demais regras (hotfix, merge) no ADR 0027.
 - Commits e títulos de PR em Conventional Commits (`tipo(escopo): descrição`). Não use `--no-verify`.
 
 ## Ambiente

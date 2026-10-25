@@ -41,12 +41,13 @@ armazenamento local do site. Para conectar ao backend, defina `VITE_USE_MOCK=fal
 
 ## Fluxo de desenvolvimento
 Regras nos ADRs [0027](docs/adr/0027-fluxo-de-branches-e-pull-requests.md) (branches e commits),
-[0028](docs/adr/0028-ci-com-github-actions.md) (CI) e [0029](docs/adr/0029-git-hooks-versionados.md) (hooks).
+[0028](docs/adr/0028-ci-com-github-actions.md) (CI), [0029](docs/adr/0029-git-hooks-versionados.md) (hooks) e
+[0035](docs/adr/0035-commits-diretos-na-dev.md) (commits diretos na `dev`).
 
 ```
 main  ●───────────────────────●───   estável: só recebe PR da dev ou de hotfix/*
        \                     /
-dev     ●────●──────────●───●─────   integração: só recebe PR de branches de trabalho (e da main)
+dev     ●────●──────────●───●──●──   integração: PR de branches de trabalho (e da main) ou commit direto
               \        /
 feat/009-x     ●──●──●              uma branch e um PR por spec
 ```
@@ -69,6 +70,13 @@ gh pr create --base dev                         # preencha o template; os checks
 ```
 Com `backend`, `frontend` e `convencao` verdes, integre com **merge commit**. Para promover o que está
 estável, abra um PR `dev → main`.
+
+### Ajuste pequeno, direto na dev
+```bash
+git switch dev && git pull
+git commit -m "fix(projetos): corrige rótulo do filtro"   # mensagem no padrão, sem spec
+git push                                        # o CI roda depois do push; se quebrar, corrija logo
+```
 
 ### Hotfix
 ```bash
