@@ -34,7 +34,8 @@ export const caseItem = {
   updated_at: "2026-03-23T10:00:00Z",
 };
 
-export async function setupProjectSession(page: Page) {
+/** Sessão autenticada; `perfil` sobrescreve campos do perfil padrão (administrador). */
+export async function setupProjectSession(page: Page, perfil: Record<string, unknown> = {}) {
   await page.addInitScript(() => sessionStorage.setItem("sdf.access", "e2e-project-token"));
   await page.route("**/api/auth/me", (route) => route.fulfill({ json: {
     id: managerId,
@@ -51,14 +52,19 @@ export async function setupProjectSession(page: Page) {
     tem_multiplos_times: false,
     senha_alteracao_obrigatoria: false,
     idioma_preferido: "pt-BR",
+    ...perfil,
+  } }));
+}
+
+export async function setupTeams(page: Page) {
+  await page.route("**/api/times?*", (route) => route.fulfill({ json: {
+    items: [{ id: teamId, setor_id: "sector-1", nome: "Plataforma", ativo: true }], page: 1, page_size: 100, total_count: 1,
   } }));
 }
 
 export async function setupTeamsAndModels(page: Page) {
-  await page.route("**/api/times?*", (route) => route.fulfill({ json: {
-    items: [{ id: teamId, setor_id: "sector-1", nome: "Plataforma", ativo: true }], page: 1, page_size: 100, total_count: 1,
-  } }));
-  await page.route("**/api/modelos-dispositivo?*", (route) => route.fulfill({ json: {
-    items: [{ id: modelId, unidade_id: "unit-1", nome: "S27 Ultra", ativo: true }], page: 1, page_size: 100, total_count: 1,
+  await setupTeams(page);
+  await page.route("**/api/modelos-dispositivo/opcoes?*", (route) => route.fulfill({ json: {
+    items: [{ id: modelId, nome: "S27 Ultra" }], page: 1, page_size: 100, total_count: 1,
   } }));
 }

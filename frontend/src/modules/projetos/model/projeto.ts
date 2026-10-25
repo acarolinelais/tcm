@@ -27,11 +27,10 @@ export interface Projeto {
   updated_at: string | null;
 }
 
-export interface ModeloDispositivo {
+/** Modelo ativo oferecido no seletor do projeto (GET /api/modelos-dispositivo/opcoes). */
+export interface OpcaoModeloDispositivo {
   id: string;
-  unidade_id: string;
   nome: string;
-  ativo: boolean;
 }
 
 export interface CasoTeste {

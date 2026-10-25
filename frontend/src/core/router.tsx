@@ -12,6 +12,7 @@ import { TimesPage } from "@/modules/times/TimesPage";
 import { TimeDetalhePage } from "@/modules/times/TimeDetalhePage";
 import { UsuariosPage } from "@/modules/usuarios/pages/UsuariosPage";
 import { projetosRoutes } from "@/modules/projetos";
+import { modelosDispositivoRoutes } from "@/modules/modelos-dispositivo";
 import { ConfiguracoesPage } from "@/modules/configuracoes/ConfiguracoesPage";
 
 export const router = createBrowserRouter([
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
       { path: "trocar-senha", element: <AlterarSenhaPage /> },
       ...overviewRoutes,
       ...projetosRoutes,
+      ...modelosDispositivoRoutes,
       { path: "board", element: <EmBreve titulo="board" ilustracao="board" /> },
       { path: "timeline", element: <EmBreve titulo="timeline" ilustracao="timeline" /> },
       { path: "documentation", element: <EmBreve titulo="documentation" /> },

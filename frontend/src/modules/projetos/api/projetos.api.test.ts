@@ -63,23 +63,17 @@ describe("APIs de projetos", () => {
     expect(fetch).toHaveBeenLastCalledWith("/api/test-cases/case-1/transferir-para-backup", expect.objectContaining({ method: "PATCH", body: "{}" }));
   });
 
-  it("cria, edita e altera o estado de modelos de dispositivo", async () => {
-    await modelosDispositivoApi.criar("S27 Ultra");
-    expect(fetch).toHaveBeenLastCalledWith("/api/modelos-dispositivo", expect.objectContaining({ method: "POST", body: JSON.stringify({ nome: "S27 Ultra" }) }));
-    await modelosDispositivoApi.atualizar("model-1", { nome: "S27 Ultra Rev B" });
-    expect(fetch).toHaveBeenLastCalledWith("/api/modelos-dispositivo/model-1", expect.objectContaining({ method: "PUT", body: JSON.stringify({ nome: "S27 Ultra Rev B" }) }));
-    await modelosDispositivoApi.definirAtivo("model-1", false);
-    expect(fetch).toHaveBeenLastCalledWith("/api/modelos-dispositivo/model-1/inativar", expect.objectContaining({ method: "PATCH", body: "{}" }));
+  it("lista as opções de modelos ativos para o seletor do projeto", async () => {
+    await modelosDispositivoApi.listarOpcoes();
+    expect(fetch).toHaveBeenLastCalledWith("/api/modelos-dispositivo/opcoes?page=1&page_size=100", expect.any(Object));
   });
 
-  it("envia filtros de modelo e Form Factor e o relatório SDF", async () => {
-    await modelosDispositivoApi.listar(1, 50, true, "S27");
-    expect(fetch).toHaveBeenLastCalledWith("/api/modelos-dispositivo?page=1&page_size=50&ativo=true&busca=S27", expect.any(Object));
+  it("envia filtros do Form Factor e o relatório SDF", async () => {
     await formFactorApi.listar("project-1", { page: 2, pageSize: 10, semana: "2026-W13", oneUi: "9.5" });
     expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/form-factor?page=2&page_size=10&semana=2026-W13&one_ui=9.5", expect.any(Object));
     const report = new File(["resultado"], "sdf.xlsx");
     await formFactorApi.importar("project-1", report);
-    const [url, init] = vi.mocked(fetch).mock.calls[2];
+    const [url, init] = vi.mocked(fetch).mock.calls[1];
     expect(url).toBe("/api/projetos/project-1/relatorios-sdf");
     expect((init?.body as FormData).get("arquivo")).toBe(report);
   });

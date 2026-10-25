@@ -17,7 +17,7 @@ import type {
   ImportacaoProjeto,
   ImportacaoSdf,
   LinhaFormFactor,
-  ModeloDispositivo,
+  OpcaoModeloDispositivo,
   Projeto,
   StatusProjeto,
 } from "../model/projeto";
@@ -33,7 +33,7 @@ export type {
   ImportacaoProjeto,
   ImportacaoSdf,
   LinhaFormFactor,
-  ModeloDispositivo,
+  OpcaoModeloDispositivo,
   Projeto,
   SituacaoCasoTeste,
   StatusProjeto,
@@ -113,29 +113,9 @@ export const casosTesteApi = {
 };
 
 export const modelosDispositivoApi = {
-  listar(page = 1, pageSize = 100, ativo?: boolean, busca?: string) {
-    if (useMock) return Promise.resolve(mockModelosDispositivoApi.listar(page, pageSize, ativo, busca));
-    return httpGet<PagedResult<ModeloDispositivo>>("/api/modelos-dispositivo", {
-      page,
-      page_size: pageSize,
-      ...(ativo === undefined ? {} : { ativo: String(ativo) }),
-      ...(busca ? { busca } : {}),
-    });
-  },
-  criar(nome: string) {
-    return useMock
-      ? Promise.resolve(mockModelosDispositivoApi.criar(nome))
-      : httpPost<ModeloDispositivo>("/api/modelos-dispositivo", { nome });
-  },
-  atualizar(id: string, body: { nome?: string; ativo?: boolean }) {
-    return useMock
-      ? Promise.resolve(mockModelosDispositivoApi.atualizar(id, body))
-      : httpPut<ModeloDispositivo>(`/api/modelos-dispositivo/${id}`, body);
-  },
-  definirAtivo(id: string, ativo: boolean) {
-    return useMock
-      ? Promise.resolve(mockModelosDispositivoApi.definirAtivo(id, ativo))
-      : httpPatchBody<ModeloDispositivo>(`/api/modelos-dispositivo/${id}/${ativo ? "ativar" : "inativar"}`, {});
+  listarOpcoes(page = 1, pageSize = 100) {
+    if (useMock) return Promise.resolve(mockModelosDispositivoApi.listarOpcoes(page, pageSize));
+    return httpGet<PagedResult<OpcaoModeloDispositivo>>("/api/modelos-dispositivo/opcoes", { page, page_size: pageSize });
   },
 };
 

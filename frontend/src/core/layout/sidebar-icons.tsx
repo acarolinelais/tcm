@@ -45,6 +45,16 @@ export function ProjectsIcon(props: IconProps) {
   );
 }
 
+// Sem frame no Figma: desenhado no mesmo traço de 1px dos demais (contorno de smartphone).
+export function DeviceIcon(props: IconProps) {
+  return (
+    <svg width="12" height="15" viewBox="0 0 12 15" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <rect x="0.5" y="0.5" width="11" height="14" rx="2.5" stroke="currentColor"/>
+      <path d="M4.75 11.75H7.25" strokeLinecap="round" stroke="currentColor"/>
+    </svg>
+  );
+}
+
 export function AdministrationIcon(props: IconProps) {
   return (
     <svg width="17" height="15" viewBox="0 0 17 15" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>

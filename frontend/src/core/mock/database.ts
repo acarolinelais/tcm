@@ -12,10 +12,10 @@ import type {
   CriarCasoTesteInput,
   CriarProjetoInput,
   LinhaFormFactor,
-  ModeloDispositivo,
   Projeto,
   StatusProjeto,
 } from "@/modules/projetos/model/projeto";
+import type { ModeloDispositivo } from "@/modules/modelos-dispositivo/model/modelo-dispositivo";
 import { lerPlanilhaProjeto, PlanilhaProjetoError, type PessoasDaLinha, type PlanilhaProjeto } from "@/modules/projetos/utils/planilha-projeto";
 import { ApiError, type ProblemDetailsError } from "@/shared/api/problem-details";
 import type { PagedResult } from "@/shared/types/paged-result";
@@ -62,6 +62,7 @@ const permissoes: Permissao[] = [
   ["test_cases.gerenciar", "Gerenciar Test Cases do time", "test_cases", "Test Cases", 6],
   ["form_factor.consultar", "Consultar resultados Form Factor", "form_factor", "Form Factor", 7],
   ["form_factor.importar", "Importar resultados SDF", "form_factor", "Form Factor", 7],
+  ["modelos_dispositivo.gerenciar", "Cadastrar e gerenciar o catálogo de modelos de dispositivo", "modelos_dispositivo", "Device models", 8],
 ].map(([id, descricao, codigo, nome, ordem], index) => ({
   id: String(id), descricao: String(descricao), ordem: index + 1,
   modulo: { codigo: String(codigo), nome: String(nome), ordem: Number(ordem) },
@@ -72,7 +73,7 @@ function createSeed(): Database {
   const adminProfile: Perfil = { id: "mock-profile-admin", nome: "Administrador", descricao: "Acesso completo à unidade.", codigo: "ADMIN_UNIDADE", permissoes: allPermissions };
   const standardProfile: Perfil = { id: "mock-profile-standard", nome: "Developer", descricao: "Consulta projetos, TCs e Form Factor do time e atualiza somente os TCs atribuídos.", codigo: "USUARIO_PADRAO", permissoes: ["projetos.consultar", "test_cases.consultar", "form_factor.consultar", "times.consultar", "usuarios.perfil.consultar"] };
   const managerProfile: Perfil = { id: "mock-profile-manager", nome: "Gerente", descricao: "Gerencia pessoas e times do setor.", codigo: "GERENTE", permissoes: ["usuarios.consultar", "usuarios.perfil.consultar", "usuarios.gerenciar", "setores.consultar", "times.consultar", "times.criar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar"] };
-  const kpProfile: Perfil = { id: "mock-profile-kp", nome: "KP", descricao: "Acompanha atividades dos times associados.", codigo: "KP", permissoes: ["usuarios.consultar", "setores.consultar", "times.consultar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar"] };
+  const kpProfile: Perfil = { id: "mock-profile-kp", nome: "KP", descricao: "Acompanha atividades dos times associados.", codigo: "KP", permissoes: ["usuarios.consultar", "setores.consultar", "times.consultar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar", "modelos_dispositivo.gerenciar"] };
   const sectors: Setor[] = [
     { id: "mock-sector-engineering", unidade_id: UNIT_ID, nome: "Engenharia", ativo: true },
     { id: "mock-sector-operations", unidade_id: UNIT_ID, nome: "Operações", ativo: true },
@@ -87,7 +88,7 @@ function createSeed(): Database {
     { id: "mock-user-inactive", nome: "Rafael Lima", email: "rafael.lima@example.com", ativo: false, perfil_id: standardProfile.id, created_at: "2026-02-10T12:00:00Z" },
   ].map((user: Usuario) => ({ ...user, user_id: user.user_id ?? null }));
   return {
-    schemaVersion: 11,
+    schemaVersion: 12,
     unidade: { id: UNIT_ID, nome: "Manaus", ativo: true },
     usuarios: users,
     perfis: [adminProfile, standardProfile, managerProfile, kpProfile],
@@ -106,10 +107,10 @@ function createSeed(): Database {
     ],
     projetos: [],
     modelosDispositivo: [
-      { id: "mock-model-s27-ultra", unidade_id: UNIT_ID, nome: "S27 Ultra", ativo: true },
-      { id: "mock-model-s26-ultra", unidade_id: UNIT_ID, nome: "S26 Ultra", ativo: true },
-      { id: "mock-model-sep-lite", unidade_id: UNIT_ID, nome: "SEP Lite", ativo: true },
-      { id: "mock-model-tab-s11", unidade_id: UNIT_ID, nome: "Tab S11", ativo: true },
+      { id: "mock-model-s27-ultra", unidade_id: UNIT_ID, nome: "S27 Ultra", descricao: "Flagship 2027", ativo: true, created_at: "2026-03-01T12:00:00Z", updated_at: "2026-03-01T12:00:00Z" },
+      { id: "mock-model-s26-ultra", unidade_id: UNIT_ID, nome: "S26 Ultra", descricao: null, ativo: true, created_at: "2026-03-01T12:00:00Z", updated_at: "2026-03-01T12:00:00Z" },
+      { id: "mock-model-sep-lite", unidade_id: UNIT_ID, nome: "SEP Lite", descricao: null, ativo: true, created_at: "2026-03-01T12:00:00Z", updated_at: "2026-03-01T12:00:00Z" },
+      { id: "mock-model-tab-s11", unidade_id: UNIT_ID, nome: "Tab S11", descricao: "Tablet", ativo: true, created_at: "2026-03-01T12:00:00Z", updated_at: "2026-03-01T12:00:00Z" },
     ],
     projetoModelos: [],
     casosTeste: [],
@@ -138,12 +139,9 @@ function readDb(): Database {
         }
       });
       db.projetos ??= [];
-      db.modelosDispositivo ??= [
-        { id: "mock-model-s27-ultra", unidade_id: db.unidade.id, nome: "S27 Ultra", ativo: true },
-        { id: "mock-model-s26-ultra", unidade_id: db.unidade.id, nome: "S26 Ultra", ativo: true },
-        { id: "mock-model-sep-lite", unidade_id: db.unidade.id, nome: "SEP Lite", ativo: true },
-        { id: "mock-model-tab-s11", unidade_id: db.unidade.id, nome: "Tab S11", ativo: true },
-      ];
+      db.modelosDispositivo ??= ["S27 Ultra", "S26 Ultra", "SEP Lite", "Tab S11"].map((nome) => ({
+        id: `mock-model-${nome.toLowerCase().replace(/ /g, "-")}`, unidade_id: db.unidade.id, nome, descricao: null, ativo: true, created_at: null, updated_at: null,
+      }));
       db.projetoModelos ??= [];
       db.casosTeste ??= [];
       db.formFactor ??= [];
@@ -198,6 +196,20 @@ function readDb(): Database {
     if ((db.schemaVersion ?? 1) < 11) {
       db.usuarios.forEach((user) => { user.user_id ??= null; });
       db.schemaVersion = 11;
+      return writeDb(db);
+    }
+    if ((db.schemaVersion ?? 1) < 12) {
+      // Mesma seed da migration a2b3c4d5e6f7: descrição nos modelos e gestão do catálogo pelo KP.
+      db.permissoes = permissoes;
+      db.perfis.filter((profile) => profile.codigo === "KP" || profile.codigo === "ADMIN_UNIDADE").forEach((profile) => {
+        profile.permissoes = [...new Set([...profile.permissoes, "modelos_dispositivo.gerenciar"])];
+      });
+      db.modelosDispositivo.forEach((model) => {
+        model.descricao ??= null;
+        model.created_at ??= null;
+        model.updated_at ??= model.created_at;
+      });
+      db.schemaVersion = 12;
       return writeDb(db);
     }
     return db;
@@ -741,35 +753,47 @@ export const mockCasosTesteApi = {
   },
 };
 
+const nomeModeloDuplicado = () => new ApiError({ type: "about:blank", title: "Conflito.", status: 409, detail: "Já existe um modelo de dispositivo com este nome." });
+
 export const mockModelosDispositivoApi = {
   listar(pageNumber: number, pageSize: number, active?: boolean, search?: string) {
-    requireMockPermission("projetos.consultar");
+    requireMockPermission("modelos_dispositivo.gerenciar");
     const { db } = mockProfile();
     let models = [...db.modelosDispositivo];
     if (active !== undefined) models = models.filter((model) => model.ativo === active);
     if (search) models = models.filter((model) => model.nome.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
+    // Mesma ordem da API (nome), para a paginação do mock refletir a real.
+    return page(models.sort((a, b) => a.nome.localeCompare(b.nome)), pageNumber, pageSize);
+  },
+  listarOpcoes(pageNumber: number, pageSize: number) {
+    const { db, profile } = mockProfile();
+    if (!profile?.permissoes.includes("projetos.gerenciar")) requireMockPermission("modelos_dispositivo.gerenciar");
+    const models = db.modelosDispositivo.filter((model) => model.ativo).map(({ id: modelId, nome }) => ({ id: modelId, nome }));
     return page(models, pageNumber, pageSize);
   },
-  criar(nome: string) {
-    requireMockPermission("projetos.gerenciar");
+  criar(body: { nome: string; descricao: string | null }) {
+    requireMockPermission("modelos_dispositivo.gerenciar");
     return updateDb((db) => {
-      const normalized = nome.trim();
+      const normalized = body.nome.trim();
       if (!normalized) throw new Error("O nome do modelo é obrigatório.");
-      if (db.modelosDispositivo.some((model) => model.nome.toLocaleLowerCase() === normalized.toLocaleLowerCase())) throw new Error("Já existe um modelo com esse nome.");
-      const model: ModeloDispositivo = { id: id("mock-model"), unidade_id: db.unidade.id, nome: normalized, ativo: true };
+      if (db.modelosDispositivo.some((model) => model.nome === normalized)) throw nomeModeloDuplicado();
+      const now = new Date().toISOString();
+      const model: ModeloDispositivo = { id: id("mock-model"), unidade_id: db.unidade.id, nome: normalized, descricao: body.descricao?.trim() || null, ativo: true, created_at: now, updated_at: now };
       db.modelosDispositivo.unshift(model);
       return model;
     });
   },
-  atualizar(modelId: string, body: { nome?: string; ativo?: boolean }) {
-    requireMockPermission("projetos.gerenciar");
+  atualizar(modelId: string, body: { nome?: string; descricao?: string | null; ativo?: boolean }) {
+    requireMockPermission("modelos_dispositivo.gerenciar");
     return updateDb((db) => {
       const model = db.modelosDispositivo.find((item) => item.id === modelId);
       if (!model) throw new Error("Modelo de dispositivo não encontrado.");
       const name = body.nome?.trim();
-      if (name && db.modelosDispositivo.some((item) => item.id !== modelId && item.nome.toLocaleLowerCase() === name.toLocaleLowerCase())) throw new Error("Já existe um modelo com esse nome.");
+      if (name && db.modelosDispositivo.some((item) => item.id !== modelId && item.nome === name)) throw nomeModeloDuplicado();
       if (name) model.nome = name;
+      if (body.descricao !== undefined) model.descricao = body.descricao?.trim() || null;
       if (body.ativo !== undefined) model.ativo = body.ativo;
+      model.updated_at = new Date().toISOString();
       return model;
     });
   },

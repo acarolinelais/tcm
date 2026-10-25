@@ -15,7 +15,7 @@ const toastMock = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 
 vi.mock("./api/projetos.api", () => ({
   projetosApi: { listar: vi.fn(), criar: vi.fn(), importar: vi.fn(), atualizarStatus: vi.fn() },
-  modelosDispositivoApi: { listar: vi.fn() },
+  modelosDispositivoApi: { listarOpcoes: vi.fn() },
   casosTesteApi: {}, formFactorApi: {},
 }));
 vi.mock("@/modules/times/api/times.api", () => ({ timesApi: { listar: vi.fn() } }));
@@ -53,7 +53,7 @@ describe("ProjetosPage", () => {
     vi.mocked(projetosApi.listar).mockResolvedValue({ items: [], page: 1, page_size: 10, total_count: 0 });
     vi.mocked(projetosApi.criar).mockResolvedValue({ id: "new-project" } as never);
     vi.mocked(timesApi.listar).mockResolvedValue({ items: [{ id: "team-1", nome: "Plataforma", ativo: true }], page: 1, page_size: 100, total_count: 1 } as never);
-    vi.mocked(modelosDispositivoApi.listar).mockResolvedValue({ items: [{ id: "model-1", unidade_id: "unit-1", nome: "S27 Ultra", ativo: true }], page: 1, page_size: 100, total_count: 1 });
+    vi.mocked(modelosDispositivoApi.listarOpcoes).mockResolvedValue({ items: [{ id: "model-1", nome: "S27 Ultra" }], page: 1, page_size: 100, total_count: 1 });
   });
 
   it("cria projeto manual derivando o nome do App e One UI e associa o time/modelo", async () => {
@@ -74,7 +74,8 @@ describe("ProjetosPage", () => {
     await user.click(screen.getByRole("button", { name: "Create project" }));
 
     await waitFor(() => expect(projetosApi.criar).toHaveBeenCalledWith({ time_id: "team-1", app: "Clock", one_ui: "9.5", modelos_ids: ["model-1"] }));
-    expect(modelosDispositivoApi.listar).toHaveBeenCalledWith(1, 100, true);
+    expect(modelosDispositivoApi.listarOpcoes).toHaveBeenCalled();
+    expect(screen.queryByRole("link", { name: "Device models" })).not.toBeInTheDocument();
   });
 
   it("lista projetos com time, aplicativo, versão e status", async () => {

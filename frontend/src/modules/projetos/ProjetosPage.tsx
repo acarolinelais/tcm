@@ -45,7 +45,7 @@ export function ProjetosPage() {
   const [filtrosProjeto, setFiltrosProjeto] = useState({ nome: "", time: "", app: "", oneUi: "", status: "", createdAt: "" });
   const projetos = useQuery({ queryKey: ["projetos", pagina, tamanhoPagina], queryFn: () => projetosApi.listar(pagina, tamanhoPagina) });
   const times = useQuery({ queryKey: ["projetos-times"], queryFn: () => timesApi.listar(1, 100, { ativo: true }), enabled: podeGerenciar });
-  const modelos = useQuery({ queryKey: ["modelos-dispositivo", true], queryFn: () => modelosDispositivoApi.listar(1, 100, true), enabled: podeGerenciar });
+  const modelos = useQuery({ queryKey: ["modelos-dispositivo", "opcoes"], queryFn: () => modelosDispositivoApi.listarOpcoes(), enabled: podeGerenciar });
   const client = useQueryClient();
   const [criacaoAberta, setCriacaoAberta] = useState(false);
   const [modo, setModo] = useState<ModoCriacao>("planilha");
@@ -183,7 +183,7 @@ export function ProjetosPage() {
     {!criacaoAberta ? <>
       <header className="mb-7 flex shrink-0 items-center justify-between gap-4">
         <h1 className="text-2xl font-medium text-primary">{t("myProjects")}</h1>
-        {podeGerenciar && <div className="flex gap-2"><Button asChild variant="outline"><Link to="/modelos-dispositivo">{t("deviceModels", { defaultValue: "Modelos" })}</Link></Button><Button onClick={() => { limparFormulario(); setCriacaoAberta(true); }}><Plus aria-hidden="true" className="size-4" />{t("newProject")}</Button></div>}
+        {podeGerenciar && <Button onClick={() => { limparFormulario(); setCriacaoAberta(true); }}><Plus aria-hidden="true" className="size-4" />{t("newProject")}</Button>}
       </header>
       <TableLayout className="overflow-auto">
         {projetos.isLoading ? <div role="status" className="p-8 text-center text-sm text-muted-foreground">{t("loadingProjects")}</div> : projetos.isError ? <div role="alert" className="p-8 text-center text-sm text-destructive">{t("projectsLoadError")}</div> : <Table>
