@@ -81,7 +81,7 @@ Toda tabela trata os quatro estados, e cada um tem a sua mensagem:
   - Container `h-7 w-fit gap-1.5 rounded-md px-2 text-sm font-medium` com fundo claro da cor (`bg-green-50 text-green-800`).
   - À esquerda, um círculo cheio `size-4 rounded-full` na cor forte (`bg-green-800`), com ícone lucide branco `size-2.5 stroke-[3]` e `aria-hidden`.
   - Mapa de cores: To-Do/neutro = slate · em andamento = blue · em revisão = amber · sucesso = green · falha = red.
-  - Referência: `statusBadges` em `modules/projetos/ProjetoDetalhePage.tsx`.
+  - Referência: `statusBadges` em `modules/projetos/components/status-badge-estilos.ts` e `StatusBadgeContent` em `modules/projetos/components/StatusBadge.tsx`.
 - Ativo/inativo: `Badge variant="secondary"`, com `bg-emerald-50 text-emerald-700` quando ativo.
 - A cor nunca é a única pista: o rótulo em texto sempre aparece junto.
 - Quando o usuário pode alterar o status, o badge vira o próprio `SelectTrigger` (mesmas classes, `border-0 shadow-none`), com `aria-label` do tipo `"<campo> <identificador>"`. Quem não pode alterar vê o mesmo badge, só para leitura.

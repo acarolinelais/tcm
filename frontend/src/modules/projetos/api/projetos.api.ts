@@ -14,9 +14,9 @@ import type {
   CasoTeste,
   CriarCasoTesteInput,
   CriarProjetoInput,
+  FormFactorMatriz,
   ImportacaoProjeto,
   ImportacaoSdf,
-  LinhaFormFactor,
   OpcaoModeloDispositivo,
   Projeto,
   StatusProjeto,
@@ -30,6 +30,7 @@ export type {
   CriarCasoTesteInput,
   CriarProjetoInput,
   DificuldadeCasoTeste,
+  FormFactorMatriz,
   ImportacaoProjeto,
   ImportacaoSdf,
   LinhaFormFactor,
@@ -119,16 +120,23 @@ export const modelosDispositivoApi = {
   },
 };
 
+export interface FiltrosFormFactor {
+  page?: number;
+  pageSize?: number;
+  semana?: string;
+  responsavelId?: string;
+}
+
 export const formFactorApi = {
-  listar(projetoId: string, filtros: { page?: number; pageSize?: number; semana?: string; oneUi?: string } = {}) {
-    const { page = 1, pageSize = 20, semana, oneUi } = filtros;
+  listar(projetoId: string, filtros: FiltrosFormFactor = {}) {
+    const { page = 1, pageSize = 20, semana, responsavelId } = filtros;
     return useMock
-      ? Promise.resolve(mockFormFactorApi.listar(projetoId, page, pageSize, semana, oneUi))
-      : httpGet<PagedResult<LinhaFormFactor>>(`/api/projetos/${projetoId}/form-factor`, {
+      ? Promise.resolve(mockFormFactorApi.listar(projetoId, page, pageSize, semana, responsavelId))
+      : httpGet<FormFactorMatriz>(`/api/projetos/${projetoId}/form-factor`, {
         page,
         page_size: pageSize,
         ...(semana ? { semana } : {}),
-        ...(oneUi ? { one_ui: oneUi } : {}),
+        ...(responsavelId ? { responsavel_id: responsavelId } : {}),
       });
   },
   importar(projetoId: string, arquivo: File) {

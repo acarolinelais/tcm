@@ -6,7 +6,11 @@ from src.api.dependencies import (
     get_importacao_sdf_service,
     get_usuario_atual,
 )
-from src.application.schemas.form_factor import FormFactorResponse
+from src.application.schemas.form_factor import (
+    FormFactorLinhaResponse,
+    FormFactorModeloResponse,
+    FormFactorResponse,
+)
 from src.application.schemas.importacao_sdf import ImportarRelatorioSdfResponse
 from src.application.services.form_factor_service import FormFactorServiceImpl
 from src.application.validators.importacao_projeto import (
@@ -83,24 +87,58 @@ async def test_sem_permissao_de_importacao_retorna_403(api_client):
     assert response.status_code == 403
 
 
-async def test_consultar_form_factor_com_filtros(api_client):
+async def test_consultar_form_factor_filtrando_por_responsavel(api_client):
     from src.api.main import app
 
     usuario = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
-    projeto_id = uuid4()
+    projeto_id, responsavel_id, caso_id, modelo_id = (uuid4() for _ in range(4))
     service = AsyncMock()
     service.listar.return_value = FormFactorResponse(
-        items=[], page=2, page_size=25, total_count=0, total_pages=0
+        modelos=[FormFactorModeloResponse(id=modelo_id, nome="SAMSUNG S25")],
+        items=[
+            FormFactorLinhaResponse(
+                caso_teste_id=caso_id,
+                tc_id="TC-001",
+                responsavel_id=responsavel_id,
+                sdf_id=None,
+                data_reportada=None,
+                resultados={modelo_id: "Pass"},
+            )
+        ],
+        page=2,
+        page_size=25,
+        total_count=26,
+        total_pages=2,
     )
     app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
     app.dependency_overrides[get_form_factor_service] = dependency_override(service)
 
     response = await api_client.get(
-        f"/api/projetos/{projeto_id}/form-factor?page=2&page_size=25&semana=2026-W12&one_ui=9.5"
+        f"/api/projetos/{projeto_id}/form-factor"
+        f"?page=2&page_size=25&semana=2026-W12&responsavel_id={responsavel_id}"
     )
 
     assert response.status_code == 200
-    service.listar.assert_awaited_once_with(usuario, projeto_id, 2, 25, "2026-W12", "9.5")
+    service.listar.assert_awaited_once_with(usuario, projeto_id, 2, 25, "2026-W12", responsavel_id)
+    body = response.json()
+    assert body["modelos"] == [{"id": str(modelo_id), "nome": "SAMSUNG S25"}]
+    assert body["items"][0]["resultados"] == {str(modelo_id): "Pass"}
+    assert body["items"][0]["sdf_id"] is None
+
+
+async def test_responsavel_id_invalido_retorna_422(api_client):
+    from src.api.main import app
+
+    usuario = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
+    service = AsyncMock()
+    app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
+    app.dependency_overrides[get_form_factor_service] = dependency_override(service)
+
+    response = await api_client.get(f"/api/projetos/{uuid4()}/form-factor?responsavel_id=ana")
+
+    assert response.status_code == 422
+    assert response.headers["content-type"].startswith("application/problem+json")
+    service.listar.assert_not_awaited()
 
 
 async def test_filtro_de_semana_com_formato_invalido_retorna_422(api_client):
@@ -125,7 +163,7 @@ async def test_filtro_de_semana_iso_inexistente_retorna_422(api_client):
     projeto = Projeto(usuario.unidade_id, uuid4(), "Clock", "9.5")
     projeto_repo.obter_por_id.return_value = projeto
     time_repo.obter_por_id.return_value = Time(usuario.unidade_id, uuid4(), "QA", usuario.id)
-    service = FormFactorServiceImpl(projeto_repo, time_repo, resultado_repo)
+    service = FormFactorServiceImpl(projeto_repo, time_repo, resultado_repo, AsyncMock())
     app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
     app.dependency_overrides[get_form_factor_service] = dependency_override(service)
 
@@ -150,7 +188,7 @@ async def test_gerente_nao_consulta_form_factor_de_setor_fora_do_escopo(api_clie
     projeto_repo, time_repo, resultado_repo = (AsyncMock() for _ in range(3))
     projeto_repo.obter_por_id.return_value = Projeto(unidade_id, time_id, "Clock", "9.5")
     time_repo.obter_por_id.return_value = Time(unidade_id, setor_id, "Outro setor", usuario_id)
-    service = FormFactorServiceImpl(projeto_repo, time_repo, resultado_repo)
+    service = FormFactorServiceImpl(projeto_repo, time_repo, resultado_repo, AsyncMock())
     app.dependency_overrides[get_usuario_atual] = dependency_override(gerente)
     app.dependency_overrides[get_form_factor_service] = dependency_override(service)
 
@@ -166,7 +204,7 @@ async def test_form_factor_de_projeto_de_outra_unidade_nao_e_consultado(api_clie
     usuario = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
     projeto_repo, time_repo, resultado_repo = (AsyncMock() for _ in range(3))
     projeto_repo.obter_por_id.return_value = None
-    service = FormFactorServiceImpl(projeto_repo, time_repo, resultado_repo)
+    service = FormFactorServiceImpl(projeto_repo, time_repo, resultado_repo, AsyncMock())
     app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
     app.dependency_overrides[get_form_factor_service] = dependency_override(service)
 

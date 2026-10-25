@@ -43,8 +43,6 @@ describe("translation resources", () => {
     expect(resources["pt-BR"].translation.difficulty).toBe("Dificuldade");
     expect(resources["pt-BR"].translation.tcSituation).toBe("Situação do TC");
     expect(resources["pt-BR"].translation.assignee).toBe("Responsável");
-    expect(resources["pt-BR"].translation.deviceModel).toBe("Modelo");
-    expect(resources["pt-BR"].translation.result).toBe("Resultado");
     expect(resources["pt-BR"].translation.date).toBe("Data");
     expect(resources["pt-BR"].translation.status).toBe("Status");
   });

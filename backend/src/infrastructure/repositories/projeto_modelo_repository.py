@@ -3,6 +3,7 @@ from uuid import UUID
 from sqlalchemy import select
 
 from src.domain.entities.projeto_modelo import ProjetoModelo
+from src.domain.queries.modelo_do_projeto import ModeloDoProjeto
 from src.infrastructure.data.models.modelo_dispositivo_model import ModeloDispositivoModel
 from src.infrastructure.data.models.projeto_modelo_model import ProjetoModeloModel
 from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
@@ -52,6 +53,25 @@ class ProjetoModeloRepositoryImpl(RepositoryBaseImpl[ProjetoModelo, ProjetoModel
         for projeto_id, nome in linhas.all():
             nomes.setdefault(projeto_id, []).append(nome)
         return {projeto_id: tuple(itens) for projeto_id, itens in nomes.items()}
+
+    async def listar_modelos_do_projeto(
+        self, unidade_id: UUID, projeto_id: UUID
+    ) -> tuple[ModeloDoProjeto, ...]:
+        linhas = await self.session.execute(
+            select(ModeloDispositivoModel.id, ModeloDispositivoModel.nome)
+            .join(
+                ProjetoModeloModel,
+                (ModeloDispositivoModel.id == ProjetoModeloModel.modelo_dispositivo_id)
+                & (ModeloDispositivoModel.unidade_id == ProjetoModeloModel.unidade_id),
+            )
+            .where(
+                ProjetoModeloModel.unidade_id == unidade_id,
+                ProjetoModeloModel.projeto_id == projeto_id,
+                ProjetoModeloModel.ativo.is_(True),
+            )
+            .order_by(ModeloDispositivoModel.nome)
+        )
+        return tuple(ModeloDoProjeto(*linha) for linha in linhas.all())
 
     def _to_entity(self, model: ProjetoModeloModel) -> ProjetoModelo:
         vinculo = ProjetoModelo(model.unidade_id, model.projeto_id, model.modelo_dispositivo_id)

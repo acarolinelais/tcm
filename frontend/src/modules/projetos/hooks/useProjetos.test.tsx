@@ -2,14 +2,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { casosTesteApi, projetosApi } from "../api/projetos.api";
-import { useCasosTeste, useCriarProjeto, useProjetosPessoais, useTransferirCasoTeste } from "./useProjetos";
+import { casosTesteApi, formFactorApi, projetosApi } from "../api/projetos.api";
+import { useCasosTeste, useCriarProjeto, useFormFactor, useProjetosPessoais, useTransferirCasoTeste } from "./useProjetos";
 import type { PerfilAtual } from "@/core/auth/api";
 
 vi.mock("../api/projetos.api", () => ({
   casosTesteApi: { listar: vi.fn(), transferirParaBackup: vi.fn() },
   projetosApi: { criar: vi.fn(), listar: vi.fn() },
-  formFactorApi: {}, modelosDispositivoApi: {},
+  formFactorApi: { listar: vi.fn() }, modelosDispositivoApi: {},
 }));
 
 function criarWrapper() {
@@ -42,6 +42,18 @@ describe("hooks de projetos", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     rerender({ page: 2, responsavelId: "b" });
     await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("p", 2, 20, { associadosAMim: true, responsavelId: "b" }));
+  });
+
+  it("refaz o Form Factor ao mudar o responsável e não consulta quando desabilitado", async () => {
+    vi.mocked(formFactorApi.listar).mockResolvedValue({ modelos: [], items: [], total_count: 0, page: 1, page_size: 20 });
+    const perfil = { id: "kp", unidade_id: "u" } as PerfilAtual;
+    const { result, rerender } = renderHook(({ responsavelId, enabled }) => useFormFactor("p", { page: 1, pageSize: 20, responsavelId }, perfil, enabled), { initialProps: { responsavelId: undefined as string | undefined, enabled: false }, wrapper: criarWrapper() });
+    expect(formFactorApi.listar).not.toHaveBeenCalled();
+    rerender({ responsavelId: undefined, enabled: true });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    rerender({ responsavelId: "ana", enabled: true });
+    await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("p", { page: 1, pageSize: 20, responsavelId: "ana" }));
+    expect(formFactorApi.listar).toHaveBeenCalledTimes(2);
   });
 
   it("invalida consultas de casos, entrada e seletor após transferência", async () => {

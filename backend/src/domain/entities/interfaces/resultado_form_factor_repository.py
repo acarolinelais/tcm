@@ -21,5 +21,5 @@ class ResultadoFormFactorRepository(RepositoryBase[ResultadoFormFactor], Protoco
         page_size: int,
         inicio: datetime | None = None,
         fim: datetime | None = None,
-        one_ui: str | None = None,
+        responsavel_id: UUID | None = None,
     ) -> PagedResult[FormFactorLinha]: ...

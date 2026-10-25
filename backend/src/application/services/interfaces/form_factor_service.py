@@ -13,5 +13,5 @@ class FormFactorService(Protocol):
         page: int,
         page_size: int,
         semana: str | None = None,
-        one_ui: str | None = None,
+        responsavel_id: UUID | None = None,
     ) -> FormFactorResponse: ...
