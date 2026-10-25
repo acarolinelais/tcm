@@ -1,6 +1,6 @@
 # 019. Escopo do gerente nos times em que participa: Spec
 
-- **Status:** Aprovada
+- **Status:** Concluída
 - **Data:** 2026-10-25
 - **ADR:** [0036](../../adr/0036-escopo-gerente-inclui-times-em-que-participa.md)
 
