@@ -153,6 +153,16 @@ async def test_caso_persiste_com_responsaveis_e_tc_id_e_unico_no_projeto():
             assert transferido.responsavel_id == backup_id
             assert transferido.backup_id is None
 
+            # "InValidation" passa do antigo VARCHAR(10) da coluna: grava e lê de volta.
+            transferido.atualizar_campos_do_responsavel(
+                StatusCasoTeste.IN_VALIDATION, transferido.category, transferido.difficulty
+            )
+            await repository.atualizar(transferido)
+            await session.flush()
+            validando = await repository.obter_por_id(unidade_id, caso.id)
+            assert validando is not None
+            assert validando.status == StatusCasoTeste.IN_VALIDATION
+
             duplicado = CasoTeste(
                 unidade_id,
                 projeto_id,

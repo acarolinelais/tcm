@@ -57,6 +57,9 @@ describe("translation resources", () => {
     expect(resources["pt-BR"].translation.difficultyMedium).toBe("Média");
     expect(resources["pt-BR"].translation.difficultyHigh).toBe("Alta");
     expect(resources["pt-BR"].translation.statusInProgress).toBe("Em andamento");
+    expect(resources.en.translation.statusInValidation).toBe("In Validation");
+    expect(resources["pt-BR"].translation.statusInValidation).toBe("Em validação");
+    expect(resources.ko.translation.statusInValidation).toBe("검증 중");
     expect(resources["pt-BR"].translation.addDeviceModel).toBe("Novo modelo de dispositivo");
     expect(resources["pt-BR"].translation.deviceModelName).toBe("Nome do modelo");
   });

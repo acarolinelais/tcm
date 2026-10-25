@@ -10,6 +10,7 @@ export const project = {
   unidade_id: "unit-1",
   time_id: teamId,
   nome: "Clock 9.5",
+  modelos_dispositivo: ["S27 Ultra"],
   app: "Clock",
   one_ui: "9.5",
   status: "Created",

@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRightLeft, Check, ClipboardList, Clock, Eye, Pencil, Play, Plus, SearchX, UploadCloud, X, type LucideIcon } from "lucide-react";
+import { ArrowRightLeft, Check, ClipboardList, Clock, Eye, Pencil, Play, Plus, SearchX, ShieldCheck, UploadCloud, X, type LucideIcon } from "lucide-react";
 import { useOutletContext, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
@@ -32,6 +32,7 @@ const statusBadges: Record<StatusCasoTeste, { badge: string; icon: string; Icon:
   "To-Do": { badge: "bg-slate-100 text-slate-700", icon: "bg-slate-500", Icon: Clock },
   InProgress: { badge: "bg-blue-50 text-blue-800", icon: "bg-blue-700", Icon: Play },
   InReview: { badge: "bg-amber-50 text-amber-800", icon: "bg-amber-600", Icon: Eye },
+  InValidation: { badge: "bg-violet-50 text-violet-800", icon: "bg-violet-600", Icon: ShieldCheck },
   Pass: { badge: "bg-green-50 text-green-800", icon: "bg-green-800", Icon: Check },
   Fail: { badge: "bg-red-50 text-red-800", icon: "bg-red-700", Icon: X },
 };
@@ -98,7 +99,7 @@ function ProjetoDetalhe() {
     mutationFn: () => editar
       ? casosTesteApi.atualizar(editar.id, camposAlterados(editar, { category, difficulty, situation: situation || editar.situation, status, responsavel_id: responsavelId, backup_id: backupId || null }))
       : casosTesteApi.criar(projetoId, { tc_id: tcId.trim(), category, difficulty, situation: situation as SituacaoCasoTeste, responsavel_id: responsavelId, backup_id: backupId }),
-    onSuccess: async () => { await client.invalidateQueries({ queryKey: ["projetos"] }); setCriarAberto(false); setEditar(null); toast.success(t("caseSaveSuccess", { defaultValue: "Test Case salvo." })); },
+    onSuccess: async () => { await client.invalidateQueries({ queryKey: ["projetos"] }); setCriarAberto(false); toast.success(t("caseSaveSuccess", { defaultValue: "Test Case salvo." })); },
     onError: (error) => toast.error(error instanceof Error ? error.message : t("caseSaveError", { defaultValue: "Não foi possível salvar o Test Case." })),
   });
   const updateMemberCase = useMutation({
@@ -182,16 +183,20 @@ function ProjetoDetalhe() {
   return <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
     <header className="mb-4 flex shrink-0 flex-wrap items-start gap-4">
       <div className="min-w-0 flex-1">{projeto.data ? <ProjetoSwitcher projetoId={projetoId} nome={projeto.data.nome} /> : <h1 className="truncate text-2xl font-medium text-primary">{t("loadingProjects")}</h1>}</div>
-      {podeGerenciarCasos && aba === "cases" && <Button onClick={() => { limparCaso(); setCriarAberto(true); }}><Plus aria-hidden="true" className="size-4" />{t("newTestCase", { defaultValue: "Novo Test Case" })}</Button>}
       {projeto.data && <div className="ml-auto grid shrink-0 gap-1 text-xs text-muted-foreground"><span aria-hidden="true">{t("week")}</span><WeekPicker label={t("week")} value={aba === "cases" ? semanaCasos : semana} onChange={(valor) => { if (aba === "cases") setSemanaCasos(valor); else setSemana(valor); setPagina(1); }} className="h-9 w-44" /></div>}
     </header>
 
     {projeto.isLoading ? <p role="status" className="py-8 text-sm text-muted-foreground">{t("loadingProjects")}</p> : projeto.isError || !projeto.data ? <p role="alert" className="py-8 text-sm text-muted-foreground">{t("projectNotFound", { defaultValue: "Projeto não encontrado ou sem acesso." })}</p> : <>
-      <div ref={abasRef} className="relative mb-5 flex shrink-0 gap-4 border-b border-border" role="tablist" aria-label={t("projectTabs", { defaultValue: "Abas do projeto" })}>
+      {/* A ação da aba mora na barra de abas: o cabeçalho não muda de layout ao trocar de aba. */}
+      <div className="mb-5 flex shrink-0 items-end justify-between gap-4 border-b border-border">
+      <div ref={abasRef} className="relative flex gap-4" role="tablist" aria-label={t("projectTabs", { defaultValue: "Abas do projeto" })}>
         {podeConsultarCasos && <button type="button" role="tab" aria-selected={aba === "cases"} onClick={() => { setAba("cases"); setPagina(1); }} className={`px-0.5 pb-2 text-lg transition-colors ${aba === "cases" ? "text-primary" : "text-foreground hover:text-primary"}`}>{t("testCasesTab")}</button>}
         {(podeConsultarFormFactor || podeImportarSdf) && <button type="button" role="tab" aria-selected={aba === "form-factor"} onClick={() => { setAba("form-factor"); setPagina(1); }} className={`px-0.5 pb-2 text-lg transition-colors ${aba === "form-factor" ? "text-primary" : "text-foreground hover:text-primary"}`}>{t("formFactor", { defaultValue: "Form Factor" })}</button>}
         {/* Uma barra só, que desliza até a aba ativa. */}
         {indicador && <span aria-hidden="true" className="absolute -bottom-px left-0 h-0.5 rounded-full bg-primary transition-[translate,width] duration-200 ease-out motion-reduce:transition-none" style={{ width: indicador.width, translate: `${indicador.left}px 0` }} />}
+      </div>
+      {podeGerenciarCasos && aba === "cases" && <Button size="sm" className="mb-2" onClick={() => { limparCaso(); setCriarAberto(true); }}><Plus aria-hidden="true" className="size-4" />{t("newTestCase", { defaultValue: "Novo Test Case" })}</Button>}
+      {podeImportarSdf && aba === "form-factor" && <div className="mb-2 flex flex-wrap items-center justify-end gap-2"><input ref={inputSdf} className="sr-only" type="file" accept=".xls,.xlsx" onChange={(event) => setArquivoSdf(event.target.files?.[0] ?? null)} /><Button size="sm" variant="outline" onClick={() => inputSdf.current?.click()}><UploadCloud aria-hidden="true" className="size-4" />{arquivoSdf?.name ?? t("importSdf", { defaultValue: "Importar relatório SDF" })}</Button>{arquivoSdf && <Button size="sm" disabled={importReport.isPending} onClick={() => importReport.mutate()}>{importReport.isPending ? t("saving") : t("import")}</Button>}</div>}
       </div>
 
       {aba === "cases" && podeConsultarCasos ? <TableLayout>
@@ -239,12 +244,12 @@ function ProjetoDetalhe() {
         {casos.isError && <p role="alert" className="p-5 text-sm text-destructive">{t("caseLoadError", { defaultValue: "Não foi possível carregar os Test Cases." })}</p>}
         <TablePagination page={pagina} pageSize={tamanhoPagina} totalCount={casos.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
       </TableLayout> : <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto">
-        {podeImportarSdf && <div className="flex flex-wrap items-center gap-2"><input ref={inputSdf} className="sr-only" type="file" accept=".xls,.xlsx" onChange={(event) => setArquivoSdf(event.target.files?.[0] ?? null)} /><Button variant="outline" onClick={() => inputSdf.current?.click()}><UploadCloud aria-hidden="true" className="size-4" />{arquivoSdf?.name ?? t("importSdf", { defaultValue: "Importar relatório SDF" })}</Button>{arquivoSdf && <Button disabled={importReport.isPending} onClick={() => importReport.mutate()}>{importReport.isPending ? t("saving") : t("import")}</Button>}</div>}
         <TableLayout><Table containerClassName={resultados.data?.items.length ? "min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}><TableHeader><TableRow><TableHead>{t("tcId")}</TableHead><TableHead>{t("sdfId")}</TableHead><TableHead>{t("deviceModel")}</TableHead><TableHead>{t("result")}</TableHead><TableHead>{t("date")}</TableHead><TableHead>{t("oneUi")}</TableHead></TableRow></TableHeader>{resultados.data?.items.length ? <TableBody>{resultados.data.items.map((row, index) => <TableRow key={`${row.sdf_id}-${row.modelo_dispositivo_id}-${index}`}><TableCell className="font-medium">{row.tc_id}</TableCell><TableCell>{row.sdf_id}</TableCell><TableCell>{row.modelo_nome}</TableCell><TableCell>{row.resultado}</TableCell><TableCell>{formatDate(row.data_reportada)}</TableCell><TableCell>{row.one_ui}</TableCell></TableRow>)}</TableBody> : null}</Table>{!resultados.isLoading && !resultados.isError && !resultados.data?.items.length && <TableEmptyState><p role="status">{t("noFormFactorResults", { defaultValue: "Nenhum resultado Form Factor cadastrado." })}</p></TableEmptyState>}<TablePagination page={pagina} pageSize={tamanhoPagina} totalCount={resultados.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} /></TableLayout>
       </div>}
     </>}
 
-    <Dialog open={criarAberto} onOpenChange={(open) => { setCriarAberto(open); if (!open) limparCaso(); }}>
+    {/* O form só é limpo ao abrir: limpar ao fechar trocaria título e campos durante a animação de saída. */}
+    <Dialog open={criarAberto} onOpenChange={setCriarAberto}>
       <DrawerContent><DrawerHeader><DrawerTitle>{editar ? t("editTestCase") : t("newTestCase")}</DrawerTitle></DrawerHeader>
         <form className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => { event.preventDefault(); saveCase.mutate(); }}>
           <div className="flex-1 space-y-5 overflow-y-auto px-7 py-6">

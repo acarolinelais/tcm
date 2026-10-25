@@ -22,6 +22,8 @@ const casos = [
   { id: "case-1", unidade_id: "unit-1", projeto_id: "project-1", tc_id: "Clock_001", category: "A" as const, difficulty: "Low" as const, situation: "New" as const, status: "To-Do" as const, responsavel_id: "user-1", backup_id: "backup-1", ativo: true, created_at: null, updated_at: null },
   { id: "case-2", unidade_id: "unit-1", projeto_id: "project-1", tc_id: "Clock_002", category: "B" as const, difficulty: "Medium" as const, situation: "New Step" as const, status: "Pass" as const, responsavel_id: "user-2", backup_id: null, ativo: true, created_at: null, updated_at: null },
 ];
+// Literal de propósito: a ordem do progresso é requisito (spec 017).
+const ROTULOS_STATUS = ["To-Do", "In Progress", "In Review", "In Validation", "Pass", "Fail"];
 const perfil: PerfilAtual = {
   id: "user-1", nome: "Dev", email: "dev@example.com", unidade_id: "unit-1", unidade_nome: "Unidade",
   perfil_codigo: null, perfil: "Desenvolvedor", permissoes: ["projetos.consultar", "test_cases.consultar"], times: [], setores_gerenciados: [],
@@ -210,6 +212,45 @@ describe("ProjetoDetalhePage", () => {
     expect(within(proprioCaso).getByText("New")).toBeInTheDocument();
 
     expect(within(proprioCaso).queryByRole("button", { name: /^Edit$/i })).not.toBeInTheDocument();
+  });
+
+  it("oferece In Validation entre In Review e Pass no select, no filtro e no badge, sem Data final", async () => {
+    const validando = { ...casos[1], id: "case-3", tc_id: "Clock_003", status: "InValidation" as const, updated_at: "2026-10-20T12:00:00Z" };
+    vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [...casos, validando], page: 1, page_size: 20, total_count: 3 });
+    const user = userEvent.setup();
+    renderPage();
+
+    const linhaValidando = await screen.findByRole("row", { name: /Clock_003/ });
+    expect(within(linhaValidando).getByText("In Validation")).toBeInTheDocument();
+    const colunaDataFinal = screen.getAllByRole("columnheader").findIndex((header) => /End date/.test(header.textContent ?? ""));
+    expect(within(linhaValidando).getAllByRole("cell")[colunaDataFinal]).toHaveTextContent("—");
+
+    const proprioCaso = screen.getByRole("row", { name: /Clock_001/ });
+    await user.click(within(proprioCaso).getByRole("combobox", { name: "Status Clock_001" }));
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(ROTULOS_STATUS);
+    await user.click(screen.getByRole("option", { name: "In Validation" }));
+    await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { status: "InValidation" }));
+
+    await user.click(screen.getByRole("button", { name: "Filter by Status" }));
+    expect(screen.getAllByRole("menuitemradio").map((item) => item.textContent)).toEqual(["All", ...ROTULOS_STATUS]);
+    await user.click(screen.getByRole("menuitemradio", { name: "In Validation" }));
+    expect(screen.getByRole("row", { name: /Clock_003/ })).toBeInTheDocument();
+    expect(screen.queryByRole("row", { name: /Clock_001/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("row", { name: /Clock_002/ })).not.toBeInTheDocument();
+  });
+
+  it("oferece In Validation no drawer de edição, na ordem do progresso", async () => {
+    const admin = { ...perfil, id: "admin", perfil_codigo: "ADMIN_UNIDADE", perfil: "Administrador" };
+    const user = userEvent.setup();
+    renderPage(admin);
+    const linha = await screen.findByRole("row", { name: /Clock_001/ });
+    await user.click(within(linha).getByRole("button", { name: /Actions for Clock_001/i }));
+    await user.click(await screen.findByRole("menuitem", { name: "Edit" }));
+    await user.click(within(screen.getByRole("dialog")).getByLabelText("Status"));
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(ROTULOS_STATUS);
+    await user.click(screen.getByRole("option", { name: "In Validation" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { status: "InValidation" }));
   });
 
   it("permite ao administrador criar um caso e atribuir responsável e backup do time", async () => {

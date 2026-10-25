@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Eye, FileSpreadsheet, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Eye, FileSpreadsheet, Pencil, Plus, Smartphone, Trash2 } from "lucide-react";
+import { createPortal } from "react-dom";
 import { Link, useNavigate, useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
 
@@ -39,6 +40,7 @@ export function ProjetosPage() {
   const [pagina, setPagina] = useState(1);
   const [tamanhoPagina, setTamanhoPagina] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const [filtrosProjeto, setFiltrosProjeto] = useState({ nome: "", time: "", app: "", oneUi: "", status: "", createdAt: "" });
+  const [modelosFiltrados, setModelosFiltrados] = useState<string[]>([]);
   const projetos = useQuery({ queryKey: ["projetos", pagina, tamanhoPagina], queryFn: () => projetosApi.listar(pagina, tamanhoPagina) });
   const times = useQuery({ queryKey: ["projetos-times"], queryFn: () => timesApi.listar(1, 100, { ativo: true }), enabled: podeGerenciar });
   const modelos = useQuery({ queryKey: ["modelos-dispositivo", "opcoes"], queryFn: () => modelosDispositivoApi.listarOpcoes(), enabled: podeGerenciar });
@@ -60,6 +62,7 @@ export function ProjetosPage() {
   const conferirPlanilha = modo === "planilha" && leitura.erros.length > 0;
   const timesDisponiveis = times.data?.items ?? timesVazios;
   const opcoesModelos = useMemo(() => (modelos.data?.items ?? []).map((model) => ({ value: model.id, label: model.nome, description: model.descricao })), [modelos.data?.items]);
+  const opcoesFiltroModelos = useMemo(() => [...new Set((projetos.data?.items ?? []).flatMap((project) => project.modelos_dispositivo ?? []))].sort((a, b) => a.localeCompare(b)).map((nome) => ({ value: nome, label: nome })), [projetos.data?.items]);
   const nomeTime = useMemo(() => Object.fromEntries([...perfil.times, ...timesDisponiveis].map((time) => [time.id, time.nome])), [perfil.times, timesDisponiveis]);
   const projetosFiltrados = (projetos.data?.items ?? []).filter((project) => {
     const createdAt = project.created_at ? formatDate(project.created_at) : "";
@@ -67,6 +70,7 @@ export function ProjetosPage() {
       && (nomeTime[project.time_id] ?? project.time_id).toLocaleLowerCase().includes(filtrosProjeto.time.toLocaleLowerCase())
       && project.app.toLocaleLowerCase().includes(filtrosProjeto.app.toLocaleLowerCase())
       && project.one_ui.toLocaleLowerCase().includes(filtrosProjeto.oneUi.toLocaleLowerCase())
+      && (!modelosFiltrados.length || modelosFiltrados.some((nome) => (project.modelos_dispositivo ?? []).includes(nome)))
       && (!filtrosProjeto.status || project.status === filtrosProjeto.status)
       && createdAt.toLocaleLowerCase().includes(filtrosProjeto.createdAt.toLocaleLowerCase());
   });
@@ -152,19 +156,20 @@ export function ProjetosPage() {
       </header>
       <TableLayout className="overflow-auto">
         {projetos.isLoading ? <div role="status" className="p-8 text-center text-sm text-muted-foreground">{t("loadingProjects")}</div> : projetos.isError ? <div role="alert" className="p-8 text-center text-sm text-destructive">{t("projectsLoadError")}</div> : <Table>
-          <colgroup><col style={{ width: "18%" }} /><col style={{ width: "12%" }} /><col style={{ width: "10%" }} /><col style={{ width: "18%" }} /><col style={{ width: "14%" }} /><col style={{ width: "18%" }} /><col style={{ width: "10%" }} /></colgroup>
+          <colgroup><col style={{ width: "16%" }} /><col style={{ width: "12%" }} /><col style={{ width: "9%" }} /><col style={{ width: "13%" }} /><col style={{ width: "16%" }} /><col style={{ width: "12%" }} /><col style={{ width: "12%" }} /><col style={{ width: "10%" }} /></colgroup>
           <TableHeader><TableRow>
             <TableHead><TableColumnFilter label={t("project")} value={filtrosProjeto.nome} onChange={(value) => alterarFiltroProjeto("nome", value)} /></TableHead>
             <TableHead><TableColumnFilter label={t("team")} value={filtrosProjeto.time} onChange={(value) => alterarFiltroProjeto("time", value)} /></TableHead>
             <TableHead><TableColumnFilter label={t("app")} value={filtrosProjeto.app} onChange={(value) => alterarFiltroProjeto("app", value)} /></TableHead>
             <TableHead><TableColumnFilter label={t("oneUi")} value={filtrosProjeto.oneUi} onChange={(value) => alterarFiltroProjeto("oneUi", value)} /></TableHead>
+            <TableHead><TableColumnFilter label={t("deviceModels")} value="" onChange={() => undefined} options={opcoesFiltroModelos} multiple selectedValues={modelosFiltrados} onSelectedValuesChange={(values) => { setPagina(1); setModelosFiltrados(values); }} /></TableHead>
             <TableHead><TableColumnFilter label={t("status")} value={filtrosProjeto.status} onChange={(value) => alterarFiltroProjeto("status", value)} options={[{ value: "", label: t("all") }, ...statusProjeto.map((status) => ({ value: status, label: statusLabel(status) }))]} /></TableHead>
             <TableHead><TableColumnFilter label={t("createdAt")} value={filtrosProjeto.createdAt} onChange={(value) => alterarFiltroProjeto("createdAt", value)} /></TableHead>
             <TableHead className="text-right">{t("actions")}</TableHead>
           </TableRow></TableHeader>
           <TableBody>{projetosFiltrados.length ? projetosFiltrados.map((project) => <ProjectRow key={project.id} project={project} teamName={nomeTime[project.time_id]} canEdit={podeGerenciar} onView={() => navigate(`/projetos/${project.id}`)} onEdit={() => { setProjetoEditando(project); setEdicaoApp(project.app); setEdicaoOneUi(project.one_ui); }} onDelete={() => setProjetoExcluindo(project)} onStatusChange={(status) => statusMutation.mutate({ id: project.id, status })} statusLabel={statusLabel} />) : <>
-            <TableRow aria-hidden="true" className="border-0 hover:bg-transparent"><TableCell colSpan={7} className="h-3 p-0" /></TableRow>
-            <TableRow><TableCell colSpan={7} className="p-0"><TableEmptyStatePanel role="status" className="px-5 py-7 sm:px-8">
+            <TableRow aria-hidden="true" className="border-0 hover:bg-transparent"><TableCell colSpan={8} className="h-3 p-0" /></TableRow>
+            <TableRow><TableCell colSpan={8} className="p-0"><TableEmptyStatePanel role="status" className="px-5 py-7 sm:px-8">
               <div className="text-center"><h2 className="text-base font-semibold text-foreground">{projetos.data?.items.length ? t("noProjectResults", { defaultValue: "Nenhum projeto corresponde aos filtros." }) : t("noProjects")}</h2><p className="mx-auto mt-1 max-w-md text-sm leading-5 text-muted-foreground">{projetos.data?.items.length ? t("adjustFilters", { defaultValue: "Ajuste ou limpe os filtros para ver os resultados." }) : t("noProjectsHint")}</p></div>
             </TableEmptyStatePanel></TableCell></TableRow>
           </>}</TableBody>
@@ -224,6 +229,56 @@ export function ProjetosPage() {
 
 function ProjectRow({ project, teamName, canEdit, onView, onEdit, onDelete, onStatusChange, statusLabel }: { project: Projeto; teamName?: string; canEdit: boolean; onView: () => void; onEdit: () => void; onDelete: () => void; onStatusChange: (status: StatusProjeto) => void; statusLabel: (status: StatusProjeto) => string }) {
   const { t } = useTranslation();
-  return <TableRow><TableCell className="font-medium"><Link to={`/projetos/${project.id}`} className="text-left hover:text-primary">{project.nome}</Link></TableCell><TableCell className="text-muted-foreground">{teamName ?? "—"}</TableCell><TableCell className="text-muted-foreground">{project.app}</TableCell><TableCell className="text-muted-foreground">{project.one_ui}</TableCell><TableCell>{canEdit ? <Select value={project.status} onValueChange={(value) => onStatusChange(value as StatusProjeto)}><SelectTrigger aria-label={t("projectStatusFor", { name: project.nome })} className="h-8 w-36 border-0 bg-transparent px-2 hover:bg-secondary"><SelectValue /></SelectTrigger><SelectContent>{statusProjeto.map((status) => <SelectItem key={status} value={status}>{statusLabel(status)}</SelectItem>)}</SelectContent></Select> : <Badge variant="secondary">{statusLabel(project.status)}</Badge>}</TableCell><TableCell className="text-muted-foreground">{project.created_at ? formatDate(project.created_at) : "—"}</TableCell><TableCell className="text-right"><TableRowActions label={project.nome} actions={[{ label: t("viewProject"), icon: Eye, onSelect: onView }, ...(canEdit ? [{ label: t("editProject"), icon: Pencil, onSelect: onEdit }, { label: t("deleteProject"), icon: Trash2, onSelect: onDelete, destructive: true }] : [])]} /></TableCell></TableRow>;
+  const modelos = project.modelos_dispositivo ?? [];
+  return <TableRow><TableCell className="font-medium"><Link to={`/projetos/${project.id}`} className="text-left hover:text-primary">{project.nome}</Link></TableCell><TableCell className="text-muted-foreground">{teamName ?? "—"}</TableCell><TableCell className="text-muted-foreground">{project.app}</TableCell><TableCell className="text-muted-foreground">{project.one_ui}</TableCell><TableCell><ProjectDeviceCount projectId={project.id} models={modelos} label={t("deviceModels")} /></TableCell><TableCell>{canEdit ? <Select value={project.status} onValueChange={(value) => onStatusChange(value as StatusProjeto)}><SelectTrigger aria-label={t("projectStatusFor", { name: project.nome })} className="h-8 w-36 border-0 bg-transparent px-2 hover:bg-secondary"><SelectValue /></SelectTrigger><SelectContent>{statusProjeto.map((status) => <SelectItem key={status} value={status}>{statusLabel(status)}</SelectItem>)}</SelectContent></Select> : <Badge variant="secondary">{statusLabel(project.status)}</Badge>}</TableCell><TableCell className="text-muted-foreground">{project.created_at ? formatDate(project.created_at) : "—"}</TableCell><TableCell className="text-right"><TableRowActions label={project.nome} actions={[{ label: t("viewProject"), icon: Eye, onSelect: onView }, ...(canEdit ? [{ label: t("editProject"), icon: Pencil, onSelect: onEdit }, { label: t("deleteProject"), icon: Trash2, onSelect: onDelete, destructive: true }] : [])]} /></TableCell></TableRow>;
+}
+
+function ProjectDeviceCount({ projectId, models, label }: { projectId: string; models: string[]; label: string }) {
+  const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState({ left: 0, top: 0 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const closeTimeout = useRef<number | null>(null);
+  const tooltipId = `project-models-${projectId}`;
+
+  function showTooltip() {
+    if (closeTimeout.current !== null) window.clearTimeout(closeTimeout.current);
+    setOpen(true);
+  }
+
+  function hideTooltip() {
+    if (document.activeElement === triggerRef.current) return;
+    if (closeTimeout.current !== null) window.clearTimeout(closeTimeout.current);
+    closeTimeout.current = window.setTimeout(() => setOpen(false), 120);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    const positionTooltip = () => {
+      const bounds = triggerRef.current?.getBoundingClientRect();
+      if (!bounds) return;
+      const tooltipBounds = tooltipRef.current?.getBoundingClientRect();
+      const width = tooltipBounds?.width ?? Math.min(256, window.innerWidth - 16);
+      const height = tooltipBounds?.height ?? Math.min(models.length * 24 + 16, 192);
+      const left = Math.max(8, Math.min((bounds.left + bounds.right - width) / 2, window.innerWidth - width - 8));
+      const top = bounds.bottom + height + 8 <= window.innerHeight
+        ? bounds.bottom + 8
+        : Math.max(8, bounds.top - height - 8);
+      setPosition({ left, top });
+    };
+    positionTooltip();
+    window.addEventListener("resize", positionTooltip);
+    window.addEventListener("scroll", positionTooltip, true);
+    return () => {
+      window.removeEventListener("resize", positionTooltip);
+      window.removeEventListener("scroll", positionTooltip, true);
+      if (closeTimeout.current !== null) window.clearTimeout(closeTimeout.current);
+    };
+  }, [open, models.length]);
+
+  return <>
+    <button ref={triggerRef} type="button" aria-label={`${label}: ${models.length}`} aria-describedby={open && models.length > 0 ? tooltipId : undefined} onMouseEnter={showTooltip} onMouseLeave={hideTooltip} onFocus={showTooltip} onBlur={() => setOpen(false)} onClick={showTooltip} className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><Smartphone aria-hidden="true" className="size-4" /><span>{models.length}</span></button>
+    {open && models.length > 0 && createPortal(<div ref={tooltipRef} id={tooltipId} role="tooltip" onMouseEnter={showTooltip} onMouseLeave={hideTooltip} style={{ position: "fixed", left: position.left, top: position.top }} className="z-[80] max-h-48 w-max max-w-64 overflow-y-auto rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground shadow-lg">{models.map((name, index) => <span key={`${name}-${index}`} className="block truncate">{name}</span>)}</div>, document.body)}
+  </>;
 }
 

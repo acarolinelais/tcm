@@ -46,12 +46,13 @@ class ProjetoResponse(BaseModel):
     one_ui: str
     nome: str
     status: StatusProjeto
+    modelos_dispositivo: list[str] = Field(default_factory=list)
     ativo: bool
     created_at: datetime | None
     updated_at: datetime | None
 
 
-def to_response(projeto: Projeto) -> ProjetoResponse:
+def to_response(projeto: Projeto, modelos_dispositivo: list[str] | None = None) -> ProjetoResponse:
     return ProjetoResponse(
         id=projeto.id,
         unidade_id=projeto.unidade_id,
@@ -60,6 +61,7 @@ def to_response(projeto: Projeto) -> ProjetoResponse:
         one_ui=projeto.one_ui,
         nome=projeto.nome,
         status=projeto.status,
+        modelos_dispositivo=modelos_dispositivo or [],
         ativo=projeto.ativo,
         created_at=projeto.created_at,
         updated_at=projeto.updated_at,

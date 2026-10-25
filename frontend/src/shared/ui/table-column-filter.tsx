@@ -18,6 +18,9 @@ export function TableColumnFilter({
   value,
   onChange,
   options,
+  multiple = false,
+  selectedValues = [],
+  onSelectedValuesChange,
   placeholder,
   type = "text",
 }: {
@@ -25,6 +28,9 @@ export function TableColumnFilter({
   value: string;
   onChange: (value: string) => void;
   options?: TableFilterOption[];
+  multiple?: boolean;
+  selectedValues?: string[];
+  onSelectedValuesChange?: (values: string[]) => void;
   placeholder?: string;
   /** "date": o valor é um dia no formato AAAA-MM-DD, escolhido num Calendar. */
   type?: "text" | "date";
@@ -69,7 +75,7 @@ export function TableColumnFilter({
     }
     const bounds = triggerRef.current?.getBoundingClientRect();
     if (bounds) {
-      const alturaMenu = options ? Math.min(300, options.length * 38 + 8) : type === "date" ? 340 : 132;
+      const alturaMenu = options ? Math.min(300, options.length * 38 + (multiple ? 60 : 8)) : type === "date" ? 340 : 132;
       const top = bounds.bottom + alturaMenu > window.innerHeight
         ? Math.max(8, bounds.top - alturaMenu - 6)
         : bounds.bottom + 6;
@@ -85,7 +91,7 @@ export function TableColumnFilter({
     setAberto(false);
   }
 
-  const ativo = Boolean(value);
+  const ativo = multiple ? selectedValues.length > 0 : Boolean(value);
 
   return (
     <>
@@ -118,17 +124,25 @@ export function TableColumnFilter({
                 <button
                   key={option.value || "all"}
                   type="button"
-                  role="menuitemradio"
-                  aria-checked={value === option.value}
-                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-secondary active:bg-secondary ${value === option.value ? "font-medium text-primary" : "text-foreground"}`}
+                  role={multiple ? "menuitemcheckbox" : "menuitemradio"}
+                  aria-checked={multiple ? selectedValues.includes(option.value) : value === option.value}
+                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-secondary active:bg-secondary ${(multiple ? selectedValues.includes(option.value) : value === option.value) ? "font-medium text-primary" : "text-foreground"}`}
                   onClick={() => {
-                    onChange(option.value);
-                    setAberto(false);
+                    if (multiple) {
+                      const next = selectedValues.includes(option.value)
+                        ? selectedValues.filter((item) => item !== option.value)
+                        : [...selectedValues, option.value];
+                      onSelectedValuesChange?.(next);
+                    } else {
+                      onChange(option.value);
+                      setAberto(false);
+                    }
                   }}
                 >
-                  {option.label}
+                  {multiple && <span aria-hidden="true" className="mr-2 inline-flex size-4 items-center justify-center rounded border border-current text-[10px]">{selectedValues.includes(option.value) ? "✓" : ""}</span>}{option.label}
                 </button>
               ))}
+              {multiple && <div className="sticky bottom-0 flex justify-end border-t border-border bg-card px-2 py-1.5"><button type="button" className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary" onClick={() => onSelectedValuesChange?.([])}>{t("clearFilters")}</button></div>}
             </div>
           ) : type === "date" ? (
             <div>

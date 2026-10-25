@@ -30,6 +30,7 @@ class StatusCasoTeste(StrEnum):
     TO_DO = "To-Do"
     IN_PROGRESS = "InProgress"
     IN_REVIEW = "InReview"
+    IN_VALIDATION = "InValidation"
     PASS = "Pass"
     FAIL = "Fail"
 
