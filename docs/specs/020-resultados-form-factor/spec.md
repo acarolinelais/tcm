@@ -48,4 +48,3 @@ Manter o Form Factor como visão geral do projeto e oferecer uma lista históric
 - Alterar o formato de importação do SDF ou reescrever o histórico importado.
 - Criar ou associar modelos ao projeto nesta tela.
 - Consolidar resultados em percentuais ou métricas de aprovação.
-
