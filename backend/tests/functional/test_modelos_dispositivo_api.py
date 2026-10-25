@@ -169,12 +169,14 @@ async def test_kp_inativa_e_reativa_modelo(api_client, repo, acao, ativo):
     assert response.json()["ativo"] is ativo
 
 
-async def test_admin_gerencia_modelo(api_client, repo):
+async def test_admin_sem_permissao_explicita_nao_gerencia_modelo(api_client, repo):
     _usar_service_real(UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE"), repo)
 
     response = await api_client.post("/api/modelos-dispositivo", json={"nome": "S27 Ultra"})
 
-    assert response.status_code == 201
+    assert response.status_code == 403
+    repo.adicionar.assert_not_awaited()
+    repo.existe_nome.assert_not_awaited()
 
 
 @pytest.mark.parametrize("metodo", ["post", "put"])
