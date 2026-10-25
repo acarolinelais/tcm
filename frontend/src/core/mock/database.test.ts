@@ -313,7 +313,7 @@ describe("base mock de projetos", () => {
     expect(() => mockModelosDispositivoApi.criar({ nome: "S28", descricao: null })).toThrow("permissão");
     const opcoes = mockModelosDispositivoApi.listarOpcoes(1, 100).items;
     expect(opcoes).not.toContainEqual(expect.objectContaining({ id: "mock-model-tab-s11" }));
-    expect(opcoes[0]).toEqual({ id: expect.any(String), nome: expect.any(String) });
+    expect(opcoes).toContainEqual({ id: "mock-model-s27-ultra", nome: "S27 Ultra", descricao: "Flagship 2027" });
   });
 
   it("dev não lista as opções de modelos", () => {

@@ -13,7 +13,7 @@ async function simularCatalogo(page: Page, modelos: Modelo[]) {
     const url = new URL(request.url());
     const [, id, acao] = url.pathname.replace("/api/modelos-dispositivo", "").split("/");
     const agora = new Date().toISOString();
-    if (id === "opcoes") return route.fulfill({ json: pagina(modelos.filter((m) => m.ativo).map(({ id: modeloId, nome }) => ({ id: modeloId, nome }))) });
+    if (id === "opcoes") return route.fulfill({ json: pagina(modelos.filter((m) => m.ativo).map(({ id: modeloId, nome, descricao }) => ({ id: modeloId, nome, descricao }))) });
     if (!id && request.method() === "GET") {
       const ativo = url.searchParams.get("ativo");
       return route.fulfill({ json: pagina(modelos.filter((m) => ativo === null || String(m.ativo) === ativo)) });
@@ -35,7 +35,7 @@ async function simularCatalogo(page: Page, modelos: Modelo[]) {
 
 test("KP acessa Device models em Administration, cria, edita e inativa um modelo, que some do seletor de projetos", async ({ page }) => {
   await setupProjectSession(page, { id: "kp-1", nome: "Kaique", perfil_codigo: "KP", perfil: "KP", permissoes: ["projetos.consultar", "projetos.gerenciar", "modelos_dispositivo.gerenciar"] });
-  await simularCatalogo(page, [{ id: "model-tab", unidade_id: "unit-1", nome: "Tab S11", descricao: null, ativo: true, created_at: "2026-03-01T12:00:00Z", updated_at: "2026-03-01T12:00:00Z" }]);
+  await simularCatalogo(page, [{ id: "model-tab", unidade_id: "unit-1", nome: "Tab S11", descricao: "Tablet", ativo: true, created_at: "2026-03-01T12:00:00Z", updated_at: "2026-03-01T12:00:00Z" }]);
   await page.route("**/api/projetos?*", (route) => route.fulfill({ json: pagina([]) }));
   await setupTeams(page);
 
@@ -67,8 +67,8 @@ test("KP acessa Device models em Administration, cria, edita e inativa um modelo
   await page.getByRole("button", { name: "Novo projeto" }).click();
   await page.getByRole("tab", { name: "Criar manualmente" }).click();
   await page.getByRole("button", { name: "Modelos de dispositivo" }).click();
-  await expect(page.getByRole("option", { name: "Tab S11" })).toBeVisible();
-  await expect(page.getByRole("option", { name: "S27 Ultra" })).toHaveCount(0);
+  await expect(page.getByRole("option", { name: "Tab S11 Tablet" })).toBeVisible();
+  await expect(page.getByRole("option", { name: /S27 Ultra/ })).toHaveCount(0);
 });
 
 test("gerente não vê Administration nem Device models e o acesso direto é negado", async ({ page }) => {

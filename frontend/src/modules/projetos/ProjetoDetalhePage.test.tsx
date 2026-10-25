@@ -37,10 +37,6 @@ function renderPage(currentProfile = perfil, client = new QueryClient({ defaultO
 describe("ProjetoDetalhePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    HTMLElement.prototype.hasPointerCapture ??= () => false;
-    HTMLElement.prototype.setPointerCapture ??= () => undefined;
-    HTMLElement.prototype.releasePointerCapture ??= () => undefined;
-    HTMLElement.prototype.scrollIntoView ??= () => undefined;
     vi.mocked(projetosApi.obter).mockResolvedValue(projeto);
     vi.mocked(projetosApi.listar).mockResolvedValue({ items: [projeto], page: 1, page_size: 100, total_count: 1 });
     vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: casos, page: 1, page_size: 10, total_count: 2 });

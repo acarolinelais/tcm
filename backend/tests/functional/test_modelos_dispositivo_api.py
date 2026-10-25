@@ -247,7 +247,9 @@ async def test_gerente_lista_opcoes_ativas(api_client, repo):
     response = await api_client.get("/api/modelos-dispositivo/opcoes?page_size=100")
 
     assert response.status_code == 200
-    assert response.json()["items"] == [{"id": str(modelo.id), "nome": "S27 Ultra"}]
+    assert response.json()["items"] == [
+        {"id": str(modelo.id), "nome": "S27 Ultra", "descricao": "Flagship"}
+    ]
     repo.listar_paginado.assert_awaited_once_with(usuario.unidade_id, 1, 100, True, None)
 
 
@@ -257,3 +259,16 @@ async def test_dev_recebe_403_nas_opcoes(api_client, repo):
     response = await api_client.get("/api/modelos-dispositivo/opcoes")
 
     assert response.status_code == 403
+
+
+async def test_opcao_sem_descricao_vem_com_descricao_nula(api_client, repo):
+    usuario = _gerente()
+    repo.listar_paginado.return_value = PagedResult(
+        [ModeloDispositivo(usuario.unidade_id, "Tab S11")], 1, 100, 1
+    )
+    _usar_service_real(usuario, repo)
+
+    response = await api_client.get("/api/modelos-dispositivo/opcoes")
+
+    assert response.status_code == 200
+    assert response.json()["items"][0]["descricao"] is None

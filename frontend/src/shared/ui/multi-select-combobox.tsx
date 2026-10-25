@@ -5,6 +5,8 @@ import { useId, useMemo } from "react";
 interface Option {
   value: string;
   label: string;
+  /** Texto secundário exibido depois do rótulo, só na lista de opções. Busca e etiquetas usam o `label`. */
+  description?: string | null;
 }
 
 interface MultiSelectComboboxProps {
@@ -66,9 +68,17 @@ export function MultiSelectCombobox({ label, placeholder, options, value, onValu
             <Combobox.Popup aria-label={label} className="base-popup overflow-hidden rounded-xl border border-border bg-card p-1 text-card-foreground shadow-lg">
               <Combobox.Empty><div className="px-3 py-5 text-center text-sm text-muted-foreground">{emptyLabel}</div></Combobox.Empty>
               <Combobox.List className="max-h-[min(14rem,calc(var(--available-height)-1rem))] overflow-y-auto overscroll-contain">
-                {(option: Option) => <Combobox.Item key={option.value} value={option.value} className="flex cursor-pointer select-none items-center gap-2 rounded-lg px-2.5 py-2 text-sm outline-none data-[highlighted]:bg-secondary data-[selected]:font-medium">
+                {(option: Option) => <Combobox.Item key={option.value} value={option.value} className="group flex cursor-pointer select-none items-center gap-2 rounded-lg px-2.5 py-2 text-sm outline-none data-[highlighted]:bg-secondary data-[selected]:font-medium">
                   <Combobox.ItemIndicator className="inline-flex size-4 shrink-0 items-center justify-center text-primary"><Check aria-hidden="true" className="size-4" /></Combobox.ItemIndicator>
-                  <span>{option.label}</span>
+                  {/* Sem truncar: nome e descrição longos quebram a linha para continuarem legíveis. O "·" é
+                      decorativo, então o leitor de tela anuncia "nome descrição". */}
+                  <span className="min-w-0 break-words">
+                    {option.label}
+                    {option.description && <>
+                      <span aria-hidden="true" className="text-muted-foreground"> ·</span>{" "}
+                      <span className="font-normal text-muted-foreground group-data-[highlighted]:text-foreground/80">{option.description}</span>
+                    </>}
+                  </span>
                 </Combobox.Item>}
               </Combobox.List>
             </Combobox.Popup>

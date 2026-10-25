@@ -178,7 +178,11 @@ async def test_gerente_lista_somente_opcoes_ativas(contexto):
     resultado = await service.listar_opcoes(_gerente(usuario), 1, 100, busca="S27")
 
     repo.listar_paginado.assert_awaited_once_with(usuario.unidade_id, 1, 100, True, "S27")
-    assert resultado.items[0].model_dump() == {"id": modelo.id, "nome": "S27 Ultra"}
+    assert resultado.items[0].model_dump() == {
+        "id": modelo.id,
+        "nome": "S27 Ultra",
+        "descricao": "Flagship",
+    }
 
 
 async def test_dev_nao_lista_opcoes(contexto):
