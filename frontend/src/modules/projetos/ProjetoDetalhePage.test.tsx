@@ -224,7 +224,7 @@ describe("ProjetoDetalhePage", () => {
     const linhaValidando = await screen.findByRole("row", { name: /Clock_003/ });
     expect(within(linhaValidando).getByText("In Validation")).toBeInTheDocument();
     const colunaDataFinal = screen.getAllByRole("columnheader").findIndex((header) => /End date/.test(header.textContent ?? ""));
-    expect(within(linhaValidando).getAllByRole("cell")[colunaDataFinal]).toHaveTextContent("—");
+    expect(within(linhaValidando).getAllByRole("cell")[colunaDataFinal + 1]).toHaveTextContent("—");
 
     const proprioCaso = screen.getByRole("row", { name: /Clock_001/ });
     await user.click(within(proprioCaso).getByRole("combobox", { name: "Status Clock_001" }));

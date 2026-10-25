@@ -12,8 +12,8 @@ describe("TableColumnFilter", () => {
     ]} />);
 
     await user.click(screen.getByRole("button", { name: "Filter by Assignee" }));
-    const menu = screen.getByRole("menu", { name: "Filter: Assignee" });
-    expect(menu).toHaveClass("max-w-[calc(100vw-1rem)]");
+    const dialog = screen.getByRole("dialog", { name: "Filter: Assignee" });
+    expect(dialog).toHaveClass("max-w-[calc(100vw-1rem)]");
     await user.type(screen.getByRole("textbox", { name: "Search options" }), "Maria Pernalete");
     expect(screen.getByRole("menuitemradio", { name: "maria.pernalete" })).toBeInTheDocument();
     expect(screen.queryByRole("menuitemradio", { name: "ana.fagundes" })).not.toBeInTheDocument();

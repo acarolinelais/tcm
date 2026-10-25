@@ -14,7 +14,7 @@ describe("FormFactorResultadosTabela", () => {
     expect(screen.getAllByRole("columnheader").map((item) => item.textContent)).toEqual(["TC ID", "SDF ID", "Assignee", "Origin", "S25", "S26", "Date"]);
     const rows = within(screen.getAllByRole("rowgroup")[1]).getAllByRole("row");
     expect(rows).toHaveLength(3);
-    expect(within(rows[0]).getAllByRole("cell").map((cell) => cell.textContent)).toEqual(["TC-001", "—", "ana", "Manual", "FAIL", "—", expect.stringContaining("2026")]);
+    expect(within(rows[0]).getAllByRole("cell").map((cell) => cell.textContent)).toEqual(["TC-001", "—", "ana", "Manual", "FAIL", "—", expect.stringContaining("3/23/26")]);
     expect(within(rows[2]).getAllByRole("cell")[4]).toHaveTextContent("BLOCKED");
     expect(within(rows[2]).getAllByRole("cell")[4].querySelector(".bg-red-50, .bg-green-50")).toBeNull();
   });
