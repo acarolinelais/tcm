@@ -32,7 +32,7 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0018](0018-perfil-administrador-e-perfil-obrigatorio.md) | Perfil administrador da unidade e perfil obrigatório | Aceito |
 | [0019](0019-senha-inicial-e-troca-obrigatoria.md) | Senha inicial local com troca obrigatória | Substituído por 0023 |
 | [0020](0020-sessoes-jwt-e-refresh-rotativo.md) | Sessões JWT e refresh token rotativo | Aceito |
-| [0021](0021-escopo-gerente-por-setor.md) | Escopo de gestão de times definido pelo setor | Aceito |
+| [0021](0021-escopo-gerente-por-setor.md) | Escopo de gestão de times definido pelo setor | Aceito; escopo em projetos ampliado por 0036 |
 | [0022](0022-padrao-universal-de-tabelas.md) | Padrão visual universal para tabelas | Aceito; tamanho padrão substituído por 0034 |
 | [0023](0023-senha-sem-minimo-de-caracteres.md) | Troca de senha sem mínimo de caracteres | Aceito |
 | [0024](0024-responsavel-por-usuario.md) | Responsável direto por usuários criados por gerente | Aceito |
@@ -47,3 +47,4 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0033](0033-erros-de-planilha-com-codigo-estruturado.md) | Erros de planilha com código estruturado e texto montado no frontend | Aceito |
 | [0034](0034-paginacao-padrao-vinte-itens.md) | Paginação padrão de 20 itens | Aceito |
 | [0035](0035-commits-diretos-na-dev.md) | Commits diretos na `dev` | Aceito |
+| [0036](0036-escopo-gerente-inclui-times-em-que-participa.md) | Escopo do gerente inclui os times em que ele participa | Aceito |

@@ -271,14 +271,6 @@ class FormFactorServiceImpl:
         if projeto is None:
             raise NotFoundException("Projeto não encontrado.")
         time = await self._time_repo.obter_por_id(usuario_atual.unidade_id, projeto.time_id)
-        permitido = usuario_atual.eh_administrador or (
-            time is not None
-            and (
-                usuario_atual.perfil_codigo == "GERENTE"
-                and time.setor_id in usuario_atual.setores_gerenciados
-                or time.id in usuario_atual.time_ids
-            )
-        )
-        if not permitido or time is None:
+        if time is None or not usuario_atual.time_no_escopo(time.id, time.setor_id):
             raise NotFoundException("Projeto não encontrado.")
         return projeto

@@ -105,6 +105,40 @@ async def test_gerente_e_kp_criam_projeto_no_escopo(contexto, perfil):
     uow.commit.assert_awaited_once()
 
 
+async def test_gerente_membro_cria_projeto_no_time(contexto):
+    service, projetos, _, _, _, uow, admin, time, request = contexto
+    gerente = UsuarioAutenticado(
+        admin.id,
+        admin.unidade_id,
+        "GERENTE",
+        permissoes=frozenset({"projetos.gerenciar"}),
+        setores_gerenciados=(uuid4(),),
+        time_ids=(time.id,),
+    )
+
+    resposta = await service.criar(gerente, request)
+
+    assert resposta.time_id == time.id
+    uow.commit.assert_awaited_once()
+
+
+async def test_developer_membro_nao_cria_projeto(contexto):
+    service, projetos, _, _, _, uow, admin, time, request = contexto
+    developer = UsuarioAutenticado(
+        admin.id,
+        admin.unidade_id,
+        "USUARIO_PADRAO",
+        permissoes=frozenset({"projetos.gerenciar"}),
+        time_ids=(time.id,),
+    )
+
+    with pytest.raises(ForbiddenException):
+        await service.criar(developer, request)
+
+    projetos.adicionar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
 async def test_gerente_ou_kp_fora_do_escopo_nao_cria_projeto(contexto):
     service, projetos, _, _, vinculos, uow, admin, _, request = contexto
     usuario = UsuarioAutenticado(
@@ -223,6 +257,26 @@ async def test_gerente_e_kp_listam_projetos_dos_times_no_escopo(contexto, perfil
 
     projetos.listar_por_times.assert_awaited_once_with(usuario.unidade_id, time_ids, 2, 5)
     assert (resultado.page, resultado.page_size, resultado.total_count) == (2, 5, 0)
+
+
+async def test_gerente_membro_lista_projetos_do_time(contexto):
+    service, projetos, _, _, _, _, admin, time, _ = contexto
+    do_setor = uuid4()
+    gerente = UsuarioAutenticado(
+        admin.id,
+        admin.unidade_id,
+        "GERENTE",
+        permissoes=frozenset({"projetos.consultar"}),
+        times_gerenciados=(do_setor,),
+        time_ids=(time.id,),
+    )
+    projetos.listar_por_times.return_value = PagedResult([], 1, 20, 0)
+
+    await service.listar(gerente, 1, 20)
+
+    projetos.listar_por_times.assert_awaited_once_with(
+        gerente.unidade_id, (do_setor, time.id), 1, 20
+    )
 
 
 async def test_usuario_sem_permissao_nao_consulta_projetos(contexto):

@@ -201,9 +201,7 @@ class CasoTesteServiceImpl:
         if projeto is None or not projeto.ativo:
             raise NotFoundException("Projeto não encontrado.")
         time = await self._time_repo.obter_por_id(usuario_atual.unidade_id, projeto.time_id)
-        if time is None:
-            raise NotFoundException("Projeto não encontrado.")
-        if not self._time_esta_no_escopo(usuario_atual, time):
+        if time is None or not usuario_atual.time_no_escopo(time.id, time.setor_id):
             raise NotFoundException("Projeto não encontrado.")
         return projeto, time
 
@@ -221,7 +219,7 @@ class CasoTesteServiceImpl:
             usuario_atual.eh_administrador
             or (
                 usuario_atual.perfil_codigo in {"GERENTE", "KP"}
-                and cls._time_esta_no_escopo(usuario_atual, time)
+                and usuario_atual.time_no_escopo(time.id, time.setor_id)
             )
         )
 
@@ -229,14 +227,6 @@ class CasoTesteServiceImpl:
     def _exigir_gestao(cls, usuario_atual: UsuarioAutenticado, time: Time) -> None:
         if not cls._pode_gerenciar(usuario_atual, time):
             raise ForbiddenException("Você não tem permissão para gerenciar Test Cases neste time.")
-
-    @staticmethod
-    def _time_esta_no_escopo(usuario_atual: UsuarioAutenticado, time: Time) -> bool:
-        if usuario_atual.eh_administrador:
-            return True
-        if usuario_atual.perfil_codigo == "GERENTE":
-            return time.setor_id in usuario_atual.setores_gerenciados
-        return time.id in usuario_atual.time_ids
 
     @staticmethod
     def _exigir_permissao(usuario_atual: UsuarioAutenticado, permissao: str) -> None:

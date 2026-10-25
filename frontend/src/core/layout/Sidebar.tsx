@@ -141,7 +141,7 @@ export function Sidebar({
             </div>
           </>
         )}
-        {perfil.perfil_codigo !== "ADMIN_UNIDADE" && ((perfil.perfil_codigo === "GERENTE" && perfil.permissoes.includes("times.consultar") && perfil.setores_gerenciados.length > 0) || ((perfil.perfil_codigo === "KP" || perfil.perfil_codigo === "USUARIO_PADRAO") && perfil.permissoes.includes("times.consultar") && perfil.times.length > 0)) && (
+        {perfil.perfil_codigo !== "ADMIN_UNIDADE" && ((perfil.perfil_codigo === "GERENTE" && perfil.permissoes.includes("times.consultar") && (perfil.setores_gerenciados.length > 0 || perfil.times.length > 0)) || ((perfil.perfil_codigo === "KP" || perfil.perfil_codigo === "USUARIO_PADRAO") && perfil.permissoes.includes("times.consultar") && perfil.times.length > 0)) && (
           <NavLink to="/times" aria-label={recolhida ? t("teams") : undefined} className={({ isActive }) => `group relative flex items-center rounded-lg py-[7.5px] text-[15px] leading-[21px] w-full gap-2.5 px-4 ${isActive ? "bg-[#EAF1FF] text-primary" : "text-[#454442] hover:bg-secondary"}`}>
             {({ isActive }) => <>
               <span className="flex w-4 shrink-0 justify-center"><TeamsIcon aria-hidden="true" className={`${isActive ? "text-primary" : "text-[#454442]"}`} /></span>

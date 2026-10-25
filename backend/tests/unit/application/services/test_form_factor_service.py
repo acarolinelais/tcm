@@ -394,3 +394,41 @@ async def test_consulta_form_factor_global_recusa_perfil_ou_permissao(perfil, pe
         await service.listar_global(usuario, 1, 20)
 
     repos[2].listar_form_factor_global.assert_not_awaited()
+
+
+async def test_gerente_membro_consulta_form_factor_e_sem_relacao_nao():
+    projeto_repo, time_repo, resultado_repo, modelo_repo = (AsyncMock() for _ in range(4))
+    unidade_id, time_id = uuid4(), uuid4()
+    projeto = Projeto(unidade_id, time_id, "Clock", "9.5")
+    time = Time(unidade_id, uuid4(), "QA", uuid4())
+    time.id = time_id
+    projeto_repo.obter_por_id.return_value = projeto
+    time_repo.obter_por_id.return_value = time
+    resultado_repo.listar_form_factor_por_projeto.return_value = PagedResult([], 1, 20, 0)
+    modelo_repo.listar_modelos_do_projeto.return_value = ()
+    service = FormFactorServiceImpl(
+        projeto_repo,
+        time_repo,
+        resultado_repo,
+        modelo_repo,
+        AsyncMock(),
+        AsyncMock(),
+        AsyncMock(),
+    )
+
+    def gerente(time_ids):
+        return UsuarioAutenticado(
+            uuid4(),
+            unidade_id,
+            "GERENTE",
+            permissoes=frozenset({"form_factor.consultar"}),
+            setores_gerenciados=(uuid4(),),
+            time_ids=time_ids,
+        )
+
+    resposta = await service.listar(gerente((time_id,)), projeto.id, 1, 20)
+    with pytest.raises(NotFoundException):
+        await service.listar(gerente((uuid4(),)), projeto.id, 1, 20)
+
+    assert resposta.total_count == 0
+    resultado_repo.listar_form_factor_por_projeto.assert_awaited_once()

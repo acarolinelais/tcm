@@ -1,5 +1,4 @@
 from src.application.schemas.importacao_sdf import ImportarRelatorioSdfResponse
-from src.application.services.caso_teste_service import CasoTesteServiceImpl
 from src.application.validators.relatorio_sdf import validar_relatorio_sdf
 from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
@@ -54,7 +53,7 @@ class ImportacaoSdfServiceImpl:
         if projeto is None:
             raise NotFoundException("Projeto não encontrado.")
         time = await self._time_repo.obter_por_id(usuario_atual.unidade_id, projeto.time_id)
-        if time is None or not CasoTesteServiceImpl._time_esta_no_escopo(usuario_atual, time):
+        if time is None or not usuario_atual.time_no_escopo(time.id, time.setor_id):
             raise NotFoundException("Projeto não encontrado.")
 
         vinculos = await self._projeto_modelo_repo.listar_por_projeto(
