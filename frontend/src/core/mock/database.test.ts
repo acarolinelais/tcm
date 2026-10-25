@@ -232,6 +232,26 @@ describe("base mock de projetos", () => {
     expect(database.importacoesSdf.every((batch: { projeto_id: string }) => batch.projeto_id === project.id)).toBe(true);
   });
 
+  it("gerente que participa de um time de outro setor vê e gerencia os projetos desse time", () => {
+    const outroTime = "mock-team-operations";
+    ["mock-user-manager", "mock-user-dev", "mock-user-standard"].forEach((userId) => mockTimesApi.adicionar(outroTime, userId));
+    const existente = mockProjetosApi.criar({ time_id: outroTime, app: "Clock", one_ui: "9.5", modelos_ids: [] });
+
+    entrar("mariana.costa@example.com");
+    expect(mockTimesApi.listar(1, 100).items.map((team) => team.id)).toEqual(expect.arrayContaining(["mock-team-platform", outroTime]));
+    expect(mockProjetosApi.listar(1, 100).items.map((project) => project.id)).toContain(existente.id);
+    const novo = mockProjetosApi.criar({ time_id: outroTime, app: "Gallery", one_ui: "9.5", modelos_ids: [] });
+    const caso = mockCasosTesteApi.criar(novo.id, { tc_id: "TC-001", category: "A", difficulty: "Low", situation: "New", responsavel_id: "mock-user-dev", backup_id: "mock-user-standard" });
+    expect(caso.responsavel_id).toBe("mock-user-dev");
+
+    // Sem participação nem setor, o time sai do escopo.
+    entrar("admin@sdfmanager.com");
+    mockTimesApi.remover(outroTime, "mock-user-manager");
+    entrar("mariana.costa@example.com");
+    expect(mockProjetosApi.listar(1, 100).items.map((project) => project.id)).not.toContain(existente.id);
+    expect(() => mockProjetosApi.criar({ time_id: outroTime, app: "Notes", one_ui: "9.5", modelos_ids: [] })).toThrow(/fora do seu escopo/);
+  });
+
   it("monta a matriz do Form Factor com o resultado mais recente por modelo e aplica os filtros", () => {
     const project = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: ["mock-model-s27-ultra", "mock-model-s26-ultra"] });
     const base = { category: "A" as const, difficulty: "Low" as const, situation: "New" as const };

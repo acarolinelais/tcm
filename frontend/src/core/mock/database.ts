@@ -430,11 +430,7 @@ export const mockTimesApi = {
     const db = readDb();
     const user = db.usuarios.find((item) => item.id === currentMockUserId());
     const profile = user && profileFor(db, user);
-    const userTeamIds = new Set(db.membrosTime.filter((member) => member.usuario_id === user?.id && member.ativo).map((member) => member.time_id));
-    const managedSectorIds = new Set(db.gerentesSetor.filter((manager) => manager.usuario_id === user?.id && manager.ativo).map((manager) => manager.setor_id));
-    let teams = profile?.codigo === "ADMIN_UNIDADE" || profile?.codigo === "GERENTE"
-      ? db.times.filter((team) => profile?.codigo === "ADMIN_UNIDADE" || managedSectorIds.has(team.setor_id))
-      : db.times.filter((team) => userTeamIds.has(team.id));
+    let teams = user ? db.times.filter((team) => teamInMockScope(db, user.id, profile?.codigo, team)) : [];
     if (filters.setor_id) teams = teams.filter((team) => team.setor_id === filters.setor_id);
     if (filters.ativo !== undefined) teams = teams.filter((team) => team.ativo === filters.ativo);
     if (filters.busca) teams = teams.filter((team) => team.nome.toLocaleLowerCase().includes(filters.busca!.toLocaleLowerCase()));
@@ -480,14 +476,17 @@ function requireMockPermission(permission: string) {
   }
 }
 
+/** Mesma regra do backend (ADR 0036): gerente pelo setor ou como membro; os demais, como membro. */
+function teamInMockScope(db: Database, userId: string, profileCode: string | null | undefined, team: Time) {
+  return profileCode === "ADMIN_UNIDADE"
+    || (profileCode === "GERENTE" && db.gerentesSetor.some((manager) => manager.usuario_id === userId && manager.setor_id === team.setor_id && manager.ativo))
+    || db.membrosTime.some((member) => member.usuario_id === userId && member.time_id === team.id && member.ativo);
+}
+
 function projectInMockScope(project: Projeto) {
   const { db, user, profile } = mockProfile();
-  if (profile?.codigo === "ADMIN_UNIDADE") return true;
-  if (profile?.codigo === "GERENTE") {
-    const sectors = new Set(db.gerentesSetor.filter((item) => item.usuario_id === user.id && item.ativo).map((item) => item.setor_id));
-    return db.times.some((team) => team.id === project.time_id && sectors.has(team.setor_id));
-  }
-  return db.membrosTime.some((member) => member.usuario_id === user.id && member.time_id === project.time_id && member.ativo);
+  const team = db.times.find((item) => item.id === project.time_id);
+  return Boolean(team && teamInMockScope(db, user.id, profile?.codigo, team));
 }
 
 function getMockProject(db: Database, projectId: string) {
@@ -517,10 +516,9 @@ function createMockProject(input: CriarProjetoInput) {
   return project;
 }
 
+/** Criar e gerenciar projetos: só admin, gerente e KP, sempre dentro do escopo do time. */
 function canManageMockTeam(db: Database, userId: string, profileCode: string | null | undefined, team: Time) {
-  return profileCode === "ADMIN_UNIDADE"
-    || (profileCode === "GERENTE" && db.gerentesSetor.some((manager) => manager.usuario_id === userId && manager.setor_id === team.setor_id && manager.ativo))
-    || (profileCode === "KP" && db.membrosTime.some((member) => member.usuario_id === userId && member.time_id === team.id && member.ativo));
+  return (profileCode === "ADMIN_UNIDADE" || profileCode === "GERENTE" || profileCode === "KP") && teamInMockScope(db, userId, profileCode, team);
 }
 
 function normalizarNomeMembro(value: string) {

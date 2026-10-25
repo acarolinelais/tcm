@@ -47,17 +47,24 @@
 
 ## Fase 2: frontend
 
-- [ ] **T05. Detalhe do time e modo mock com a participação do gerente**
+- [x] **T05. Detalhe do time e modo mock com a participação do gerente**
   - Arquivos: `frontend/src/modules/times/TimeDetalhePage.tsx`,
     `frontend/src/modules/times/TimeDetalhePage.test.tsx`, `frontend/src/core/mock/database.ts`,
     `frontend/src/core/mock/database.test.ts`
   - Cobre: CA-01, CA-02, CA-05, CA-08
   - Verificação: `cd frontend && npm test -- TimeDetalhePage database` → verde. O gerente membro abre o
     detalhe do time sem as ações de gestão; no mock, o gerente membro lista o projeto e o time, cria um
-    projeto e um Test Case nele, e não altera membros. `cd frontend && npm test && npm run lint` verde no
+    projeto e um Test Case nele, e perde o acesso ao sair do time. (O mock não checa escopo ao alterar membros;
+    ver Backlog.) `cd frontend && npm test && npm run lint` verde no
     fim do bloco.
 
 ## Backlog
 - `TimeServiceImpl.listar` tem dois ramos idênticos para KP e Developer (listam `time_ids`). Dá para juntar em
   `perfil_codigo in {"KP", "USUARIO_PADRAO"}`. Ficou fora porque já existia antes desta spec e não muda o
   escopo do gerente (achado da simplify do bloco 1).
+- O modo mock não checa escopo em `mockTimesApi.adicionar`/`remover`: qualquer perfil altera membros, ao
+  contrário do backend (que exige o setor para o gerente). Já era assim antes desta spec; alinhar o mock exige
+  revisar os fluxos de Times em modo mock (achado do bloco 2).
+- `projectInMockScope` chama `mockProfile()` (que relê e faz `JSON.parse` do localStorage) uma vez por projeto
+  dentro do filtro de `listar`. Passar `db`, `user` e `profile` já carregados, como `canManageMockTeam` faz.
+  Já existia antes desta spec (achado da simplify do bloco 2).

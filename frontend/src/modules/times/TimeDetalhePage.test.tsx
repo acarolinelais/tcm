@@ -48,6 +48,28 @@ describe("TimeDetalhePage", () => {
     expect(api.membros).toHaveBeenCalledWith(time.id);
   });
 
+  it("gerente que participa do time vê os membros sem as ações de gestão", async () => {
+    const gerente = { ...perfilBase, id: "gerente-1", perfil_codigo: "GERENTE", perfil: "Gerente", permissoes: ["times.consultar", "times.gerenciar"], setores_gerenciados: ["outro-setor"], times: [{ id: time.id, nome: time.nome }] };
+    renderPage(gerente);
+
+    expect(await screen.findByRole("row", { name: "Pat Key Person" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add a team member" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Actions" })).not.toBeInTheDocument();
+  });
+
+  it("gerente do setor vê o botão de adicionar membro", async () => {
+    renderPage({ ...perfilBase, perfil_codigo: "GERENTE", permissoes: ["times.consultar", "times.gerenciar"], setores_gerenciados: [time.setor_id] });
+
+    expect(await screen.findByRole("button", { name: "Add a team member" })).toBeInTheDocument();
+  });
+
+  it("gerente sem setor nem participação não vê o time", async () => {
+    renderPage({ ...perfilBase, perfil_codigo: "GERENTE", permissoes: ["times.consultar"], setores_gerenciados: ["outro-setor"] });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Team not found or you do not have access.");
+    expect(api.membros).not.toHaveBeenCalled();
+  });
+
   it("não carrega detalhes de time fora das participações da conta", async () => {
     renderPage(perfilBase);
 
