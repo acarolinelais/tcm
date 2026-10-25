@@ -15,6 +15,13 @@ import type {
   CriarCasoTesteInput,
   CriarProjetoInput,
   FormFactorMatriz,
+  FormFactorResultados,
+  FormFactorGlobal,
+  FormFactorResultadosGlobais,
+  FormFactorExecucao,
+  FiltrosFormFactor,
+  FiltrosFormFactorGlobal,
+  CriarRodadaFormFactorInput,
   ImportacaoProjeto,
   ImportacaoSdf,
   OpcaoModeloDispositivo,
@@ -31,6 +38,13 @@ export type {
   CriarProjetoInput,
   DificuldadeCasoTeste,
   FormFactorMatriz,
+  FormFactorResultados,
+  FormFactorGlobal,
+  FormFactorResultadosGlobais,
+  FormFactorExecucao,
+  FiltrosFormFactor,
+  FiltrosFormFactorGlobal,
+  CriarRodadaFormFactorInput,
   ImportacaoProjeto,
   ImportacaoSdf,
   LinhaFormFactor,
@@ -120,24 +134,75 @@ export const modelosDispositivoApi = {
   },
 };
 
-export interface FiltrosFormFactor {
-  page?: number;
-  pageSize?: number;
-  semana?: string;
-  responsavelId?: string;
-}
-
 export const formFactorApi = {
-  listar(projetoId: string, filtros: FiltrosFormFactor = {}) {
-    const { page = 1, pageSize = 20, semana, responsavelId } = filtros;
+  listarGlobal(filtros: FiltrosFormFactorGlobal = {}) {
+    const { page = 1, pageSize = 20, semana, projetoId, responsavelId, tcId, sdfId, modeloDispositivoId, resultado } = filtros;
     return useMock
-      ? Promise.resolve(mockFormFactorApi.listar(projetoId, page, pageSize, semana, responsavelId))
+      ? Promise.resolve(mockFormFactorApi.listarGlobal(filtros))
+      : httpGet<FormFactorGlobal>("/api/form-factor/general", {
+        page,
+        page_size: pageSize,
+        ...(semana ? { semana } : {}),
+        ...(projetoId ? { projeto_id: projetoId } : {}),
+        ...(responsavelId ? { responsavel_id: responsavelId } : {}),
+        ...(tcId ? { tc_id: tcId } : {}),
+        ...(sdfId ? { sdf_id: sdfId } : {}),
+        ...(modeloDispositivoId ? { modelo_dispositivo_id: modeloDispositivoId } : {}),
+        ...(resultado ? { resultado } : {}),
+      });
+  },
+  listarResultadosGlobais(filtros: FiltrosFormFactorGlobal = {}) {
+    const { page = 1, pageSize = 20, semana, projetoId, responsavelId, tcId, sdfId, modeloDispositivoId, resultado, origem } = filtros;
+    return useMock
+      ? Promise.resolve(mockFormFactorApi.listarResultadosGlobais(filtros))
+      : httpGet<FormFactorResultadosGlobais>("/api/form-factor/general/results", {
+        page,
+        page_size: pageSize,
+        ...(semana ? { semana } : {}),
+        ...(projetoId ? { projeto_id: projetoId } : {}),
+        ...(responsavelId ? { responsavel_id: responsavelId } : {}),
+        ...(tcId ? { tc_id: tcId } : {}),
+        ...(sdfId ? { sdf_id: sdfId } : {}),
+        ...(modeloDispositivoId ? { modelo_dispositivo_id: modeloDispositivoId } : {}),
+        ...(resultado ? { resultado } : {}),
+        ...(origem ? { origem } : {}),
+      });
+  },
+  listar(projetoId: string, filtros: FiltrosFormFactor = {}) {
+    const { page = 1, pageSize = 20, semana, responsavelId, tcId, sdfId, modeloDispositivoId, resultado } = filtros;
+    return useMock
+      ? Promise.resolve(mockFormFactorApi.listar(projetoId, filtros))
       : httpGet<FormFactorMatriz>(`/api/projetos/${projetoId}/form-factor`, {
         page,
         page_size: pageSize,
         ...(semana ? { semana } : {}),
         ...(responsavelId ? { responsavel_id: responsavelId } : {}),
+        ...(tcId ? { tc_id: tcId } : {}),
+        ...(sdfId ? { sdf_id: sdfId } : {}),
+        ...(modeloDispositivoId ? { modelo_dispositivo_id: modeloDispositivoId } : {}),
+        ...(resultado ? { resultado } : {}),
       });
+  },
+  listarResultados(projetoId: string, filtros: FiltrosFormFactor = {}) {
+    const { page = 1, pageSize = 20, semana, responsavelId, tcId, sdfId, modeloDispositivoId, resultado, origem } = filtros;
+    return useMock
+      ? Promise.resolve(mockFormFactorApi.listarResultados(projetoId, filtros))
+      : httpGet<FormFactorResultados>(`/api/projetos/${projetoId}/form-factor/results`, {
+        page,
+        page_size: pageSize,
+        ...(semana ? { semana } : {}),
+        ...(responsavelId ? { responsavel_id: responsavelId } : {}),
+        ...(tcId ? { tc_id: tcId } : {}),
+        ...(sdfId ? { sdf_id: sdfId } : {}),
+        ...(modeloDispositivoId ? { modelo_dispositivo_id: modeloDispositivoId } : {}),
+        ...(resultado ? { resultado } : {}),
+        ...(origem ? { origem } : {}),
+      });
+  },
+  criarRodadaManual(projetoId: string, input: CriarRodadaFormFactorInput) {
+    return useMock
+      ? Promise.resolve(mockFormFactorApi.criarRodadaManual(projetoId, input))
+      : httpPost<FormFactorExecucao>(`/api/projetos/${projetoId}/form-factor/results`, input);
   },
   importar(projetoId: string, arquivo: File) {
     if (useMock) return Promise.resolve(mockFormFactorApi.importar(projetoId, arquivo));

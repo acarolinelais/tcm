@@ -11,7 +11,9 @@ import { languageCode, TEMP_LANGUAGE_KEY } from "@/core/i18n";
 import { PageSkeleton, Skeleton } from "@/shared/ui/skeleton";
 
 export function AppLayout() {
-  const [sidebarRecolhida, setSidebarRecolhida] = useState(false);
+  const [sidebarRecolhida, setSidebarRecolhida] = useState(() =>
+    typeof window.matchMedia === "function" && window.matchMedia("(max-width: 39.999rem)").matches,
+  );
   const location = useLocation();
   const token = getAccessToken();
   const perfil = usePerfilAtual(Boolean(token));

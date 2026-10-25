@@ -39,14 +39,14 @@ describe("FormFactorTabela", () => {
     expect(screen.queryByRole("columnheader", { name: "One UI version" })).not.toBeInTheDocument();
 
     const [primeira, segunda, terceira] = linhasDoCorpo().map((row) => within(row).getAllByRole("cell"));
-    expect(primeira.map((cell) => cell.textContent)).toEqual(["TC-001", "SDF-10", "ana.silva", "PASS", "Fail", expect.stringMatching(/2026/)]);
-    expect(primeira[3].querySelector(".bg-green-50")).not.toBeNull();
-    expect(primeira[4].querySelector(".bg-red-50")).not.toBeNull();
-    expect(segunda.map((cell) => cell.textContent)).toEqual(["TC-002", "—", "bia.souza", "—", "—", "—"]);
+    expect(primeira.map((cell) => cell.textContent)).toEqual(["01", "TC-001", "SDF-10", "ana.silva", "PASS", "Fail", expect.stringMatching(/2026/)]);
+    expect(primeira[4].querySelector(".bg-green-50")).not.toBeNull();
+    expect(primeira[5].querySelector(".bg-red-50")).not.toBeNull();
+    expect(segunda.map((cell) => cell.textContent)).toEqual(["02", "TC-002", "—", "bia.souza", "—", "—", "—"]);
     // Valor que não é Pass nem Fail aparece como veio do SDF, sem badge; responsável fora do time vira —.
-    expect(terceira[2]).toHaveTextContent("—");
-    expect(terceira[3]).toHaveTextContent("Blocked");
-    expect(terceira[3].querySelector(".bg-green-50, .bg-red-50")).toBeNull();
+    expect(terceira[3]).toHaveTextContent("—");
+    expect(terceira[4]).toHaveTextContent("Blocked");
+    expect(terceira[4].querySelector(".bg-green-50, .bg-red-50")).toBeNull();
   });
 
   it("filtra por Assignee pelo cabeçalho", async () => {

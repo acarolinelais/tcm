@@ -6,6 +6,7 @@ from scalar_fastapi import get_scalar_api_reference
 
 from src.api.error_handling.handlers import registrar_handlers
 from src.api.routers.auth import router as auth_router
+from src.api.routers.form_factor_geral import router as form_factor_geral_router
 from src.api.routers.modelos_dispositivo import router as modelos_dispositivo_router
 from src.api.routers.perfis import router as perfis_router
 from src.api.routers.projetos import router as projetos_router
@@ -32,6 +33,7 @@ app.include_router(setores_router)
 app.include_router(times_router)
 app.include_router(perfis_router)
 app.include_router(projetos_router)
+app.include_router(form_factor_geral_router)
 app.include_router(test_cases_router)
 app.include_router(modelos_dispositivo_router)
 

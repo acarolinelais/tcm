@@ -152,10 +152,12 @@ class _Cenario:
         self.session = session
         self.unidade_id = unidade_id
         self.projeto_id, self.ana, self.bia = uuid4(), uuid4(), uuid4()
+        self.time_id = None
         self.s25, self.s26, self.s24, self.s99 = uuid4(), uuid4(), uuid4(), uuid4()
 
     async def montar(self):
         setor_id, time_id, perfil_id = uuid4(), uuid4(), uuid4()
+        self.time_id = time_id
         self.session.add(UnidadeModel(id=self.unidade_id, nome=f"FF {self.unidade_id}"))
         await self.session.flush()
         self.session.add_all(
@@ -437,3 +439,116 @@ async def test_form_factor_ignora_resultado_e_importacao_inativos(cenario):
     assert pagina.items[0].resultados == {cenario.s25: "Pass"}
     assert pagina.items[0].sdf_id == "SDF-VALIDO"
     assert semana_inativa.total_count == 0
+
+
+@pytest.mark.asyncio
+async def test_listar_historico_inclui_execucoes_sdf_e_manuais_com_filtros(cenario):
+    caso_id = await cenario.caso("TC-CLOCK-001")
+    await cenario.importar(
+        caso_id,
+        "SDF-ANTIGO",
+        datetime(2026, 3, 16, tzinfo=UTC),
+        {cenario.s25: "FAIL"},
+    )
+    manual = ExecucaoSdf(
+        cenario.unidade_id,
+        None,
+        caso_id,
+        None,
+        datetime(2026, 3, 23, tzinfo=UTC),
+        "9.5",
+        origem="MANUAL",
+    )
+    await ExecucaoSdfRepositoryImpl(cenario.session).adicionar(manual)
+    await cenario.session.flush()
+    await ResultadoFormFactorRepositoryImpl(cenario.session).adicionar(
+        ResultadoFormFactor(cenario.unidade_id, manual.id, cenario.s25, "PASS")
+    )
+    await cenario.session.flush()
+
+    historico = await cenario.repo().listar_execucoes_form_factor_por_projeto(
+        cenario.unidade_id, cenario.projeto_id, 1, 20
+    )
+    filtrado = await cenario.repo().listar_execucoes_form_factor_por_projeto(
+        cenario.unidade_id,
+        cenario.projeto_id,
+        1,
+        20,
+        tc_id="clock-001",
+        modelo_dispositivo_id=cenario.s25,
+        resultado="PASS",
+    )
+    sem_resultado = await cenario.repo().listar_execucoes_form_factor_por_projeto(
+        cenario.unidade_id,
+        cenario.projeto_id,
+        1,
+        20,
+        modelo_dispositivo_id=cenario.s25,
+        resultado="BLOCKED",
+    )
+
+    assert historico.total_count == 2
+    assert [linha.origem for linha in historico.items] == ["MANUAL", "SDF"]
+    assert historico.items[0].sdf_id is None
+    assert historico.items[0].resultados == {cenario.s25: "PASS"}
+    assert filtrado.total_count == 1 and filtrado.items[0].origem == "MANUAL"
+    assert sem_resultado.total_count == 0
+
+    resumo = await cenario.repo().listar_form_factor_por_projeto(
+        cenario.unidade_id, cenario.projeto_id, 1, 20
+    )
+    assert resumo.items[0].resultados == {cenario.s25: "PASS"}
+    assert resumo.items[0].sdf_id is None
+
+
+@pytest.mark.asyncio
+async def test_form_factor_global_resumo_restringe_projetos_e_inclui_aplicabilidade(cenario):
+    caso_id = await cenario.caso("TC-GLOBAL")
+    await cenario.importar(
+        caso_id, "SDF-GLOBAL", datetime(2026, 3, 23, tzinfo=UTC), {cenario.s25: "FAIL"}
+    )
+
+    pagina = await cenario.repo().listar_form_factor_global(
+        cenario.unidade_id, (cenario.time_id,), 1, 20
+    )
+    vazia = await cenario.repo().listar_form_factor_global(cenario.unidade_id, (uuid4(),), 1, 20)
+
+    assert pagina.total_count == 1
+    assert pagina.items[0].projeto_id == cenario.projeto_id
+    assert pagina.items[0].projeto_nome == "Clock 9.5"
+    assert set(pagina.items[0].modelos_ids) == {cenario.s25, cenario.s26}
+    assert pagina.items[0].resultados == {cenario.s25: "FAIL"}
+    assert vazia.total_count == 0 and vazia.items == []
+    modelos = await cenario.repo().listar_modelos_form_factor_global(
+        cenario.unidade_id, (cenario.time_id,)
+    )
+    assert {modelo.id for modelo in modelos} == {cenario.s25, cenario.s26}
+
+
+@pytest.mark.asyncio
+async def test_form_factor_global_resultados_preserva_rodadas_e_filtra_modelo(cenario):
+    caso_id = await cenario.caso("TC-GLOBAL-HISTORY")
+    await cenario.importar(
+        caso_id, "SDF-ANTIGO", datetime(2026, 3, 16, tzinfo=UTC), {cenario.s25: "FAIL"}
+    )
+    await cenario.importar(
+        caso_id, "SDF-NOVO", datetime(2026, 3, 23, tzinfo=UTC), {cenario.s25: "PASS"}
+    )
+
+    pagina = await cenario.repo().listar_execucoes_form_factor_global(
+        cenario.unidade_id, (cenario.time_id,), 1, 20
+    )
+    filtrada = await cenario.repo().listar_execucoes_form_factor_global(
+        cenario.unidade_id,
+        (cenario.time_id,),
+        1,
+        20,
+        tc_id="GLOBAL-HISTORY",
+        modelo_dispositivo_id=cenario.s25,
+        resultado="PASS",
+    )
+
+    assert pagina.total_count == 2
+    assert [linha.sdf_id for linha in pagina.items] == ["SDF-NOVO", "SDF-ANTIGO"]
+    assert all(linha.projeto_nome == "Clock 9.5" for linha in pagina.items)
+    assert filtrada.total_count == 1 and filtrada.items[0].resultados == {cenario.s25: "PASS"}

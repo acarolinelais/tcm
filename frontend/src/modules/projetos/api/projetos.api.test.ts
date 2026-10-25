@@ -68,12 +68,45 @@ describe("APIs de projetos", () => {
     expect(fetch).toHaveBeenLastCalledWith("/api/modelos-dispositivo/opcoes?page=1&page_size=100", expect.any(Object));
   });
 
-  it("envia filtros do Form Factor e o relatório SDF", async () => {
-    await formFactorApi.listar("project-1", { page: 2, pageSize: 10, semana: "2026-W13", responsavelId: "user-1" });
-    expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/form-factor?page=2&page_size=10&semana=2026-W13&responsavel_id=user-1", expect.any(Object));
+  it("envia filtros do Form Factor, consulta Results e cria rodada manual", async () => {
+    await formFactorApi.listarGlobal({ page: 2, pageSize: 10, semana: "2026-W13", projetoId: "project-1", responsavelId: "user-1", tcId: "TC-001" });
+    expect(fetch).toHaveBeenLastCalledWith(
+      "/api/form-factor/general?page=2&page_size=10&semana=2026-W13&projeto_id=project-1&responsavel_id=user-1&tc_id=TC-001",
+      expect.any(Object),
+    );
+    await formFactorApi.listarResultadosGlobais({ page: 1, origem: "MANUAL", resultado: "FAIL" });
+    expect(fetch).toHaveBeenLastCalledWith(
+      "/api/form-factor/general/results?page=1&page_size=20&resultado=FAIL&origem=MANUAL",
+      expect.any(Object),
+    );
+    await formFactorApi.listar("project-1", {
+      page: 2,
+      pageSize: 10,
+      semana: "2026-W13",
+      responsavelId: "user-1",
+      tcId: "TC-001",
+      sdfId: "SDF-1",
+      modeloDispositivoId: "model-1",
+      resultado: "PASS",
+    });
+    expect(fetch).toHaveBeenLastCalledWith(
+      "/api/projetos/project-1/form-factor?page=2&page_size=10&semana=2026-W13&responsavel_id=user-1&tc_id=TC-001&sdf_id=SDF-1&modelo_dispositivo_id=model-1&resultado=PASS",
+      expect.any(Object),
+    );
+    await formFactorApi.listarResultados("project-1", { page: 1, tcId: "TC-001" });
+    expect(fetch).toHaveBeenLastCalledWith(
+      "/api/projetos/project-1/form-factor/results?page=1&page_size=20&tc_id=TC-001",
+      expect.any(Object),
+    );
+    const manual = { caso_teste_id: "case-1", resultados: { "model-1": "PASS" as const } };
+    await formFactorApi.criarRodadaManual("project-1", manual);
+    expect(fetch).toHaveBeenLastCalledWith(
+      "/api/projetos/project-1/form-factor/results",
+      expect.objectContaining({ method: "POST", body: JSON.stringify(manual) }),
+    );
     const report = new File(["resultado"], "sdf.xlsx");
     await formFactorApi.importar("project-1", report);
-    const [url, init] = vi.mocked(fetch).mock.calls[1];
+    const [url, init] = vi.mocked(fetch).mock.calls.at(-1)!;
     expect(url).toBe("/api/projetos/project-1/relatorios-sdf");
     expect((init?.body as FormData).get("arquivo")).toBe(report);
   });

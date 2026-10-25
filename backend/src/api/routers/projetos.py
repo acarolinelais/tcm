@@ -12,7 +12,12 @@ from src.api.dependencies import (
     get_usuario_atual,
 )
 from src.application.schemas.caso_teste import CasoTesteResponse, CriarCasoTesteRequest
-from src.application.schemas.form_factor import FormFactorResponse
+from src.application.schemas.form_factor import (
+    CriarRodadaFormFactorRequest,
+    FormFactorExecucaoResponse,
+    FormFactorResponse,
+    FormFactorResultadosResponse,
+)
 from src.application.schemas.importacao_projeto import (
     ImportarProjetoPlanilhaRequest,
     ImportarProjetoPlanilhaResponse,
@@ -170,7 +175,66 @@ async def listar_form_factor(
     page_size: int = Query(20, ge=1, le=100),
     semana: str | None = Query(None, pattern=r"^\d{4}-W\d{2}$"),
     responsavel_id: UUID | None = Query(None),
+    tc_id: str | None = Query(None, max_length=120),
+    sdf_id: str | None = Query(None, max_length=120),
+    modelo_dispositivo_id: UUID | None = Query(None),
+    resultado: str | None = Query(None, max_length=40),
     service: FormFactorService = Depends(get_form_factor_service),
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
-    return await service.listar(usuario_atual, projeto_id, page, page_size, semana, responsavel_id)
+    return await service.listar(
+        usuario_atual,
+        projeto_id,
+        page,
+        page_size,
+        semana,
+        responsavel_id,
+        tc_id,
+        sdf_id,
+        modelo_dispositivo_id,
+        resultado,
+    )
+
+
+@router.get("/{projeto_id}/form-factor/results", response_model=FormFactorResultadosResponse)
+async def listar_resultados_form_factor(
+    projeto_id: UUID,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    semana: str | None = Query(None, pattern=r"^\d{4}-W\d{2}$"),
+    responsavel_id: UUID | None = Query(None),
+    tc_id: str | None = Query(None, max_length=120),
+    sdf_id: str | None = Query(None, max_length=120),
+    modelo_dispositivo_id: UUID | None = Query(None),
+    resultado: str | None = Query(None, max_length=40),
+    origem: str | None = Query(None, pattern=r"^(SDF|MANUAL)$"),
+    service: FormFactorService = Depends(get_form_factor_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.listar_resultados(
+        usuario_atual,
+        projeto_id,
+        page,
+        page_size,
+        semana,
+        responsavel_id,
+        tc_id,
+        sdf_id,
+        modelo_dispositivo_id,
+        resultado,
+        origem,
+    )
+
+
+@router.post(
+    "/{projeto_id}/form-factor/results",
+    response_model=FormFactorExecucaoResponse,
+    status_code=201,
+)
+async def criar_rodada_manual_form_factor(
+    projeto_id: UUID,
+    request: CriarRodadaFormFactorRequest,
+    service: FormFactorService = Depends(get_form_factor_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.criar_rodada_manual(usuario_atual, projeto_id, request)

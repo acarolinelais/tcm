@@ -21,6 +21,23 @@ describe("Sidebar project navigation", () => {
     renderSidebar({ ...perfil, perfil_codigo: "USUARIO_PADRAO", permissoes: ["test_cases.consultar"] });
     expect(screen.getByRole("link", { name: "Projects" })).toHaveAttribute("href", "/projetos");
   });
+  it("mostra General Results apenas para gerente e KP com permissão Form Factor", () => {
+    for (const perfilCodigo of ["GERENTE", "KP"] as const) {
+      const { unmount } = renderSidebar({ ...perfil, perfil_codigo: perfilCodigo, permissoes: ["form_factor.consultar"] });
+      expect(screen.getByRole("link", { name: "General Results" })).toHaveAttribute("href", "/resultados-gerais");
+      unmount();
+    }
+    for (const current of [
+      { perfil_codigo: "USUARIO_PADRAO", permissoes: ["form_factor.consultar"] },
+      { perfil_codigo: "KP", permissoes: [] },
+      { perfil_codigo: "ADMIN_UNIDADE", permissoes: ["form_factor.consultar"] },
+    ]) {
+      const { unmount } = renderSidebar({ ...perfil, ...current });
+      expect(screen.queryByRole("link", { name: "General Results" })).not.toBeInTheDocument();
+      unmount();
+    }
+  });
+
   it("mostra Teams para gerente que só participa de times e esconde sem setor nem participação", () => {
     const gerente = { ...perfil, perfil_codigo: "GERENTE", permissoes: ["times.consultar"] };
     const { rerender } = renderSidebar({ ...gerente, times: [{ id: "time-1", nome: "Produto" }] });

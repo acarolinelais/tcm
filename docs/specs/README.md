@@ -45,6 +45,8 @@ ser registradas em ADR antes de serem introduzidas.
 | 017 | Status In Validation do Test Case | Concluída |
 | 018 | Form Factor em matriz por modelo (uma linha por Test Case, coluna por modelo, filtro Assignee) | Concluída |
 | 019 | Escopo do gerente inclui os times em que participa (ADR 0036) | Concluída |
+| 020 | Histórico e lançamento de resultados Form Factor | Concluída |
+| 021 | Resultados gerais de Form Factor | Concluída |
 
 > As duas specs 012 foram criadas em paralelo. Os diretórios e históricos foram preservados nesta integração; a harmonização da numeração está registrada no backlog da spec de perfil Dev.
 

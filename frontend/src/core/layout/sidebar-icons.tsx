@@ -36,6 +36,17 @@ export function TimelineIcon(props: IconProps) {
   );
 }
 
+export function GeneralResultsIcon(props: IconProps) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <circle cx="7.5" cy="2.5" r="1.75" stroke="currentColor" />
+      <circle cx="2.5" cy="11.5" r="1.75" stroke="currentColor" />
+      <circle cx="12.5" cy="11.5" r="1.75" stroke="currentColor" />
+      <path d="M6.6 4L3.4 10M8.4 4L11.6 10M4.25 11.5H10.75" stroke="currentColor" />
+    </svg>
+  );
+}
+
 export function ProjectsIcon(props: IconProps) {
   return (
     <svg width="14" height="16" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
