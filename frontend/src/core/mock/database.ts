@@ -12,6 +12,10 @@ import type {
   CriarCasoTesteInput,
   CriarProjetoInput,
   FormFactorMatriz,
+  FormFactorExecucao,
+  FormFactorResultados,
+  FiltrosFormFactor,
+  CriarRodadaFormFactorInput,
   LinhaFormFactor,
   Projeto,
   StatusProjeto,
@@ -29,11 +33,15 @@ const TEAM_ID = "mock-team-platform";
 
 /** Resultado importado do SDF, um por Test Case e modelo; o histórico é preservado. */
 interface ResultadoFormFactorMock {
+  execucao_id?: string;
   tc_id: string;
-  sdf_id: string;
+  caso_teste_id?: string;
+  responsavel_id?: string;
+  sdf_id: string | null;
   modelo_dispositivo_id: string;
   resultado: string;
   data_reportada: string;
+  origem?: "SDF" | "MANUAL";
 }
 
 interface Database {
@@ -829,10 +837,11 @@ function semanaIso(value: string) {
 }
 
 export const mockFormFactorApi = {
-  listar(projectId: string, pageNumber: number, pageSize: number, week?: string, responsavelId?: string): FormFactorMatriz {
+  listar(projectId: string, filtros: FiltrosFormFactor = {}): FormFactorMatriz {
     requireMockPermission("form_factor.consultar");
     const { db } = mockProfile();
     getMockProject(db, projectId);
+    const { page: pageNumber = 1, pageSize = 20, semana: week, responsavelId, tcId, sdfId, modeloDispositivoId, resultado } = filtros;
     const modelos = db.projetoModelos
       .filter((link) => link.projeto_id === projectId)
       .map((link) => db.modelosDispositivo.find((model) => model.id === link.modelo_dispositivo_id))
@@ -841,7 +850,7 @@ export const mockFormFactorApi = {
       .sort((a, b) => a.nome.localeCompare(b.nome));
     const linkedModels = new Set(modelos.map((model) => model.id));
     const rows = db.casosTeste
-      .filter((testCase) => testCase.projeto_id === projectId && testCase.ativo && (!responsavelId || testCase.responsavel_id === responsavelId))
+      .filter((testCase) => testCase.projeto_id === projectId && testCase.ativo && (!responsavelId || testCase.responsavel_id === responsavelId) && (!tcId || testCase.tc_id.toLocaleLowerCase().includes(tcId.toLocaleLowerCase())))
       .sort((a, b) => a.tc_id.localeCompare(b.tc_id))
       .flatMap<LinhaFormFactor>((testCase) => {
         // Ordem invertida antes do sort estável: na mesma data vence a importação mais recente, como na API.
@@ -849,11 +858,57 @@ export const mockFormFactorApi = {
           .filter((result) => result.tc_id === testCase.tc_id && linkedModels.has(result.modelo_dispositivo_id) && (!week || semanaIso(result.data_reportada) === week))
           .sort((a, b) => b.data_reportada.localeCompare(a.data_reportada));
         if (week && !results.length) return [];
+        if (sdfId && !results.some((result) => (result.sdf_id ?? "").toLocaleLowerCase().includes(sdfId.toLocaleLowerCase()))) return [];
+        if (modeloDispositivoId && !results.some((result) => result.modelo_dispositivo_id === modeloDispositivoId && (!resultado || result.resultado.toLocaleLowerCase() === resultado.toLocaleLowerCase()))) return [];
         const resultados: Record<string, string> = {};
         results.forEach((result) => { resultados[result.modelo_dispositivo_id] ??= result.resultado; });
         return [{ caso_teste_id: testCase.id, tc_id: testCase.tc_id, responsavel_id: testCase.responsavel_id, sdf_id: results[0]?.sdf_id ?? null, data_reportada: results[0]?.data_reportada ?? null, resultados }];
       });
     return { ...page(rows, pageNumber, pageSize), modelos };
+  },
+  listarResultados(projectId: string, filtros: FiltrosFormFactor = {}): FormFactorResultados {
+    requireMockPermission("form_factor.consultar");
+    const { db } = mockProfile();
+    getMockProject(db, projectId);
+    const { page: pageNumber = 1, pageSize = 20, semana, responsavelId, tcId, sdfId, origem, modeloDispositivoId, resultado } = filtros;
+    const modelos = db.projetoModelos.filter((link) => link.projeto_id === projectId).map((link) => db.modelosDispositivo.find((item) => item.id === link.modelo_dispositivo_id)).filter((item) => item !== undefined).map(({ id: modelId, nome }) => ({ id: modelId, nome }));
+    const linked = new Set(modelos.map((item) => item.id));
+    const groups = new Map<string, ResultadoFormFactorMock[]>();
+    db.formFactor.forEach((item) => {
+      const executionId = item.execucao_id ?? `legacy-${item.tc_id}-${item.sdf_id ?? "manual"}-${item.data_reportada}`;
+      groups.set(executionId, [...(groups.get(executionId) ?? []), item]);
+    });
+    const rows: FormFactorExecucao[] = [...groups.entries()].flatMap(([execucao_id, values]) => {
+      const first = values[0];
+      const testCase = db.casosTeste.find((item) => item.id === first.caso_teste_id || (item.projeto_id === projectId && item.tc_id === first.tc_id));
+      if (!testCase || testCase.projeto_id !== projectId || !testCase.ativo) return [];
+      const data_reportada = first.data_reportada;
+      if (semana && semanaIso(data_reportada) !== semana) return [];
+      if (responsavelId && testCase.responsavel_id !== responsavelId) return [];
+      if (tcId && !testCase.tc_id.toLocaleLowerCase().includes(tcId.toLocaleLowerCase())) return [];
+      if (sdfId && !values.some((item) => (item.sdf_id ?? "").toLocaleLowerCase().includes(sdfId.toLocaleLowerCase()))) return [];
+      if (origem && (first.origem ?? "SDF") !== origem) return [];
+      if (modeloDispositivoId && !values.some((item) => item.modelo_dispositivo_id === modeloDispositivoId && (!resultado || item.resultado.toLowerCase() === resultado.toLowerCase()))) return [];
+      const resultados = Object.fromEntries(values.filter((item) => linked.has(item.modelo_dispositivo_id)).map((item) => [item.modelo_dispositivo_id, item.resultado]));
+      if (!Object.keys(resultados).length) return [];
+      return [{ execucao_id, caso_teste_id: testCase.id, tc_id: testCase.tc_id, responsavel_id: testCase.responsavel_id, sdf_id: first.sdf_id, data_reportada, origem: first.origem ?? "SDF", resultados }];
+    }).sort((a, b) => b.data_reportada.localeCompare(a.data_reportada));
+    return { ...page(rows, pageNumber, pageSize), modelos };
+  },
+  criarRodadaManual(projectId: string, input: CriarRodadaFormFactorInput): FormFactorExecucao {
+    requireMockPermission("form_factor.importar");
+    const { db } = mockProfile();
+    getMockProject(db, projectId);
+    const testCase = db.casosTeste.find((item) => item.id === input.caso_teste_id && item.projeto_id === projectId && item.ativo);
+    if (!testCase) throw new Error("Test Case não encontrado no projeto.");
+    const linked = new Set(db.projetoModelos.filter((item) => item.projeto_id === projectId).map((item) => item.modelo_dispositivo_id));
+    const entries = Object.entries(input.resultados);
+    if (!entries.length || entries.some(([modelId, value]) => !linked.has(modelId) || !["PASS", "FAIL"].includes(value))) throw new Error("Selecione ao menos um modelo com resultado PASS ou FAIL.");
+    const execucao_id = id("mock-sdf-execution");
+    const data_reportada = new Date().toISOString();
+    entries.forEach(([modelo_dispositivo_id, resultado]) => db.formFactor.push({ execucao_id, caso_teste_id: testCase.id, tc_id: testCase.tc_id, responsavel_id: testCase.responsavel_id, sdf_id: null, modelo_dispositivo_id, resultado, data_reportada, origem: "MANUAL" }));
+    writeDb(db);
+    return { execucao_id, caso_teste_id: testCase.id, tc_id: testCase.tc_id, responsavel_id: testCase.responsavel_id, sdf_id: null, data_reportada, origem: "MANUAL", resultados: Object.fromEntries(entries) };
   },
   importar(projectId: string, file: File) {
     requireMockPermission("form_factor.importar");

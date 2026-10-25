@@ -248,20 +248,34 @@ describe("base mock de projetos", () => {
     ];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(database));
 
-    const matriz = mockFormFactorApi.listar(project.id, 1, 20);
+    const matriz = mockFormFactorApi.listar(project.id, { page: 1, pageSize: 20 });
     expect(matriz.modelos.map((model) => model.nome)).toEqual(["S26 Ultra", "S27 Ultra"]);
     expect(matriz.items.map((row) => row.tc_id)).toEqual(["TC-001", "TC-002"]);
     expect(matriz.items[0]).toMatchObject({ sdf_id: "SDF-2", resultados: { "mock-model-s27-ultra": "Pass", "mock-model-s26-ultra": "Fail" } });
     // Mesma data: vence a importação mais recente (a última gravada).
     expect(matriz.items[1]).toMatchObject({ sdf_id: "SDF-B", resultados: { "mock-model-s26-ultra": "Pass" } });
 
-    const semana = mockFormFactorApi.listar(project.id, 1, 20, "2026-W12");
+    const semana = mockFormFactorApi.listar(project.id, { page: 1, pageSize: 20, semana: "2026-W12" });
     expect(semana.items).toHaveLength(1);
     expect(semana.items[0]).toMatchObject({ sdf_id: "SDF-1", resultados: { "mock-model-s27-ultra": "Fail" } });
-    expect(mockFormFactorApi.listar(project.id, 1, 20, undefined, "mock-user-kp").items.map((row) => row.tc_id)).toEqual(["TC-002"]);
-    const semCasoNaSemana = mockFormFactorApi.listar(project.id, 1, 20, "2026-W15");
+    expect(mockFormFactorApi.listar(project.id, { page: 1, pageSize: 20, responsavelId: "mock-user-kp" }).items.map((row) => row.tc_id)).toEqual(["TC-002"]);
+    const semCasoNaSemana = mockFormFactorApi.listar(project.id, { page: 1, pageSize: 20, semana: "2026-W15" });
     expect(semCasoNaSemana.items.map((row) => row.tc_id)).toEqual(["TC-002"]);
-    expect(mockFormFactorApi.listar(project.id, 1, 20, undefined, "ninguem").total_count).toBe(0);
+    expect(mockFormFactorApi.listar(project.id, { page: 1, pageSize: 20, responsavelId: "ninguem" }).total_count).toBe(0);
+  });
+
+  it("preserva rodadas manuais completas no histórico e atualiza o resumo", () => {
+    const project = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: ["mock-model-s27-ultra", "mock-model-s26-ultra"] });
+    const testCase = mockCasosTesteApi.criar(project.id, { category: "A", difficulty: "Low", situation: "New", tc_id: "TC-ROUNDS", responsavel_id: "mock-user-kp", backup_id: "mock-user-dev" });
+    const primeira = mockFormFactorApi.criarRodadaManual(project.id, { caso_teste_id: testCase.id, resultados: { "mock-model-s27-ultra": "FAIL" } });
+    const segunda = mockFormFactorApi.criarRodadaManual(project.id, { caso_teste_id: testCase.id, resultados: { "mock-model-s27-ultra": "FAIL", "mock-model-s26-ultra": "PASS" } });
+
+    const historico = mockFormFactorApi.listarResultados(project.id, { tcId: "TC-ROUNDS" });
+    expect(historico.items).toHaveLength(2);
+    expect(historico.items.map((item) => item.execucao_id)).toContain(primeira.execucao_id);
+    expect(historico.items.map((item) => item.execucao_id)).toContain(segunda.execucao_id);
+    expect(historico.items.every((item) => item.origem === "MANUAL")).toBe(true);
+    expect(mockFormFactorApi.listar(project.id, { tcId: "TC-ROUNDS" }).items[0].resultados).toEqual({ "mock-model-s27-ultra": "FAIL", "mock-model-s26-ultra": "PASS" });
   });
 
   it("migra casos antigos: o progresso vai para status e TC Situation vira New", () => {

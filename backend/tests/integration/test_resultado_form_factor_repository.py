@@ -437,3 +437,63 @@ async def test_form_factor_ignora_resultado_e_importacao_inativos(cenario):
     assert pagina.items[0].resultados == {cenario.s25: "Pass"}
     assert pagina.items[0].sdf_id == "SDF-VALIDO"
     assert semana_inativa.total_count == 0
+
+
+@pytest.mark.asyncio
+async def test_listar_historico_inclui_execucoes_sdf_e_manuais_com_filtros(cenario):
+    caso_id = await cenario.caso("TC-CLOCK-001")
+    await cenario.importar(
+        caso_id,
+        "SDF-ANTIGO",
+        datetime(2026, 3, 16, tzinfo=UTC),
+        {cenario.s25: "FAIL"},
+    )
+    manual = ExecucaoSdf(
+        cenario.unidade_id,
+        None,
+        caso_id,
+        None,
+        datetime(2026, 3, 23, tzinfo=UTC),
+        "9.5",
+        origem="MANUAL",
+    )
+    await ExecucaoSdfRepositoryImpl(cenario.session).adicionar(manual)
+    await cenario.session.flush()
+    await ResultadoFormFactorRepositoryImpl(cenario.session).adicionar(
+        ResultadoFormFactor(cenario.unidade_id, manual.id, cenario.s25, "PASS")
+    )
+    await cenario.session.flush()
+
+    historico = await cenario.repo().listar_execucoes_form_factor_por_projeto(
+        cenario.unidade_id, cenario.projeto_id, 1, 20
+    )
+    filtrado = await cenario.repo().listar_execucoes_form_factor_por_projeto(
+        cenario.unidade_id,
+        cenario.projeto_id,
+        1,
+        20,
+        tc_id="clock-001",
+        modelo_dispositivo_id=cenario.s25,
+        resultado="PASS",
+    )
+    sem_resultado = await cenario.repo().listar_execucoes_form_factor_por_projeto(
+        cenario.unidade_id,
+        cenario.projeto_id,
+        1,
+        20,
+        modelo_dispositivo_id=cenario.s25,
+        resultado="BLOCKED",
+    )
+
+    assert historico.total_count == 2
+    assert [linha.origem for linha in historico.items] == ["MANUAL", "SDF"]
+    assert historico.items[0].sdf_id is None
+    assert historico.items[0].resultados == {cenario.s25: "PASS"}
+    assert filtrado.total_count == 1 and filtrado.items[0].origem == "MANUAL"
+    assert sem_resultado.total_count == 0
+
+    resumo = await cenario.repo().listar_form_factor_por_projeto(
+        cenario.unidade_id, cenario.projeto_id, 1, 20
+    )
+    assert resumo.items[0].resultados == {cenario.s25: "PASS"}
+    assert resumo.items[0].sdf_id is None

@@ -11,10 +11,12 @@ import { Calendar } from "@/shared/ui/calendar";
 export interface TableFilterOption {
   value: string;
   label: string;
+  searchText?: string;
 }
 
 export function TableColumnFilter({
   label,
+  accessibleLabel,
   value,
   onChange,
   options,
@@ -23,8 +25,10 @@ export function TableColumnFilter({
   onSelectedValuesChange,
   placeholder,
   type = "text",
+  searchable = false,
 }: {
   label: string;
+  accessibleLabel?: string;
   value: string;
   onChange: (value: string) => void;
   options?: TableFilterOption[];
@@ -34,10 +38,12 @@ export function TableColumnFilter({
   placeholder?: string;
   /** "date": o valor é um dia no formato AAAA-MM-DD, escolhido num Calendar. */
   type?: "text" | "date";
+  searchable?: boolean;
 }) {
   const { t } = useTranslation();
   const [aberto, setAberto] = useState(false);
   const [rascunho, setRascunho] = useState(value);
+  const [buscaOpcao, setBuscaOpcao] = useState("");
   const [posicao, setPosicao] = useState({ top: 0, right: 8 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -82,6 +88,7 @@ export function TableColumnFilter({
       setPosicao({ top, right: Math.max(8, window.innerWidth - bounds.right) });
     }
     setRascunho(value);
+    setBuscaOpcao("");
     setAberto(true);
   }
 
@@ -98,7 +105,7 @@ export function TableColumnFilter({
       <button
         ref={triggerRef}
         type="button"
-        aria-label={t("filterBy", { label })}
+        aria-label={t("filterBy", { label: accessibleLabel ?? label })}
         aria-haspopup="menu"
         aria-expanded={aberto}
         className={`group inline-flex items-center gap-1.5 text-left text-sm font-semibold uppercase tracking-wide transition-colors ${ativo ? "text-primary" : "text-foreground hover:text-primary"}`}
@@ -114,19 +121,21 @@ export function TableColumnFilter({
           aria-hidden={saindo || undefined}
           inert={saindo}
           role={type === "date" ? "dialog" : "menu"}
-          aria-label={t("filter", { label })}
+          aria-label={t("filter", { label: accessibleLabel ?? label })}
           style={{ position: "fixed", top: posicao.top, right: posicao.right }}
-          className="popover-enter z-50 min-w-48 rounded-xl border border-border bg-card p-1.5 shadow-lg"
+          className="popover-enter z-50 w-[min(18rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] rounded-xl border border-border bg-card p-1.5 shadow-lg"
         >
           {options ? (
-            <div className="max-h-72 overflow-y-auto">
-              {options.map((option) => (
+            <div>
+              {searchable && <label className="mb-1 flex h-9 items-center gap-2 rounded-lg border border-border px-2.5"><Search aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" /><input aria-label={t("searchOptions", { defaultValue: "Search options" })} value={buscaOpcao} onChange={(event) => setBuscaOpcao(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm outline-none" /></label>}
+              <div className="max-h-72 overflow-y-auto">
+              {options.filter((option) => !searchable || `${option.label} ${option.searchText ?? ""}`.toLocaleLowerCase().includes(buscaOpcao.toLocaleLowerCase())).map((option) => (
                 <button
                   key={option.value || "all"}
                   type="button"
                   role={multiple ? "menuitemcheckbox" : "menuitemradio"}
                   aria-checked={multiple ? selectedValues.includes(option.value) : value === option.value}
-                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-secondary active:bg-secondary ${(multiple ? selectedValues.includes(option.value) : value === option.value) ? "font-medium text-primary" : "text-foreground"}`}
+                  className={`w-full truncate rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-secondary active:bg-secondary ${(multiple ? selectedValues.includes(option.value) : value === option.value) ? "font-medium text-primary" : "text-foreground"}`}
                   onClick={() => {
                     if (multiple) {
                       const next = selectedValues.includes(option.value)
@@ -142,6 +151,7 @@ export function TableColumnFilter({
                   {multiple && <span aria-hidden="true" className="mr-2 inline-flex size-4 items-center justify-center rounded border border-current text-[10px]">{selectedValues.includes(option.value) ? "✓" : ""}</span>}{option.label}
                 </button>
               ))}
+              </div>
               {multiple && <div className="sticky bottom-0 flex justify-end border-t border-border bg-card px-2 py-1.5"><button type="button" className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary" onClick={() => onSelectedValuesChange?.([])}>{t("clearFilters")}</button></div>}
             </div>
           ) : type === "date" ? (

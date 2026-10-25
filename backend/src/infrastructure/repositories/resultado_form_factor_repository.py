@@ -1,12 +1,12 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.dialects.postgresql import distinct_on
 
 from src.domain.common.paged_result import PagedResult
 from src.domain.entities.resultado_form_factor import ResultadoFormFactor
-from src.domain.queries.form_factor_linha import FormFactorLinha
+from src.domain.queries.form_factor_linha import FormFactorExecucaoLinha, FormFactorLinha
 from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
 from src.infrastructure.data.models.execucao_sdf_model import ExecucaoSdfModel
 from src.infrastructure.data.models.importacao_sdf_model import ImportacaoSdfModel
@@ -48,12 +48,19 @@ class ResultadoFormFactorRepositoryImpl(
         inicio: datetime | None = None,
         fim: datetime | None = None,
         responsavel_id: UUID | None = None,
+        tc_id: str | None = None,
+        sdf_id: str | None = None,
+        modelo_dispositivo_id: UUID | None = None,
+        resultado: str | None = None,
     ) -> PagedResult[FormFactorLinha]:
         # Resultados que contam: do projeto, em modelo vinculado e, se houver, na semana.
         resultados_validos = (
             select(ResultadoFormFactorModel.id)
             .join(ExecucaoSdfModel, ResultadoFormFactorModel.execucao_sdf_id == ExecucaoSdfModel.id)
-            .join(ImportacaoSdfModel, ExecucaoSdfModel.importacao_sdf_id == ImportacaoSdfModel.id)
+            .outerjoin(
+                ImportacaoSdfModel,
+                ExecucaoSdfModel.importacao_sdf_id == ImportacaoSdfModel.id,
+            )
             .join(
                 ProjetoModeloModel,
                 (ProjetoModeloModel.projeto_id == projeto_id)
@@ -65,13 +72,23 @@ class ResultadoFormFactorRepositoryImpl(
             .where(
                 ResultadoFormFactorModel.unidade_id == unidade_id,
                 ExecucaoSdfModel.unidade_id == unidade_id,
-                ImportacaoSdfModel.unidade_id == unidade_id,
                 ProjetoModeloModel.unidade_id == unidade_id,
-                ImportacaoSdfModel.projeto_id == projeto_id,
                 ProjetoModeloModel.ativo.is_(True),
                 ResultadoFormFactorModel.ativo.is_(True),
                 ExecucaoSdfModel.ativo.is_(True),
-                ImportacaoSdfModel.ativo.is_(True),
+                or_(
+                    and_(
+                        ExecucaoSdfModel.origem == "MANUAL",
+                        ExecucaoSdfModel.importacao_sdf_id.is_(None),
+                    ),
+                    and_(
+                        ExecucaoSdfModel.origem == "SDF",
+                        ImportacaoSdfModel.id == ExecucaoSdfModel.importacao_sdf_id,
+                        ImportacaoSdfModel.unidade_id == unidade_id,
+                        ImportacaoSdfModel.projeto_id == projeto_id,
+                        ImportacaoSdfModel.ativo.is_(True),
+                    ),
+                ),
             )
         )
         if inicio is not None:
@@ -86,6 +103,23 @@ class ResultadoFormFactorRepositoryImpl(
         ]
         if responsavel_id is not None:
             filtros_caso.append(CasoTesteModel.responsavel_id == responsavel_id)
+        if tc_id:
+            filtros_caso.append(CasoTesteModel.tc_id.ilike(f"%{tc_id.strip()}%"))
+        if sdf_id or modelo_dispositivo_id is not None or resultado:
+            filtros_resultado = [
+                ExecucaoSdfModel.caso_teste_id == CasoTesteModel.id,
+            ]
+            if sdf_id:
+                filtros_resultado.append(ExecucaoSdfModel.sdf_id.ilike(f"%{sdf_id.strip()}%"))
+            if modelo_dispositivo_id is not None:
+                filtros_resultado.append(
+                    ResultadoFormFactorModel.modelo_dispositivo_id == modelo_dispositivo_id
+                )
+            if resultado:
+                filtros_resultado.append(
+                    func.lower(ResultadoFormFactorModel.resultado) == resultado.casefold()
+                )
+            filtros_caso.append(resultados_validos.where(*filtros_resultado).exists())
         if inicio is not None or fim is not None:
             filtros_caso.append(
                 resultados_validos.where(
@@ -119,7 +153,7 @@ class ResultadoFormFactorRepositoryImpl(
                 ResultadoFormFactorModel.resultado,
                 ExecucaoSdfModel.sdf_id,
                 ExecucaoSdfModel.data_reportada,
-                ImportacaoSdfModel.created_at,
+                func.coalesce(ImportacaoSdfModel.created_at, ExecucaoSdfModel.created_at),
             )
             .where(ExecucaoSdfModel.caso_teste_id.in_([caso_id for caso_id, _, _ in casos]))
             .ext(
@@ -131,7 +165,7 @@ class ResultadoFormFactorRepositoryImpl(
                 ExecucaoSdfModel.caso_teste_id,
                 ResultadoFormFactorModel.modelo_dispositivo_id,
                 ExecucaoSdfModel.data_reportada.desc(),
-                ImportacaoSdfModel.created_at.desc(),
+                func.coalesce(ImportacaoSdfModel.created_at, ExecucaoSdfModel.created_at).desc(),
                 ExecucaoSdfModel.id,
                 ResultadoFormFactorModel.id,
             )
@@ -158,6 +192,172 @@ class ResultadoFormFactorRepositoryImpl(
                     resultados=resultados.get(caso_id, {}),
                 )
             )
+        return PagedResult(items, page, page_size, total)
+
+    async def listar_execucoes_form_factor_por_projeto(
+        self,
+        unidade_id: UUID,
+        projeto_id: UUID,
+        page: int,
+        page_size: int,
+        inicio: datetime | None = None,
+        fim: datetime | None = None,
+        responsavel_id: UUID | None = None,
+        tc_id: str | None = None,
+        sdf_id: str | None = None,
+        modelo_dispositivo_id: UUID | None = None,
+        resultado: str | None = None,
+        origem: str | None = None,
+    ) -> PagedResult[FormFactorExecucaoLinha]:
+        importacao_valida = and_(
+            ExecucaoSdfModel.origem == "SDF",
+            ExecucaoSdfModel.importacao_sdf_id == ImportacaoSdfModel.id,
+            ImportacaoSdfModel.unidade_id == unidade_id,
+            ImportacaoSdfModel.projeto_id == projeto_id,
+            ImportacaoSdfModel.ativo.is_(True),
+        )
+        manual_valida = and_(
+            ExecucaoSdfModel.origem == "MANUAL",
+            ExecucaoSdfModel.importacao_sdf_id.is_(None),
+        )
+        def existe_resultado(*condicoes_adicionais):
+            return (
+                select(ResultadoFormFactorModel.id)
+                .join(
+                    ProjetoModeloModel,
+                    and_(
+                        ProjetoModeloModel.projeto_id == projeto_id,
+                        ProjetoModeloModel.modelo_dispositivo_id
+                        == ResultadoFormFactorModel.modelo_dispositivo_id,
+                    ),
+                )
+                .where(
+                    ResultadoFormFactorModel.unidade_id == unidade_id,
+                    ResultadoFormFactorModel.execucao_sdf_id == ExecucaoSdfModel.id,
+                    ResultadoFormFactorModel.ativo.is_(True),
+                    ProjetoModeloModel.unidade_id == unidade_id,
+                    ProjetoModeloModel.ativo.is_(True),
+                    *condicoes_adicionais,
+                )
+                .exists()
+            )
+
+        tem_resultado_no_projeto = existe_resultado()
+        filtros = [
+            ExecucaoSdfModel.unidade_id == unidade_id,
+            ExecucaoSdfModel.ativo.is_(True),
+            CasoTesteModel.unidade_id == unidade_id,
+            CasoTesteModel.projeto_id == projeto_id,
+            CasoTesteModel.ativo.is_(True),
+            or_(importacao_valida, manual_valida),
+            tem_resultado_no_projeto,
+        ]
+        if inicio is not None:
+            filtros.append(ExecucaoSdfModel.data_reportada >= inicio)
+        if fim is not None:
+            filtros.append(ExecucaoSdfModel.data_reportada < fim)
+        if responsavel_id is not None:
+            filtros.append(CasoTesteModel.responsavel_id == responsavel_id)
+        if tc_id:
+            filtros.append(CasoTesteModel.tc_id.ilike(f"%{tc_id.strip()}%"))
+        if sdf_id:
+            filtros.append(ExecucaoSdfModel.sdf_id.ilike(f"%{sdf_id.strip()}%"))
+        if origem:
+            filtros.append(ExecucaoSdfModel.origem == origem)
+        if modelo_dispositivo_id is not None or resultado:
+            condicoes = []
+            if modelo_dispositivo_id is not None:
+                condicoes.append(
+                    ResultadoFormFactorModel.modelo_dispositivo_id == modelo_dispositivo_id
+                )
+            if resultado:
+                condicoes.append(
+                    func.lower(ResultadoFormFactorModel.resultado) == resultado.casefold()
+                )
+            filtros.append(existe_resultado(*condicoes))
+
+        total = (
+            await self.session.execute(
+                select(func.count())
+                .select_from(ExecucaoSdfModel)
+                .join(CasoTesteModel, ExecucaoSdfModel.caso_teste_id == CasoTesteModel.id)
+                .outerjoin(
+                    ImportacaoSdfModel,
+                    ExecucaoSdfModel.importacao_sdf_id == ImportacaoSdfModel.id,
+                )
+                .where(*filtros)
+            )
+        ).scalar_one()
+        execucoes = (
+            await self.session.execute(
+                select(
+                    ExecucaoSdfModel.id,
+                    ExecucaoSdfModel.caso_teste_id,
+                    CasoTesteModel.tc_id,
+                    CasoTesteModel.responsavel_id,
+                    ExecucaoSdfModel.sdf_id,
+                    ExecucaoSdfModel.data_reportada,
+                    ExecucaoSdfModel.origem,
+                )
+                .select_from(ExecucaoSdfModel)
+                .join(CasoTesteModel, ExecucaoSdfModel.caso_teste_id == CasoTesteModel.id)
+                .outerjoin(
+                    ImportacaoSdfModel,
+                    ExecucaoSdfModel.importacao_sdf_id == ImportacaoSdfModel.id,
+                )
+                .where(*filtros)
+                .order_by(
+                    ExecucaoSdfModel.data_reportada.desc(),
+                    ExecucaoSdfModel.created_at.desc(),
+                    ExecucaoSdfModel.id,
+                )
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+            )
+        ).all()
+        if not execucoes:
+            return PagedResult([], page, page_size, total)
+
+        execucoes_ids = [execucao.id for execucao in execucoes]
+        celulas = await self.session.execute(
+            select(
+                ResultadoFormFactorModel.execucao_sdf_id,
+                ResultadoFormFactorModel.modelo_dispositivo_id,
+                ResultadoFormFactorModel.resultado,
+            )
+            .join(
+                ProjetoModeloModel,
+                and_(
+                    ProjetoModeloModel.projeto_id == projeto_id,
+                    ProjetoModeloModel.modelo_dispositivo_id
+                    == ResultadoFormFactorModel.modelo_dispositivo_id,
+                ),
+            )
+            .where(
+                ResultadoFormFactorModel.unidade_id == unidade_id,
+                ResultadoFormFactorModel.execucao_sdf_id.in_(execucoes_ids),
+                ResultadoFormFactorModel.ativo.is_(True),
+                ProjetoModeloModel.unidade_id == unidade_id,
+                ProjetoModeloModel.ativo.is_(True),
+            )
+        )
+        resultados: dict[UUID, dict[UUID, str]] = {}
+        for execucao_id, modelo_id, valor in celulas.all():
+            resultados.setdefault(execucao_id, {})[modelo_id] = valor
+
+        items = [
+            FormFactorExecucaoLinha(
+                execucao_id=execucao.id,
+                caso_teste_id=execucao.caso_teste_id,
+                tc_id=execucao.tc_id,
+                responsavel_id=execucao.responsavel_id,
+                sdf_id=execucao.sdf_id,
+                data_reportada=execucao.data_reportada,
+                origem=execucao.origem,
+                resultados=resultados.get(execucao.id, {}),
+            )
+            for execucao in execucoes
+        ]
         return PagedResult(items, page, page_size, total)
 
     def _to_entity(self, model: ResultadoFormFactorModel) -> ResultadoFormFactor:

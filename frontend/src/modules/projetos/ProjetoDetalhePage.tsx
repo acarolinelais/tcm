@@ -17,17 +17,19 @@ import { TableRowActions } from "@/shared/ui/table-row-actions";
 import { WeekPicker } from "@/shared/ui/week-picker";
 
 import { FormFactorTabela } from "./components/FormFactorTabela";
+import { FormFactorManualDialog } from "./components/FormFactorManualDialog";
+import { FormFactorResultadosTabela } from "./components/FormFactorResultadosTabela";
 import { ProjetoSwitcher } from "./components/ProjetoSwitcher";
 import { CasosTesteEmptyState } from "./components/CasosTesteEmptyState";
 import { StatusBadgeContent, StatusPill } from "./components/StatusBadge";
 import { statusBadgeBase, statusBadges } from "./components/status-badge-estilos";
 import { ProjetosEntradaPage } from "./ProjetosEntradaPage";
-import { useCasosTeste, useFormFactor } from "./hooks/useProjetos";
+import { useCasosTeste, useCriarRodadaFormFactor, useFormFactor, useFormFactorResultados } from "./hooks/useProjetos";
 import { TableColumnFilter } from "@/shared/ui/table-column-filter";
 import { toast } from "@/shared/lib/toast";
 import { formatarDiaIso } from "@/shared/lib/utils";
 
-import { casosTesteApi, formFactorApi, projetosApi, type CasoTeste, type CategoriaCasoTeste, type DificuldadeCasoTeste, type SituacaoCasoTeste } from "./api/projetos.api";
+import { casosTesteApi, formFactorApi, projetosApi, type CasoTeste, type CategoriaCasoTeste, type DificuldadeCasoTeste, type LinhaFormFactor, type SituacaoCasoTeste } from "./api/projetos.api";
 import { CATEGORIAS_CASO_TESTE as categorias, DIFICULDADES_CASO_TESTE as dificuldades, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, type StatusCasoTeste } from "./model/projeto";
 
 const difficultyLabels: Record<DificuldadeCasoTeste, string> = { Low: "difficultyLow", Medium: "difficultyMedium", High: "difficultyHigh" };
@@ -62,6 +64,10 @@ function ProjetoDetalhe() {
   const [backupId, setBackupId] = useState("");
   const [semana, setSemana] = useState("");
   const [assigneeFormFactor, setAssigneeFormFactor] = useState("");
+  const [filtrosResumo, setFiltrosResumo] = useState({ tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" });
+  const [visaoFormFactor, setVisaoFormFactor] = useState<"summary" | "results">("summary");
+  const [filtrosResultados, setFiltrosResultados] = useState({ tcId: "", sdfId: "", responsavelId: "", origem: "", modeloDispositivoId: "", resultado: "" });
+  const [linhaManual, setLinhaManual] = useState<Pick<LinhaFormFactor, "caso_teste_id" | "tc_id"> | null>(null);
   const [semanaCasos, setSemanaCasos] = useState("");
   const [arquivoSdf, setArquivoSdf] = useState<File | null>(null);
   const inputSdf = useRef<HTMLInputElement>(null);
@@ -79,7 +85,9 @@ function ProjetoDetalhe() {
   const casos = useCasosTeste(projetoId, pagina, tamanhoPagina, { responsavelId: filtrosCaso.assignee || undefined, ...(dev ? { associadosAMim: true } : {}), ...(semanaCasos ? { semana: semanaCasos } : {}) }, perfil, Boolean(projeto.isSuccess && podeConsultarCasos && aba === "cases"));
   const associacao = useCasosTeste(projetoId, 1, 1, { associadosAMim: true }, perfil, dev && projeto.isSuccess && podeConsultarCasos);
   const membros = useQuery({ queryKey: ["projetos", projetoId, "membros", perfil.unidade_id, perfil.id], queryFn: async () => timesApi.membros(projeto.data!.time_id), enabled: projeto.isSuccess && (podeConsultarCasos || podeConsultarFormFactor) });
-  const resultados = useFormFactor(projetoId, { page: pagina, pageSize: tamanhoPagina, semana: semana || undefined, responsavelId: assigneeFormFactor || undefined }, perfil, projeto.isSuccess && podeConsultarFormFactor && aba === "form-factor");
+  const resultados = useFormFactor(projetoId, { page: pagina, pageSize: tamanhoPagina, semana: semana || undefined, responsavelId: assigneeFormFactor || undefined, tcId: filtrosResumo.tcId || undefined, sdfId: filtrosResumo.sdfId || undefined, modeloDispositivoId: filtrosResumo.modeloDispositivoId || undefined, resultado: filtrosResumo.resultado || undefined }, perfil, projeto.isSuccess && podeConsultarFormFactor && aba === "form-factor" && visaoFormFactor === "summary");
+  const historico = useFormFactorResultados(projetoId, { page: pagina, pageSize: tamanhoPagina, semana: semana || undefined, tcId: filtrosResultados.tcId || undefined, sdfId: filtrosResultados.sdfId || undefined, responsavelId: filtrosResultados.responsavelId || undefined, origem: filtrosResultados.origem ? filtrosResultados.origem as "SDF" | "MANUAL" : undefined, modeloDispositivoId: filtrosResultados.modeloDispositivoId || undefined, resultado: filtrosResultados.resultado || undefined }, perfil, projeto.isSuccess && podeConsultarFormFactor && aba === "form-factor" && visaoFormFactor === "results");
+  const criarRodada = useCriarRodadaFormFactor(projetoId);
 
   const saveCase = useMutation({
     mutationFn: () => editar
@@ -121,7 +129,7 @@ function ProjetoDetalhe() {
   const identificadoresMembros = useMemo(() => Object.fromEntries((membros.data ?? []).map((member) => [member.usuario_id, member.usuario_user_id ?? "—"])), [membros.data]);
   const { membrosAtivos, opcoesAssignee } = useMemo(() => {
     const ativos = (membros.data ?? []).filter((member) => member.ativo);
-    return { membrosAtivos: ativos, opcoesAssignee: ativos.map((member) => ({ value: member.usuario_id, label: member.usuario_user_id ?? "—" })) };
+    return { membrosAtivos: ativos, opcoesAssignee: ativos.map((member) => ({ value: member.usuario_id, label: member.usuario_user_id ?? "—", searchText: member.usuario_nome ?? "" })) };
   }, [membros.data]);
   const responsavelAtual = perfil.id;
   const camposFaltando = !tcId.trim() || !situation || !responsavelId || !backupId;
@@ -225,8 +233,14 @@ function ProjetoDetalhe() {
         {casos.isLoading && <p role="status" className="p-5 text-sm text-muted-foreground">{t("loading", { defaultValue: "Carregando…" })}</p>}
         {casos.isError && <p role="alert" className="p-5 text-sm text-destructive">{t("caseLoadError", { defaultValue: "Não foi possível carregar os Test Cases." })}</p>}
         <TablePagination page={pagina} pageSize={tamanhoPagina} totalCount={casos.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
-      </TableLayout> : <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto">
-        <FormFactorTabela dados={resultados.data} carregando={resultados.isLoading} erro={resultados.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} assignee={assigneeFormFactor} onAssigneeChange={(valor) => { setAssigneeFormFactor(valor); setPagina(1); }} temFiltros={Boolean(semana || assigneeFormFactor)} onLimparFiltros={() => { setSemana(""); setAssigneeFormFactor(""); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
+      </TableLayout> : <div className="flex min-h-0 flex-1 flex-col gap-4">
+        <nav className="flex shrink-0 gap-4 border-b border-border" aria-label={t("formFactorViews", { defaultValue: "Form Factor views" })}>
+          <button type="button" aria-current={visaoFormFactor === "summary" ? "page" : undefined} onClick={() => { setVisaoFormFactor("summary"); setPagina(1); }} className={`pb-2 text-sm ${visaoFormFactor === "summary" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}>{t("formFactorSummary", { defaultValue: "Summary" })}</button>
+          <button type="button" aria-current={visaoFormFactor === "results" ? "page" : undefined} onClick={() => { setVisaoFormFactor("results"); setPagina(1); }} className={`pb-2 text-sm ${visaoFormFactor === "results" ? "border-b-2 border-primary text-primary" : "text-muted-foreground"}`}>{t("formFactorResults", { defaultValue: "Results" })}</button>
+        </nav>
+        {visaoFormFactor === "results" ? <FormFactorResultadosTabela dados={historico.data} carregando={historico.isLoading} erro={historico.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} filtros={filtrosResultados} onFiltroChange={(campo, valor) => { setFiltrosResultados((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} /> : <>
+        <FormFactorTabela dados={resultados.data} carregando={resultados.isLoading} erro={resultados.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} assignee={assigneeFormFactor} onAssigneeChange={(valor) => { setAssigneeFormFactor(valor); setPagina(1); }} tcId={filtrosResumo.tcId} sdfId={filtrosResumo.sdfId} onFiltroTexto={(campo, valor) => { setFiltrosResumo((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} modeloDispositivoId={filtrosResumo.modeloDispositivoId} resultadoFiltro={filtrosResumo.resultado} onFiltroResultado={(modeloId, valor) => { setFiltrosResumo({ ...filtrosResumo, modeloDispositivoId: valor ? modeloId : "", resultado: valor }); setPagina(1); }} podeRegistrar={podeImportarSdf} onRegistrar={(linha) => setLinhaManual(linha)} temFiltros={Boolean(semana || assigneeFormFactor || filtrosResumo.tcId || filtrosResumo.sdfId || filtrosResumo.resultado)} onLimparFiltros={() => { setSemana(""); setAssigneeFormFactor(""); setFiltrosResumo({ tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" }); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
+        </>}
       </div>}
     </>}
 
@@ -247,5 +261,16 @@ function ProjetoDetalhe() {
         </form>
       </DrawerContent>
     </Dialog>
+    <FormFactorManualDialog
+      aberto={Boolean(linhaManual)}
+      onAbertoChange={(aberto) => { if (!aberto) setLinhaManual(null); }}
+      linha={linhaManual}
+      modelos={resultados.data?.modelos ?? []}
+      salvando={criarRodada.isPending}
+      onSalvar={(input) => criarRodada.mutate(input, {
+        onSuccess: () => { setLinhaManual(null); toast.success(t("manualResultSaved", { defaultValue: "Results recorded." })); },
+        onError: (error) => toast.error(error instanceof Error ? error.message : t("manualResultSaveError", { defaultValue: "Could not record results." })),
+      })}
+    />
   </section>;
 }

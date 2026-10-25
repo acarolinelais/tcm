@@ -37,6 +37,7 @@ class ExecucaoSdfRepositoryImpl(RepositoryBaseImpl[ExecucaoSdf, ExecucaoSdfModel
             model.sdf_id,
             model.data_reportada,
             model.one_ui,
+            model.origem,
         )
         execucao.id = model.id
         execucao.ativo = model.ativo
@@ -53,6 +54,7 @@ class ExecucaoSdfRepositoryImpl(RepositoryBaseImpl[ExecucaoSdf, ExecucaoSdfModel
             sdf_id=entity.sdf_id,
             data_reportada=entity.data_reportada,
             one_ui=entity.one_ui,
+            origem=entity.origem,
             ativo=entity.ativo,
             created_at=entity.created_at,
             updated_at=entity.updated_at,

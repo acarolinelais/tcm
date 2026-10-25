@@ -9,6 +9,7 @@ import {
   type CriarCasoTesteInput,
   type CriarProjetoInput,
   type FiltrosFormFactor,
+  type CriarRodadaFormFactorInput,
   type StatusProjeto,
 } from "../api/projetos.api";
 
@@ -104,6 +105,28 @@ export function useFormFactor(projetoId: string, filtros: FiltrosFormFactor, per
     queryKey: ["projetos", projetoId, "form-factor", filtros, perfil?.unidade_id, perfil?.id],
     queryFn: () => formFactorApi.listar(projetoId, filtros),
     enabled: Boolean(projetoId) && enabled,
+  });
+}
+
+export function useFormFactorResultados(projetoId: string, filtros: FiltrosFormFactor, perfil?: PerfilAtual, enabled = true) {
+  return useQuery({
+    queryKey: ["projetos", projetoId, "form-factor-results", filtros, perfil?.unidade_id, perfil?.id],
+    queryFn: () => formFactorApi.listarResultados(projetoId, filtros),
+    enabled: Boolean(projetoId) && enabled,
+  });
+}
+
+export function useCriarRodadaFormFactor(projetoId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["projetos", projetoId, "form-factor-manual"],
+    mutationFn: (input: CriarRodadaFormFactorInput) => formFactorApi.criarRodadaManual(projetoId, input),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "form-factor"] }),
+        queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "form-factor-results"] }),
+      ]);
+    },
   });
 }
 

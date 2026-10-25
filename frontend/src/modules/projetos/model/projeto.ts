@@ -73,6 +73,33 @@ export interface FormFactorMatriz extends PagedResult<LinhaFormFactor> {
   modelos: ModeloFormFactor[];
 }
 
+export interface FormFactorExecucao extends LinhaFormFactor {
+  execucao_id: string;
+  data_reportada: string;
+  origem: "SDF" | "MANUAL";
+}
+
+export interface FormFactorResultados extends PagedResult<FormFactorExecucao> {
+  modelos: ModeloFormFactor[];
+}
+
+export interface FiltrosFormFactor {
+  page?: number;
+  pageSize?: number;
+  semana?: string;
+  responsavelId?: string;
+  tcId?: string;
+  sdfId?: string;
+  modeloDispositivoId?: string;
+  resultado?: string;
+  origem?: "SDF" | "MANUAL";
+}
+
+export interface CriarRodadaFormFactorInput {
+  caso_teste_id: string;
+  resultados: Record<string, "PASS" | "FAIL">;
+}
+
 export interface ImportacaoProjeto {
   projeto: Projeto;
   quantidade_casos: number;

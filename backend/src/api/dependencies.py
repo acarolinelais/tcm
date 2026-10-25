@@ -291,4 +291,7 @@ async def get_form_factor_service(
         TimeRepositoryImpl(session),
         ResultadoFormFactorRepositoryImpl(session),
         ProjetoModeloRepositoryImpl(session),
+        CasoTesteRepositoryImpl(session),
+        ExecucaoSdfRepositoryImpl(session),
+        UnitOfWorkImpl(session),
     )

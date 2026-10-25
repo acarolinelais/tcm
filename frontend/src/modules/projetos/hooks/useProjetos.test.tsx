@@ -3,13 +3,13 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { casosTesteApi, formFactorApi, projetosApi } from "../api/projetos.api";
-import { useCasosTeste, useCriarProjeto, useFormFactor, useProjetosPessoais, useTransferirCasoTeste } from "./useProjetos";
+import { useCasosTeste, useCriarProjeto, useCriarRodadaFormFactor, useFormFactor, useFormFactorResultados, useProjetosPessoais, useTransferirCasoTeste } from "./useProjetos";
 import type { PerfilAtual } from "@/core/auth/api";
 
 vi.mock("../api/projetos.api", () => ({
   casosTesteApi: { listar: vi.fn(), transferirParaBackup: vi.fn() },
   projetosApi: { criar: vi.fn(), listar: vi.fn() },
-  formFactorApi: { listar: vi.fn() }, modelosDispositivoApi: {},
+  formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), criarRodadaManual: vi.fn() }, modelosDispositivoApi: {},
 }));
 
 function criarWrapper() {
@@ -54,6 +54,24 @@ describe("hooks de projetos", () => {
     rerender({ responsavelId: "ana", enabled: true });
     await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("p", { page: 1, pageSize: 20, responsavelId: "ana" }));
     expect(formFactorApi.listar).toHaveBeenCalledTimes(2);
+  });
+
+  it("isola o cache de Results pelos filtros e recarrega após criar rodada", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    client.setQueryData(["projetos", "p", "form-factor", { page: 1 }], { items: [] });
+    vi.mocked(formFactorApi.listarResultados).mockResolvedValue({ modelos: [], items: [], total_count: 0, page: 1, page_size: 20 });
+    vi.mocked(formFactorApi.criarRodadaManual).mockResolvedValue({} as never);
+    const perfil = { id: "kp", unidade_id: "u" } as PerfilAtual;
+    const { result, rerender } = renderHook(({ tcId }) => useFormFactorResultados("p", { page: 1, pageSize: 20, tcId }, perfil), { initialProps: { tcId: "TC-1" }, wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    rerender({ tcId: "TC-2" });
+    await waitFor(() => expect(formFactorApi.listarResultados).toHaveBeenLastCalledWith("p", { page: 1, pageSize: 20, tcId: "TC-2" }));
+    const chamadasAntesDaCriacao = vi.mocked(formFactorApi.listarResultados).mock.calls.length;
+    const criar = renderHook(() => useCriarRodadaFormFactor("p"), { wrapper });
+    await criar.result.current.mutateAsync({ caso_teste_id: "case-1", resultados: { "model-1": "PASS" } });
+    expect(client.getQueryCache().find({ queryKey: ["projetos", "p", "form-factor", { page: 1 }] })?.state.isInvalidated).toBe(true);
+    await waitFor(() => expect(formFactorApi.listarResultados).toHaveBeenCalledTimes(chamadasAntesDaCriacao + 1));
   });
 
   it("invalida consultas de casos, entrada e seletor após transferência", async () => {

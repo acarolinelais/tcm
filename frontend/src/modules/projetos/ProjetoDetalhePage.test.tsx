@@ -13,7 +13,7 @@ import { formatarDiaIso, semanaIso } from "@/shared/lib/utils";
 
 vi.mock("./api/projetos.api", () => ({
   projetosApi: { obter: vi.fn(), listar: vi.fn() }, casosTesteApi: { listar: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), transferirParaBackup: vi.fn() },
-  formFactorApi: { listar: vi.fn(), importar: vi.fn() }, modelosDispositivoApi: {},
+  formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), criarRodadaManual: vi.fn(), importar: vi.fn() }, modelosDispositivoApi: {},
 }));
 vi.mock("@/modules/times/api/times.api", () => ({ timesApi: { membros: vi.fn() } }));
 
@@ -46,6 +46,7 @@ describe("ProjetoDetalhePage", () => {
     vi.mocked(casosTesteApi.atualizar).mockResolvedValue(casos[0]);
     vi.mocked(casosTesteApi.transferirParaBackup).mockResolvedValue({ ...casos[0], responsavel_id: "backup-1", backup_id: null });
     vi.mocked(formFactorApi.listar).mockResolvedValue({ modelos: [], items: [], page: 1, page_size: 10, total_count: 0 });
+    vi.mocked(formFactorApi.listarResultados).mockResolvedValue({ modelos: [], items: [], page: 1, page_size: 20, total_count: 0 });
     vi.mocked(formFactorApi.importar).mockResolvedValue({ quantidade_execucoes: 1, quantidade_resultados: 4 } as never);
     vi.mocked(timesApi.membros).mockResolvedValue([
       { id: "m1", time_id: "team-1", usuario_id: "user-1", usuario_nome: "Daniel Oliveira", usuario_user_id: "daniel-id", usuario_perfil: "Developer", usuario_perfil_codigo: null, ativo: true },
@@ -368,5 +369,26 @@ describe("ProjetoDetalhePage", () => {
     await user.upload(fileInput!, new File(["report"], "sdf.xlsx"));
     await user.click(screen.getByRole("button", { name: /^import$/i }));
     await waitFor(() => expect(formFactorApi.importar).toHaveBeenCalledWith("project-1", expect.any(File)));
+  });
+
+  it("alterna para Results e lista execuções em linhas separadas", async () => {
+    vi.mocked(formFactorApi.listarResultados).mockResolvedValue({
+      modelos: [{ id: "model-1", nome: "S27 Ultra" }],
+      items: [
+        { execucao_id: "run-1", caso_teste_id: "case-1", tc_id: "Clock_001", responsavel_id: "user-1", sdf_id: null, data_reportada: "2026-03-23T10:00:00Z", origem: "MANUAL", resultados: { "model-1": "FAIL" } },
+        { execucao_id: "run-2", caso_teste_id: "case-1", tc_id: "Clock_001", responsavel_id: "user-1", sdf_id: "SDF-2", data_reportada: "2026-03-24T10:00:00Z", origem: "SDF", resultados: { "model-1": "PASS" } },
+      ],
+      page: 1, page_size: 20, total_count: 2,
+    });
+    const admin = { ...perfil, id: "admin", perfil_codigo: "ADMIN_UNIDADE", perfil: "Administrador" };
+    const user = userEvent.setup();
+    renderPage(admin);
+    await screen.findByRole("heading", { name: "Clock 9.5" });
+    await user.click(screen.getByRole("tab", { name: "Form Factor" }));
+    await user.click(await screen.findByRole("button", { name: "Results" }));
+
+    expect(await screen.findByRole("columnheader", { name: "Origin" })).toBeInTheDocument();
+    expect(screen.getAllByRole("row", { name: /Clock_001/ })).toHaveLength(2);
+    expect(formFactorApi.listarResultados).toHaveBeenCalledWith("project-1", expect.objectContaining({ page: 1 }));
   });
 });
