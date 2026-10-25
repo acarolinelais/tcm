@@ -200,7 +200,7 @@ export function ProjetosPage() {
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
       <div className="thin-scroll min-h-0 flex-1 overflow-auto">
-        <div className="mx-auto flex min-h-full max-w-[52.5rem] flex-col">
+        <div className="flex min-h-full w-full flex-col">
           <header className="mb-4 flex items-center justify-between gap-4">
             <h1 className="text-2xl font-medium text-foreground">{t("newProject")}</h1>
             <div className="relative grid w-52 shrink-0 grid-cols-2 rounded-xl bg-[#F7F8FA] p-1" role="tablist" aria-label={t("projectCreationMethod")}>
@@ -216,7 +216,7 @@ export function ProjetosPage() {
               const painelId = importacao ? "project-import-panel" : "project-manual-panel";
               const tabId = importacao ? "project-import-tab" : "project-manual-tab";
               return <section key={painel} id={painelId} role="tabpanel" aria-labelledby={tabId} aria-hidden={!ativo} inert={!ativo} className={`col-start-1 row-start-1 flex min-w-0 flex-col transition-[opacity,transform,visibility] duration-150 ease-out motion-reduce:transition-none ${ativo ? "relative visible translate-y-0 opacity-100" : "invisible pointer-events-none absolute inset-x-0 top-0 translate-y-1 opacity-0"}`}>
-                <div className="mx-auto flex min-h-full w-full max-w-[52.5rem] flex-col">
+                <div className="flex min-h-full w-full flex-col">
                   {importacao ? <section aria-label={t("uploadSpreadsheet")} className="flex flex-1 flex-col">
                     <h2 className="mb-3 text-lg font-medium leading-6 text-[#454442]">{t("uploadSpreadsheet")}</h2>
                     <UploadPlanilha leitura={leitura} onBaixarModelo={downloadTemplate} />
