@@ -1,6 +1,6 @@
 # 017. Status In Validation do Test Case: Spec
 
-- **Status:** Aprovada
+- **Status:** Concluída
 - **Data:** 2026-10-25
 
 ## Problema

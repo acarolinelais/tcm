@@ -3,8 +3,8 @@ from uuid import UUID
 from sqlalchemy import select
 
 from src.domain.entities.projeto_modelo import ProjetoModelo
-from src.infrastructure.data.models.projeto_modelo_model import ProjetoModeloModel
 from src.infrastructure.data.models.modelo_dispositivo_model import ModeloDispositivoModel
+from src.infrastructure.data.models.projeto_modelo_model import ProjetoModeloModel
 from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
 
 

@@ -88,11 +88,12 @@ async def test_criar_test_case_sem_situation_retorna_422(api_client):
     service.criar.assert_not_awaited()
 
 
-async def test_responsavel_que_envia_situation_recebe_403(api_client):
+def _usar_service_real_com_caso(caso_do_membro: bool):
+    """Autentica um membro sem gestão e usa o service real com um caso dele ou de outra pessoa."""
     from src.api.main import app
 
     unidade_id, time_id, setor_id = uuid4(), uuid4(), uuid4()
-    responsavel = UsuarioAutenticado(
+    membro = UsuarioAutenticado(
         uuid4(),
         unidade_id,
         "USUARIO_PADRAO",
@@ -111,7 +112,7 @@ async def test_responsavel_que_envia_situation_recebe_403(api_client):
         "Clock_001",
         CategoriaCasoTeste.A,
         DificuldadeCasoTeste.LOW,
-        responsavel.id,
+        membro.id if caso_do_membro else uuid4(),
         uuid4(),
         SituacaoCasoTeste.NEW,
     )
@@ -121,8 +122,13 @@ async def test_responsavel_que_envia_situation_recebe_403(api_client):
     service = CasoTesteServiceImpl(
         caso_repo, projeto_repo, time_repo, membro_repo, usuario_repo, uow
     )
-    app.dependency_overrides[get_usuario_atual] = dependency_override(responsavel)
+    app.dependency_overrides[get_usuario_atual] = dependency_override(membro)
     app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
+    return caso, uow
+
+
+async def test_responsavel_que_envia_situation_recebe_403(api_client):
+    caso, _ = _usar_service_real_com_caso(caso_do_membro=True)
 
     negado = await api_client.put(f"/api/test-cases/{caso.id}", json={"situation": "New Step"})
     permitido = await api_client.put(f"/api/test-cases/{caso.id}", json={"status": "InReview"})
@@ -131,6 +137,40 @@ async def test_responsavel_que_envia_situation_recebe_403(api_client):
     assert permitido.status_code == 200
     assert permitido.json()["status"] == "InReview"
     assert permitido.json()["situation"] == "New"
+
+
+async def test_responsavel_atualiza_status_para_in_validation(api_client):
+    caso, uow = _usar_service_real_com_caso(caso_do_membro=True)
+
+    response = await api_client.put(f"/api/test-cases/{caso.id}", json={"status": "InValidation"})
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "InValidation"
+    uow.commit.assert_awaited_once()
+
+
+async def test_atualizar_status_invalido_retorna_422(api_client):
+    from src.api.main import app
+
+    usuario = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
+    service = AsyncMock()
+    app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
+    app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
+
+    response = await api_client.put(f"/api/test-cases/{uuid4()}", json={"status": "Validation"})
+
+    assert response.status_code == 422
+    assert any("status" in erro["campo"] for erro in response.json()["errors"])
+    service.atualizar.assert_not_awaited()
+
+
+async def test_membro_nao_altera_status_de_caso_alheio_para_in_validation(api_client):
+    caso, uow = _usar_service_real_com_caso(caso_do_membro=False)
+
+    response = await api_client.put(f"/api/test-cases/{caso.id}", json={"status": "InValidation"})
+
+    assert response.status_code == 403
+    uow.commit.assert_not_awaited()
 
 
 async def test_listar_test_cases_retorna_paginacao(api_client):

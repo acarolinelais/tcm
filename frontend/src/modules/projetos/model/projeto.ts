@@ -5,14 +5,14 @@ export type CategoriaCasoTeste = (typeof CATEGORIAS_CASO_TESTE)[number];
 export type DificuldadeCasoTeste = (typeof DIFICULDADES_CASO_TESTE)[number];
 /** TC Situation: origem do caso em relação a projetos anteriores. */
 export type SituacaoCasoTeste = "New" | "New Step" | "Without Changes";
-/** Progresso do caso no projeto. */
-export type StatusCasoTeste = "To-Do" | "InProgress" | "InReview" | "Pass" | "Fail";
 
 export const SITUACOES_CASO_TESTE: SituacaoCasoTeste[] = ["New", "New Step", "Without Changes"];
-export const STATUS_CASO_TESTE: StatusCasoTeste[] = ["To-Do", "InProgress", "InReview", "Pass", "Fail"];
+/** Progresso do caso no projeto, na ordem exibida. */
+export const STATUS_CASO_TESTE = ["To-Do", "InProgress", "InReview", "InValidation", "Pass", "Fail"] as const;
+export type StatusCasoTeste = (typeof STATUS_CASO_TESTE)[number];
 /** Chaves i18n dos rótulos de TC Situation e Status. */
 export const ROTULO_SITUACAO: Record<SituacaoCasoTeste, string> = { New: "situationNew", "New Step": "situationNewStep", "Without Changes": "situationWithoutChanges" };
-export const ROTULO_STATUS: Record<StatusCasoTeste, string> = { "To-Do": "statusTodo", InProgress: "statusInProgress", InReview: "statusInReview", Pass: "statusPass", Fail: "statusFail" };
+export const ROTULO_STATUS: Record<StatusCasoTeste, string> = { "To-Do": "statusTodo", InProgress: "statusInProgress", InReview: "statusInReview", InValidation: "statusInValidation", Pass: "statusPass", Fail: "statusFail" };
 
 export interface Projeto {
   id: string;

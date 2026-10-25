@@ -42,7 +42,7 @@ ser registradas em ADR antes de serem introduzidas.
 | 014 | Catálogo de modelos de dispositivo (descrição, gestão pelo KP, item no sidebar) | Concluída |
 | 015 | Descrição do modelo no seletor de projetos | Concluída |
 | 016 | Upload da planilha no padrão do Figma (progresso, remover com Desfazer, prévia) | Concluída |
-| 017 | Status In Validation do Test Case | Aprovada |
+| 017 | Status In Validation do Test Case | Concluída |
 
 > As duas specs 012 foram criadas em paralelo. Os diretórios e históricos foram preservados nesta integração; a harmonização da numeração está registrada no backlog da spec de perfil Dev.
 

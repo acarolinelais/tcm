@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRightLeft, Check, ClipboardList, Clock, Eye, Pencil, Play, Plus, SearchX, UploadCloud, X, type LucideIcon } from "lucide-react";
+import { ArrowRightLeft, Check, ClipboardList, Clock, Eye, Pencil, Play, Plus, SearchX, ShieldCheck, UploadCloud, X, type LucideIcon } from "lucide-react";
 import { useOutletContext, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
@@ -32,6 +32,7 @@ const statusBadges: Record<StatusCasoTeste, { badge: string; icon: string; Icon:
   "To-Do": { badge: "bg-slate-100 text-slate-700", icon: "bg-slate-500", Icon: Clock },
   InProgress: { badge: "bg-blue-50 text-blue-800", icon: "bg-blue-700", Icon: Play },
   InReview: { badge: "bg-amber-50 text-amber-800", icon: "bg-amber-600", Icon: Eye },
+  InValidation: { badge: "bg-violet-50 text-violet-800", icon: "bg-violet-600", Icon: ShieldCheck },
   Pass: { badge: "bg-green-50 text-green-800", icon: "bg-green-800", Icon: Check },
   Fail: { badge: "bg-red-50 text-red-800", icon: "bg-red-700", Icon: X },
 };

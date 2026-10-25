@@ -66,6 +66,17 @@ def test_gestao_atualiza_situation_e_status():
     assert caso.status == StatusCasoTeste.IN_REVIEW
 
 
+def test_status_segue_a_ordem_do_progresso_com_in_validation_antes_de_pass():
+    assert list(StatusCasoTeste) == [
+        "To-Do",
+        "InProgress",
+        "InReview",
+        "InValidation",
+        "Pass",
+        "Fail",
+    ]
+
+
 @pytest.mark.parametrize("situation", ["To-Do", "Changed", ""])
 def test_criar_caso_com_situation_invalida_levanta_erro(situation):
     with pytest.raises(ValueError):
@@ -81,7 +92,8 @@ def test_criar_caso_com_situation_invalida_levanta_erro(situation):
         )
 
 
-def test_criar_caso_com_status_invalido_levanta_erro():
+@pytest.mark.parametrize("status", ["New", "Validation", "In Validation"])
+def test_criar_caso_com_status_invalido_levanta_erro(status):
     with pytest.raises(ValueError):
         CasoTeste(
             unidade_id=uuid4(),
@@ -92,7 +104,7 @@ def test_criar_caso_com_status_invalido_levanta_erro():
             responsavel_id=uuid4(),
             backup_id=uuid4(),
             situation=SituacaoCasoTeste.NEW,
-            status="New",
+            status=status,
         )
 
 
