@@ -94,6 +94,7 @@ async def test_vinculo_modelo_do_projeto_persiste_e_lista_no_tenant():
                     id=projeto_id,
                     unidade_id=unidade_id,
                     time_id=time_id,
+                    nome="Clock 9.5",
                     app="Clock",
                     one_ui="9.5",
                 )

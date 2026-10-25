@@ -69,6 +69,7 @@ async def test_importacoes_distintas_preservam_execucoes_e_resultados_anteriores
                         id=projeto_id,
                         unidade_id=unidade_id,
                         time_id=time_id,
+                        nome="Clock 9.5",
                         app="Clock",
                         one_ui="9.5",
                     ),
@@ -176,6 +177,7 @@ class _Cenario:
                 id=self.projeto_id,
                 unidade_id=self.unidade_id,
                 time_id=time_id,
+                nome="Clock 9.5",
                 app="Clock",
                 one_ui="9.5",
             )

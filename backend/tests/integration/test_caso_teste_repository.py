@@ -63,6 +63,7 @@ async def test_caso_persiste_com_responsaveis_e_tc_id_e_unico_no_projeto():
                     id=projeto_id,
                     unidade_id=unidade_id,
                     time_id=time_id,
+                    nome="Clock 9.5",
                     app="Clock",
                     one_ui="9.5",
                 )

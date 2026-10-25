@@ -50,12 +50,16 @@ export function ProjetosPage() {
   const [timeId, setTimeId] = useState("");
   const [app, setApp] = useState("");
   const [oneUi, setOneUi] = useState("");
+  const [nomeProjeto, setNomeProjeto] = useState("");
   const [modelosIds, setModelosIds] = useState<string[]>([]);
   const leitura = useLeituraPlanilha(t("projectFileReadError"));
   const [projetoEditando, setProjetoEditando] = useState<Projeto | null>(null);
   const [projetoExcluindo, setProjetoExcluindo] = useState<Projeto | null>(null);
+  const [edicaoNome, setEdicaoNome] = useState("");
   const [edicaoApp, setEdicaoApp] = useState("");
   const [edicaoOneUi, setEdicaoOneUi] = useState("");
+  const [edicaoTimeId, setEdicaoTimeId] = useState("");
+  const [edicaoModelosIds, setEdicaoModelosIds] = useState<string[]>([]);
 
   // Com problemas na planilha, o envio só confere: o servidor devolve também os problemas de
   // responsável e backup, que a prévia não consegue verificar, e não cria nada (CA-26, CA-27).
@@ -80,7 +84,7 @@ export function ProjetosPage() {
   };
   const queryMutation = useMutation({
     mutationFn: async () => {
-      if (modo === "manual") return { projeto: await projetosApi.criar({ time_id: timeId, app: app.trim(), one_ui: oneUi.trim(), modelos_ids: modelosIds }), quantidade_casos: 0 };
+      if (modo === "manual") return { projeto: await projetosApi.criar({ time_id: timeId, nome: nomeProjeto.trim(), app: app.trim(), one_ui: oneUi.trim(), modelos_ids: modelosIds }), quantidade_casos: 0 };
       if (!leitura.arquivo) throw new Error(t("projectFileRequired"));
       const result = await projetosApi.importar(leitura.arquivo, timeId, modelosIds, leitura.previa?.app ?? "", leitura.previa?.one_ui ?? "");
       return "projeto" in result ? result : { projeto: result, quantidade_casos: 0 };
@@ -109,7 +113,7 @@ export function ProjetosPage() {
     onSettled: () => client.invalidateQueries({ queryKey: ["projetos"] }),
   });
   const editarProjeto = useMutation({
-    mutationFn: () => projetosApi.atualizar(projetoEditando!.id, { app: edicaoApp.trim(), one_ui: edicaoOneUi.trim() }),
+    mutationFn: () => projetosApi.atualizar(projetoEditando!.id, { nome: edicaoNome.trim(), app: edicaoApp.trim(), one_ui: edicaoOneUi.trim(), time_id: edicaoTimeId, modelos_ids: edicaoModelosIds }),
     onSuccess: async () => { await client.invalidateQueries({ queryKey: ["projetos"] }); setProjetoEditando(null); toast.success(t("projectUpdateSuccess")); },
     onError: () => toast.error(t("projectUpdateError")),
   });
@@ -121,7 +125,7 @@ export function ProjetosPage() {
 
   function limparFormulario() {
     leitura.limpar();
-    setTimeId(""); setApp(""); setOneUi(""); setModelosIds([]); setModo("planilha");
+    setTimeId(""); setApp(""); setOneUi(""); setNomeProjeto(""); setModelosIds([]); setModo("planilha");
   }
   async function downloadTemplate() {
     const XLSX = await import("@e965/xlsx");
@@ -185,7 +189,7 @@ export function ProjetosPage() {
             <TableHead><TableColumnFilter label={t("createdAt")} value={filtrosProjeto.createdAt} onChange={(value) => alterarFiltroProjeto("createdAt", value)} /></TableHead>
             <TableHead className="text-right">{t("actions")}</TableHead>
           </TableRow></TableHeader>
-          <TableBody>{projetosFiltrados.length ? projetosFiltrados.map((project) => <ProjectRow key={project.id} project={project} teamName={nomeTime[project.time_id]} canEdit={podeGerenciar} onView={() => navigate(`/projetos/${project.id}`)} onEdit={() => { setProjetoEditando(project); setEdicaoApp(project.app); setEdicaoOneUi(project.one_ui); }} onDelete={() => setProjetoExcluindo(project)} onStatusChange={(status) => statusMutation.mutate({ id: project.id, status })} statusLabel={statusLabel} />) : <>
+          <TableBody>{projetosFiltrados.length ? projetosFiltrados.map((project) => <ProjectRow key={project.id} project={project} teamName={nomeTime[project.time_id]} canEdit={podeGerenciar} onView={() => navigate(`/projetos/${project.id}`)} onEdit={() => { setProjetoEditando(project); setEdicaoNome(project.nome); setEdicaoApp(project.app); setEdicaoOneUi(project.one_ui); setEdicaoTimeId(project.time_id); setEdicaoModelosIds(project.modelos_ids ?? []); }} onDelete={() => setProjetoExcluindo(project)} onStatusChange={(status) => statusMutation.mutate({ id: project.id, status })} statusLabel={statusLabel} />) : <>
             <TableRow aria-hidden="true" className="border-0 hover:bg-transparent"><TableCell colSpan={8} className="h-3 p-0" /></TableRow>
             <TableRow><TableCell colSpan={8} className="p-0"><TableEmptyStatePanel role="status" className="px-5 py-7 sm:px-8">
               <div className="text-center"><h2 className="text-base font-semibold text-foreground">{projetos.data?.items.length ? t("noProjectResults", { defaultValue: "Nenhum projeto corresponde aos filtros." }) : t("noProjects")}</h2><p className="mx-auto mt-1 max-w-md text-sm leading-5 text-muted-foreground">{projetos.data?.items.length ? t("adjustFilters", { defaultValue: "Ajuste ou limpe os filtros para ver os resultados." }) : t("noProjectsHint")}</p></div>
@@ -220,7 +224,7 @@ export function ProjetosPage() {
                   {importacao ? <section aria-label={t("uploadSpreadsheet")} className="flex flex-1 flex-col">
                     <h2 className="mb-3 text-lg font-medium leading-6 text-[#454442]">{t("uploadSpreadsheet")}</h2>
                     <UploadPlanilha leitura={leitura} onBaixarModelo={downloadTemplate} />
-                  </section> : <section className="rounded-2xl border border-border bg-white p-5 sm:p-7"><div className="mb-6"><h2 className="text-base font-semibold">{t("projectDetails")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("projectNameFormulaHint")}</p></div><div className="grid gap-5 sm:grid-cols-2"><div><Label htmlFor="project-app">{t("app")}</Label><Input id="project-app" value={app} onChange={(event) => setApp(event.target.value)} className="mt-2" placeholder={t("appPlaceholder")} maxLength={80} /></div><div><Label htmlFor="project-oneui">{t("oneUi")}</Label><Input id="project-oneui" value={oneUi} onChange={(event) => setOneUi(event.target.value)} className="mt-2" placeholder="9.5" maxLength={40} /></div></div><p className="mt-3 text-sm text-muted-foreground">{app.trim() && oneUi.trim() ? `${t("projectNamePreview")}: ${app.trim()} ${oneUi.trim()}` : t("projectNamePreviewHint")}</p></section>}
+                  </section> : <section className="rounded-2xl border border-border bg-white p-5 sm:p-7"><div className="mb-6"><h2 className="text-base font-semibold">{t("projectDetails")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("projectNameFormulaHint")}</p></div><div className="grid gap-5 sm:grid-cols-2"><div className="sm:col-span-2"><Label htmlFor="project-name">{t("projectNamePreview")}</Label><Input id="project-name" value={nomeProjeto || (app.trim() && oneUi.trim() ? `${app.trim()} ${oneUi.trim()}` : "")} onChange={(event) => setNomeProjeto(event.target.value)} className="mt-2" maxLength={150} /></div><div><Label htmlFor="project-app">{t("app")}</Label><Input id="project-app" value={app} onChange={(event) => setApp(event.target.value)} className="mt-2" placeholder={t("appPlaceholder")} maxLength={100} /></div><div><Label htmlFor="project-oneui">{t("oneUi")}</Label><Input id="project-oneui" value={oneUi} onChange={(event) => setOneUi(event.target.value)} className="mt-2" placeholder="9.5" maxLength={40} /></div></div></section>}
                   {projectSetup(importacao ? Boolean(leitura.arquivo) : true, importacao ? "import" : "manual")}
                 </div>
               </section>;
@@ -236,11 +240,21 @@ export function ProjetosPage() {
         <DrawerHeader><DrawerTitle>{t("editProjectTitle", { name: projetoEditando?.nome ?? "" })}</DrawerTitle></DrawerHeader>
         <form className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => { event.preventDefault(); editarProjeto.mutate(); }}>
           <div className="flex-1 space-y-5 overflow-y-auto px-7 py-6">
+            <div><Label htmlFor="edit-project-name">{t("projectNamePreview")}</Label><Input id="edit-project-name" className="mt-2" value={edicaoNome} onChange={(event) => setEdicaoNome(event.target.value)} maxLength={150} required /></div>
             <div><Label htmlFor="edit-project-app">{t("app")}</Label><Input id="edit-project-app" className="mt-2" value={edicaoApp} onChange={(event) => setEdicaoApp(event.target.value)} maxLength={100} required /></div>
             <div><Label htmlFor="edit-project-oneui">{t("oneUi")}</Label><Input id="edit-project-oneui" className="mt-2" value={edicaoOneUi} onChange={(event) => setEdicaoOneUi(event.target.value)} maxLength={40} required /></div>
-            <p className="text-sm text-muted-foreground">{t("projectNamePreview")}: {edicaoApp.trim() && edicaoOneUi.trim() ? `${edicaoApp.trim()} ${edicaoOneUi.trim()}` : "—"}</p>
+            <div><Label htmlFor="edit-project-team">{t("team")}</Label><Select value={edicaoTimeId} onValueChange={setEdicaoTimeId}><SelectTrigger id="edit-project-team" className="mt-2"><SelectValue placeholder={t("selectTeam")} /></SelectTrigger><SelectContent>{timesDisponiveis.map((team) => <SelectItem key={team.id} value={team.id}>{team.nome}</SelectItem>)}</SelectContent></Select></div>
+            <MultiSelectCombobox
+              label={t("deviceModels")}
+              placeholder={t("selectDeviceModels", { defaultValue: "Selecionar modelos" })}
+              options={opcoesModelos}
+              value={edicaoModelosIds}
+              onValueChange={setEdicaoModelosIds}
+              emptyLabel={modelos.isLoading ? t("loadingDeviceModels") : t("noDeviceModels")}
+              removeLabel={(name) => t("removeSelectedModel", { defaultValue: "Remover {{name}}", name })}
+            />
           </div>
-          <div className="flex justify-end gap-2 border-t border-border px-7 py-5"><DrawerClose asChild><Button type="button" variant="outline" disabled={editarProjeto.isPending}>{t("cancel")}</Button></DrawerClose><Button type="submit" disabled={!edicaoApp.trim() || !edicaoOneUi.trim() || editarProjeto.isPending}>{editarProjeto.isPending ? t("saving") : t("save")}</Button></div>
+          <div className="flex justify-end gap-2 border-t border-border px-7 py-5"><DrawerClose asChild><Button type="button" variant="outline" disabled={editarProjeto.isPending}>{t("cancel")}</Button></DrawerClose><Button type="submit" disabled={!edicaoNome.trim() || !edicaoApp.trim() || !edicaoOneUi.trim() || !edicaoTimeId || editarProjeto.isPending}>{editarProjeto.isPending ? t("saving") : t("save")}</Button></div>
         </form>
       </DrawerContent>
     </Dialog>

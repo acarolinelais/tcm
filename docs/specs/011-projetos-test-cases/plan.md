@@ -12,7 +12,7 @@ Adicionar um módulo de projetos que concentra projeto, catálogo de modelos, Te
 
 | Entidade | Campos principais | Regras |
 |---|---|---|
-| `Projeto` | unidade, time, app, one_ui, status | Um time; nome derivado de app + versão (não persistido); status manual; `Created` inicial |
+| `Projeto` | unidade, time, nome, app, one_ui, status | Um time; nome editável, inicialmente composto por app + versão; status manual; `Created` inicial |
 | `ModeloDispositivo` | unidade, nome, ativo | Catálogo editável por gerente/KP autorizado; modelos associados a projetos |
 | `ProjetoModelo` | projeto, modelo | Associação N:N; somente modelos ativos da unidade |
 | `CasoTeste` | projeto, tc_id, category, difficulty, situation, status, responsavel_id, backup_id | TC ID único por projeto; responsáveis do time; backup pode ficar nulo após transferência; `situation` = TC Situation (`New`, `New Step`, `Without Changes`), obrigatório e editável só pela gestão; `status` = progresso (`To-Do`…`Fail`), inicia em `To-Do` |
@@ -28,10 +28,11 @@ Todas as rotas exigem autenticação, filtram por `unidade_id` e aplicam permiss
 
 | Verbo | Rota | Request | Sucesso | Erros |
 |---|---|---|---|---|
-| GET, POST | `/api/projetos` | filtros paginados; `{ time_id, app, one_ui, modelos_ids }` | 200 `PagedResult`; 201 + `Location` | 401, 403, 404, 422 |
+| GET, POST | `/api/projetos` | filtros paginados; `{ time_id, nome?, app, one_ui, modelos_ids }` | 200 `PagedResult`; 201 + `Location` | 401, 403, 404, 422 |
 | POST | `/api/projetos/importar` | arquivo inicial + `time_id` + `modelos_ids` | 201 projeto e resumo dos casos importados | 401, 403, 404, 409 duplicidade, 422 planilha inválida |
 | GET | `/api/projetos/{id}` | — | 200 projeto | 401, 403, 404 |
 | PATCH | `/api/projetos/{id}/status` | `{ status }` | 200 projeto | 401, 403, 404, 422 |
+| PUT | `/api/projetos/{id}` | `{ nome, app, one_ui, time_id, modelos_ids }` | 200 projeto atualizado | 401, 403, 404, 409, 422 |
 | GET, POST | `/api/projetos/{id}/test-cases` | filtros paginados; campos do caso | 200 `PagedResult`; 201 caso + `Location` | 401, 403, 404, 409 TC ID duplicado, 422 |
 | GET, PUT | `/api/test-cases/{id}` | —; campos editáveis conforme autorização | 200 caso | 401, 403, 404, 409, 422 |
 | PATCH | `/api/test-cases/{id}/transferir-para-backup` | — | 200 caso com responsável trocado e backup nulo | 401, 403, 404, 409 se backup ausente |
@@ -107,6 +108,7 @@ Cada item de `errors[]` mantém `campo` e `mensagem` (ADR 0006) e ganha os membr
 
 **Backend: arquivos.**
 - `domain/entities/caso_teste.py` — `StatusCasoTeste`, nova `SituacaoCasoTeste`, campos `status`/`situation`; `atualizar_campos_do_responsavel(status, category, difficulty)` e `atualizar_gerenciamento(..., situation, status, ...)`.
+
 - `infrastructure/data/models/caso_teste_model.py`, nova migration em `migrations/versions/` e `infrastructure/repositories/caso_teste_repository.py` (mapeamento e filtro por `status` e `situation`).
 - `application/schemas/caso_teste.py` e `services/caso_teste_service.py` — `CAMPOS_RESPONSAVEL = {category, difficulty, status}`.
 - `application/validators/importacao_projeto.py` — `ErroImportacaoPlanilha(codigo, linha, coluna, valor, parametros)`, `TC Situation` obrigatório, coluna `Status` ignorada, duplicado com `primeira_linha`, `total_linhas` em `PlanilhaProjetoInvalida`.
@@ -142,3 +144,9 @@ Cada item de `errors[]` mantém `campo` e `mensagem` (ADR 0006) e ganha os membr
 - Renomear `situation` para `status` e reaproveitar `situation` com outro significado quebra o contrato atual da API; o único consumidor é o frontend deste repositório, atualizado no mesmo bloco. A migration é reversível (downgrade descarta `situation` e renomeia `status` de volta).
 - Validação duplicada no cliente (prévia) e no servidor (importação): os dois precisam emitir os mesmos códigos; os testes de ambos usam os mesmos casos de planilha.
 - A prévia não consulta os membros do time: com problemas na planilha, o botão vira "Conferir planilha" e o servidor devolve os problemas de célula e de pessoas juntos (o service confere as pessoas mesmo com a planilha inválida), sem criar nada.
+
+## Ajuste: edição dos dados do projeto — 2026-10-25
+
+Persistir `nome` diretamente em `projetos`, preenchendo registros existentes com `app || ' ' || one_ui` via migration. Ampliar o contrato de criação manual e edição para `nome`, `app`, `one_ui`, `time_id` e `modelos_ids`; a importação inicial continua derivando o nome da planilha. Atualizar o service para validar time ativo e escopo, validar modelos ativos da unidade, impedir troca de time quando houver responsáveis/backups de casos ativos que não pertençam ao time de destino, sincronizar os vínculos de modelos e fazer um único commit. A listagem/detalhe passam a devolver também IDs dos modelos vinculados para inicializar o formulário sem perder associações inativas.
+
+No frontend, o drawer de edição passa a expor nome, App, One UI, time e modelos. A criação manual oferece nome com composição inicial editável; a importação continua usando App e One UI da planilha para sugerir o nome.

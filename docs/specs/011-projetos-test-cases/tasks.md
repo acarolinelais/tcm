@@ -235,3 +235,10 @@
 - Dar a `PlanilhaProjetoInvalida` e `RelatorioSdfInvalido` uma base comum (`erros`, `total_linhas`) e tipar o handler de planilha nela, removendo o `getattr(exc, "total_linhas", None)` (simplify da Fase 5; toca o validador SDF, fora do bloco).
 - Migrar os erros do relatório SDF para o formato do ADR 0033 (`linha=None` em problemas gerais e `codigo`); assim o handler deixa de condicionar os membros de extensão a `codigo` (simplify da Fase 5; muda o fluxo SDF).
 - Extrair um hook `useClientPagination(items)` em `shared` para a paginação no cliente (estado de página/tamanho, `slice` e volta à página 1), hoje repetida em `PreviaPlanilha`, `ErrosPlanilha`, `TimeDetalhePage` e `PerfisPage` (simplify da Fase 6; toca telas fora do bloco).
+
+## Ajuste: edição dos dados do projeto — 2026-10-25
+
+- [x] **T54. Permitir editar nome, time e modelos do projeto**
+  - Arquivos: schema/serviço/repositórios de projeto, migration `d7e8f901a2b3`, `ProjetosPage.tsx`, mock e i18n.
+  - Cobre: CA-34–CA-36.
+  - Verificação: `cd frontend && npm run build`, `cd backend && uv run ruff check ...` e `uv run alembic heads`; migration é head e build/lint passam. Testes automatizados não foram executados.

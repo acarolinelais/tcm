@@ -15,6 +15,14 @@ class ProjetoModeloRepository(RepositoryBase[ProjetoModelo], Protocol):
         self, unidade_id: UUID, projeto_ids: tuple[UUID, ...]
     ) -> dict[UUID, tuple[str, ...]]: ...
 
+    async def listar_ids_por_projetos(
+        self, unidade_id: UUID, projeto_ids: tuple[UUID, ...]
+    ) -> dict[UUID, tuple[UUID, ...]]: ...
+
+    async def substituir_modelos(
+        self, unidade_id: UUID, projeto_id: UUID, modelos_ids: tuple[UUID, ...]
+    ) -> None: ...
+
     async def listar_modelos_do_projeto(
         self, unidade_id: UUID, projeto_id: UUID
     ) -> tuple[ModeloDoProjeto, ...]: ...

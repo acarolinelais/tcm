@@ -60,7 +60,7 @@ interface Database {
   membrosTime: TimeMembro[];
   projetos: Projeto[];
   modelosDispositivo: ModeloDispositivo[];
-  projetoModelos: { projeto_id: string; modelo_dispositivo_id: string }[];
+  projetoModelos: { projeto_id: string; modelo_dispositivo_id: string; ativo?: boolean }[];
   casosTeste: CasoTeste[];
   formFactor: ResultadoFormFactorMock[];
   importacoesSdf: { importacao_id: string; projeto_id: string; importado_em: string }[];
@@ -110,7 +110,7 @@ function createSeed(): Database {
     { id: "mock-user-inactive", nome: "Rafael Lima", email: "rafael.lima@example.com", ativo: false, perfil_id: standardProfile.id, responsavel_id: MANAGER_ID, created_at: "2026-02-10T12:00:00Z" },
   ].map((user: Usuario) => ({ ...user, user_id: user.user_id ?? null }));
   return {
-    schemaVersion: 15,
+    schemaVersion: 16,
     unidade: { id: UNIT_ID, nome: "Manaus", ativo: true },
     usuarios: users,
     perfis: [adminProfile, standardProfile, managerProfile, kpProfile],
@@ -259,6 +259,11 @@ function readDb(): Database {
         .filter((user) => ["mock-user-kp", "mock-user-dev", "mock-user-standard", "mock-user-inactive"].includes(user.id))
         .forEach((user) => { user.responsavel_id = MANAGER_ID; });
       db.schemaVersion = 15;
+      return writeDb(db);
+    }
+    if ((db.schemaVersion ?? 1) < 16) {
+      db.projetos.forEach((project) => { project.nome ||= `${project.app} ${project.one_ui}`; });
+      db.schemaVersion = 16;
       return writeDb(db);
     }
     return db;
@@ -553,7 +558,7 @@ function createMockProject(input: CriarProjetoInput) {
   const now = new Date().toISOString();
   const project: Projeto = {
     id: id("mock-project"), unidade_id: db.unidade.id, time_id: team.id,
-    app: input.app.trim(), one_ui: input.one_ui.trim(), nome: `${input.app.trim()} ${input.one_ui.trim()}`,
+    app: input.app.trim(), one_ui: input.one_ui.trim(), nome: input.nome?.trim() || `${input.app.trim()} ${input.one_ui.trim()}`,
     status: "Created", ativo: true, created_at: now, updated_at: now,
   };
   db.projetos.unshift(project);
@@ -608,8 +613,12 @@ export const mockProjetosApi = {
       .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "") || a.id.localeCompare(b.id))
       .map((project) => ({
         ...project,
+        modelos_ids: db.projetoModelos
+          .filter((link) => link.projeto_id === project.id && link.ativo !== false)
+          .filter((link) => db.modelosDispositivo.some((model) => model.id === link.modelo_dispositivo_id && model.ativo))
+          .map((link) => link.modelo_dispositivo_id),
         modelos_dispositivo: db.projetoModelos
-          .filter((link) => link.projeto_id === project.id)
+          .filter((link) => link.projeto_id === project.id && link.ativo !== false)
           .flatMap((link) => db.modelosDispositivo.find((model) => model.id === link.modelo_dispositivo_id)?.nome ?? []),
       }));
     return page(projects, pageNumber, pageSize);
@@ -632,9 +641,30 @@ export const mockProjetosApi = {
     if (!project.ativo) throw new Error("Projeto não encontrado.");
     const currentTeam = db.times.find((item) => item.id === project.time_id);
     if (!currentTeam || !canManageMockTeam(db, user.id, profile?.codigo, currentTeam)) throw new Error("O time está fora do seu escopo.");
+    const targetTeam = db.times.find((item) => item.id === input.time_id && item.ativo);
+    if (!targetTeam) throw new Error("Time não encontrado ou inativo.");
+    if (!canManageMockTeam(db, user.id, profile?.codigo, targetTeam)) throw new Error("O time está fora do seu escopo.");
+    if (targetTeam.id !== project.time_id) {
+      const cases = db.casosTeste.filter((testCase) => testCase.projeto_id === projectId && testCase.ativo);
+      const memberships = new Set(db.membrosTime.filter((member) => member.time_id === targetTeam.id && member.ativo).map((member) => member.usuario_id));
+      if (cases.some((testCase) => !memberships.has(testCase.responsavel_id) || Boolean(testCase.backup_id && !memberships.has(testCase.backup_id)))) {
+        throw new Error("Não é possível trocar o time enquanto houver responsáveis ou backups fora do time de destino.");
+      }
+    }
+    const selectedModels = new Set(input.modelos_ids);
+    const models = db.modelosDispositivo.filter((model) => selectedModels.has(model.id) && model.unidade_id === db.unidade.id && model.ativo);
+    if (models.length !== selectedModels.size) throw new Error("Selecione apenas modelos de dispositivo ativos da unidade.");
+    if (selectedModels.size !== input.modelos_ids.length) throw new Error("A lista contém modelos de dispositivo duplicados.");
+    project.time_id = targetTeam.id;
+    project.nome = input.nome.trim();
     project.app = input.app.trim();
     project.one_ui = input.one_ui.trim();
-    project.nome = `${project.app} ${project.one_ui}`;
+    db.projetoModelos.filter((link) => link.projeto_id === projectId).forEach((link) => { link.ativo = selectedModels.has(link.modelo_dispositivo_id); });
+    input.modelos_ids.forEach((modelId) => {
+      if (!db.projetoModelos.some((link) => link.projeto_id === projectId && link.modelo_dispositivo_id === modelId)) {
+        db.projetoModelos.push({ projeto_id: projectId, modelo_dispositivo_id: modelId, ativo: true });
+      }
+    });
     project.updated_at = new Date().toISOString();
     writeDb(db);
     return project;
