@@ -48,9 +48,8 @@ class ModeloDispositivoServiceImpl:
         busca: str | None = None,
     ) -> PagedResult[ModeloDispositivoOpcaoResponse]:
         """Modelos ativos para o seletor de projetos, sem exigir a gestão do catálogo."""
-        if (
-            PERMISSAO_GERENCIAR not in usuario_atual.permissoes
-            and not usuario_atual.pode("projetos.gerenciar")
+        if PERMISSAO_GERENCIAR not in usuario_atual.permissoes and not usuario_atual.pode(
+            "projetos.gerenciar"
         ):
             raise ForbiddenException(
                 "Você não tem permissão para consultar modelos de dispositivo."
