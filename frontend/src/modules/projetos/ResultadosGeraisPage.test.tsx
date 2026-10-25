@@ -63,4 +63,5 @@ describe("ResultadosGeraisPage", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("You do not have permission");
     expect(useFormFactorGlobal).toHaveBeenLastCalledWith(expect.any(Object), expect.any(Object), false);
   });
+
 });

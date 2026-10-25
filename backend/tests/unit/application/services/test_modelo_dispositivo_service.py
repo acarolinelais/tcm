@@ -135,14 +135,15 @@ async def test_criar_modelo_so_com_nome_fica_sem_descricao(contexto):
     assert resposta.descricao is None
 
 
-async def test_admin_gerencia_modelo_sem_permissao_explicita(contexto):
+async def test_admin_sem_permissao_explicita_nao_gerencia_modelo(contexto):
     service, repo, uow, usuario = contexto
     admin = UsuarioAutenticado(usuario.id, usuario.unidade_id, "ADMIN_UNIDADE")
 
-    await service.criar(admin, CriarModeloDispositivoRequest(nome="S27 Ultra"))
+    with pytest.raises(ForbiddenException):
+        await service.criar(admin, CriarModeloDispositivoRequest(nome="S27 Ultra"))
 
-    repo.adicionar.assert_awaited_once()
-    uow.commit.assert_awaited_once_with()
+    repo.adicionar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
 
 
 @pytest.mark.parametrize(

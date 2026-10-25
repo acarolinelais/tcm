@@ -17,17 +17,17 @@ from src.domain.queries.form_factor_linha import (
 
 class ResultadoFormFactorRepository(RepositoryBase[ResultadoFormFactor], Protocol):
     async def listar_responsaveis_form_factor_global(
-        self, unidade_id: UUID, time_ids: tuple[UUID, ...], projeto_id: UUID | None = None
+        self, unidade_id: UUID, time_ids: tuple[UUID, ...] | None, projeto_id: UUID | None = None
     ) -> tuple[FormFactorResponsavelGlobal, ...]: ...
 
     async def listar_modelos_form_factor_global(
-        self, unidade_id: UUID, time_ids: tuple[UUID, ...], projeto_id: UUID | None = None
+        self, unidade_id: UUID, time_ids: tuple[UUID, ...] | None, projeto_id: UUID | None = None
     ) -> tuple[FormFactorModeloGlobal, ...]: ...
 
     async def listar_form_factor_global(
         self,
         unidade_id: UUID,
-        time_ids: tuple[UUID, ...],
+        time_ids: tuple[UUID, ...] | None,
         page: int,
         page_size: int,
         inicio: datetime | None = None,
@@ -43,7 +43,7 @@ class ResultadoFormFactorRepository(RepositoryBase[ResultadoFormFactor], Protoco
     async def listar_execucoes_form_factor_global(
         self,
         unidade_id: UUID,
-        time_ids: tuple[UUID, ...],
+        time_ids: tuple[UUID, ...] | None,
         page: int,
         page_size: int,
         inicio: datetime | None = None,

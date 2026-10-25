@@ -41,14 +41,14 @@ export function Sidebar({
     { to: "/board", label: t("board"), Icon: BoardIcon },
     { to: "/timeline", label: t("timeline"), Icon: TimelineIcon },
   ];
-  if (["GERENTE", "KP"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("form_factor.consultar")) {
+  if (["ADMIN_UNIDADE", "GERENTE", "KP"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("form_factor.consultar")) {
     itens.push({ to: "/resultados-gerais", label: t("generalResults"), Icon: GeneralResultsIcon });
   }
   if (perfil.permissoes.includes("projetos.consultar") || perfil.permissoes.includes("test_cases.consultar")) {
     itens.push({ to: "/projetos", label: t(perfil.perfil_codigo === "USUARIO_PADRAO" ? "projectsNav" : "myProjects"), Icon: ProjectsIcon });
   }
   const admin = perfil.perfil_codigo === "ADMIN_UNIDADE";
-  // Administration agrupa as telas de cadastro: o admin vê todas; o KP vê só o catálogo de modelos.
+  // Administration agrupa as telas de cadastro; cada item respeita sua permissão específica.
   const itensAdmin = [
     ...(admin ? [
       ["/admin/usuarios", t("users"), UsersIcon],
@@ -56,7 +56,7 @@ export function Sidebar({
       ["/admin/times", t("teams"), TeamsIcon],
       ["/admin/perfis", t("profiles"), ProfilesIcon],
     ] as const : []),
-    ...(admin || perfil.permissoes.includes("modelos_dispositivo.gerenciar") ? [["/admin/modelos-dispositivo", t("deviceModels"), DeviceIcon] as const] : []),
+    ...(perfil.permissoes.includes("modelos_dispositivo.gerenciar") ? [["/admin/modelos-dispositivo", t("deviceModels"), DeviceIcon] as const] : []),
   ];
   // Suporte aparece para todos os perfis (frames "Sidebar - Admin/Manager/KP/Dev" do Figma).
   const itensSuporte = [

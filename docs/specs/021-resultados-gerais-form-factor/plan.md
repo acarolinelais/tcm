@@ -5,7 +5,7 @@
 - **ADRs novos propostos:** nenhum
 
 ## Abordagem
-Adicionar duas consultas globais somente de leitura, uma para o resumo e outra para o histórico, aproveitando as entidades atuais de projeto, Test Case, execução SDF e resultado por modelo. O serviço deriva os IDs de time autorizados (setores gerenciados pelo Gerente ou times associados ao KP) e o repositório aplica esse escopo diretamente nas consultas SQL, antes de filtros, contagem e paginação; não carrega uma lista de projetos na memória para delimitar o acesso nem compõe respostas chamando uma vez a API para cada projeto. As respostas incluem a união estável dos modelos e responsáveis disponíveis no escopo e os modelos associados a cada projeto, permitindo apresentar `N/A` para modelo não aplicável e `—` para modelo aplicável sem resultado. No frontend, a nova tela reutiliza os padrões de semana, filtros, tabelas e paginação, acrescenta o acesso na navegação de Gerente e KP e não oferece ações de escrita.
+Adicionar duas consultas globais somente de leitura, uma para o resumo e outra para o histórico, aproveitando as entidades atuais de projeto, Test Case, execução SDF e resultado por modelo. O serviço deriva o escopo: todos os times da unidade para Administrador, setores gerenciados pelo Gerente ou times associados ao KP. O repositório aplica esse escopo diretamente nas consultas SQL, antes de filtros, contagem e paginação; não carrega uma lista de projetos na memória para delimitar o acesso nem compõe respostas chamando uma vez a API para cada projeto. As respostas incluem a união estável dos modelos e responsáveis disponíveis no escopo e os modelos associados a cada projeto, permitindo apresentar `N/A` para modelo não aplicável e `—` para modelo aplicável sem resultado. No frontend, a tela reutiliza os padrões de semana, filtros, tabelas e paginação, acrescenta o acesso na navegação de Administrador, Gerente e KP com permissão e não oferece ações de escrita.
 
 ## Modelo de dados
 Não há novas entidades nem migration. As consultas usam os vínculos existentes de projeto-modelo e os dados de Test Case, execução e resultado.
@@ -30,7 +30,7 @@ Os dois endpoints aceitam filtros explícitos, aplicados por AND no servidor ap�
 | `GET` | `/api/form-factor/general` | Query: `page`, `page_size`, `semana`, `projeto_id`, `responsavel_id`, `tc_id`, `sdf_id`, `modelo_dispositivo_id`, `resultado` | Resumo paginado, uma linha por TC, modelos globais e modelos aplicáveis por linha | 403 sem papel/permissão; 422 para filtro inválido; projeto fora do escopo não é revelado |
 | `GET` | `/api/form-factor/general/results` | Query do resumo mais `origem` (`SDF\|MANUAL`) | Histórico paginado, uma linha por execução | 403 sem papel/permissão; 422 para filtro inválido; projeto fora do escopo não é revelado |
 
-O acesso exige `form_factor.consultar` e perfil `GERENTE` ou `KP`. O Gerente é limitado aos times dos setores gerenciados; o KP, aos próprios times. O filtro `projeto_id` nunca amplia esse conjunto. A consulta não cria rotas de importação ou gravação.
+O acesso exige `form_factor.consultar` e perfil `ADMIN_UNIDADE`, `GERENTE` ou `KP`. O Administrador é limitado à própria unidade; o Gerente, aos times dos setores gerenciados; o KP, aos próprios times. O filtro `projeto_id` nunca amplia esse conjunto. A consulta não cria rotas de importação ou gravação.
 
 ## Backend: arquivos
 - `backend/src/api/routers/form_factor_geral.py` e `api/main.py`: rotas globais de Resumo e Results.
@@ -44,15 +44,15 @@ O acesso exige `form_factor.consultar` e perfil `GERENTE` ou `KP`. O Gerente é 
 ## Frontend: arquivos
 - `frontend/src/modules/projetos/model/projeto.ts`, `api/projetos.api.ts` e `hooks/useProjetos.ts`: DTOs, filtros, funções de consulta e cache separados para Resumo e Results.
 - `frontend/src/modules/projetos/ResultadosGeraisPage.tsx` e componentes de tabela global: seleção Resumo/Ver todos, semana, filtros, estados e navegação para o detalhe do projeto.
-- `frontend/src/modules/projetos/routes.tsx`, `frontend/src/core/layout/Sidebar.tsx` e ícones: rota e item de navegação visíveis somente para Gerente/KP com permissão.
+- `frontend/src/modules/projetos/routes.tsx`, `frontend/src/core/layout/Sidebar.tsx` e ícones: rota e item de navegação visíveis somente para Administrador/Gerente/KP com permissão.
 - `frontend/src/core/i18n/resources.ts`: rótulos e mensagens PT-BR/EN/KO.
-- `frontend/src/core/mock/database.ts`: consultas globais equivalentes ao contrato real e respeitando os escopos de Gerente/KP.
+- `frontend/src/core/mock/database.ts`: consultas globais equivalentes ao contrato real e respeitando os escopos de Administrador/Gerente/KP.
 - Testes de API/hook, página, tabelas, sidebar e modo mock.
 
 ## Critérios de aceite → testes
 | CA | Nível | Teste |
 |---|---|---|
-| CA-01, CA-09 | Frontend/funcional | `ResultadosGeraisPage.test.tsx`, `Sidebar.test.tsx` e teste de autorização das rotas; Gerente/KP veem a tela, outros papéis não. |
+| CA-01, CA-09 | Frontend/funcional | `ResultadosGeraisPage.test.tsx`, `Sidebar.test.tsx` e teste de autorização das rotas; Administrador/Gerente/KP veem a tela com permissão e outros papéis não. |
 | CA-01, CA-03, CA-04, CA-05 | Integração | `test_listar_form_factor_global_resumo`: escopo temporal, última rodada por modelo e TCs sem resultado. |
 | CA-02, CA-08 | Frontend/integração | `FormFactorGlobalTabela.test.tsx`: união de colunas estável, `N/A` versus `—` e rolagem horizontal. |
 | CA-06 | Integração | `test_listar_form_factor_global_execucoes`: todas as rodadas, projeto, origem, data e resultados. |

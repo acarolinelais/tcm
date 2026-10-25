@@ -21,8 +21,8 @@ describe("Sidebar project navigation", () => {
     renderSidebar({ ...perfil, perfil_codigo: "USUARIO_PADRAO", permissoes: ["test_cases.consultar"] });
     expect(screen.getByRole("link", { name: "Projects" })).toHaveAttribute("href", "/projetos");
   });
-  it("mostra General Results apenas para gerente e KP com permissão Form Factor", () => {
-    for (const perfilCodigo of ["GERENTE", "KP"] as const) {
+  it("mostra General Results para admin, gerente e KP com permissão Form Factor", () => {
+    for (const perfilCodigo of ["ADMIN_UNIDADE", "GERENTE", "KP"] as const) {
       const { unmount } = renderSidebar({ ...perfil, perfil_codigo: perfilCodigo, permissoes: ["form_factor.consultar"] });
       expect(screen.getByRole("link", { name: "General Results" })).toHaveAttribute("href", "/resultados-gerais");
       unmount();
@@ -30,7 +30,6 @@ describe("Sidebar project navigation", () => {
     for (const current of [
       { perfil_codigo: "USUARIO_PADRAO", permissoes: ["form_factor.consultar"] },
       { perfil_codigo: "KP", permissoes: [] },
-      { perfil_codigo: "ADMIN_UNIDADE", permissoes: ["form_factor.consultar"] },
     ]) {
       const { unmount } = renderSidebar({ ...perfil, ...current });
       expect(screen.queryByRole("link", { name: "General Results" })).not.toBeInTheDocument();
@@ -54,7 +53,7 @@ describe("Sidebar project navigation", () => {
     expect(screen.getByRole("link", { name: "My Projects" })).toHaveAttribute("href", "/projetos");
   });
 
-  it("mostra Device models dentro de Administration para KP e admin", async () => {
+  it("mostra Device models dentro de Administration somente com permissão de catálogo", async () => {
     const user = userEvent.setup();
     const { unmount } = renderSidebar({ ...perfil, perfil_codigo: "KP", permissoes: ["modelos_dispositivo.gerenciar"] });
     await user.click(screen.getByRole("button", { name: "Administration" }));
@@ -62,9 +61,14 @@ describe("Sidebar project navigation", () => {
     expect(screen.queryByRole("link", { name: "Users" })).not.toBeInTheDocument();
     unmount();
 
-    renderSidebar({ ...perfil, perfil_codigo: "ADMIN_UNIDADE" });
+    const { unmount: unmountAdmin } = renderSidebar({ ...perfil, perfil_codigo: "ADMIN_UNIDADE", permissoes: [] });
     await user.click(screen.getByRole("button", { name: "Administration" }));
     expect(screen.getByRole("link", { name: "Users" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Device models" })).not.toBeInTheDocument();
+    unmountAdmin();
+
+    renderSidebar({ ...perfil, perfil_codigo: "ADMIN_UNIDADE", permissoes: ["modelos_dispositivo.gerenciar"] });
+    await user.click(screen.getByRole("button", { name: "Administration" }));
     expect(screen.getByRole("link", { name: "Device models" })).toBeInTheDocument();
   });
 

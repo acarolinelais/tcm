@@ -28,7 +28,7 @@ const filtrosIniciais: FiltrosFormFactorGlobal = {
 export function ResultadosGeraisPage() {
   const { t } = useTranslation();
   const perfil = useOutletContext<PerfilAtual>();
-  const permitido = ["GERENTE", "KP"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("form_factor.consultar");
+  const permitido = ["ADMIN_UNIDADE", "GERENTE", "KP"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("form_factor.consultar");
   const [visao, setVisao] = useState<Visao>("summary");
   const [semana, setSemana] = useState("");
   const [filtros, setFiltros] = useState(filtrosIniciais);
