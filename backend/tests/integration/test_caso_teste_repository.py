@@ -224,6 +224,7 @@ async def test_migration_preserva_progresso_em_status_e_preenche_situation_new()
                             "id": projeto_id,
                             "unidade_id": unidade_id,
                             "time_id": time_id,
+                            "nome": "Clock 9.5",
                             "app": "Clock",
                             "one_ui": "9.5",
                         },
