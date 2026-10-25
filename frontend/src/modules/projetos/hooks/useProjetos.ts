@@ -9,6 +9,7 @@ import {
   type CriarCasoTesteInput,
   type CriarProjetoInput,
   type FiltrosFormFactor,
+  type FiltrosFormFactorGlobal,
   type CriarRodadaFormFactorInput,
   type StatusProjeto,
 } from "../api/projetos.api";
@@ -24,13 +25,14 @@ export function useProjetosPessoais(perfil: PerfilAtual, enabled = true) {
   });
 }
 
-export function useProjetosSeletor(perfil: PerfilAtual) {
+export function useProjetosSeletor(perfil: PerfilAtual, enabled = true) {
   const pessoal = perfil.perfil_codigo === "USUARIO_PADRAO";
   return useInfiniteQuery({
     queryKey: ["projetos", "seletor", perfil.unidade_id, perfil.id, pessoal],
     initialPageParam: 1,
     queryFn: ({ pageParam }) => pessoal ? projetosApi.listar(pageParam, 100, true) : projetosApi.listar(pageParam, 100),
     getNextPageParam: (last) => last.page * last.page_size < last.total_count ? last.page + 1 : undefined,
+    enabled,
   });
 }
 
@@ -105,6 +107,22 @@ export function useFormFactor(projetoId: string, filtros: FiltrosFormFactor, per
     queryKey: ["projetos", projetoId, "form-factor", filtros, perfil?.unidade_id, perfil?.id],
     queryFn: () => formFactorApi.listar(projetoId, filtros),
     enabled: Boolean(projetoId) && enabled,
+  });
+}
+
+export function useFormFactorGlobal(filtros: FiltrosFormFactorGlobal, perfil?: PerfilAtual, enabled = true) {
+  return useQuery({
+    queryKey: ["form-factor", "global", filtros, perfil?.unidade_id, perfil?.id],
+    queryFn: () => formFactorApi.listarGlobal(filtros),
+    enabled,
+  });
+}
+
+export function useFormFactorResultadosGlobais(filtros: FiltrosFormFactorGlobal, perfil?: PerfilAtual, enabled = true) {
+  return useQuery({
+    queryKey: ["form-factor", "global-results", filtros, perfil?.unidade_id, perfil?.id],
+    queryFn: () => formFactorApi.listarResultadosGlobais(filtros),
+    enabled,
   });
 }
 

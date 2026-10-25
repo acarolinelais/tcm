@@ -11,6 +11,7 @@ import {
   CollapseIcon,
   DeviceIcon,
   DocumentationIcon,
+  GeneralResultsIcon,
   OverviewIcon,
   ProfilesIcon,
   ProjectsIcon,
@@ -40,6 +41,9 @@ export function Sidebar({
     { to: "/board", label: t("board"), Icon: BoardIcon },
     { to: "/timeline", label: t("timeline"), Icon: TimelineIcon },
   ];
+  if (["GERENTE", "KP"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("form_factor.consultar")) {
+    itens.push({ to: "/resultados-gerais", label: t("generalResults"), Icon: GeneralResultsIcon });
+  }
   if (perfil.permissoes.includes("projetos.consultar") || perfil.permissoes.includes("test_cases.consultar")) {
     itens.push({ to: "/projetos", label: t(perfil.perfil_codigo === "USUARIO_PADRAO" ? "projectsNav" : "myProjects"), Icon: ProjectsIcon });
   }

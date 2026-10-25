@@ -83,6 +83,32 @@ export interface FormFactorResultados extends PagedResult<FormFactorExecucao> {
   modelos: ModeloFormFactor[];
 }
 
+export interface LinhaFormFactorGlobal extends LinhaFormFactor {
+  projeto_id: string;
+  projeto_nome: string;
+  modelos_ids: string[];
+}
+
+export interface FormFactorGlobal extends PagedResult<LinhaFormFactorGlobal> {
+  modelos: ModeloFormFactor[];
+  responsaveis: { id: string; identificador: string }[];
+}
+
+export interface FormFactorExecucaoGlobal extends FormFactorExecucao {
+  projeto_id: string;
+  projeto_nome: string;
+  modelos_ids: string[];
+}
+
+export interface FormFactorResultadosGlobais extends PagedResult<FormFactorExecucaoGlobal> {
+  modelos: ModeloFormFactor[];
+  responsaveis: { id: string; identificador: string }[];
+}
+
+export interface FiltrosFormFactorGlobal extends FiltrosFormFactor {
+  projetoId?: string;
+}
+
 export interface FiltrosFormFactor {
   page?: number;
   pageSize?: number;

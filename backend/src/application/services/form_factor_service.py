@@ -4,8 +4,12 @@ from uuid import UUID
 from src.application.schemas.form_factor import (
     CriarRodadaFormFactorRequest,
     FormFactorExecucaoResponse,
+    FormFactorGlobalResponse,
     FormFactorResponse,
+    FormFactorResultadosGlobaisResponse,
     FormFactorResultadosResponse,
+    to_global_response,
+    to_global_resultados_response,
     to_response,
     to_resultados_response,
 )
@@ -46,6 +50,95 @@ class FormFactorServiceImpl:
         self._caso_repo = caso_repo
         self._execucao_repo = execucao_repo
         self._uow = uow
+
+    async def listar_global(
+        self,
+        usuario_atual: UsuarioAutenticado,
+        page: int,
+        page_size: int,
+        semana: str | None = None,
+        projeto_id: UUID | None = None,
+        responsavel_id: UUID | None = None,
+        tc_id: str | None = None,
+        sdf_id: str | None = None,
+        modelo_dispositivo_id: UUID | None = None,
+        resultado: str | None = None,
+    ) -> FormFactorGlobalResponse:
+        time_ids = self._time_ids_form_factor_global(usuario_atual)
+        inicio, fim = _intervalo_semana_iso(semana)
+        dados = await self._resultado_repo.listar_form_factor_global(
+            usuario_atual.unidade_id,
+            time_ids,
+            page,
+            page_size,
+            inicio,
+            fim,
+            projeto_id,
+            responsavel_id,
+            tc_id,
+            sdf_id,
+            modelo_dispositivo_id,
+            resultado,
+        )
+        modelos = await self._resultado_repo.listar_modelos_form_factor_global(
+            usuario_atual.unidade_id, time_ids, projeto_id
+        )
+        responsaveis = await self._resultado_repo.listar_responsaveis_form_factor_global(
+            usuario_atual.unidade_id, time_ids, projeto_id
+        )
+        return to_global_response(modelos, responsaveis, dados)
+
+    async def listar_resultados_global(
+        self,
+        usuario_atual: UsuarioAutenticado,
+        page: int,
+        page_size: int,
+        semana: str | None = None,
+        projeto_id: UUID | None = None,
+        responsavel_id: UUID | None = None,
+        tc_id: str | None = None,
+        sdf_id: str | None = None,
+        modelo_dispositivo_id: UUID | None = None,
+        resultado: str | None = None,
+        origem: str | None = None,
+    ) -> FormFactorResultadosGlobaisResponse:
+        time_ids = self._time_ids_form_factor_global(usuario_atual)
+        inicio, fim = _intervalo_semana_iso(semana)
+        dados = await self._resultado_repo.listar_execucoes_form_factor_global(
+            usuario_atual.unidade_id,
+            time_ids,
+            page,
+            page_size,
+            inicio,
+            fim,
+            projeto_id,
+            responsavel_id,
+            tc_id,
+            sdf_id,
+            modelo_dispositivo_id,
+            resultado,
+            origem,
+        )
+        modelos = await self._resultado_repo.listar_modelos_form_factor_global(
+            usuario_atual.unidade_id, time_ids, projeto_id
+        )
+        responsaveis = await self._resultado_repo.listar_responsaveis_form_factor_global(
+            usuario_atual.unidade_id, time_ids, projeto_id
+        )
+        return to_global_resultados_response(modelos, responsaveis, dados)
+
+    def _time_ids_form_factor_global(self, usuario_atual: UsuarioAutenticado) -> tuple[UUID, ...]:
+        if (
+            usuario_atual.perfil_codigo not in {"GERENTE", "KP"}
+            or "form_factor.consultar" not in usuario_atual.permissoes
+        ):
+            raise ForbiddenException("Você não tem permissão para consultar Resultados Gerais.")
+        time_ids = (
+            usuario_atual.times_gerenciados
+            if usuario_atual.perfil_codigo == "GERENTE"
+            else usuario_atual.time_ids
+        )
+        return time_ids
 
     async def listar(
         self,
@@ -173,9 +266,7 @@ class FormFactorServiceImpl:
             resultados=request.resultados,
         )
 
-    async def _obter_projeto_no_escopo(
-        self, usuario_atual: UsuarioAutenticado, projeto_id: UUID
-    ):
+    async def _obter_projeto_no_escopo(self, usuario_atual: UsuarioAutenticado, projeto_id: UUID):
         projeto = await self._projeto_repo.obter_por_id(usuario_atual.unidade_id, projeto_id)
         if projeto is None:
             raise NotFoundException("Projeto não encontrado.")

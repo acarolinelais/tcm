@@ -14,6 +14,10 @@ import type {
   FormFactorMatriz,
   FormFactorExecucao,
   FormFactorResultados,
+  FormFactorGlobal,
+  FormFactorExecucaoGlobal,
+  FormFactorResultadosGlobais,
+  FiltrosFormFactorGlobal,
   FiltrosFormFactor,
   CriarRodadaFormFactorInput,
   LinhaFormFactor,
@@ -90,8 +94,8 @@ function createSeed(): Database {
   const allPermissions = permissoes.map((item) => item.id);
   const adminProfile: Perfil = { id: "mock-profile-admin", nome: "Administrador", descricao: "Acesso completo à unidade.", codigo: "ADMIN_UNIDADE", permissoes: allPermissions };
   const standardProfile: Perfil = { id: "mock-profile-standard", nome: "Developer", descricao: "Consulta projetos, TCs e Form Factor do time e atualiza somente os TCs atribuídos.", codigo: "USUARIO_PADRAO", permissoes: ["projetos.consultar", "test_cases.consultar", "form_factor.consultar", "times.consultar", "usuarios.perfil.consultar"] };
-  const managerProfile: Perfil = { id: "mock-profile-manager", nome: "Gerente", descricao: "Gerencia pessoas e times do setor.", codigo: "GERENTE", permissoes: ["usuarios.consultar", "usuarios.perfil.consultar", "usuarios.gerenciar", "setores.consultar", "times.consultar", "times.criar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar"] };
-  const kpProfile: Perfil = { id: "mock-profile-kp", nome: "KP", descricao: "Acompanha atividades dos times associados.", codigo: "KP", permissoes: ["usuarios.consultar", "setores.consultar", "times.consultar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar", "modelos_dispositivo.gerenciar"] };
+  const managerProfile: Perfil = { id: "mock-profile-manager", nome: "Gerente", descricao: "Gerencia pessoas e times do setor.", codigo: "GERENTE", permissoes: ["usuarios.consultar", "usuarios.perfil.consultar", "usuarios.gerenciar", "setores.consultar", "times.consultar", "times.criar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar", "form_factor.consultar"] };
+  const kpProfile: Perfil = { id: "mock-profile-kp", nome: "KP", descricao: "Acompanha atividades dos times associados.", codigo: "KP", permissoes: ["usuarios.consultar", "setores.consultar", "times.consultar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar", "modelos_dispositivo.gerenciar", "form_factor.consultar"] };
   const sectors: Setor[] = [
     { id: "mock-sector-engineering", unidade_id: UNIT_ID, nome: "Engenharia", ativo: true },
     { id: "mock-sector-operations", unidade_id: UNIT_ID, nome: "Operações", ativo: true },
@@ -106,7 +110,7 @@ function createSeed(): Database {
     { id: "mock-user-inactive", nome: "Rafael Lima", email: "rafael.lima@example.com", ativo: false, perfil_id: standardProfile.id, created_at: "2026-02-10T12:00:00Z" },
   ].map((user: Usuario) => ({ ...user, user_id: user.user_id ?? null }));
   return {
-    schemaVersion: 12,
+    schemaVersion: 13,
     unidade: { id: UNIT_ID, nome: "Manaus", ativo: true },
     usuarios: users,
     perfis: [adminProfile, standardProfile, managerProfile, kpProfile],
@@ -228,6 +232,13 @@ function readDb(): Database {
         model.updated_at ??= model.created_at;
       });
       db.schemaVersion = 12;
+      return writeDb(db);
+    }
+    if ((db.schemaVersion ?? 1) < 13) {
+      db.perfis.filter((profile) => profile.codigo === "GERENTE" || profile.codigo === "KP").forEach((profile) => {
+        profile.permissoes = [...new Set([...profile.permissoes, "form_factor.consultar"])];
+      });
+      db.schemaVersion = 13;
       return writeDb(db);
     }
     return db;
@@ -836,7 +847,152 @@ function semanaIso(value: string) {
   return `${date.getFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
+function projetosMockFormFactorGlobal(db: Database) {
+  const { user, profile } = mockProfile();
+  if (
+    !profile || !profile.codigo || !["GERENTE", "KP"].includes(profile.codigo) ||
+    !profile.permissoes.includes("form_factor.consultar")
+  ) throw new Error("Você não tem permissão para consultar Resultados Gerais.");
+  const setoresGerenciados = new Set(db.gerentesSetor
+    .filter((item) => item.usuario_id === user.id && item.ativo)
+    .map((item) => item.setor_id));
+  const timesDoUsuario = new Set(db.membrosTime
+    .filter((item) => item.usuario_id === user.id && item.ativo)
+    .map((item) => item.time_id));
+  return db.projetos.filter((project) => {
+    const team = db.times.find((item) => item.id === project.time_id && item.ativo);
+    if (!project.ativo || !team) return false;
+    return profile.codigo === "GERENTE"
+      ? setoresGerenciados.has(team.setor_id)
+      : timesDoUsuario.has(team.id);
+  });
+}
+
+function responsaveisMockFormFactorGlobal(db: Database, projetoIds: Set<string>) {
+  const ids = new Set(db.casosTeste
+    .filter((testCase) => testCase.ativo && projetoIds.has(testCase.projeto_id))
+    .map((testCase) => testCase.responsavel_id));
+  return db.usuarios
+    .filter((user) => ids.has(user.id))
+    .map((user) => ({ id: user.id, identificador: user.user_id || user.nome }))
+    .sort((a, b) => a.identificador.localeCompare(b.identificador) || a.id.localeCompare(b.id));
+}
+
+function filtrarResultadosGlobais<T extends LinhaFormFactor>(
+  rows: T[], filtros: FiltrosFormFactorGlobal,
+) {
+  return rows.filter((row) =>
+    (!filtros.responsavelId || row.responsavel_id === filtros.responsavelId) &&
+    (!filtros.tcId || row.tc_id.toLocaleLowerCase().includes(filtros.tcId.toLocaleLowerCase())) &&
+    (!filtros.sdfId || (row.sdf_id ?? "").toLocaleLowerCase().includes(filtros.sdfId.toLocaleLowerCase()))
+  );
+}
+
 export const mockFormFactorApi = {
+  listarGlobal(filtros: FiltrosFormFactorGlobal = {}): FormFactorGlobal {
+    const { db } = mockProfile();
+    const projetos = projetosMockFormFactorGlobal(db).filter((project) => !filtros.projetoId || project.id === filtros.projetoId);
+    const projectIds = new Set(projetos.map((project) => project.id));
+    const modelos = db.projetoModelos
+      .filter((link) => projectIds.has(link.projeto_id))
+      .map((link) => db.modelosDispositivo.find((model) => model.id === link.modelo_dispositivo_id))
+      .filter((model) => model?.ativo)
+      .map((model) => ({ id: model!.id, nome: model!.nome }))
+      .sort((a, b) => a.nome.localeCompare(b.nome) || a.id.localeCompare(b.id));
+    const rows = projetos.flatMap((project) => {
+      const modelIds = db.projetoModelos.filter((link) => link.projeto_id === project.id)
+        .map((link) => link.modelo_dispositivo_id);
+      const linked = new Set(modelIds);
+      return db.casosTeste.filter((testCase) => testCase.projeto_id === project.id && testCase.ativo)
+        .flatMap<LinhaFormFactor & { projeto_id: string; projeto_nome: string; modelos_ids: string[] }>((testCase) => {
+          const allResults = [...db.formFactor].reverse()
+            .filter((result) => (result.caso_teste_id === testCase.id || result.tc_id === testCase.tc_id) && linked.has(result.modelo_dispositivo_id) &&
+              (!filtros.semana || semanaIso(result.data_reportada) === filtros.semana));
+          if (filtros.semana && !allResults.length) return [];
+          const resultados: Record<string, string> = {};
+          for (const result of allResults) resultados[result.modelo_dispositivo_id] ??= result.resultado;
+          if (filtros.sdfId && !allResults.some((result) => (result.sdf_id ?? "").toLowerCase().includes(filtros.sdfId!.toLowerCase()))) return [];
+          if (filtros.modeloDispositivoId && !allResults.some((result) => result.modelo_dispositivo_id === filtros.modeloDispositivoId && (!filtros.resultado || result.resultado.toLowerCase() === filtros.resultado.toLowerCase()))) return [];
+          if (!filtros.modeloDispositivoId && filtros.resultado && !allResults.some((result) => result.resultado.toLowerCase() === filtros.resultado!.toLowerCase())) return [];
+          const linha = {
+            caso_teste_id: testCase.id,
+            tc_id: testCase.tc_id,
+            responsavel_id: testCase.responsavel_id,
+            sdf_id: allResults[0]?.sdf_id ?? null,
+            data_reportada: allResults[0]?.data_reportada ?? null,
+            resultados,
+            projeto_id: project.id,
+            projeto_nome: project.nome,
+            modelos_ids: modelIds,
+          };
+          return filtrarResultadosGlobais([linha], filtros);
+        });
+    }).sort((a, b) => a.projeto_nome.localeCompare(b.projeto_nome) || a.tc_id.localeCompare(b.tc_id));
+    return {
+      ...page(rows, filtros.page ?? 1, filtros.pageSize ?? 20),
+      modelos,
+      responsaveis: responsaveisMockFormFactorGlobal(db, projectIds),
+    };
+  },
+  listarResultadosGlobais(filtros: FiltrosFormFactorGlobal = {}): FormFactorResultadosGlobais {
+    const { db } = mockProfile();
+    const projetos = projetosMockFormFactorGlobal(db).filter((project) => !filtros.projetoId || project.id === filtros.projetoId);
+    const projectIds = new Set(projetos.map((project) => project.id));
+    const modelos = db.projetoModelos
+      .filter((link) => projectIds.has(link.projeto_id))
+      .map((link) => db.modelosDispositivo.find((model) => model.id === link.modelo_dispositivo_id))
+      .filter((model) => model?.ativo)
+      .map((model) => ({ id: model!.id, nome: model!.nome }))
+      .sort((a, b) => a.nome.localeCompare(b.nome) || a.id.localeCompare(b.id));
+    const groups = new Map<string, ResultadoFormFactorMock[]>();
+    db.formFactor.forEach((item) => {
+      const execucao = item.execucao_id ?? `legacy-${item.caso_teste_id}-${item.tc_id}-${item.sdf_id ?? "manual"}-${item.data_reportada}`;
+      const values = groups.get(execucao) ?? [];
+      values.push(item);
+      groups.set(execucao, values);
+    });
+    const rows = [...groups.entries()].flatMap(([execucao_id, values]) => {
+      const first = values[0];
+      const testCase = db.casosTeste.find((item) => item.id === first.caso_teste_id ||
+        (item.tc_id === first.tc_id && projectIds.has(item.projeto_id)));
+      if (!testCase || !testCase.ativo || !projectIds.has(testCase.projeto_id)) return [];
+      const project = projetos.find((item) => item.id === testCase.projeto_id)!;
+      if (filtros.semana && semanaIso(first.data_reportada) !== filtros.semana) return [];
+      if (filtros.origem && (first.origem ?? "SDF") !== filtros.origem) return [];
+      const modelIds = db.projetoModelos.filter((link) => link.projeto_id === project.id)
+        .map((link) => link.modelo_dispositivo_id);
+      const resultados: Record<string, string> = Object.fromEntries(values
+        .filter((item) => modelIds.includes(item.modelo_dispositivo_id))
+        .map((item) => [item.modelo_dispositivo_id, item.resultado]));
+      if (!Object.keys(resultados).length) return [];
+      const row: FormFactorExecucaoGlobal = {
+        execucao_id,
+        caso_teste_id: testCase.id,
+        tc_id: testCase.tc_id,
+        responsavel_id: testCase.responsavel_id,
+        sdf_id: first.sdf_id,
+        data_reportada: first.data_reportada,
+        origem: first.origem ?? "SDF",
+        resultados,
+        projeto_id: project.id,
+        projeto_nome: project.nome,
+        modelos_ids: modelIds,
+      };
+      if (filtros.responsavelId && row.responsavel_id !== filtros.responsavelId) return [];
+      if (filtros.tcId && !row.tc_id.toLowerCase().includes(filtros.tcId.toLowerCase())) return [];
+      if (filtros.sdfId && !(row.sdf_id ?? "").toLowerCase().includes(filtros.sdfId.toLowerCase())) return [];
+      if (filtros.modeloDispositivoId && !row.resultados[filtros.modeloDispositivoId]) return [];
+      if (filtros.resultado && !Object.entries(row.resultados).some(([modelId, value]) =>
+        (!filtros.modeloDispositivoId || modelId === filtros.modeloDispositivoId) && value.toLowerCase() === filtros.resultado!.toLowerCase()
+      )) return [];
+      return [row];
+    }).sort((a, b) => b.data_reportada.localeCompare(a.data_reportada) || a.execucao_id.localeCompare(b.execucao_id));
+    return {
+      ...page(rows, filtros.page ?? 1, filtros.pageSize ?? 20),
+      modelos,
+      responsaveis: responsaveisMockFormFactorGlobal(db, projectIds),
+    };
+  },
   listar(projectId: string, filtros: FiltrosFormFactor = {}): FormFactorMatriz {
     requireMockPermission("form_factor.consultar");
     const { db } = mockProfile();
@@ -875,8 +1031,10 @@ export const mockFormFactorApi = {
     const linked = new Set(modelos.map((item) => item.id));
     const groups = new Map<string, ResultadoFormFactorMock[]>();
     db.formFactor.forEach((item) => {
-      const executionId = item.execucao_id ?? `legacy-${item.tc_id}-${item.sdf_id ?? "manual"}-${item.data_reportada}`;
-      groups.set(executionId, [...(groups.get(executionId) ?? []), item]);
+      const executionId = item.execucao_id ?? `legacy-${item.caso_teste_id}-${item.tc_id}-${item.sdf_id ?? "manual"}-${item.data_reportada}`;
+      const values = groups.get(executionId) ?? [];
+      values.push(item);
+      groups.set(executionId, values);
     });
     const rows: FormFactorExecucao[] = [...groups.entries()].flatMap(([execucao_id, values]) => {
       const first = values[0];

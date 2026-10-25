@@ -16,8 +16,11 @@ import type {
   CriarProjetoInput,
   FormFactorMatriz,
   FormFactorResultados,
+  FormFactorGlobal,
+  FormFactorResultadosGlobais,
   FormFactorExecucao,
   FiltrosFormFactor,
+  FiltrosFormFactorGlobal,
   CriarRodadaFormFactorInput,
   ImportacaoProjeto,
   ImportacaoSdf,
@@ -36,8 +39,11 @@ export type {
   DificuldadeCasoTeste,
   FormFactorMatriz,
   FormFactorResultados,
+  FormFactorGlobal,
+  FormFactorResultadosGlobais,
   FormFactorExecucao,
   FiltrosFormFactor,
+  FiltrosFormFactorGlobal,
   CriarRodadaFormFactorInput,
   ImportacaoProjeto,
   ImportacaoSdf,
@@ -129,6 +135,39 @@ export const modelosDispositivoApi = {
 };
 
 export const formFactorApi = {
+  listarGlobal(filtros: FiltrosFormFactorGlobal = {}) {
+    const { page = 1, pageSize = 20, semana, projetoId, responsavelId, tcId, sdfId, modeloDispositivoId, resultado } = filtros;
+    return useMock
+      ? Promise.resolve(mockFormFactorApi.listarGlobal(filtros))
+      : httpGet<FormFactorGlobal>("/api/form-factor/general", {
+        page,
+        page_size: pageSize,
+        ...(semana ? { semana } : {}),
+        ...(projetoId ? { projeto_id: projetoId } : {}),
+        ...(responsavelId ? { responsavel_id: responsavelId } : {}),
+        ...(tcId ? { tc_id: tcId } : {}),
+        ...(sdfId ? { sdf_id: sdfId } : {}),
+        ...(modeloDispositivoId ? { modelo_dispositivo_id: modeloDispositivoId } : {}),
+        ...(resultado ? { resultado } : {}),
+      });
+  },
+  listarResultadosGlobais(filtros: FiltrosFormFactorGlobal = {}) {
+    const { page = 1, pageSize = 20, semana, projetoId, responsavelId, tcId, sdfId, modeloDispositivoId, resultado, origem } = filtros;
+    return useMock
+      ? Promise.resolve(mockFormFactorApi.listarResultadosGlobais(filtros))
+      : httpGet<FormFactorResultadosGlobais>("/api/form-factor/general/results", {
+        page,
+        page_size: pageSize,
+        ...(semana ? { semana } : {}),
+        ...(projetoId ? { projeto_id: projetoId } : {}),
+        ...(responsavelId ? { responsavel_id: responsavelId } : {}),
+        ...(tcId ? { tc_id: tcId } : {}),
+        ...(sdfId ? { sdf_id: sdfId } : {}),
+        ...(modeloDispositivoId ? { modelo_dispositivo_id: modeloDispositivoId } : {}),
+        ...(resultado ? { resultado } : {}),
+        ...(origem ? { origem } : {}),
+      });
+  },
   listar(projetoId: string, filtros: FiltrosFormFactor = {}) {
     const { page = 1, pageSize = 20, semana, responsavelId, tcId, sdfId, modeloDispositivoId, resultado } = filtros;
     return useMock

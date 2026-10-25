@@ -14,7 +14,13 @@ from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.caso_teste import CasoTeste
 from src.domain.entities.projeto import Projeto
 from src.domain.entities.time import Time
-from src.domain.queries.form_factor_linha import FormFactorExecucaoLinha, FormFactorLinha
+from src.domain.queries.form_factor_linha import (
+    FormFactorExecucaoLinha,
+    FormFactorLinha,
+    FormFactorLinhaGlobal,
+    FormFactorModeloGlobal,
+    FormFactorResponsavelGlobal,
+)
 from src.domain.queries.modelo_do_projeto import ModeloDoProjeto
 
 
@@ -304,3 +310,87 @@ async def test_criacao_manual_falha_ao_gravar_resultado_faz_rollback():
 
     uow.commit.assert_not_awaited()
     uow.rollback.assert_awaited_once()
+
+
+@pytest.mark.parametrize("perfil", ["GERENTE", "KP"])
+async def test_consulta_form_factor_global_usa_times_do_escopo(perfil):
+    projeto_repo, time_repo, resultado_repo, modelo_repo = (AsyncMock() for _ in range(4))
+    unidade_id, usuario_id, time_id, projeto_id, modelo_id, caso_id = (uuid4() for _ in range(6))
+    usuario = UsuarioAutenticado(
+        usuario_id,
+        unidade_id,
+        perfil,
+        permissoes=frozenset({"form_factor.consultar"}),
+        times_gerenciados=(time_id,) if perfil == "GERENTE" else (),
+        time_ids=(time_id,) if perfil == "KP" else (),
+    )
+    projeto_repo.listar_por_times.return_value = PagedResult([], 1, 100, 0)
+    resultado_repo.listar_form_factor_global.return_value = PagedResult(
+        [
+            FormFactorLinhaGlobal(
+                projeto_id,
+                "Clock 9.8",
+                caso_id,
+                "TC-1",
+                usuario_id,
+                (modelo_id,),
+                None,
+                None,
+                {modelo_id: "PASS"},
+            )
+        ],
+        1,
+        20,
+        1,
+    )
+    resultado_repo.listar_modelos_form_factor_global.return_value = (
+        FormFactorModeloGlobal(modelo_id, "SM-123"),
+    )
+    resultado_repo.listar_responsaveis_form_factor_global.return_value = (
+        FormFactorResponsavelGlobal(usuario_id, "ana.souza"),
+    )
+    service = FormFactorServiceImpl(
+        projeto_repo,
+        time_repo,
+        resultado_repo,
+        modelo_repo,
+        AsyncMock(),
+        AsyncMock(),
+        AsyncMock(),
+    )
+
+    response = await service.listar_global(usuario, 1, 20)
+
+    projeto_repo.listar_por_times.assert_not_awaited()
+    resultado_repo.listar_form_factor_global.assert_awaited_once_with(
+        unidade_id, (time_id,), 1, 20, None, None, None, None, None, None, None, None
+    )
+    resultado_repo.listar_modelos_form_factor_global.assert_awaited_once_with(
+        unidade_id, (time_id,), None
+    )
+    resultado_repo.listar_responsaveis_form_factor_global.assert_awaited_once_with(
+        unidade_id, (time_id,), None
+    )
+    assert response.items[0].projeto_id == projeto_id
+    assert response.modelos[0].id == modelo_id
+    assert response.responsaveis[0].identificador == "ana.souza"
+
+
+@pytest.mark.parametrize(
+    "perfil,permissoes",
+    [
+        ("ADMIN_UNIDADE", {"form_factor.consultar"}),
+        ("DEV", {"form_factor.consultar"}),
+        ("KP", set()),
+        ("GERENTE", set()),
+    ],
+)
+async def test_consulta_form_factor_global_recusa_perfil_ou_permissao(perfil, permissoes):
+    usuario = UsuarioAutenticado(uuid4(), uuid4(), perfil, permissoes=frozenset(permissoes))
+    repos = [AsyncMock() for _ in range(4)]
+    service = FormFactorServiceImpl(*repos, AsyncMock(), AsyncMock(), AsyncMock())
+
+    with pytest.raises(ForbiddenException):
+        await service.listar_global(usuario, 1, 20)
+
+    repos[2].listar_form_factor_global.assert_not_awaited()

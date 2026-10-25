@@ -69,6 +69,16 @@ describe("APIs de projetos", () => {
   });
 
   it("envia filtros do Form Factor, consulta Results e cria rodada manual", async () => {
+    await formFactorApi.listarGlobal({ page: 2, pageSize: 10, semana: "2026-W13", projetoId: "project-1", responsavelId: "user-1", tcId: "TC-001" });
+    expect(fetch).toHaveBeenLastCalledWith(
+      "/api/form-factor/general?page=2&page_size=10&semana=2026-W13&projeto_id=project-1&responsavel_id=user-1&tc_id=TC-001",
+      expect.any(Object),
+    );
+    await formFactorApi.listarResultadosGlobais({ page: 1, origem: "MANUAL", resultado: "FAIL" });
+    expect(fetch).toHaveBeenLastCalledWith(
+      "/api/form-factor/general/results?page=1&page_size=20&resultado=FAIL&origem=MANUAL",
+      expect.any(Object),
+    );
     await formFactorApi.listar("project-1", {
       page: 2,
       pageSize: 10,
@@ -96,7 +106,7 @@ describe("APIs de projetos", () => {
     );
     const report = new File(["resultado"], "sdf.xlsx");
     await formFactorApi.importar("project-1", report);
-    const [url, init] = vi.mocked(fetch).mock.calls[3];
+    const [url, init] = vi.mocked(fetch).mock.calls.at(-1)!;
     expect(url).toBe("/api/projetos/project-1/relatorios-sdf");
     expect((init?.body as FormData).get("arquivo")).toBe(report);
   });

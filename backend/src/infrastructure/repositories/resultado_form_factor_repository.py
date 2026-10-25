@@ -6,12 +6,23 @@ from sqlalchemy.dialects.postgresql import distinct_on
 
 from src.domain.common.paged_result import PagedResult
 from src.domain.entities.resultado_form_factor import ResultadoFormFactor
-from src.domain.queries.form_factor_linha import FormFactorExecucaoLinha, FormFactorLinha
+from src.domain.queries.form_factor_linha import (
+    FormFactorExecucaoLinha,
+    FormFactorExecucaoLinhaGlobal,
+    FormFactorLinha,
+    FormFactorLinhaGlobal,
+    FormFactorModeloGlobal,
+    FormFactorResponsavelGlobal,
+)
 from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
 from src.infrastructure.data.models.execucao_sdf_model import ExecucaoSdfModel
 from src.infrastructure.data.models.importacao_sdf_model import ImportacaoSdfModel
+from src.infrastructure.data.models.modelo_dispositivo_model import ModeloDispositivoModel
+from src.infrastructure.data.models.projeto_model import ProjetoModel
 from src.infrastructure.data.models.projeto_modelo_model import ProjetoModeloModel
 from src.infrastructure.data.models.resultado_form_factor_model import ResultadoFormFactorModel
+from src.infrastructure.data.models.time_model import TimeModel
+from src.infrastructure.data.models.usuario_model import UsuarioModel
 from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
 
 
@@ -19,6 +30,511 @@ class ResultadoFormFactorRepositoryImpl(
     RepositoryBaseImpl[ResultadoFormFactor, ResultadoFormFactorModel]
 ):
     model = ResultadoFormFactorModel
+
+    async def listar_responsaveis_form_factor_global(
+        self, unidade_id: UUID, time_ids: tuple[UUID, ...], projeto_id: UUID | None = None
+    ) -> tuple[FormFactorResponsavelGlobal, ...]:
+        if not time_ids:
+            return ()
+        linhas = (
+            await self.session.execute(
+                select(UsuarioModel.id, UsuarioModel.user_id, UsuarioModel.nome)
+                .join(CasoTesteModel, CasoTesteModel.responsavel_id == UsuarioModel.id)
+                .join(ProjetoModel, ProjetoModel.id == CasoTesteModel.projeto_id)
+                .join(TimeModel, TimeModel.id == ProjetoModel.time_id)
+                .where(
+                    UsuarioModel.unidade_id == unidade_id,
+                    CasoTesteModel.unidade_id == unidade_id,
+                    CasoTesteModel.ativo.is_(True),
+                    ProjetoModel.unidade_id == unidade_id,
+                    ProjetoModel.ativo.is_(True),
+                    TimeModel.unidade_id == unidade_id,
+                    TimeModel.ativo.is_(True),
+                    TimeModel.id.in_(time_ids),
+                    ProjetoModel.id == projeto_id if projeto_id is not None else True,
+                )
+                .distinct()
+                .order_by(UsuarioModel.user_id, UsuarioModel.nome, UsuarioModel.id)
+            )
+        ).all()
+        return tuple(
+            FormFactorResponsavelGlobal(id=row.id, identificador=row.user_id or row.nome)
+            for row in linhas
+        )
+
+    async def listar_modelos_form_factor_global(
+        self, unidade_id: UUID, time_ids: tuple[UUID, ...], projeto_id: UUID | None = None
+    ) -> tuple[FormFactorModeloGlobal, ...]:
+        if not time_ids:
+            return ()
+        linhas = (
+            await self.session.execute(
+                select(ModeloDispositivoModel.id, ModeloDispositivoModel.nome)
+                .join(
+                    ProjetoModeloModel,
+                    ProjetoModeloModel.modelo_dispositivo_id == ModeloDispositivoModel.id,
+                )
+                .join(ProjetoModel, ProjetoModel.id == ProjetoModeloModel.projeto_id)
+                .join(TimeModel, TimeModel.id == ProjetoModel.time_id)
+                .where(
+                    ProjetoModeloModel.unidade_id == unidade_id,
+                    ProjetoModeloModel.ativo.is_(True),
+                    ModeloDispositivoModel.unidade_id == unidade_id,
+                    ModeloDispositivoModel.ativo.is_(True),
+                    ProjetoModel.unidade_id == unidade_id,
+                    ProjetoModel.ativo.is_(True),
+                    TimeModel.unidade_id == unidade_id,
+                    TimeModel.ativo.is_(True),
+                    TimeModel.id.in_(time_ids),
+                    ProjetoModel.id == projeto_id if projeto_id is not None else True,
+                )
+                .distinct()
+                .order_by(ModeloDispositivoModel.nome, ModeloDispositivoModel.id)
+            )
+        ).all()
+        return tuple(FormFactorModeloGlobal(id=row.id, nome=row.nome) for row in linhas)
+
+    def _global_execucao_valida(self, unidade_id: UUID):
+        return or_(
+            and_(ExecucaoSdfModel.origem == "MANUAL", ExecucaoSdfModel.importacao_sdf_id.is_(None)),
+            and_(
+                ExecucaoSdfModel.origem == "SDF",
+                ImportacaoSdfModel.id == ExecucaoSdfModel.importacao_sdf_id,
+                ImportacaoSdfModel.unidade_id == unidade_id,
+                ImportacaoSdfModel.projeto_id == CasoTesteModel.projeto_id,
+                ImportacaoSdfModel.ativo.is_(True),
+            ),
+        )
+
+    def _global_filtros_caso(
+        self,
+        unidade_id,
+        time_ids,
+        inicio,
+        fim,
+        projeto_id,
+        responsavel_id,
+        tc_id,
+        sdf_id,
+        modelo_dispositivo_id,
+        resultado,
+    ):
+        filtros = [
+            CasoTesteModel.unidade_id == unidade_id,
+            ProjetoModel.time_id.in_(time_ids),
+            CasoTesteModel.ativo.is_(True),
+            ProjetoModel.unidade_id == unidade_id,
+            ProjetoModel.ativo.is_(True),
+            TimeModel.unidade_id == unidade_id,
+            TimeModel.ativo.is_(True),
+        ]
+        if projeto_id is not None:
+            filtros.append(CasoTesteModel.projeto_id == projeto_id)
+        if responsavel_id is not None:
+            filtros.append(CasoTesteModel.responsavel_id == responsavel_id)
+        if tc_id:
+            filtros.append(CasoTesteModel.tc_id.ilike(f"%{tc_id.strip()}%"))
+        if inicio is not None or fim is not None or sdf_id or modelo_dispositivo_id or resultado:
+            subquery = (
+                select(ResultadoFormFactorModel.id)
+                .join(
+                    ExecucaoSdfModel,
+                    ResultadoFormFactorModel.execucao_sdf_id == ExecucaoSdfModel.id,
+                )
+                .join(
+                    ProjetoModeloModel,
+                    and_(
+                        ProjetoModeloModel.projeto_id == CasoTesteModel.projeto_id,
+                        ProjetoModeloModel.modelo_dispositivo_id
+                        == ResultadoFormFactorModel.modelo_dispositivo_id,
+                    ),
+                )
+                .outerjoin(
+                    ImportacaoSdfModel, ExecucaoSdfModel.importacao_sdf_id == ImportacaoSdfModel.id
+                )
+                .where(
+                    ResultadoFormFactorModel.unidade_id == unidade_id,
+                    ResultadoFormFactorModel.ativo.is_(True),
+                    ExecucaoSdfModel.unidade_id == unidade_id,
+                    ExecucaoSdfModel.ativo.is_(True),
+                    ExecucaoSdfModel.caso_teste_id == CasoTesteModel.id,
+                    ProjetoModeloModel.unidade_id == unidade_id,
+                    ProjetoModeloModel.ativo.is_(True),
+                    self._global_execucao_valida(unidade_id),
+                )
+            )
+            if inicio is not None:
+                subquery = subquery.where(ExecucaoSdfModel.data_reportada >= inicio)
+            if fim is not None:
+                subquery = subquery.where(ExecucaoSdfModel.data_reportada < fim)
+            if sdf_id:
+                subquery = subquery.where(ExecucaoSdfModel.sdf_id.ilike(f"%{sdf_id.strip()}%"))
+            if modelo_dispositivo_id is not None:
+                subquery = subquery.where(
+                    ResultadoFormFactorModel.modelo_dispositivo_id == modelo_dispositivo_id
+                )
+            if resultado:
+                subquery = subquery.where(
+                    func.lower(ResultadoFormFactorModel.resultado) == resultado.casefold()
+                )
+            filtros.append(subquery.exists())
+        return filtros
+
+    async def listar_form_factor_global(
+        self,
+        unidade_id: UUID,
+        time_ids: tuple[UUID, ...],
+        page: int,
+        page_size: int,
+        inicio: datetime | None = None,
+        fim: datetime | None = None,
+        projeto_id: UUID | None = None,
+        responsavel_id: UUID | None = None,
+        tc_id: str | None = None,
+        sdf_id: str | None = None,
+        modelo_dispositivo_id: UUID | None = None,
+        resultado: str | None = None,
+    ) -> PagedResult[FormFactorLinhaGlobal]:
+        if not time_ids:
+            return PagedResult([], page, page_size, 0)
+        filtros = self._global_filtros_caso(
+            unidade_id,
+            time_ids,
+            inicio,
+            fim,
+            projeto_id,
+            responsavel_id,
+            tc_id,
+            sdf_id,
+            modelo_dispositivo_id,
+            resultado,
+        )
+        base = (
+            select(CasoTesteModel.id)
+            .join(ProjetoModel, ProjetoModel.id == CasoTesteModel.projeto_id)
+            .join(TimeModel, TimeModel.id == ProjetoModel.time_id)
+            .where(*filtros)
+        )
+        total = (
+            await self.session.execute(select(func.count()).select_from(base.subquery()))
+        ).scalar_one()
+        casos = (
+            await self.session.execute(
+                select(
+                    CasoTesteModel.id,
+                    CasoTesteModel.projeto_id,
+                    ProjetoModel.app,
+                    ProjetoModel.one_ui,
+                    CasoTesteModel.tc_id,
+                    CasoTesteModel.responsavel_id,
+                )
+                .join(ProjetoModel, ProjetoModel.id == CasoTesteModel.projeto_id)
+                .join(TimeModel, TimeModel.id == ProjetoModel.time_id)
+                .where(*filtros)
+                .order_by(
+                    ProjetoModel.app, ProjetoModel.one_ui, CasoTesteModel.tc_id, CasoTesteModel.id
+                )
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+            )
+        ).all()
+        if not casos:
+            return PagedResult([], page, page_size, total)
+        caso_ids = [row.id for row in casos]
+        projeto_por_caso = {row.id: row.projeto_id for row in casos}
+        modelos_por_projeto: dict[UUID, list[UUID]] = {}
+        assoc = (
+            await self.session.execute(
+                select(ProjetoModeloModel.projeto_id, ProjetoModeloModel.modelo_dispositivo_id)
+                .join(
+                    ModeloDispositivoModel,
+                    ModeloDispositivoModel.id == ProjetoModeloModel.modelo_dispositivo_id,
+                )
+                .where(
+                    ProjetoModeloModel.unidade_id == unidade_id,
+                    ProjetoModeloModel.projeto_id.in_(set(projeto_por_caso.values())),
+                    ProjetoModeloModel.ativo.is_(True),
+                    ModeloDispositivoModel.unidade_id == unidade_id,
+                    ModeloDispositivoModel.ativo.is_(True),
+                )
+            )
+        ).all()
+        for p_id, m_id in assoc:
+            modelos_por_projeto.setdefault(p_id, []).append(m_id)
+
+        celulas_stmt = (
+            select(
+                ExecucaoSdfModel.caso_teste_id,
+                ResultadoFormFactorModel.modelo_dispositivo_id,
+                ResultadoFormFactorModel.resultado,
+                ExecucaoSdfModel.sdf_id,
+                ExecucaoSdfModel.data_reportada,
+                func.coalesce(ImportacaoSdfModel.created_at, ExecucaoSdfModel.created_at),
+            )
+            .join(ExecucaoSdfModel, ResultadoFormFactorModel.execucao_sdf_id == ExecucaoSdfModel.id)
+            .join(CasoTesteModel, CasoTesteModel.id == ExecucaoSdfModel.caso_teste_id)
+            .join(ProjetoModel, ProjetoModel.id == CasoTesteModel.projeto_id)
+            .join(TimeModel, TimeModel.id == ProjetoModel.time_id)
+            .join(
+                ProjetoModeloModel,
+                and_(
+                    ProjetoModeloModel.projeto_id == CasoTesteModel.projeto_id,
+                    ProjetoModeloModel.modelo_dispositivo_id
+                    == ResultadoFormFactorModel.modelo_dispositivo_id,
+                ),
+            )
+            .outerjoin(
+                ImportacaoSdfModel, ExecucaoSdfModel.importacao_sdf_id == ImportacaoSdfModel.id
+            )
+            .where(
+                ExecucaoSdfModel.caso_teste_id.in_(caso_ids),
+                ResultadoFormFactorModel.unidade_id == unidade_id,
+                ResultadoFormFactorModel.ativo.is_(True),
+                ExecucaoSdfModel.unidade_id == unidade_id,
+                ExecucaoSdfModel.ativo.is_(True),
+                CasoTesteModel.ativo.is_(True),
+                ProjetoModel.ativo.is_(True),
+                TimeModel.ativo.is_(True),
+                ProjetoModeloModel.unidade_id == unidade_id,
+                ProjetoModeloModel.ativo.is_(True),
+                self._global_execucao_valida(unidade_id),
+            )
+        )
+        if inicio is not None:
+            celulas_stmt = celulas_stmt.where(ExecucaoSdfModel.data_reportada >= inicio)
+        if fim is not None:
+            celulas_stmt = celulas_stmt.where(ExecucaoSdfModel.data_reportada < fim)
+        celulas = (
+            await self.session.execute(
+                celulas_stmt.ext(
+                    distinct_on(
+                        ExecucaoSdfModel.caso_teste_id,
+                        ResultadoFormFactorModel.modelo_dispositivo_id,
+                    )
+                ).order_by(
+                    ExecucaoSdfModel.caso_teste_id,
+                    ResultadoFormFactorModel.modelo_dispositivo_id,
+                    ExecucaoSdfModel.data_reportada.desc(),
+                    func.coalesce(
+                        ImportacaoSdfModel.created_at, ExecucaoSdfModel.created_at
+                    ).desc(),
+                    ExecucaoSdfModel.id.desc(),
+                )
+            )
+        ).all()
+        resultado_por_caso: dict[UUID, dict[UUID, str]] = {}
+        data_por_caso: dict[UUID, tuple[tuple[datetime, datetime], datetime, str | None]] = {}
+        for c_id, m_id, valor, sdf, data, importada in celulas:
+            resultado_por_caso.setdefault(c_id, {})[m_id] = valor
+            chave = (data, importada)
+            if c_id not in data_por_caso or chave > data_por_caso[c_id][0]:
+                data_por_caso[c_id] = (chave, data, sdf)
+        items = [
+            FormFactorLinhaGlobal(
+                projeto_id=row.projeto_id,
+                projeto_nome=f"{row.app} {row.one_ui}",
+                caso_teste_id=row.id,
+                tc_id=row.tc_id,
+                responsavel_id=row.responsavel_id,
+                modelos_ids=tuple(modelos_por_projeto.get(row.projeto_id, ())),
+                sdf_id=mais_recente[2] if (mais_recente := data_por_caso.get(row.id)) else None,
+                data_reportada=mais_recente[1] if mais_recente else None,
+                resultados=resultado_por_caso.get(row.id, {}),
+            )
+            for row in casos
+        ]
+        return PagedResult(items, page, page_size, total)
+
+    async def listar_execucoes_form_factor_global(
+        self,
+        unidade_id: UUID,
+        time_ids: tuple[UUID, ...],
+        page: int,
+        page_size: int,
+        inicio: datetime | None = None,
+        fim: datetime | None = None,
+        projeto_id: UUID | None = None,
+        responsavel_id: UUID | None = None,
+        tc_id: str | None = None,
+        sdf_id: str | None = None,
+        modelo_dispositivo_id: UUID | None = None,
+        resultado: str | None = None,
+        origem: str | None = None,
+    ) -> PagedResult[FormFactorExecucaoLinhaGlobal]:
+        if not time_ids:
+            return PagedResult([], page, page_size, 0)
+        filtros = [
+            ExecucaoSdfModel.unidade_id == unidade_id,
+            ExecucaoSdfModel.ativo.is_(True),
+            CasoTesteModel.unidade_id == unidade_id,
+            ProjetoModel.time_id.in_(time_ids),
+            CasoTesteModel.ativo.is_(True),
+            ProjetoModel.unidade_id == unidade_id,
+            ProjetoModel.ativo.is_(True),
+            TimeModel.unidade_id == unidade_id,
+            TimeModel.ativo.is_(True),
+            self._global_execucao_valida(unidade_id),
+        ]
+        if projeto_id is not None:
+            filtros.append(CasoTesteModel.projeto_id == projeto_id)
+        if responsavel_id is not None:
+            filtros.append(CasoTesteModel.responsavel_id == responsavel_id)
+        if tc_id:
+            filtros.append(CasoTesteModel.tc_id.ilike(f"%{tc_id.strip()}%"))
+        if sdf_id:
+            filtros.append(ExecucaoSdfModel.sdf_id.ilike(f"%{sdf_id.strip()}%"))
+        if inicio is not None:
+            filtros.append(ExecucaoSdfModel.data_reportada >= inicio)
+        if fim is not None:
+            filtros.append(ExecucaoSdfModel.data_reportada < fim)
+        if origem:
+            filtros.append(ExecucaoSdfModel.origem == origem)
+        resultados_existentes = (
+            select(ResultadoFormFactorModel.id)
+            .join(
+                ProjetoModeloModel,
+                and_(
+                    ProjetoModeloModel.projeto_id == CasoTesteModel.projeto_id,
+                    ProjetoModeloModel.modelo_dispositivo_id
+                    == ResultadoFormFactorModel.modelo_dispositivo_id,
+                ),
+            )
+            .where(
+                ResultadoFormFactorModel.unidade_id == unidade_id,
+                ResultadoFormFactorModel.execucao_sdf_id == ExecucaoSdfModel.id,
+                ResultadoFormFactorModel.ativo.is_(True),
+                ProjetoModeloModel.unidade_id == unidade_id,
+                ProjetoModeloModel.ativo.is_(True),
+            )
+        )
+        filtros.append(resultados_existentes.exists())
+        if modelo_dispositivo_id is not None:
+            filtros.append(
+                resultados_existentes.where(
+                    ResultadoFormFactorModel.modelo_dispositivo_id == modelo_dispositivo_id
+                ).exists()
+            )
+        if resultado:
+            filtros.append(
+                resultados_existentes.where(
+                    func.lower(ResultadoFormFactorModel.resultado) == resultado.casefold()
+                ).exists()
+            )
+        base = (
+            select(ExecucaoSdfModel.id)
+            .join(CasoTesteModel, CasoTesteModel.id == ExecucaoSdfModel.caso_teste_id)
+            .join(ProjetoModel, ProjetoModel.id == CasoTesteModel.projeto_id)
+            .join(TimeModel, TimeModel.id == ProjetoModel.time_id)
+            .outerjoin(
+                ImportacaoSdfModel, ExecucaoSdfModel.importacao_sdf_id == ImportacaoSdfModel.id
+            )
+            .where(*filtros)
+        )
+        total = (
+            await self.session.execute(select(func.count()).select_from(base.subquery()))
+        ).scalar_one()
+        execucoes = (
+            await self.session.execute(
+                select(
+                    ExecucaoSdfModel.id,
+                    ExecucaoSdfModel.caso_teste_id,
+                    CasoTesteModel.projeto_id,
+                    ProjetoModel.app,
+                    ProjetoModel.one_ui,
+                    CasoTesteModel.tc_id,
+                    CasoTesteModel.responsavel_id,
+                    ExecucaoSdfModel.sdf_id,
+                    ExecucaoSdfModel.data_reportada,
+                    ExecucaoSdfModel.origem,
+                )
+                .join(CasoTesteModel, CasoTesteModel.id == ExecucaoSdfModel.caso_teste_id)
+                .join(ProjetoModel, ProjetoModel.id == CasoTesteModel.projeto_id)
+                .join(TimeModel, TimeModel.id == ProjetoModel.time_id)
+                .outerjoin(
+                    ImportacaoSdfModel, ExecucaoSdfModel.importacao_sdf_id == ImportacaoSdfModel.id
+                )
+                .where(*filtros)
+                .order_by(
+                    ExecucaoSdfModel.data_reportada.desc(),
+                    ExecucaoSdfModel.created_at.desc(),
+                    ExecucaoSdfModel.id,
+                )
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+            )
+        ).all()
+        if not execucoes:
+            return PagedResult([], page, page_size, total)
+        execucao_ids = [row.id for row in execucoes]
+        projeto_ids_pagina = {row.projeto_id for row in execucoes}
+        associacoes = (
+            await self.session.execute(
+                select(ProjetoModeloModel.projeto_id, ProjetoModeloModel.modelo_dispositivo_id)
+                .join(
+                    ModeloDispositivoModel,
+                    ModeloDispositivoModel.id == ProjetoModeloModel.modelo_dispositivo_id,
+                )
+                .where(
+                    ProjetoModeloModel.unidade_id == unidade_id,
+                    ProjetoModeloModel.projeto_id.in_(projeto_ids_pagina),
+                    ProjetoModeloModel.ativo.is_(True),
+                    ModeloDispositivoModel.unidade_id == unidade_id,
+                    ModeloDispositivoModel.ativo.is_(True),
+                )
+            )
+        ).all()
+        modelos_por_projeto: dict[UUID, list[UUID]] = {}
+        for p_id, m_id in associacoes:
+            modelos_por_projeto.setdefault(p_id, []).append(m_id)
+        celulas = (
+            await self.session.execute(
+                select(
+                    ResultadoFormFactorModel.execucao_sdf_id,
+                    ResultadoFormFactorModel.modelo_dispositivo_id,
+                    ResultadoFormFactorModel.resultado,
+                )
+                .join(
+                    ExecucaoSdfModel,
+                    ExecucaoSdfModel.id == ResultadoFormFactorModel.execucao_sdf_id,
+                )
+                .join(CasoTesteModel, CasoTesteModel.id == ExecucaoSdfModel.caso_teste_id)
+                .where(
+                    ResultadoFormFactorModel.unidade_id == unidade_id,
+                    ResultadoFormFactorModel.execucao_sdf_id.in_(execucao_ids),
+                    ResultadoFormFactorModel.ativo.is_(True),
+                )
+                .join(
+                    ProjetoModeloModel,
+                    and_(
+                        ProjetoModeloModel.projeto_id == CasoTesteModel.projeto_id,
+                        ProjetoModeloModel.modelo_dispositivo_id
+                        == ResultadoFormFactorModel.modelo_dispositivo_id,
+                        ProjetoModeloModel.unidade_id == unidade_id,
+                        ProjetoModeloModel.ativo.is_(True),
+                    ),
+                )
+            )
+        ).all()
+        resultados_por_execucao = {}
+        for exec_id, model_id, valor in celulas:
+            resultados_por_execucao.setdefault(exec_id, {})[model_id] = valor
+        items = [
+            FormFactorExecucaoLinhaGlobal(
+                execucao_id=row.id,
+                projeto_id=row.projeto_id,
+                projeto_nome=f"{row.app} {row.one_ui}",
+                caso_teste_id=row.caso_teste_id,
+                tc_id=row.tc_id,
+                responsavel_id=row.responsavel_id,
+                modelos_ids=tuple(modelos_por_projeto.get(row.projeto_id, ())),
+                sdf_id=row.sdf_id,
+                data_reportada=row.data_reportada,
+                origem=row.origem,
+                resultados=resultados_por_execucao.get(row.id, {}),
+            )
+            for row in execucoes
+        ]
+        return PagedResult(items, page, page_size, total)
 
     async def listar_por_execucao(
         self, unidade_id: UUID, execucao_sdf_id: UUID
@@ -220,6 +736,7 @@ class ResultadoFormFactorRepositoryImpl(
             ExecucaoSdfModel.origem == "MANUAL",
             ExecucaoSdfModel.importacao_sdf_id.is_(None),
         )
+
         def existe_resultado(*condicoes_adicionais):
             return (
                 select(ResultadoFormFactorModel.id)
