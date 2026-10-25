@@ -8,6 +8,7 @@ import {
   type AtualizarCasoTesteInput,
   type CriarCasoTesteInput,
   type CriarProjetoInput,
+  type FiltrosFormFactor,
   type StatusProjeto,
 } from "../api/projetos.api";
 
@@ -98,11 +99,11 @@ export function useTransferirCasoTeste(projetoId: string) {
   });
 }
 
-export function useFormFactor(projetoId: string, filtros: { page?: number; pageSize?: number; semana?: string; oneUi?: string }) {
+export function useFormFactor(projetoId: string, filtros: FiltrosFormFactor, perfil?: PerfilAtual, enabled = true) {
   return useQuery({
-    queryKey: ["projetos", projetoId, "form-factor", filtros],
+    queryKey: ["projetos", projetoId, "form-factor", filtros, perfil?.unidade_id, perfil?.id],
     queryFn: () => formFactorApi.listar(projetoId, filtros),
-    enabled: Boolean(projetoId),
+    enabled: Boolean(projetoId) && enabled,
   });
 }
 

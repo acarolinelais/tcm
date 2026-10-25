@@ -69,8 +69,8 @@ describe("APIs de projetos", () => {
   });
 
   it("envia filtros do Form Factor e o relatório SDF", async () => {
-    await formFactorApi.listar("project-1", { page: 2, pageSize: 10, semana: "2026-W13", oneUi: "9.5" });
-    expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/form-factor?page=2&page_size=10&semana=2026-W13&one_ui=9.5", expect.any(Object));
+    await formFactorApi.listar("project-1", { page: 2, pageSize: 10, semana: "2026-W13", responsavelId: "user-1" });
+    expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/form-factor?page=2&page_size=10&semana=2026-W13&responsavel_id=user-1", expect.any(Object));
     const report = new File(["resultado"], "sdf.xlsx");
     await formFactorApi.importar("project-1", report);
     const [url, init] = vi.mocked(fetch).mock.calls[1];

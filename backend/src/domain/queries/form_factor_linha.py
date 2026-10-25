@@ -5,10 +5,9 @@ from uuid import UUID
 
 @dataclass(frozen=True)
 class FormFactorLinha:
+    caso_teste_id: UUID
     tc_id: str
-    sdf_id: str
-    modelo_dispositivo_id: UUID
-    modelo_nome: str
-    resultado: str
-    data_reportada: datetime
-    one_ui: str
+    responsavel_id: UUID
+    sdf_id: str | None
+    data_reportada: datetime | None
+    resultados: dict[UUID, str]

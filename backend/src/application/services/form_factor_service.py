@@ -7,6 +7,7 @@ from src.domain.common.exceptions import (
     NotFoundException,
 )
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
+from src.domain.entities.interfaces.projeto_modelo_repository import ProjetoModeloRepository
 from src.domain.entities.interfaces.projeto_repository import ProjetoRepository
 from src.domain.entities.interfaces.resultado_form_factor_repository import (
     ResultadoFormFactorRepository,
@@ -20,10 +21,12 @@ class FormFactorServiceImpl:
         projeto_repo: ProjetoRepository,
         time_repo: TimeRepository,
         resultado_repo: ResultadoFormFactorRepository,
+        projeto_modelo_repo: ProjetoModeloRepository,
     ) -> None:
         self._projeto_repo = projeto_repo
         self._time_repo = time_repo
         self._resultado_repo = resultado_repo
+        self._projeto_modelo_repo = projeto_modelo_repo
 
     async def listar(
         self,
@@ -32,7 +35,7 @@ class FormFactorServiceImpl:
         page: int,
         page_size: int,
         semana: str | None = None,
-        one_ui: str | None = None,
+        responsavel_id: UUID | None = None,
     ) -> FormFactorResponse:
         if not usuario_atual.pode("form_factor.consultar"):
             raise ForbiddenException("Você não tem permissão para consultar Form Factor.")
@@ -58,6 +61,9 @@ class FormFactorServiceImpl:
             page_size,
             inicio,
             fim,
-            one_ui,
+            responsavel_id,
         )
-        return to_response(dados)
+        modelos = await self._projeto_modelo_repo.listar_modelos_do_projeto(
+            usuario_atual.unidade_id, projeto.id
+        )
+        return to_response(modelos, dados)

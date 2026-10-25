@@ -169,8 +169,8 @@ async def listar_form_factor(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     semana: str | None = Query(None, pattern=r"^\d{4}-W\d{2}$"),
-    one_ui: str | None = Query(None, max_length=40),
+    responsavel_id: UUID | None = Query(None),
     service: FormFactorService = Depends(get_form_factor_service),
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
-    return await service.listar(usuario_atual, projeto_id, page, page_size, semana, one_ui)
+    return await service.listar(usuario_atual, projeto_id, page, page_size, semana, responsavel_id)

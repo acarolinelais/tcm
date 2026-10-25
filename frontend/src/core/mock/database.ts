@@ -11,6 +11,7 @@ import type {
   CasoTeste,
   CriarCasoTesteInput,
   CriarProjetoInput,
+  FormFactorMatriz,
   LinhaFormFactor,
   Projeto,
   StatusProjeto,
@@ -26,6 +27,15 @@ const ADMIN_ID = "mock-user-admin";
 const MANAGER_ID = "mock-user-manager";
 const TEAM_ID = "mock-team-platform";
 
+/** Resultado importado do SDF, um por Test Case e modelo; o histórico é preservado. */
+interface ResultadoFormFactorMock {
+  tc_id: string;
+  sdf_id: string;
+  modelo_dispositivo_id: string;
+  resultado: string;
+  data_reportada: string;
+}
+
 interface Database {
   schemaVersion?: number;
   unidade: { id: string; nome: string; ativo: boolean };
@@ -40,7 +50,7 @@ interface Database {
   modelosDispositivo: ModeloDispositivo[];
   projetoModelos: { projeto_id: string; modelo_dispositivo_id: string }[];
   casosTeste: CasoTeste[];
-  formFactor: LinhaFormFactor[];
+  formFactor: ResultadoFormFactorMock[];
   importacoesSdf: { importacao_id: string; projeto_id: string; importado_em: string }[];
   idiomaPorUsuario: Record<string, PerfilAtual["idioma_preferido"]>;
   senhasAlteradas: string[];
@@ -819,17 +829,31 @@ function semanaIso(value: string) {
 }
 
 export const mockFormFactorApi = {
-  listar(projectId: string, pageNumber: number, pageSize: number, week?: string, oneUi?: string) {
+  listar(projectId: string, pageNumber: number, pageSize: number, week?: string, responsavelId?: string): FormFactorMatriz {
     requireMockPermission("form_factor.consultar");
     const { db } = mockProfile();
     getMockProject(db, projectId);
-    let rows = db.formFactor.filter((row) => {
-      const testCase = db.casosTeste.find((item) => item.projeto_id === projectId && item.tc_id === row.tc_id);
-      return Boolean(testCase);
-    });
-    if (week) rows = rows.filter((row) => semanaIso(row.data_reportada) === week);
-    if (oneUi) rows = rows.filter((row) => row.one_ui === oneUi);
-    return page(rows, pageNumber, pageSize);
+    const modelos = db.projetoModelos
+      .filter((link) => link.projeto_id === projectId)
+      .map((link) => db.modelosDispositivo.find((model) => model.id === link.modelo_dispositivo_id))
+      .filter((model) => model !== undefined)
+      .map(({ id: modelId, nome }) => ({ id: modelId, nome }))
+      .sort((a, b) => a.nome.localeCompare(b.nome));
+    const linkedModels = new Set(modelos.map((model) => model.id));
+    const rows = db.casosTeste
+      .filter((testCase) => testCase.projeto_id === projectId && testCase.ativo && (!responsavelId || testCase.responsavel_id === responsavelId))
+      .sort((a, b) => a.tc_id.localeCompare(b.tc_id))
+      .flatMap<LinhaFormFactor>((testCase) => {
+        // Ordem invertida antes do sort estável: na mesma data vence a importação mais recente, como na API.
+        const results = [...db.formFactor].reverse()
+          .filter((result) => result.tc_id === testCase.tc_id && linkedModels.has(result.modelo_dispositivo_id) && (!week || semanaIso(result.data_reportada) === week))
+          .sort((a, b) => b.data_reportada.localeCompare(a.data_reportada));
+        if (week && !results.length) return [];
+        const resultados: Record<string, string> = {};
+        results.forEach((result) => { resultados[result.modelo_dispositivo_id] ??= result.resultado; });
+        return [{ caso_teste_id: testCase.id, tc_id: testCase.tc_id, responsavel_id: testCase.responsavel_id, sdf_id: results[0]?.sdf_id ?? null, data_reportada: results[0]?.data_reportada ?? null, resultados }];
+      });
+    return { ...page(rows, pageNumber, pageSize), modelos };
   },
   importar(projectId: string, file: File) {
     requireMockPermission("form_factor.importar");

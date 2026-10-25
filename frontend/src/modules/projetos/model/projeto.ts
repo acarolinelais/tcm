@@ -1,3 +1,5 @@
+import type { PagedResult } from "@/shared/types/paged-result";
+
 export type StatusProjeto = "Created" | "To Do" | "InProgress" | "Completed" | "Canceled";
 export const CATEGORIAS_CASO_TESTE = ["A", "B", "C"] as const;
 export const DIFICULDADES_CASO_TESTE = ["Low", "Medium", "High"] as const;
@@ -51,14 +53,24 @@ export interface CasoTeste {
   updated_at: string | null;
 }
 
+/** Coluna da matriz do Form Factor: um modelo vinculado ao projeto. */
+export interface ModeloFormFactor {
+  id: string;
+  nome: string;
+}
+
+/** Linha da matriz do Form Factor: um Test Case com o resultado mais recente por modelo. */
 export interface LinhaFormFactor {
+  caso_teste_id: string;
   tc_id: string;
-  sdf_id: string;
-  modelo_dispositivo_id: string;
-  modelo_nome: string;
-  resultado: string;
-  data_reportada: string;
-  one_ui: string;
+  responsavel_id: string;
+  sdf_id: string | null;
+  data_reportada: string | null;
+  resultados: Record<string, string>;
+}
+
+export interface FormFactorMatriz extends PagedResult<LinhaFormFactor> {
+  modelos: ModeloFormFactor[];
 }
 
 export interface ImportacaoProjeto {

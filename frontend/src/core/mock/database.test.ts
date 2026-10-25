@@ -232,6 +232,38 @@ describe("base mock de projetos", () => {
     expect(database.importacoesSdf.every((batch: { projeto_id: string }) => batch.projeto_id === project.id)).toBe(true);
   });
 
+  it("monta a matriz do Form Factor com o resultado mais recente por modelo e aplica os filtros", () => {
+    const project = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: ["mock-model-s27-ultra", "mock-model-s26-ultra"] });
+    const base = { category: "A" as const, difficulty: "Low" as const, situation: "New" as const };
+    mockCasosTesteApi.criar(project.id, { ...base, tc_id: "TC-002", responsavel_id: "mock-user-kp", backup_id: "mock-user-dev" });
+    mockCasosTesteApi.criar(project.id, { ...base, tc_id: "TC-001", responsavel_id: "mock-user-dev", backup_id: "mock-user-kp" });
+    const database = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
+    database.formFactor = [
+      { tc_id: "TC-001", sdf_id: "SDF-1", modelo_dispositivo_id: "mock-model-s27-ultra", resultado: "Fail", data_reportada: "2026-03-17T00:00:00Z" },
+      { tc_id: "TC-001", sdf_id: "SDF-2", modelo_dispositivo_id: "mock-model-s27-ultra", resultado: "Pass", data_reportada: "2026-03-30T00:00:00Z" },
+      { tc_id: "TC-001", sdf_id: "SDF-1", modelo_dispositivo_id: "mock-model-s26-ultra", resultado: "Fail", data_reportada: "2026-03-17T00:00:00Z" },
+      { tc_id: "TC-001", sdf_id: "SDF-1", modelo_dispositivo_id: "mock-model-tab-s11", resultado: "Pass", data_reportada: "2026-03-17T00:00:00Z" },
+      { tc_id: "TC-002", sdf_id: "SDF-A", modelo_dispositivo_id: "mock-model-s26-ultra", resultado: "Blocked", data_reportada: "2026-04-08T12:00:00Z" },
+      { tc_id: "TC-002", sdf_id: "SDF-B", modelo_dispositivo_id: "mock-model-s26-ultra", resultado: "Pass", data_reportada: "2026-04-08T12:00:00Z" },
+    ];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(database));
+
+    const matriz = mockFormFactorApi.listar(project.id, 1, 20);
+    expect(matriz.modelos.map((model) => model.nome)).toEqual(["S26 Ultra", "S27 Ultra"]);
+    expect(matriz.items.map((row) => row.tc_id)).toEqual(["TC-001", "TC-002"]);
+    expect(matriz.items[0]).toMatchObject({ sdf_id: "SDF-2", resultados: { "mock-model-s27-ultra": "Pass", "mock-model-s26-ultra": "Fail" } });
+    // Mesma data: vence a importação mais recente (a última gravada).
+    expect(matriz.items[1]).toMatchObject({ sdf_id: "SDF-B", resultados: { "mock-model-s26-ultra": "Pass" } });
+
+    const semana = mockFormFactorApi.listar(project.id, 1, 20, "2026-W12");
+    expect(semana.items).toHaveLength(1);
+    expect(semana.items[0]).toMatchObject({ sdf_id: "SDF-1", resultados: { "mock-model-s27-ultra": "Fail" } });
+    expect(mockFormFactorApi.listar(project.id, 1, 20, undefined, "mock-user-kp").items.map((row) => row.tc_id)).toEqual(["TC-002"]);
+    const semCasoNaSemana = mockFormFactorApi.listar(project.id, 1, 20, "2026-W15");
+    expect(semCasoNaSemana.items.map((row) => row.tc_id)).toEqual(["TC-002"]);
+    expect(mockFormFactorApi.listar(project.id, 1, 20, undefined, "ninguem").total_count).toBe(0);
+  });
+
   it("migra casos antigos: o progresso vai para status e TC Situation vira New", () => {
     const database = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
     database.schemaVersion = 8;
