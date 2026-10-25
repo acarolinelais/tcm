@@ -166,7 +166,7 @@ export function ProjetosPage() {
 
   if (!podeConsultar) return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
 
-  return <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
+  return <section className={criacaoAberta ? "flex h-full min-h-0 flex-col gap-3" : "flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10"}>
     {!criacaoAberta ? <>
       <header className="mb-7 flex shrink-0 items-center justify-between gap-4">
         <h1 className="text-2xl font-medium text-primary">{t("myProjects")}</h1>
@@ -195,9 +195,10 @@ export function ProjetosPage() {
         <TablePagination page={pagina} pageSize={tamanhoPagina} totalCount={projetos.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
       </TableLayout>
     </> : <>
-      <div className="mb-6 shrink-0">
-        <Button variant="ghost" className="-ml-2 h-auto gap-2 px-2 py-1 text-sm font-normal text-muted-foreground hover:text-foreground" onClick={() => { setCriacaoAberta(false); limparFormulario(); }}><ChevronLeft aria-hidden="true" className="size-4" />{t("projectsNav")}</Button>
+      <div className="shrink-0">
+        <Button variant="ghost" className="h-auto gap-1 px-1 py-1 text-sm font-normal text-muted-foreground hover:text-foreground" onClick={() => { setCriacaoAberta(false); limparFormulario(); }}><ChevronLeft aria-hidden="true" className="size-4" />{t("projectsNav")}</Button>
       </div>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
       <div className="thin-scroll min-h-0 flex-1 overflow-auto">
         <div className="mx-auto flex min-h-full max-w-[52.5rem] flex-col">
           <header className="mb-4 flex items-center justify-between gap-4">
@@ -228,6 +229,7 @@ export function ProjetosPage() {
         </div>
       </div>
       <footer className="mt-6 flex shrink-0 items-center justify-end gap-4 border-t border-border pt-5"><div className="flex gap-2"><Button variant="outline" onClick={() => { setCriacaoAberta(false); limparFormulario(); }}>{t("cancel")}</Button><Button disabled={queryMutation.isPending || leitura.fase === "lendo" || !timeId || (modo === "manual" ? !app.trim() || !oneUi.trim() : !leitura.arquivo)} onClick={() => queryMutation.mutate()}>{queryMutation.isPending ? t("saving") : conferirPlanilha ? t("checkSpreadsheet") : t("createProject")}</Button></div></footer>
+      </div>
     </>}
     <Dialog open={Boolean(projetoEditando)} onOpenChange={(open) => { if (!open && !editarProjeto.isPending) setProjetoEditando(null); }}>
       <DrawerContent>
