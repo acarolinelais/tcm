@@ -4,7 +4,6 @@ import type { PerfilAtual } from "@/core/auth/api";
 import {
   casosTesteApi,
   formFactorApi,
-  modelosDispositivoApi,
   projetosApi,
   type AtualizarCasoTesteInput,
   type CriarCasoTesteInput,
@@ -13,7 +12,6 @@ import {
 } from "../api/projetos.api";
 
 export const projetosQueryKey = ["projetos"] as const;
-export const modelosQueryKey = ["modelos-dispositivo"] as const;
 
 export function useProjetosPessoais(perfil: PerfilAtual, enabled = true) {
   return useQuery({
@@ -97,37 +95,6 @@ export function useTransferirCasoTeste(projetoId: string) {
     mutationKey: ["projetos", projetoId, "transferir-caso"],
     mutationFn: (id: string) => casosTesteApi.transferirParaBackup(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projetos"] }),
-  });
-}
-
-export function useModelosDispositivo(ativo?: boolean) {
-  return useQuery({
-    queryKey: [...modelosQueryKey, ativo],
-    queryFn: () => modelosDispositivoApi.listar(1, 100, ativo),
-  });
-}
-
-export function useCriarModeloDispositivo() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (nome: string) => modelosDispositivoApi.criar(nome),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: modelosQueryKey }),
-  });
-}
-
-export function useAtualizarModeloDispositivo() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: { nome?: string; ativo?: boolean } }) => modelosDispositivoApi.atualizar(id, body),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: modelosQueryKey }),
-  });
-}
-
-export function useDefinirAtivoModeloDispositivo() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, ativo }: { id: string; ativo: boolean }) => modelosDispositivoApi.definirAtivo(id, ativo),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: modelosQueryKey }),
   });
 }
 

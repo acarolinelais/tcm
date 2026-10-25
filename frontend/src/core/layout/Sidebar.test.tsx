@@ -27,4 +27,17 @@ describe("Sidebar project navigation", () => {
     rerender(<MemoryRouter><Sidebar perfil={{ ...perfil, permissoes: ["projetos.consultar"] }} recolhida={false} onToggle={() => undefined} /></MemoryRouter>);
     expect(screen.getByRole("link", { name: "My Projects" })).toHaveAttribute("href", "/projetos");
   });
+
+  it("mostra Device models para KP e admin e esconde de gerente e dev", () => {
+    const { rerender } = renderSidebar({ ...perfil, perfil_codigo: "KP", permissoes: ["modelos_dispositivo.gerenciar"] });
+    expect(screen.getByRole("link", { name: "Device models" })).toHaveAttribute("href", "/modelos-dispositivo");
+
+    rerender(<MemoryRouter><Sidebar perfil={{ ...perfil, perfil_codigo: "ADMIN_UNIDADE" }} recolhida={false} onToggle={() => undefined} /></MemoryRouter>);
+    expect(screen.getByRole("link", { name: "Device models" })).toBeInTheDocument();
+
+    for (const outro of [{ perfil_codigo: "GERENTE", permissoes: ["projetos.gerenciar"] }, { perfil_codigo: "USUARIO_PADRAO", permissoes: ["projetos.consultar"] }]) {
+      rerender(<MemoryRouter><Sidebar perfil={{ ...perfil, ...outro }} recolhida={false} onToggle={() => undefined} /></MemoryRouter>);
+      expect(screen.queryByRole("link", { name: "Device models" })).not.toBeInTheDocument();
+    }
+  });
 });

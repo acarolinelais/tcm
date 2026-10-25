@@ -50,14 +50,14 @@
 
 ## Fase 2: frontend
 
-- [ ] **T06. Módulo `modelos-dispositivo`: API, mock, schema e hooks**
+- [x] **T06. Módulo `modelos-dispositivo`: API, mock, schema e hooks**
   - Arquivos: `frontend/src/modules/modelos-dispositivo/api/modelos-dispositivo.api.ts`,
     `hooks/useModelosDispositivo.ts`, `schemas/modelo-dispositivo.schema.ts`,
     `frontend/src/core/mock/database.ts` e `database.test.ts`
   - Cobre: CA-01, CA-02, CA-08
   - Verificação: `cd frontend && npm test -- modelos-dispositivo database` → verde, com o schema
     recusando nome vazio, nome acima de 100 e descrição acima de 100.
-- [ ] **T07. Página do catálogo no padrão de tabela**
+- [x] **T07. Página do catálogo no padrão de tabela**
   - Arquivos: `frontend/src/modules/modelos-dispositivo/ModelosDispositivoPage.tsx`, `routes.tsx`,
     `ModelosDispositivoPage.test.tsx`, registro das rotas em `frontend/src/app`,
     `frontend/src/core/i18n/resources.ts`
@@ -66,13 +66,13 @@
     página; filtros de nome e status; vazio com filtro; drawer de criação e edição com descrição;
     ativar e inativar; mensagem de sem permissão. Usar as skills `table-rules`, `better-accessibility`
     e `better-writing`.
-- [ ] **T08. Item Device models no sidebar e ajuste do "voltar"**
+- [x] **T08. Item Device models no sidebar e ajuste do "voltar"**
   - Arquivos: `frontend/src/core/layout/Sidebar.tsx`, `sidebar-icons.tsx`, `Sidebar.test.tsx`,
     `voltar.ts`, `voltar.test.ts`
   - Cobre: CA-12
   - Verificação: `cd frontend && npm test -- Sidebar voltar` → verde, com o item visível para KP e
     admin e oculto para gerente e dev.
-- [ ] **T09. Projetos usa `/opcoes` e perde a tela antiga**
+- [x] **T09. Projetos usa `/opcoes` e perde a tela antiga**
   - Arquivos: `frontend/src/modules/projetos/ProjetosPage.tsx` (e os fluxos de importação que usam o
     seletor), `ProjetosPage.test.tsx`, `routes.tsx`, `routes.test.ts`, `api/projetos.api.ts`,
     `hooks/useProjetos.ts`; remover `ModelosDispositivoPage.tsx` e o teste dele de `projetos`
@@ -105,3 +105,16 @@
   unidades sem perfil e não as apaga. Na segunda execução da suíte no mesmo banco,
   `test_migration_seed_perfil_kp_por_unidade_e_idempotente` falha com "Unidade ... não possui perfil
   USUARIO_PADRAO". O problema já existia antes desta spec.
+- **Badge Ativo/Inativo e opções de status compartilhadas (simplify, Fase 2).** O badge de status
+  (`rounded-md bg-emerald-50 …`) e as opções `[todos, ativo, inativo]` do filtro estão copiados em
+  `SetoresPage`, `TimesPage`, `UsuariosTable` e agora em `ModelosDispositivoPage`. Um `ActiveBadge` e as
+  opções de status em `shared/ui` evitariam que esses estilos se distanciem. Fica fora do bloco porque
+  mexe em outros módulos.
+- **Chave de cache dos modelos repetida entre módulos (simplify, Fase 2).** Salvar no catálogo atualiza
+  o seletor de Projetos só porque os dois módulos usam o mesmo prefixo literal `["modelos-dispositivo"]`.
+  A regra de módulos impede importar a constante. Se um dos lados mudar a chave, a atualização deixa de
+  acontecer sem nenhum erro. O conserto é mover o prefixo para `core/`. Fica fora do bloco.
+- **E2E `projetos-dev.spec.ts` dependente de ambiente.** Esse teste exige uma API real em `:8000` com a
+  senha de admin em `SDF_E2E_ADMIN_PASSWORD`, e cria usuários nesse banco. Localmente ele falha com 401
+  se a API estiver usando o banco de desenvolvimento com outra senha. Vale documentar ou apontar para
+  um banco próprio de e2e.

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import * as XLSX from "@e965/xlsx";
 
 import { ApiError } from "@/shared/api/problem-details";
-import { mockAuth, mockCasosTesteApi, mockFormFactorApi, mockProjetosApi, mockTimesApi, mockUsuarioApi, resetMockDatabase } from "./database";
+import { mockAuth, mockCasosTesteApi, mockFormFactorApi, mockModelosDispositivoApi, mockProjetosApi, mockTimesApi, mockUsuarioApi, resetMockDatabase } from "./database";
 
 const STORAGE_KEY = "sdf.mock.database.v1";
 
@@ -253,7 +253,7 @@ describe("base mock de projetos", () => {
 
     mockProjetosApi.listar(1, 10);
     const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-    expect(migrado.schemaVersion).toBe(11);
+    expect(migrado.schemaVersion).toBe(12);
     expect(migrado.usuarios.every((user: { user_id?: string | null }) => user.user_id === null)).toBe(true);
   });
 
@@ -291,5 +291,51 @@ describe("base mock de projetos", () => {
       [2, "Assignees", "pessoa_nao_encontrada"],
     ]);
     expect(mockProjetosApi.listar(1, 10).items).toHaveLength(0);
+  });
+
+  it("KP gerencia o catálogo de modelos com descrição e datas", () => {
+    entrar("kaique.pereira@example.com");
+    const criado = mockModelosDispositivoApi.criar({ nome: " S28 Ultra ", descricao: " Flagship " });
+    expect(criado).toMatchObject({ nome: "S28 Ultra", descricao: "Flagship", ativo: true });
+    expect(criado.updated_at).toBe(criado.created_at);
+
+    const editado = mockModelosDispositivoApi.atualizar(criado.id, { nome: "S28 Ultra", descricao: null });
+    expect(editado.descricao).toBeNull();
+    expect(() => mockModelosDispositivoApi.criar({ nome: "S28 Ultra", descricao: null })).toThrow("Já existe");
+  });
+
+  it("gerente só lista as opções ativas e não gerencia o catálogo", () => {
+    entrar("kaique.pereira@example.com");
+    mockModelosDispositivoApi.definirAtivo("mock-model-tab-s11", false);
+    entrar("mariana.costa@example.com");
+
+    expect(() => mockModelosDispositivoApi.listar(1, 20)).toThrow("permissão");
+    expect(() => mockModelosDispositivoApi.criar({ nome: "S28", descricao: null })).toThrow("permissão");
+    const opcoes = mockModelosDispositivoApi.listarOpcoes(1, 100).items;
+    expect(opcoes).not.toContainEqual(expect.objectContaining({ id: "mock-model-tab-s11" }));
+    expect(opcoes[0]).toEqual({ id: expect.any(String), nome: expect.any(String) });
+  });
+
+  it("dev não lista as opções de modelos", () => {
+    entrar("daniel.oliveira@example.com");
+
+    expect(() => mockModelosDispositivoApi.listarOpcoes(1, 100)).toThrow("permissão");
+  });
+
+  it("migra o schema 11: concede a gestão de modelos ao KP e preenche a descrição", () => {
+    const database = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
+    database.schemaVersion = 11;
+    database.perfis.forEach((profile: { permissoes: string[] }) => { profile.permissoes = profile.permissoes.filter((item) => item !== "modelos_dispositivo.gerenciar"); });
+    database.modelosDispositivo.forEach((model: Record<string, unknown>) => { delete model.descricao; delete model.updated_at; });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(database));
+
+    mockProjetosApi.listar(1, 10);
+    const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
+    expect(migrado.schemaVersion).toBe(12);
+    const kp = migrado.perfis.find((profile: { codigo: string }) => profile.codigo === "KP");
+    const gerente = migrado.perfis.find((profile: { codigo: string }) => profile.codigo === "GERENTE");
+    expect(kp.permissoes).toContain("modelos_dispositivo.gerenciar");
+    expect(gerente.permissoes).not.toContain("modelos_dispositivo.gerenciar");
+    expect(migrado.modelosDispositivo.every((model: { descricao: unknown }) => model.descricao === null)).toBe(true);
   });
 });

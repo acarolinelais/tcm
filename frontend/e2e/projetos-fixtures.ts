@@ -58,7 +58,7 @@ export async function setupTeamsAndModels(page: Page) {
   await page.route("**/api/times?*", (route) => route.fulfill({ json: {
     items: [{ id: teamId, setor_id: "sector-1", nome: "Plataforma", ativo: true }], page: 1, page_size: 100, total_count: 1,
   } }));
-  await page.route("**/api/modelos-dispositivo?*", (route) => route.fulfill({ json: {
-    items: [{ id: modelId, unidade_id: "unit-1", nome: "S27 Ultra", ativo: true }], page: 1, page_size: 100, total_count: 1,
+  await page.route("**/api/modelos-dispositivo/opcoes?*", (route) => route.fulfill({ json: {
+    items: [{ id: modelId, nome: "S27 Ultra" }], page: 1, page_size: 100, total_count: 1,
   } }));
 }

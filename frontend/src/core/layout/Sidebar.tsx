@@ -9,6 +9,7 @@ import {
   BoardIcon,
   ChevronIcon,
   CollapseIcon,
+  DeviceIcon,
   DocumentationIcon,
   OverviewIcon,
   ProfilesIcon,
@@ -41,6 +42,9 @@ export function Sidebar({
   ];
   if (perfil.permissoes.includes("projetos.consultar") || perfil.permissoes.includes("test_cases.consultar")) {
     itens.push({ to: "/projetos", label: t(perfil.perfil_codigo === "USUARIO_PADRAO" ? "projectsNav" : "myProjects"), Icon: ProjectsIcon });
+  }
+  if (perfil.perfil_codigo === "ADMIN_UNIDADE" || perfil.permissoes.includes("modelos_dispositivo.gerenciar")) {
+    itens.push({ to: "/modelos-dispositivo", label: t("deviceModels"), Icon: DeviceIcon });
   }
   const itensAdmin = [
     ["/admin/usuarios", t("users"), UsersIcon],
