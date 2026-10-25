@@ -245,7 +245,7 @@ export function PerfisPage() {
               {perfisPaginados.map((perfil) => (
                 <TableRow key={perfil.id}>
                   <TableCell className="font-medium">{perfil.codigo ? t(`catalog.profile.${perfil.codigo}`, { defaultValue: perfil.nome }) : perfil.nome}</TableCell>
-                  <TableCell className="text-muted-foreground">{perfil.descricao || "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{perfil.codigo ? t(`catalog.profile.description.${perfil.codigo}`, { defaultValue: perfil.descricao || "—" }) : perfil.descricao || "—"}</TableCell>
                   <TableCell>{perfil.codigo ? t("protectedBySystem") : t("unitProfile")}</TableCell>
                   <TableCell>
                     <Badge variant="secondary" className="gap-1.5 rounded-md border border-[#DCE7FF] bg-[#F5F8FF] px-2.5 py-1 text-primary">
