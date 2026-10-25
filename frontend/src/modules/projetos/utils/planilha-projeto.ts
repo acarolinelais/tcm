@@ -29,6 +29,8 @@ export interface PessoasDaLinha {
   backup: string;
 }
 
+export const FALHA_LEITURA = "Could not read file";
+
 export class PlanilhaProjetoError extends Error {
   /** `pessoas` e `colunas` permitem conferir responsável e backup mesmo com a planilha inválida. */
   constructor(readonly errors: ErroPlanilha[], readonly totalLinhas?: number, readonly pessoas: PessoasDaLinha[] = [], readonly colunas?: PlanilhaProjeto["colunas"]) {
@@ -65,12 +67,18 @@ function falha(errors: ErroPlanilha[], totalLinhas?: number, pessoas?: PessoasDa
   throw new PlanilhaProjetoError(errors, totalLinhas, pessoas, colunas);
 }
 
-function lerBytes(file: File): Promise<ArrayBuffer> {
-  if (typeof file.arrayBuffer === "function") return file.arrayBuffer();
+function lerBytes(file: File, onProgress?: (progress: number) => void): Promise<ArrayBuffer> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => reader.result instanceof ArrayBuffer ? resolve(reader.result) : reject(new Error("Invalid file data"));
-    reader.onerror = () => reject(reader.error ?? new Error("Could not read file"));
+    reader.onprogress = (event) => {
+      if (event.lengthComputable && event.total > 0) onProgress?.(Math.min(90, Math.floor((event.loaded / event.total) * 90)));
+    };
+    reader.onload = () => {
+      onProgress?.(90);
+      if (reader.result instanceof ArrayBuffer) resolve(reader.result);
+      else reject(new Error(FALHA_LEITURA));
+    };
+    reader.onerror = () => reject(reader.error ?? new Error(FALHA_LEITURA));
     reader.readAsArrayBuffer(file);
   });
 }
@@ -94,11 +102,11 @@ function semHyperlinks(XLSX: SheetJs, bytes: ArrayBuffer): Uint8Array {
   return XLSX.CFB.write(zip, { type: "array", fileType: "zip" });
 }
 
-export async function lerPlanilhaProjeto(file: File): Promise<PlanilhaProjeto> {
+export async function lerPlanilhaProjeto(file: File, onProgress?: (progress: number) => void): Promise<PlanilhaProjeto> {
   const XLSX = await import("@e965/xlsx");
   let workbook: ExcelWorkbook;
   try {
-    const bytes = await lerBytes(file);
+    const bytes = await lerBytes(file, onProgress);
     workbook = XLSX.read(bytes, { type: "array", cellDates: false });
     if (workbook.SheetNames.length && !workbook.Sheets[workbook.SheetNames[0]]) {
       workbook = XLSX.read(semHyperlinks(XLSX, bytes), { type: "array", cellDates: false });
@@ -106,12 +114,14 @@ export async function lerPlanilhaProjeto(file: File): Promise<PlanilhaProjeto> {
   } catch {
     return falha([geral("arquivo_invalido")]);
   }
+  onProgress?.(96);
 
   const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
   if (!firstSheet) return falha([geral("planilha_vazia")]);
   // blankrows mantém as linhas vazias para o número da linha bater com o editor de planilhas.
   const rows = XLSX.utils.sheet_to_json<unknown[]>(firstSheet, { header: 1, raw: false, defval: "", blankrows: true });
   if (!rows.length) return falha([geral("planilha_vazia")]);
+  onProgress?.(99);
   const indexes = new Map<string, number>();
   const colunas: Record<string, string> = { ...cabecalhosObrigatorios };
   const errors: ErroPlanilha[] = [];
@@ -175,5 +185,7 @@ export async function lerPlanilhaProjeto(file: File): Promise<PlanilhaProjeto> {
     if (!oneUi) errors.push(geral("one_ui_ausente", colunas["one ui"]));
   }
   if (errors.length) return falha(errors, totalLinhas, pessoas, colunas as PlanilhaProjeto["colunas"]);
+  // Só a leitura bem-sucedida chega a 100: com problemas, a barra para onde estava (spec 016, RN-18).
+  onProgress?.(100);
   return { app, one_ui: oneUi, casos, totalLinhas, colunas: colunas as PlanilhaProjeto["colunas"] };
 }

@@ -94,8 +94,36 @@ body {
   border-radius: 20px;
 }
 
-.dropzone-tracejada[data-arrastando="true"] {
+.dropzone-tracejada[data-arrastando="true"],
+.dropzone-tracejada:hover,
+.dropzone-tracejada:focus-visible {
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='20' ry='20' stroke='%233672F2' stroke-width='2' stroke-dasharray='8 8'/%3e%3c/svg%3e");
+}
+
+/* Upload da planilha (spec 016): cards e prévia surgem subindo alguns pixels e saem pelo mesmo caminho. */
+@keyframes upload-surgir {
+  from { opacity: 0; transform: translateY(var(--surgir-y, 4px)); }
+}
+
+.upload-surgir {
+  animation: upload-surgir 200ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.upload-surgir-previa {
+  --surgir-y: 8px;
+  animation-duration: 250ms;
+}
+
+.upload-surgir[data-saindo] {
+  animation: upload-surgir 150ms ease-in reverse both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .upload-surgir,
+  .upload-surgir[data-saindo] {
+    --surgir-y: 0px;
+    animation-duration: 150ms;
+  }
 }
 
 [data-sonner-toast] [data-close-button] {

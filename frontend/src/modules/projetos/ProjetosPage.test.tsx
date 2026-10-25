@@ -159,12 +159,29 @@ describe("ProjetosPage", () => {
     const { container } = renderPage();
     await user.click(await screen.findByRole("button", { name: /New project/i }));
     await user.upload(container.querySelector('input[type="file"]')!, planilhaFile());
+    // O botão só libera depois que a barra enche e a prévia aparece (spec 016, RN-12).
+    await screen.findByRole("region", { name: "Test Case preview" });
     await user.click(screen.getByLabelText("Team"));
     await user.click(await screen.findByRole("option", { name: "Plataforma" }));
     await user.click(screen.getByRole("button", { name: "Create project" }));
 
     await waitFor(() => expect(projetosApi.importar).toHaveBeenCalledWith(expect.any(File), "team-1", [], "Clock", "9.5"));
     expect(toastMock.success).toHaveBeenCalledWith("Spreadsheet imported: 4 Test Cases created in Clock 9.5.");
+  });
+
+  it("remove a planilha lida, avisa a remoção e volta o card do modelo", async () => {
+    const user = userEvent.setup();
+    const { container } = renderPage();
+    await user.click(await screen.findByRole("button", { name: /New project/i }));
+    await user.upload(container.querySelector('input[type="file"]')!, planilhaFile());
+    await screen.findByRole("region", { name: "Test Case preview" });
+
+    await user.click(screen.getByRole("button", { name: "Remove file" }));
+
+    await waitFor(() => expect(screen.queryByRole("region", { name: "Test Case preview" })).not.toBeInTheDocument());
+    expect(await screen.findByRole("button", { name: /Download template/i })).toBeInTheDocument();
+    expect(toastMock.success).toHaveBeenCalledWith("Spreadsheet removed");
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
 
   it("baixa o modelo de planilha com TC Situation New e sem coluna de Status", async () => {

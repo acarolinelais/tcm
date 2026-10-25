@@ -7,6 +7,8 @@ import { defineConfig } from "vite";
 export default defineConfig({
   envDir: fileURLToPath(new URL("..", import.meta.url)),
   plugins: [react(), tailwindcss()],
+  // O worker da planilha importa o xlsx sob demanda: o formato padrão (iife) não aceita divisão de código.
+  worker: { format: "es" },
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),

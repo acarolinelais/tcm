@@ -51,4 +51,14 @@ describe("PreviaPlanilha", () => {
     expect(screen.queryByRole("columnheader", { name: "Status" })).not.toBeInTheDocument();
     expect(screen.getByText("New Step")).toBeInTheDocument();
   });
+
+  it("mantém a altura fixa só quando há mais de uma página", () => {
+    const { rerender } = render(<PreviaPlanilha previa={previa(DEFAULT_TABLE_PAGE_SIZE + 1)} />);
+    const rolagem = () => screen.getByRole("table").closest(".thin-scroll");
+    expect(rolagem()).toHaveClass("h-96");
+
+    rerender(<PreviaPlanilha previa={previa(3)} />);
+    expect(rolagem()).toHaveClass("max-h-96");
+    expect(rolagem()).not.toHaveClass("h-96");
+  });
 });
