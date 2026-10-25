@@ -6,7 +6,10 @@ from src.domain.common.idioma_preferido import IdiomaPreferido
 from src.domain.common.paged_result import PagedResult
 from src.domain.entities.usuario import Usuario
 from src.infrastructure.data.models.perfil_model import PerfilModel
+from src.infrastructure.data.models.setor_gerente_model import SetorGerenteModel
+from src.infrastructure.data.models.setor_model import SetorModel
 from src.infrastructure.data.models.time_membro_model import TimeMembroModel
+from src.infrastructure.data.models.time_model import TimeModel
 from src.infrastructure.data.models.usuario_model import UsuarioModel
 from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
 
@@ -70,11 +73,17 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
 
     async def dados_por_usuarios(
         self, unidade_id: UUID, usuario_ids: tuple[UUID, ...]
-    ) -> dict[UUID, tuple[str, str, str | None]]:
+    ) -> dict[UUID, tuple[str, str | None, str | None, str | None]]:
         if not usuario_ids:
             return {}
         stmt = (
-            select(UsuarioModel.id, UsuarioModel.nome, PerfilModel.nome, PerfilModel.codigo)
+            select(
+                UsuarioModel.id,
+                UsuarioModel.nome,
+                UsuarioModel.user_id,
+                PerfilModel.nome,
+                PerfilModel.codigo,
+            )
             .join(PerfilModel, PerfilModel.id == UsuarioModel.perfil_id)
             .where(
                 UsuarioModel.unidade_id == unidade_id,
@@ -83,8 +92,8 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
             )
         )
         return {
-            usuario_id: (usuario_nome, perfil_nome, perfil_codigo)
-            for usuario_id, usuario_nome, perfil_nome, perfil_codigo in (
+            usuario_id: (usuario_nome, user_id, perfil_nome, perfil_codigo)
+            for usuario_id, usuario_nome, user_id, perfil_nome, perfil_codigo in (
                 await self.session.execute(stmt)
             ).all()
         }
@@ -98,8 +107,13 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
         email: str | None = None,
         ativo: bool | None = None,
         perfil_id: UUID | None = None,
+        responsavel_id: UUID | None = None,
+        sem_responsavel: bool = False,
+        setor_id: UUID | None = None,
     ) -> PagedResult[Usuario]:
-        filtros = self._filtros(nome, email, ativo, perfil_id)
+        filtros = self._filtros(
+            nome, email, ativo, perfil_id, unidade_id, responsavel_id, sem_responsavel, setor_id
+        )
         filtros.insert(0, UsuarioModel.unidade_id == unidade_id)
         total = (
             await self.session.execute(
@@ -128,6 +142,9 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
         ativo: bool | None = None,
         perfil_id: UUID | None = None,
         responsavel_id: UUID | None = None,
+        filtro_responsavel_id: UUID | None = None,
+        sem_responsavel: bool = False,
+        setor_id: UUID | None = None,
     ) -> PagedResult[Usuario]:
         consultas = [
             select(UsuarioModel.id.label("usuario_id")).where(UsuarioModel.id == usuario_atual_id)
@@ -151,7 +168,22 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
         filtros = [
             UsuarioModel.unidade_id == unidade_id,
             UsuarioModel.id.in_(visible_ids),
-            *self._filtros(nome, email, ativo, perfil_id),
+            UsuarioModel.perfil_id.not_in(
+                select(PerfilModel.id).where(
+                    PerfilModel.unidade_id == unidade_id,
+                    PerfilModel.codigo == "ADMIN_UNIDADE",
+                )
+            ),
+            *self._filtros(
+                nome,
+                email,
+                ativo,
+                perfil_id,
+                unidade_id,
+                filtro_responsavel_id,
+                sem_responsavel,
+                setor_id,
+            ),
         ]
         total = (
             await self.session.execute(
@@ -174,6 +206,10 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
         email: str | None,
         ativo: bool | None,
         perfil_id: UUID | None,
+        unidade_id: UUID,
+        responsavel_id: UUID | None = None,
+        sem_responsavel: bool = False,
+        setor_id: UUID | None = None,
     ):
         filtros = []
         if nome and nome.strip():
@@ -184,11 +220,76 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
             filtros.append(UsuarioModel.ativo.is_(ativo))
         if perfil_id is not None:
             filtros.append(UsuarioModel.perfil_id == perfil_id)
+        if responsavel_id is not None:
+            filtros.append(UsuarioModel.responsavel_id == responsavel_id)
+        if sem_responsavel:
+            filtros.append(UsuarioModel.responsavel_id.is_(None))
+        if setor_id is not None:
+            usuario_ids_no_setor = (
+                select(TimeMembroModel.usuario_id)
+                .join(TimeModel, TimeModel.id == TimeMembroModel.time_id)
+                .where(
+                    TimeMembroModel.unidade_id == unidade_id,
+                    TimeMembroModel.ativo.is_(True),
+                    TimeModel.unidade_id == unidade_id,
+                    TimeModel.ativo.is_(True),
+                    TimeModel.setor_id == setor_id,
+                )
+            )
+            filtros.append(UsuarioModel.id.in_(usuario_ids_no_setor))
         return filtros
+
+    async def setores_por_usuarios(
+        self, unidade_id: UUID, usuario_ids: tuple[UUID, ...]
+    ) -> dict[UUID, list[str]]:
+        if not usuario_ids:
+            return {}
+        stmt = (
+            select(TimeMembroModel.usuario_id, SetorModel.nome)
+            .join(TimeModel, TimeModel.id == TimeMembroModel.time_id)
+            .join(SetorModel, SetorModel.id == TimeModel.setor_id)
+            .where(
+                TimeMembroModel.unidade_id == unidade_id,
+                TimeMembroModel.usuario_id.in_(usuario_ids),
+                TimeMembroModel.ativo.is_(True),
+                TimeModel.unidade_id == unidade_id,
+                TimeModel.ativo.is_(True),
+                SetorModel.unidade_id == unidade_id,
+                SetorModel.ativo.is_(True),
+            )
+        )
+        setores_gerenciados = (
+            select(SetorGerenteModel.usuario_id, SetorModel.nome)
+            .join(SetorModel, SetorModel.id == SetorGerenteModel.setor_id)
+            .where(
+                SetorGerenteModel.unidade_id == unidade_id,
+                SetorGerenteModel.usuario_id.in_(usuario_ids),
+                SetorGerenteModel.ativo.is_(True),
+                SetorModel.unidade_id == unidade_id,
+                SetorModel.ativo.is_(True),
+            )
+        )
+        stmt = union(stmt, setores_gerenciados).order_by("usuario_id", "nome")
+        resultado: dict[UUID, list[str]] = {}
+        for usuario_id, setor_nome in (await self.session.execute(stmt)).all():
+            resultado.setdefault(usuario_id, []).append(setor_nome)
+        return resultado
 
     async def existe_email(self, email: str, ignorar_id: UUID | None) -> bool:
         normalizado = Usuario.normalizar_email(email)
         stmt = select(UsuarioModel.id).where(UsuarioModel.email == normalizado)
+        if ignorar_id is not None:
+            stmt = stmt.where(UsuarioModel.id != ignorar_id)
+        return (await self.session.execute(stmt)).first() is not None
+
+    async def existe_user_id(self, unidade_id: UUID, user_id: str, ignorar_id: UUID | None) -> bool:
+        normalizado = Usuario.normalizar_user_id(user_id)
+        if normalizado is None:
+            return False
+        stmt = select(UsuarioModel.id).where(
+            UsuarioModel.unidade_id == unidade_id,
+            func.lower(UsuarioModel.user_id) == normalizado.lower(),
+        )
         if ignorar_id is not None:
             stmt = stmt.where(UsuarioModel.id != ignorar_id)
         return (await self.session.execute(stmt)).first() is not None
@@ -231,12 +332,30 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
             await self.session.execute(
                 select(func.count())
                 .select_from(UsuarioModel)
-                .where(UsuarioModel.unidade_id == unidade_id, UsuarioModel.id.in_(visible_ids))
+                .where(
+                    UsuarioModel.unidade_id == unidade_id,
+                    UsuarioModel.id.in_(visible_ids),
+                    UsuarioModel.perfil_id.not_in(
+                        select(PerfilModel.id).where(
+                            PerfilModel.unidade_id == unidade_id,
+                            PerfilModel.codigo == "ADMIN_UNIDADE",
+                        )
+                    ),
+                )
             )
         ).scalar_one()
         stmt = (
             select(UsuarioModel)
-            .where(UsuarioModel.unidade_id == unidade_id, UsuarioModel.id.in_(visible_ids))
+            .where(
+                UsuarioModel.unidade_id == unidade_id,
+                UsuarioModel.id.in_(visible_ids),
+                UsuarioModel.perfil_id.not_in(
+                    select(PerfilModel.id).where(
+                        PerfilModel.unidade_id == unidade_id,
+                        PerfilModel.codigo == "ADMIN_UNIDADE",
+                    )
+                ),
+            )
             .order_by(UsuarioModel.nome, UsuarioModel.id)
             .offset((page - 1) * page_size)
             .limit(page_size)
@@ -249,11 +368,17 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
     ) -> bool:
         if not time_ids:
             return False
-        stmt = select(TimeMembroModel.id).where(
-            TimeMembroModel.unidade_id == unidade_id,
-            TimeMembroModel.usuario_id == usuario_id,
-            TimeMembroModel.ativo.is_(True),
-            TimeMembroModel.time_id.in_(time_ids),
+        stmt = (
+            select(TimeMembroModel.id)
+            .join(UsuarioModel, UsuarioModel.id == TimeMembroModel.usuario_id)
+            .join(PerfilModel, PerfilModel.id == UsuarioModel.perfil_id)
+            .where(
+                TimeMembroModel.unidade_id == unidade_id,
+                TimeMembroModel.usuario_id == usuario_id,
+                TimeMembroModel.ativo.is_(True),
+                TimeMembroModel.time_id.in_(time_ids),
+                PerfilModel.codigo != "ADMIN_UNIDADE",
+            )
         )
         return (await self.session.execute(stmt)).first() is not None
 
@@ -264,6 +389,12 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
             UsuarioModel.id == usuario_id,
             UsuarioModel.unidade_id == unidade_id,
             UsuarioModel.responsavel_id == responsavel_id,
+            UsuarioModel.perfil_id.not_in(
+                select(PerfilModel.id).where(
+                    PerfilModel.unidade_id == unidade_id,
+                    PerfilModel.codigo == "ADMIN_UNIDADE",
+                )
+            ),
         )
         return (await self.session.execute(stmt)).first() is not None
 
@@ -278,7 +409,7 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
         )
 
     def _to_entity(self, model: UsuarioModel) -> Usuario:
-        usuario = Usuario(model.unidade_id, model.nome, model.email)
+        usuario = Usuario(model.unidade_id, model.nome, model.email, user_id=model.user_id)
         usuario.id = model.id
         usuario.senha_hash = model.senha_hash
         usuario.senha_alteracao_obrigatoria = model.senha_alteracao_obrigatoria
@@ -297,6 +428,7 @@ class UsuarioRepositoryImpl(RepositoryBaseImpl[Usuario, UsuarioModel]):
             unidade_id=entity.unidade_id,
             nome=entity.nome,
             email=entity.email,
+            user_id=entity.user_id,
             senha_hash=entity.senha_hash,
             senha_alteracao_obrigatoria=entity.senha_alteracao_obrigatoria,
             perfil_id=entity.perfil_id,

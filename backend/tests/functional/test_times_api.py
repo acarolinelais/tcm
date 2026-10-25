@@ -57,6 +57,22 @@ async def test_adicionar_membro_retorna_associacao_sem_papel(api_client):
 
 
 @pytest.mark.asyncio
+async def test_adicionar_membro_rejeita_papel_legado_no_contrato(api_client):
+    from src.api.main import app
+
+    atual = UsuarioAutenticado(uuid4(), uuid4(), True)
+    service = AsyncMock()
+    app.dependency_overrides[get_usuario_atual] = dependency_override(atual)
+    app.dependency_overrides[get_time_service] = dependency_override(service)
+    response = await api_client.post(
+        f"/api/times/{uuid4()}/membros",
+        json={"usuario_id": str(uuid4()), "papel": "kp"},
+    )
+    assert response.status_code == 422
+    service.adicionar_membro.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_gerente_sem_posse_retorna_403(api_client):
     from src.api.main import app
 

@@ -1,11 +1,12 @@
 import type { HTMLAttributes, TdHTMLAttributes, ThHTMLAttributes } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { useTranslation } from "react-i18next";
 
-export const DEFAULT_TABLE_PAGE_SIZE = 10;
+export const DEFAULT_TABLE_PAGE_SIZE = 20;
 export const TABLE_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 
 interface TableProps extends HTMLAttributes<HTMLTableElement> {
@@ -40,12 +41,22 @@ export function TableBody({ className, ...props }: HTMLAttributes<HTMLTableSecti
   return <tbody className={cn(className)} {...props} />;
 }
 
+const tableEmptyStateClasses = "flex min-h-56 w-full shrink-0 items-center justify-center rounded-2xl border border-[#E3E8F0] bg-[#F7F8FA] text-sm text-muted-foreground";
+
 export function TableEmptyState({ children, className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("flex min-h-0 flex-1 items-center justify-center rounded-2xl bg-secondary/30 text-sm text-muted-foreground", className)}
+      className={cn(tableEmptyStateClasses, className)}
       {...props}
     >
+      {children}
+    </div>
+  );
+}
+
+export function TableEmptyStatePanel({ children, className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cn(tableEmptyStateClasses, className)} {...props}>
       {children}
     </div>
   );
@@ -100,14 +111,24 @@ export function TablePagination({
           variant="ghost"
           size="icon"
           className="h-8 w-8 rounded-lg"
+          aria-label={t("firstPage")}
+          disabled={page <= 1}
+          onClick={() => onPageChange(1)}
+        >
+          <ChevronsLeft aria-hidden="true" className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 rounded-lg"
           aria-label={t("previousPage")}
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
         >
           <ChevronLeft aria-hidden="true" className="h-4 w-4" />
         </Button>
-        <span aria-current="page" className="min-w-6 text-center text-sm font-medium text-foreground">
-          {page}
+        <span aria-current="page" className="min-w-6 px-1 text-center text-sm font-medium tabular-nums text-foreground">
+          {t("pageOfTotal", { page, total: totalPages })}
         </span>
         <Button
           variant="ghost"
@@ -119,17 +140,27 @@ export function TablePagination({
         >
           <ChevronRight aria-hidden="true" className="h-4 w-4" />
         </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 rounded-lg"
+          aria-label={t("lastPage")}
+          disabled={page >= totalPages}
+          onClick={() => onPageChange(totalPages)}
+        >
+          <ChevronsRight aria-hidden="true" className="h-4 w-4" />
+        </Button>
       </div>
       <label className="flex items-center gap-3 text-xs text-muted-foreground">
         {t("itemsPerPage")}
-        <select
-          aria-label={t("pageSize")}
-          value={pageSize}
-          onChange={(event) => onPageSizeChange(Number(event.target.value))}
-          className="h-8 rounded-lg border border-border bg-background px-2 text-xs text-foreground"
-        >
-          {pageSizeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-        </select>
+        <Select value={String(pageSize)} onValueChange={(value) => onPageSizeChange(Number(value))}>
+          <SelectTrigger aria-label={t("pageSize")} className="h-8 w-auto gap-1 rounded-lg border-border px-2 pr-2 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {pageSizeOptions.map((option) => <SelectItem key={option} value={String(option)}>{option}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </label>
     </div>
   );

@@ -6,8 +6,17 @@ from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 from src.infrastructure.data.base import Base
 from src.infrastructure.data.models.auth_sessao_model import AuthSessaoModel  # noqa: F401
+from src.infrastructure.data.models.caso_teste_model import CasoTesteModel  # noqa: F401
+from src.infrastructure.data.models.execucao_sdf_model import ExecucaoSdfModel  # noqa: F401
+from src.infrastructure.data.models.importacao_sdf_model import ImportacaoSdfModel  # noqa: F401
+from src.infrastructure.data.models.modelo_dispositivo_model import ModeloDispositivoModel  # noqa: F401
 from src.infrastructure.data.models.perfil_model import PerfilModel  # noqa: F401
 from src.infrastructure.data.models.permissao_model import PerfilPermissaoModel, PermissaoModel  # noqa: F401
+from src.infrastructure.data.models.projeto_model import ProjetoModel  # noqa: F401
+from src.infrastructure.data.models.projeto_modelo_model import ProjetoModeloModel  # noqa: F401
+from src.infrastructure.data.models.resultado_form_factor_model import (  # noqa: F401
+    ResultadoFormFactorModel,
+)
 from src.infrastructure.data.models.setor_gerente_model import SetorGerenteModel  # noqa: F401
 from src.infrastructure.data.models.setor_model import SetorModel  # noqa: F401
 from src.infrastructure.data.models.time_membro_model import TimeMembroModel  # noqa: F401

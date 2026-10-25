@@ -16,6 +16,9 @@ class UsuarioRepository(RepositoryBase[Usuario], Protocol):
         email: str | None = None,
         ativo: bool | None = None,
         perfil_id: UUID | None = None,
+        responsavel_id: UUID | None = None,
+        sem_responsavel: bool = False,
+        setor_id: UUID | None = None,
     ) -> PagedResult[Usuario]: ...
 
     async def listar_visiveis_filtrado(
@@ -30,6 +33,9 @@ class UsuarioRepository(RepositoryBase[Usuario], Protocol):
         ativo: bool | None = None,
         perfil_id: UUID | None = None,
         responsavel_id: UUID | None = None,
+        filtro_responsavel_id: UUID | None = None,
+        sem_responsavel: bool = False,
+        setor_id: UUID | None = None,
     ) -> PagedResult[Usuario]: ...
 
     async def listar_visiveis(
@@ -43,6 +49,10 @@ class UsuarioRepository(RepositoryBase[Usuario], Protocol):
     ) -> PagedResult[Usuario]: ...
 
     async def existe_email(self, email: str, ignorar_id: UUID | None) -> bool: ...
+
+    async def existe_user_id(
+        self, unidade_id: UUID, user_id: str, ignorar_id: UUID | None
+    ) -> bool: ...
 
     async def obter_por_email(self, email: str) -> Usuario | None: ...
 
@@ -64,4 +74,8 @@ class UsuarioRepository(RepositoryBase[Usuario], Protocol):
 
     async def dados_por_usuarios(
         self, unidade_id: UUID, usuario_ids: tuple[UUID, ...]
-    ) -> dict[UUID, tuple[str, str, str | None]]: ...
+    ) -> dict[UUID, tuple[str, str | None, str | None, str | None]]: ...
+
+    async def setores_por_usuarios(
+        self, unidade_id: UUID, usuario_ids: tuple[UUID, ...]
+    ) -> dict[UUID, list[str]]: ...

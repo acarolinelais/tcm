@@ -16,10 +16,13 @@ class ModuloPermissoes:
 
 
 MODULOS_PERMISSOES = (
-    ModuloPermissoes("usuarios", "Usuários", 1, ("consultar", "gerenciar")),
+    ModuloPermissoes("usuarios", "Usuários", 1, ("consultar", "perfil.consultar", "gerenciar")),
     ModuloPermissoes("perfis", "Perfis", 2, ("gerenciar",)),
     ModuloPermissoes("setores", "Setores", 3, ("consultar", "gerenciar")),
     ModuloPermissoes("times", "Times", 4, ("consultar", "criar", "gerenciar")),
+    ModuloPermissoes("projetos", "Projetos", 5, ("consultar", "gerenciar")),
+    ModuloPermissoes("test_cases", "Test Cases", 6, ("consultar", "gerenciar")),
+    ModuloPermissoes("form_factor", "Form Factor", 7, ("consultar", "importar")),
 )
 
 _POR_CODIGO = {modulo.codigo: modulo for modulo in MODULOS_PERMISSOES}

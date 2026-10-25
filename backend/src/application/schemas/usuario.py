@@ -9,6 +9,7 @@ from src.domain.entities.usuario import Usuario
 class CriarUsuarioRequest(BaseModel):
     nome: str = Field(min_length=1, max_length=Usuario.NOME_MAX_LENGTH)
     email: EmailStr = Field(max_length=Usuario.EMAIL_MAX_LENGTH)
+    user_id: str | None = Field(default=None, max_length=Usuario.USER_ID_MAX_LENGTH)
     perfil_id: UUID | None = None
 
 
@@ -24,9 +25,13 @@ class UsuarioResponse(BaseModel):
     id: UUID
     nome: str
     email: str
+    user_id: str | None = None
     ativo: bool
     perfil_id: UUID
+    perfil_nome: str | None = None
+    perfil_codigo: str | None = None
     responsavel_id: UUID | None
+    setores: list[str] = Field(default_factory=list)
     created_at: datetime
 
 
@@ -35,6 +40,7 @@ def to_response(u: Usuario) -> UsuarioResponse:
         id=u.id,
         nome=u.nome,
         email=u.email,
+        user_id=u.user_id,
         ativo=u.ativo,
         perfil_id=u.perfil_id,
         responsavel_id=u.responsavel_id,

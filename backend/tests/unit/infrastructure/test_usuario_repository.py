@@ -41,6 +41,45 @@ async def test_obter_por_email_retorna_usuario_quando_encontrado(repo, session):
     assert resultado.unidade_id == unidade_id
 
 
+async def test_existe_user_id_compara_sem_diferenciar_caixa_e_no_tenant(repo, session):
+    unidade_id, usuario_id = uuid4(), uuid4()
+    session.execute.return_value.first.return_value = (usuario_id,)
+
+    resultado = await repo.existe_user_id(unidade_id, "  User-123 ", ignorar_id=uuid4())
+
+    assert resultado is True
+    sql = str(session.execute.call_args.args[0].compile(dialect=postgresql.dialect()))
+    assert "usuarios.unidade_id" in sql
+    assert "lower(usuarios.user_id)" in sql
+    assert "usuarios.id !=" in sql
+
+
+async def test_existe_user_id_nulo_ou_vazio_nao_consulta(repo, session):
+    assert await repo.existe_user_id(uuid4(), "   ", ignorar_id=None) is False
+
+    session.execute.assert_not_awaited()
+
+
+def test_mapeamento_de_usuario_preserva_user_id(repo):
+    unidade_id = uuid4()
+    model = UsuarioModel(
+        id=uuid4(),
+        unidade_id=unidade_id,
+        nome="Ana",
+        email="ana@example.com",
+        user_id="USR-001",
+        perfil_id=uuid4(),
+        ativo=True,
+        idioma_preferido="en",
+    )
+
+    entity = repo._to_entity(model)
+    remapped = repo._to_model(entity)
+
+    assert entity.user_id == "USR-001"
+    assert remapped.user_id == "USR-001"
+
+
 def resultado_consulta(quantidade: int, itens: list[UsuarioModel]):
     resultado_contagem = MagicMock()
     resultado_contagem.scalar_one.return_value = quantidade

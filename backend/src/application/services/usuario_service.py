@@ -43,9 +43,23 @@ class UsuarioServiceImpl:
         email: str | None = None,
         ativo: bool | None = None,
         perfil_id: UUID | None = None,
+        responsavel_id: UUID | None = None,
+        sem_responsavel: bool = False,
+        setor_id: UUID | None = None,
     ) -> PagedResult[UsuarioResponse]:
         self._exigir_permissao(usuario_atual, "usuarios.consultar")
-        tem_filtros = any((nome, email, ativo is not None, perfil_id))
+        tem_filtros = any(
+            (nome, email, ativo is not None, perfil_id, responsavel_id, sem_responsavel, setor_id)
+        )
+        filtros_adicionais = {
+            chave: valor
+            for chave, valor in (
+                ("responsavel_id", responsavel_id),
+                ("sem_responsavel", True if sem_responsavel else None),
+                ("setor_id", setor_id),
+            )
+            if valor is not None
+        }
         if usuario_atual.eh_administrador:
             if tem_filtros:
                 result = await self._repo.listar_filtrado(
@@ -56,6 +70,7 @@ class UsuarioServiceImpl:
                     email,
                     ativo,
                     perfil_id,
+                    **filtros_adicionais,
                 )
             else:
                 result = await self._repo.listar_paginado(usuario_atual.unidade_id, page, page_size)
@@ -75,6 +90,13 @@ class UsuarioServiceImpl:
                     ativo,
                     perfil_id,
                     usuario_atual.id,
+                    **(
+                        {"filtro_responsavel_id": responsavel_id}
+                        if responsavel_id is not None
+                        else {}
+                    ),
+                    **({"sem_responsavel": True} if sem_responsavel else {}),
+                    **({"setor_id": setor_id} if setor_id is not None else {}),
                 )
             else:
                 result = await self._repo.listar_visiveis(
@@ -85,7 +107,43 @@ class UsuarioServiceImpl:
                     usuario_atual.id,
                     usuario_atual.id,
                 )
-        return result.map(to_response)
+        pode_consultar_perfil = "usuarios.perfil.consultar" in usuario_atual.permissoes
+        perfil_por_usuario = (
+            await self._repo.dados_por_usuarios(
+                usuario_atual.unidade_id, tuple(usuario.id for usuario in result.items)
+            )
+            if pode_consultar_perfil and result.items
+            else {}
+        )
+        items = []
+        setores_por_usuario = {}
+        pode_consultar_setores = usuario_atual.eh_administrador or (
+            usuario_atual.perfil_codigo in ("GERENTE", "KP")
+            and usuario_atual.pode("setores.consultar")
+        )
+        if result.items and pode_consultar_setores:
+            listar_setores = getattr(self._repo, "setores_por_usuarios", None)
+            if listar_setores:
+                dados_setores = await listar_setores(
+                    usuario_atual.unidade_id, tuple(usuario.id for usuario in result.items)
+                )
+                if isinstance(dados_setores, dict):
+                    setores_por_usuario = dados_setores
+        for usuario in result.items:
+            resposta = to_response(usuario)
+            _, _, perfil_nome, perfil_codigo = perfil_por_usuario.get(
+                usuario.id, ("", None, "", None)
+            )
+            items.append(
+                resposta.model_copy(
+                    update={
+                        "perfil_nome": perfil_nome or None,
+                        "perfil_codigo": perfil_codigo,
+                        "setores": setores_por_usuario.get(usuario.id, []),
+                    }
+                )
+            )
+        return PagedResult(items, result.page, result.page_size, result.total_count)
 
     async def obter(self, usuario_atual: UsuarioAutenticado, id: UUID) -> UsuarioResponse:
         self._exigir_permissao(usuario_atual, "usuarios.consultar")
@@ -111,7 +169,10 @@ class UsuarioServiceImpl:
     ) -> UsuarioResponse:
         self._exigir_permissao(usuario_atual, "usuarios.gerenciar")
         await self._garantir_email_unico(request.email, None)
-        usuario = Usuario(usuario_atual.unidade_id, request.nome, request.email)
+        await self._garantir_user_id_unico(usuario_atual.unidade_id, request.user_id, None)
+        usuario = Usuario(
+            usuario_atual.unidade_id, request.nome, request.email, user_id=request.user_id
+        )
         if not usuario_atual.eh_administrador:
             perfil_padrao_id = await self._repo.obter_perfil_padrao(usuario_atual.unidade_id)
             if request.perfil_id is None or request.perfil_id == perfil_padrao_id:
@@ -152,7 +213,10 @@ class UsuarioServiceImpl:
         await self._exigir_responsavel_ou_admin(usuario_atual, id)
         if Usuario.normalizar_email(request.email) != usuario.email:
             await self._garantir_email_unico(request.email, id)
+        if Usuario.normalizar_user_id(request.user_id) != usuario.user_id:
+            await self._garantir_user_id_unico(usuario.unidade_id, request.user_id, id)
         usuario.atualizar(request.nome, request.email)
+        usuario.definir_user_id(request.user_id)
         usuario.auth_version += 1
         await self._repo.atualizar(usuario)
         await self._uow.commit()
@@ -213,6 +277,15 @@ class UsuarioServiceImpl:
     async def _garantir_email_unico(self, email: str, ignorar_id: UUID | None) -> None:
         if await self._repo.existe_email(email, ignorar_id):
             raise ConflictException("Já existe um usuário com este e-mail.")
+
+    async def _garantir_user_id_unico(
+        self, unidade_id: UUID, user_id: str | None, ignorar_id: UUID | None
+    ) -> None:
+        normalizado = Usuario.normalizar_user_id(user_id)
+        if normalizado is not None and await self._repo.existe_user_id(
+            unidade_id, normalizado, ignorar_id
+        ):
+            raise ConflictException("Já existe um usuário com este User ID nesta unidade.")
 
     @staticmethod
     def _exigir_permissao(usuario_atual: UsuarioAutenticado, permissao: str) -> None:

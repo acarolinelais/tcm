@@ -7,6 +7,8 @@ import type { PerfilAtual } from "@/core/auth/api";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
+import { Label } from "@/shared/ui/label";
+import { SELECT_EMPTY_VALUE, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyState, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
 import { TableColumnFilter } from "@/shared/ui/table-column-filter";
 import { toast } from "@/shared/lib/toast";
@@ -41,19 +43,19 @@ export function SetoresPage() {
   const usuarios = useQuery({ queryKey: ["usuarios", "gerentes", gerenteProfileId], queryFn: () => usuarioApi.listar(1, 100, { perfil_id: gerenteProfileId }), enabled: Boolean(gerenteProfileId) });
   const associados = useQuery({ queryKey: ["setor-gerentes", setorAtual?.id], queryFn: () => setoresApi.gerentes(setorAtual!.id), enabled: Boolean(setorAtual) });
   const nomes = useMemo(() => new Map((usuarios.data?.items ?? []).map((item) => [item.id, item.nome])), [usuarios.data]);
-  const salvar = useMutation({ mutationFn: () => setoresApi.criar(nome.trim()), onSuccess: async () => { setNovo(false); setNome(""); await client.invalidateQueries({ queryKey: ["setores"] }); toast.success(t("sectorCreateSuccess")); }, onError: () => toast.error(t("sectorCreateError")) });
-  const alterar = useMutation({ mutationFn: (input: { id: string; nome?: string; ativo?: boolean }) => setoresApi.atualizar(input.id, { nome: input.nome, ativo: input.ativo }), onSuccess: async () => { await client.invalidateQueries({ queryKey: ["setores"] }); toast.success(t("sectorUpdateSuccess")); }, onError: () => toast.error(t("sectorUpdateError")) });
+  const salvar = useMutation({ mutationFn: () => setoresApi.criar(nome.trim(), gerente || undefined), onSuccess: async () => { setNovo(false); setNome(""); setGerente(""); await client.invalidateQueries({ queryKey: ["setores"] }); toast.success(t("sectorCreateSuccess")); }, onError: () => toast.error(t("sectorCreateError")) });
+  const alterar = useMutation({ mutationFn: (input: { id: string; nome?: string; ativo?: boolean }) => setoresApi.atualizar(input.id, { nome: input.nome, ativo: input.ativo }), onSuccess: async (setor, input) => { await client.invalidateQueries({ queryKey: ["setores"] }); if (input.nome) setSetorAtual((atual) => atual?.id === input.id ? { ...atual, nome: input.nome! } : atual); toast.success(input.ativo === false ? t("sectorDeactivated", { name: setor.nome }) : t("sectorUpdateSuccess")); }, onError: () => toast.error(t("sectorUpdateError")) });
   const vincular = useMutation({ mutationFn: () => setoresApi.associar(setorAtual!.id, gerente), onSuccess: async () => { setGerente(""); await client.invalidateQueries({ queryKey: ["setor-gerentes", setorAtual?.id] }); toast.success(t("associateSuccess")); }, onError: (error) => { const detail = error instanceof ApiError ? error.problem.detail?.toLowerCase() : undefined; toast.error(detail?.includes("já associado") || detail?.includes("already associated") ? t("managerAlreadyAssociated") : t("associationError")); } });
   const desvincular = useMutation({ mutationFn: (id: string) => setoresApi.desassociar(setorAtual!.id, id), onSuccess: async () => { await client.invalidateQueries({ queryKey: ["setor-gerentes", setorAtual?.id] }); toast.success(t("associationRemoveSuccess")); }, onError: () => toast.error(t("associationError")) });
   if (perfil.perfil_codigo !== "ADMIN_UNIDADE") return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
   return <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
-    <header className="mb-7 flex shrink-0 items-center justify-between"><h1 className="text-2xl font-medium text-[#3478F6]">{t("sectors")}</h1><Button onClick={() => { setNome(""); setErroNome(""); setNovo(true); }}>{t("newSector")}</Button></header>
+    <header className="mb-7 flex shrink-0 items-center justify-between"><h1 className="text-2xl font-medium text-primary">{t("sectors")}</h1><Button onClick={() => { setNome(""); setGerente(""); setErroNome(""); setNovo(true); }}>{t("newSector")}</Button></header>
     <TableLayout>
-    <Table containerClassName={`min-h-0 ${setores.data?.items.length ? "flex-1 overflow-auto" : "shrink-0 overflow-visible"}`}><TableHeader><TableRow><TableHead><TableColumnFilter label={t("sector")} value={filtros.busca ?? ""} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, busca: value || undefined })); }} placeholder={t("searchSector")} /></TableHead><TableHead><TableColumnFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, ativo: value === "" ? undefined : value === "true" })); }} options={[{ value: "", label: t("all") }, { value: "true", label: t("active") }, { value: "false", label: t("inactive") }]} /></TableHead><TableHead>{t("managers")}</TableHead><TableHead className="text-right">{t("actions")}</TableHead></TableRow></TableHeader>{Boolean(setores.data?.items.length) && <TableBody>
+    <Table containerClassName={`min-h-0 ${setores.data?.items.length ? "flex-1 overflow-auto" : "shrink-0 overflow-visible"}`}><TableHeader><TableRow><TableHead><TableColumnFilter label={t("sector")} value={filtros.busca ?? ""} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, busca: value || undefined })); }} placeholder={t("searchSector")} /></TableHead><TableHead>{t("managers")}</TableHead><TableHead><TableColumnFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, ativo: value === "" ? undefined : value === "true" })); }} options={[{ value: "", label: t("all") }, { value: "true", label: t("active") }, { value: "false", label: t("inactive") }]} /></TableHead><TableHead className="text-right">{t("actions")}</TableHead></TableRow></TableHeader>{Boolean(setores.data?.items.length) && <TableBody>
       {setoresVisiveis.map((setor, index) => <TableRow key={setor.id}>
-        <TableCell className="text-base font-medium text-foreground">{setor.nome}</TableCell>
-        <TableCell><Badge variant="secondary" className={setor.ativo ? "rounded-md bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700" : "rounded-md bg-secondary px-2.5 py-1 text-xs text-muted-foreground"}>{setor.ativo ? t("active") : t("inactive")}</Badge></TableCell>
+        <TableCell className="font-medium text-foreground">{setor.nome}</TableCell>
         <TableCell className="text-sm text-muted-foreground">{(gerentesPorSetor[index]?.data ?? []).filter((vinculo) => vinculo.ativo).map((vinculo) => nomes.get(vinculo.usuario_id) ?? vinculo.usuario_id).join(", ") || "—"}</TableCell>
+        <TableCell><Badge variant="secondary" className={setor.ativo ? "rounded-md bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700" : "rounded-md bg-secondary px-2.5 py-1 text-xs text-muted-foreground"}>{setor.ativo ? t("active") : t("inactive")}</Badge></TableCell>
         <TableCell className="text-right"><TableRowActions label={setor.nome} actions={[
           { label: t("editSector"), icon: Pencil, onSelect: () => { setSetorAtual(setor); setNome(setor.nome); } },
           { label: t("manageManagers"), icon: UsersRound, onSelect: () => { setSetorAtual(setor); setNome(setor.nome); } },
@@ -71,7 +73,7 @@ export function SetoresPage() {
           <p className="mx-auto mt-1.5 max-w-xs text-sm leading-6 text-muted-foreground">
             {temFiltro ? t("noSectorResults") : t("noSectorHint")}
           </p>
-          {temFiltro ? <Button variant="outline" size="sm" className="mt-5" onClick={() => { setPagina(1); setFiltros({}); }}>{t("clearFilters")}</Button> : <Button size="sm" className="mt-5" onClick={() => setNovo(true)}>{t("createFirstSector")}</Button>}
+          {temFiltro && <Button variant="outline" size="sm" className="mt-5" onClick={() => { setPagina(1); setFiltros({}); }}>{t("clearFilters")}</Button>}
         </div>;
       })()}
     </TableEmptyState>}
@@ -79,17 +81,65 @@ export function SetoresPage() {
     </TableLayout>
     <Dialog open={novo || Boolean(setorAtual)} onOpenChange={(open) => { if (!open) { setNovo(false); setSetorAtual(null); setNome(""); setErroNome(""); } }}>
       <DrawerContent>
-        <DrawerHeader><DrawerTitle>{novo ? t("newSector") : setorAtual ? `${t("sector")}: ${setorAtual.nome}` : t("managers")}</DrawerTitle></DrawerHeader>
+        <DrawerHeader>
+          <DrawerTitle>{novo ? t("newSector") : setorAtual ? `${t("sector")}: ${setorAtual.nome}` : t("managers")}</DrawerTitle>
+        </DrawerHeader>
         {novo ? <form noValidate className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => { event.preventDefault(); if (!nome.trim()) { setErroNome(t("requiredField")); return; } setErroNome(""); salvar.mutate(); }}>
-          <div className="flex-1 space-y-5 px-7 py-6">
-            <label className="block space-y-2 text-sm font-medium">{t("sectorName")}<Input aria-invalid={Boolean(erroNome)} aria-describedby={erroNome ? "sector-name-error" : undefined} value={nome} onChange={(e) => { setNome(e.target.value); setErroNome(""); }} maxLength={150} required />{erroNome && <p id="sector-name-error" role="alert" className="text-sm text-destructive">{erroNome}</p>}</label>
+          <div className="flex-1 space-y-6 overflow-y-auto px-7 py-6">
+            <div className="flex flex-col">
+              <Label htmlFor="sector-name">{t("sectorName")}</Label>
+              <Input id="sector-name" className="mt-2.5" aria-invalid={Boolean(erroNome)} aria-describedby={erroNome ? "sector-name-error" : undefined} value={nome} onChange={(e) => { setNome(e.target.value); setErroNome(""); }} maxLength={150} required />
+              {erroNome && <p id="sector-name-error" role="alert" className="mt-1.5 text-sm text-destructive">{erroNome}</p>}
+            </div>
+            <div className="flex flex-col">
+              <Label htmlFor="new-sector-manager">{t("selectManager")}</Label>
+              <Select value={gerente} onValueChange={(value) => setGerente(value === SELECT_EMPTY_VALUE ? "" : value)}>
+                <SelectTrigger id="new-sector-manager" aria-describedby="new-sector-manager-hint" className="mt-2.5 h-11 rounded-xl px-3.5">
+                  <SelectValue placeholder={t("selectManager")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={SELECT_EMPTY_VALUE}>{t("noOwner")}</SelectItem>
+                  {(usuarios.data?.items ?? []).filter((usuario) => usuario.ativo).map((usuario) => <SelectItem key={usuario.id} value={usuario.id}>{usuario.nome} · {usuario.email}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p id="new-sector-manager-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("managerSelectHint")}</p>
+            </div>
           </div>
           <div className="flex justify-end border-t border-border px-7 py-5"><div className="flex gap-2"><DrawerClose asChild><Button type="button" variant="outline">{t("cancel")}</Button></DrawerClose><Button disabled={salvar.isPending}>{t("createSector")}</Button></div></div>
-        </form> : setorAtual && <div className="flex-1 space-y-6 overflow-y-auto px-7 py-6">
-          <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); alterar.mutate({ id: setorAtual.id, nome }); }}><Input aria-label={t("sectorName")} value={nome || setorAtual.nome} onChange={(e) => setNome(e.target.value)} /><Button variant="outline">{t("saveName")}</Button></form>
-          <div className="flex gap-2"><select aria-label={t("selectManager")} className="h-10 min-w-0 flex-1 rounded-md border bg-background px-3 text-sm" value={gerente} onChange={(e) => setGerente(e.target.value)}><option value="">{t("selectManager")}</option>{(usuarios.data?.items ?? []).filter((usuario) => !(associados.data ?? []).some((vinculo) => vinculo.usuario_id === usuario.id && vinculo.ativo)).map((item) => <option key={item.id} value={item.id}>{item.nome} · {item.email}</option>)}</select><Button disabled={!gerente || vincular.isPending} onClick={() => vincular.mutate()}>{t("associate")}</Button></div>
-          <div className="space-y-2">{(associados.data ?? []).map((item) => <div key={item.usuario_id} className="flex items-center justify-between rounded-xl border border-border px-4 py-3 text-sm"><span>{nomes.get(item.usuario_id) ?? item.usuario_id} {item.ativo ? "" : `· ${t("inactive").toLowerCase()}`}</span>{item.ativo && <Button variant="ghost" size="sm" onClick={() => setGerenteParaRemover(item.usuario_id)}>{t("remove")}</Button>}</div>)}</div>
-        </div>}
+        </form> : setorAtual && <form className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => { event.preventDefault(); if (!nome.trim()) { setErroNome(t("requiredField")); return; } setErroNome(""); alterar.mutate({ id: setorAtual.id, nome: nome.trim() }, { onSuccess: () => { setSetorAtual(null); setNome(""); setGerente(""); } }); }}>
+          <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-7 py-6">
+          <div className="flex flex-col">
+            <Label htmlFor="sector-edit-name">{t("sectorName")}</Label>
+            <Input id="sector-edit-name" className="mt-2.5" aria-invalid={Boolean(erroNome)} aria-describedby={erroNome ? "sector-edit-error" : undefined} value={nome} onChange={(e) => { setNome(e.target.value); setErroNome(""); }} maxLength={150} required />
+            {erroNome && <p id="sector-edit-error" role="alert" className="mt-1.5 text-sm text-destructive">{erroNome}</p>}
+          </div>
+          <div className="flex flex-col">
+            <Label htmlFor="sector-manager">{t("selectManager")}</Label>
+            <div className="mt-2.5 flex gap-2">
+              <Select value={gerente} onValueChange={(value) => setGerente(value === SELECT_EMPTY_VALUE ? "" : value)}>
+                <SelectTrigger id="sector-manager" aria-describedby="sector-manager-hint" className="min-w-0 flex-1">
+                  <SelectValue placeholder={t("selectManager")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={SELECT_EMPTY_VALUE}>{t("selectManager")}</SelectItem>
+                  {(usuarios.data?.items ?? []).filter((usuario) => !(associados.data ?? []).some((vinculo) => vinculo.usuario_id === usuario.id && vinculo.ativo)).map((item) => (
+                    <SelectItem key={item.id} value={item.id}>{item.nome} · {item.email}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button type="button" disabled={!gerente || vincular.isPending} onClick={() => vincular.mutate()}>{t("associate")}</Button>
+            </div>
+            <p id="sector-manager-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("managerSelectHint")}</p>
+          </div>
+          <div className="space-y-2">{(associados.data ?? []).map((item) => <div key={item.usuario_id} className="flex items-center justify-between rounded-xl border border-border px-4 py-3 text-sm"><span>{nomes.get(item.usuario_id) ?? item.usuario_id} {item.ativo ? "" : `· ${t("inactive").toLowerCase()}`}</span>{item.ativo && <Button type="button" variant="ghost" size="sm" onClick={() => setGerenteParaRemover(item.usuario_id)}>{t("remove")}</Button>}</div>)}</div>
+          </div>
+          <div className="flex shrink-0 justify-end border-t border-border bg-white px-7 py-5">
+            <div className="flex gap-2">
+              <DrawerClose asChild><Button type="button" variant="outline">{t("cancel")}</Button></DrawerClose>
+              <Button type="submit" disabled={alterar.isPending}>{alterar.isPending ? t("saving") : t("save")}</Button>
+            </div>
+          </div>
+        </form>}
       </DrawerContent>
     </Dialog>
     <ConfirmDialog

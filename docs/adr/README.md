@@ -33,7 +33,7 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0019](0019-senha-inicial-e-troca-obrigatoria.md) | Senha inicial local com troca obrigatória | Substituído por 0023 |
 | [0020](0020-sessoes-jwt-e-refresh-rotativo.md) | Sessões JWT e refresh token rotativo | Aceito |
 | [0021](0021-escopo-gerente-por-setor.md) | Escopo de gestão de times definido pelo setor | Aceito |
-| [0022](0022-padrao-universal-de-tabelas.md) | Padrão visual universal para tabelas | Aceito |
+| [0022](0022-padrao-universal-de-tabelas.md) | Padrão visual universal para tabelas | Aceito; tamanho padrão substituído por 0034 |
 | [0023](0023-senha-sem-minimo-de-caracteres.md) | Troca de senha sem mínimo de caracteres | Aceito |
 | [0024](0024-responsavel-por-usuario.md) | Responsável direto por usuários criados por gerente | Aceito |
 | [0025](0025-idioma-preferido-por-conta.md) | Idioma preferido por conta | Aceito |
@@ -41,3 +41,8 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0027](0027-fluxo-de-branches-e-pull-requests.md) | Fluxo de branches (`main` + `dev`) e convenção de commits | Aceito |
 | [0028](0028-ci-com-github-actions.md) | Verificação contínua e proteção de branches no GitHub | Aceito |
 | [0029](0029-git-hooks-versionados.md) | Git hooks versionados no repositório | Aceito |
+| [0030](0030-modo-mock-frontend.md) | Modo mock persistido no frontend | Aceito |
+| [0031](0031-administrador-edita-permissoes-de-perfis-seedados.md) | Administrador edita permissões de perfis seedados | Aceito |
+| [0032](0032-permissao-para-consultar-perfis-de-usuarios-no-escopo.md) | Permissão para consultar perfis de usuários no escopo | Aceito |
+| [0033](0033-erros-de-planilha-com-codigo-estruturado.md) | Erros de planilha com código estruturado e texto montado no frontend | Aceito |
+| [0034](0034-paginacao-padrao-vinte-itens.md) | Paginação padrão de 20 itens | Aceito |

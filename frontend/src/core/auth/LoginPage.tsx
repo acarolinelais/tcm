@@ -2,10 +2,12 @@ import { useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { BarChart3, Eye, EyeOff, Network, UsersRound } from "lucide-react";
+import { EyeOff } from "lucide-react";
 
 import { LanguageSelector } from "@/core/i18n/LanguageSelector";
-import logo from "@/shared/assets/figma/icons/logo.svg";
+import ilustracao from "@/shared/assets/figma/illustrations/login.svg";
+import iconeOlho from "@/shared/assets/figma/icons/eye.svg";
+import logo from "@/shared/assets/figma/icons/logo-tcm.svg";
 import { ApiError } from "@/shared/api/problem-details";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -18,6 +20,7 @@ export function LoginPage() {
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const emailRef = useRef<HTMLInputElement>(null);
   const senhaRef = useRef<HTMLInputElement>(null);
+  const [erros, setErros] = useState<{ email?: string; senha?: string }>({});
   const [carregando, setCarregando] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -26,15 +29,16 @@ export function LoginPage() {
   async function enviar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      toast.error(email.trim() ? t("invalidEmail") : t("emailRequired"));
+      setErros({ email: email.trim() ? t("invalidEmail") : t("emailRequired") });
       emailRef.current?.focus();
       return;
     }
     if (!senha) {
-      toast.error(t("passwordRequired"));
+      setErros({ senha: t("passwordRequired") });
       senhaRef.current?.focus();
       return;
     }
+    setErros({});
     setCarregando(true);
     try {
       await login(email, senha);
@@ -56,68 +60,47 @@ export function LoginPage() {
 
   return (
     <main className="relative flex min-h-screen items-center justify-center bg-[#FBFBFB] p-5 sm:p-8">
-      <div className="absolute right-5 top-5 sm:right-8 sm:top-7">
-        <LanguageSelector />
+      <div className="absolute right-5 top-5 sm:right-20 sm:top-[3.25rem]">
+        <LanguageSelector className="gap-1.5 text-[15px] text-[#454442]" />
       </div>
 
-      <section className="grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-border bg-white shadow-[0_16px_48px_-36px_rgba(15,23,42,0.28)] lg:min-h-[590px] lg:grid-cols-[0.95fr_1.05fr]">
-        <aside className="hidden flex-col justify-between bg-[#F3F6FF] px-10 py-11 lg:flex xl:px-14">
-          <div className="flex items-center gap-2.5">
-            <img src={logo} alt="" className="h-6 w-6" />
-            <span className="text-base font-semibold text-foreground">TCM</span>
-          </div>
-          <div className="max-w-sm">
-            <h2 className="text-3xl font-semibold leading-tight tracking-tight text-foreground">SDF Control</h2>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">{t("loginIntro")}</p>
-            <ul className="mt-9 space-y-3">
-              {[
-                { icon: UsersRound, text: t("loginFeatureUsers") },
-                { icon: Network, text: t("loginFeatureTeams") },
-                { icon: BarChart3, text: t("loginFeatureProgress") },
-              ].map(({ icon: Icon, text }) => (
-                <li key={text} className="flex items-center gap-3 rounded-xl border border-[#E2E9FC] bg-white/85 px-3.5 py-3 text-sm text-foreground">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#EAF0FF] text-primary">
-                    <Icon aria-hidden="true" className="h-[18px] w-[18px]" />
-                  </span>
-                  <span>{text}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <p className="text-xs text-muted-foreground">TCM · SDF Control</p>
+      {/* Layout do Figma (TCM, node 2191:99): card de 1042×612, ilustração à esquerda e formulário à direita. */}
+      <section className="grid w-full max-w-[65.125rem] overflow-hidden rounded-[2rem] border border-[#F7F8FA] bg-white lg:min-h-[38.25rem] lg:grid-cols-2 lg:rounded-[50px]">
+        <aside className="hidden items-center justify-center rounded-[50px] border border-[#F7F8FA] bg-[#F3F6FF] px-10 lg:flex">
+          <img src={ilustracao} alt="" className="w-full max-w-[27.375rem]" />
         </aside>
 
-        <div className="flex items-center justify-center px-6 py-12 sm:px-12 lg:px-14">
-          <form noValidate onSubmit={enviar} className="w-full max-w-sm space-y-7">
+        <div className="flex flex-col px-6 pb-[35px] pt-[55px] sm:px-12 lg:px-[5.5rem]">
+          <form noValidate onSubmit={enviar} className="w-full max-w-[22.125rem]">
             <header>
-              <div className="mb-7 flex items-center gap-2.5 lg:hidden">
-                <img src={logo} alt="" className="h-6 w-6" />
-                <span className="text-base font-semibold text-foreground">TCM</span>
-              </div>
-              <h1 className="text-2xl font-semibold tracking-tight text-primary">{t("loginTitle")}</h1>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("loginHint")}</p>
+              <img src={logo} alt="TCM" className="h-[35px] w-auto" />
+              <h1 className="mt-[34px] text-[25px] font-medium leading-[30px] text-[#3672F2]">{t("loginTitle")}</h1>
+              <p className="mt-2.5 text-sm leading-[17px] text-[#7E7E7E]">{t("loginHint")}</p>
             </header>
 
-            <div className="space-y-5">
-              <label className="block space-y-2 text-sm font-medium text-foreground">
+            <div className="mt-[41px] space-y-10">
+              <label className="flex flex-col gap-2.5 text-[15px] font-medium leading-[21px] text-[#454442]">
                 <span>{t("email")}</span>
-                <Input ref={emailRef} required type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} className="h-11 rounded-xl border-border bg-white px-3.5 focus-visible:ring-2" />
+                <Input ref={emailRef} required type="email" autoComplete="username" spellCheck={false} value={email} onChange={(event) => { setEmail(event.target.value); setErros((atual) => ({ ...atual, email: undefined })); }} aria-invalid={Boolean(erros.email)} aria-describedby={erros.email ? "login-email-error" : undefined} className="h-10 rounded-full border-[#F7F8FA] bg-white px-4 font-normal text-[#454442] aria-[invalid=true]:border-destructive" />
+                {erros.email && <span id="login-email-error" role="alert" className="text-xs font-normal leading-4 text-destructive">{erros.email}</span>}
               </label>
-              <label className="block space-y-2 text-sm font-medium text-foreground">
+              <label className="flex flex-col gap-2.5 text-[15px] font-medium leading-[21px] text-[#454442]">
                 <span>{t("password")}</span>
                 <span className="relative block">
-                  <Input ref={senhaRef} required type={mostrarSenha ? "text" : "password"} autoComplete="current-password" value={senha} onChange={(event) => setSenha(event.target.value)} className="h-11 rounded-xl border-border bg-white px-3.5 pr-11 focus-visible:ring-2" />
-                  <button type="button" onClick={() => setMostrarSenha((visivel) => !visivel)} aria-label={mostrarSenha ? t("hidePassword") : t("showPassword")} aria-pressed={mostrarSenha} className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-xl text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-                    {mostrarSenha ? <EyeOff aria-hidden="true" className="h-4 w-4" /> : <Eye aria-hidden="true" className="h-4 w-4" />}
+                  <Input ref={senhaRef} required type={mostrarSenha ? "text" : "password"} autoComplete="current-password" value={senha} onChange={(event) => { setSenha(event.target.value); setErros((atual) => ({ ...atual, senha: undefined })); }} aria-invalid={Boolean(erros.senha)} aria-describedby={erros.senha ? "login-senha-error" : undefined} className="h-10 rounded-full border-[#F7F8FA] bg-white px-4 pr-11 font-normal text-[#454442] aria-[invalid=true]:border-destructive" />
+                  <button type="button" onClick={() => setMostrarSenha((visivel) => !visivel)} aria-label={mostrarSenha ? t("hidePassword") : t("showPassword")} aria-pressed={mostrarSenha} className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-full text-[#777777] transition-colors hover:text-[#454442] active:text-[#454442] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                    {mostrarSenha ? <EyeOff aria-hidden="true" className="size-[13px]" strokeWidth={1.5} /> : <img src={iconeOlho} alt="" aria-hidden="true" className="h-[11px] w-[13px]" />}
                   </button>
                 </span>
+                {erros.senha && <span id="login-senha-error" role="alert" className="text-xs font-normal leading-4 text-destructive">{erros.senha}</span>}
               </label>
             </div>
 
-            <Button disabled={carregando} className="h-11 w-full rounded-xl text-sm">
+            <Button disabled={carregando} className="mt-[37px] h-[46px] w-full rounded-full bg-[#3176F6] text-[15px] font-medium leading-[21px] text-white">
               {carregando ? t("signingIn") : t("signIn")}
             </Button>
           </form>
+          <p className="mt-[73px] w-full max-w-[22.125rem] text-center text-sm leading-[17px] text-[#7E7E7E]">{t("loginCredits")}</p>
         </div>
       </section>
     </main>

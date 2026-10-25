@@ -21,6 +21,7 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
   const podeGerenciar = ehAdmin || perfil.permissoes.includes("usuarios.gerenciar");
   const podeAtribuirPerfil = ehAdmin || perfil.permissoes.includes("perfis.gerenciar");
   const podeAtribuirPerfilKP = ehGerente;
+  const podeConsultarPerfilUsuario = perfil.permissoes.includes("usuarios.perfil.consultar");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const [filtros, setFiltros] = useState<UsuarioFiltros>({});
@@ -49,7 +50,7 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
     });
   }
 
-  function alterarFiltro(campo: "nome" | "email" | "ativo" | "perfil", valor: string) {
+  function alterarFiltro(campo: "nome" | "email" | "ativo" | "perfil" | "responsavel" | "setor", valor: string) {
     setPage(1);
     setFiltros((atuais) => {
       if (campo === "nome" || campo === "email") {
@@ -58,6 +59,14 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
       if (campo === "ativo") {
         return { ...atuais, ativo: valor === "" ? undefined : valor === "true" };
       }
+      if (campo === "responsavel") {
+        return {
+          ...atuais,
+          responsavel_id: valor && valor !== "__none" ? valor : undefined,
+          sem_responsavel: valor === "__none" ? true : undefined,
+        };
+      }
+      if (campo === "setor") return { ...atuais, setor_id: valor || undefined };
       return {
         ...atuais,
         perfil_id: valor || undefined,
@@ -74,7 +83,7 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
       <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-medium leading-8 text-[#3478F6]">{t("users")}</h1>
+          <h1 className="text-2xl font-medium leading-8 text-primary">{t("users")}</h1>
         </div>
         {podeGerenciar && (
           <Button onClick={abrirCriar} className="h-10 rounded-lg px-5 text-sm">
@@ -99,6 +108,8 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
         podeGerenciar={podeGerenciar}
         podeAtribuirPerfil={podeAtribuirPerfil}
         podeAtribuirPerfilKP={podeAtribuirPerfilKP}
+        podeConsultarPerfil={podeConsultarPerfilUsuario}
+        podeConsultarSetores={ehAdmin || ((ehGerente || perfil.perfil_codigo === "KP") && perfil.permissoes.includes("setores.consultar"))}
         usuarioAtualId={perfil.id}
       />
 

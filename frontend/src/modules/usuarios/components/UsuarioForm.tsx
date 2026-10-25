@@ -8,6 +8,7 @@ import { Button } from "@/shared/ui/button";
 import { DrawerClose } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
+import { SELECT_EMPTY_VALUE, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { toast } from "@/shared/lib/toast";
 
 import { useAtualizarUsuario, useCriarUsuario } from "../hooks/useUsuarios";
@@ -46,12 +47,14 @@ export function UsuarioForm({
     register,
     handleSubmit,
     setError,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<UsuarioFormValues>({
     resolver: zodResolver(createUsuarioFormSchema(t)),
     defaultValues: {
       nome: usuario?.nome ?? "",
       email: usuario?.email ?? "",
+      user_id: usuario?.user_id ?? "",
       perfil_id: usuario?.perfil_id ?? "",
     },
   });
@@ -92,6 +95,9 @@ export function UsuarioForm({
               message: t(campoErro.campo === "nome" ? "invalidName" : "emailInUse"),
             });
             aplicado = true;
+          } else if (campoErro.campo === "user_id") {
+            setError("user_id", { message: t("userIdInUse") });
+            aplicado = true;
           }
         }
         if (!aplicado) toast.error(t("userSaveError"));
@@ -103,56 +109,78 @@ export function UsuarioForm({
 
   return (
     <form noValidate onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
-      <div className="flex-1 space-y-5 overflow-y-auto px-7 py-6">
-        <div className="space-y-2">
+      <div className="flex-1 space-y-6 overflow-y-auto px-7 py-6">
+        <div className="flex flex-col">
           <Label htmlFor="nome">{t("name")}</Label>
           <Input
             id="nome"
+            className="mt-2.5"
             aria-invalid={Boolean(errors.nome)}
+            aria-describedby={errors.nome ? "user-name-error" : undefined}
             readOnly={!podeGerenciar}
             {...register("nome")}
           />
-          {errors.nome && <p className="text-sm text-destructive">{errors.nome.message}</p>}
+          {errors.nome && <p id="user-name-error" className="mt-1.5 text-sm text-destructive">{errors.nome.message}</p>}
         </div>
-        <div className="space-y-2">
+        <div className="flex flex-col">
           <Label htmlFor="email">{t("email")}</Label>
           <Input
             id="email"
+            className="mt-2.5"
             type="email"
             aria-invalid={Boolean(errors.email)}
+            aria-describedby={errors.email ? "user-email-error" : undefined}
             readOnly={!podeGerenciar}
             {...register("email")}
           />
-          {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+          {errors.email && <p id="user-email-error" className="mt-1.5 text-sm text-destructive">{errors.email.message}</p>}
+        </div>
+        <div className="flex flex-col">
+          <Label htmlFor="user_id">{t("userId")}</Label>
+          <Input
+            id="user_id"
+            className="mt-2.5"
+            aria-invalid={Boolean(errors.user_id)}
+            aria-describedby={errors.user_id ? "user-id-error" : undefined}
+            readOnly={!podeGerenciar}
+            {...register("user_id")}
+          />
+          {errors.user_id && <p id="user-id-error" className="mt-1.5 text-sm text-destructive">{errors.user_id.message}</p>}
         </div>
         {podeSelecionarPerfil && (
-          <div className="space-y-2">
+          <div className="flex flex-col">
             <Label htmlFor="perfil-usuario">{t("profile")}</Label>
-            <select
-              id="perfil-usuario"
-              aria-label={t("userProfile")}
-              value={usuario ? perfilSelecionado : undefined}
-              {...(!usuario ? register("perfil_id") : {})}
-              onChange={(event) => {
-                setPerfilSelecionado(event.target.value);
-                if (!usuario) register("perfil_id").onChange(event);
+            <Select
+              value={perfilSelecionado}
+              onValueChange={(value) => {
+                const perfilId = value === SELECT_EMPTY_VALUE ? "" : value;
+                setPerfilSelecionado(perfilId);
+                if (!usuario) setValue("perfil_id", perfilId, { shouldDirty: true });
               }}
               disabled={
                 perfis.isLoading ||
                 isPending ||
                 Boolean(
                   usuario &&
-                    perfis.data?.find((perfil) => perfil.id === usuario.perfil_id)?.codigo ===
-                      "ADMIN_UNIDADE",
+                    (usuario.perfil_codigo === "ADMIN_UNIDADE" ||
+                      perfis.data?.find((perfil) => perfil.id === usuario.perfil_id)?.codigo ===
+                        "ADMIN_UNIDADE"),
                 )
               }
-              className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {!usuario && <option value="">{t("standardUser")}</option>}
+              <SelectTrigger id="perfil-usuario" aria-describedby="user-profile-hint" className="mt-2.5">
+                <SelectValue placeholder={t("standardUser")} />
+              </SelectTrigger>
+              <SelectContent>
+              {!usuario && <SelectItem value={SELECT_EMPTY_VALUE}>{t("standardUser")}</SelectItem>}
               {usuario && perfilSelecionado && perfis.data && !perfilAtualDisponivel && (
-                <option value={perfilSelecionado} disabled>
-                  {t("currentProfileRestricted")}
-                </option>
+                <SelectItem value={perfilSelecionado} disabled>
+                  {usuario.perfil_codigo
+                    ? t(`catalog.profile.${usuario.perfil_codigo}`, {
+                        defaultValue: usuario.perfil_nome ?? t("currentProfileRestricted"),
+                      })
+                    : usuario.perfil_nome ?? t("currentProfileRestricted")}
+                </SelectItem>
               )}
               {perfis.data
                 ?.filter(
@@ -164,14 +192,16 @@ export function UsuarioForm({
                     (Boolean(usuario) || perfil.codigo !== "USUARIO_PADRAO"),
                 )
                 .map((perfil) => (
-                  <option key={perfil.id} value={perfil.id}>
+                  <SelectItem key={perfil.id} value={perfil.id}>
                     {perfil.codigo
                       ? t(`catalog.profile.${perfil.codigo}`, { defaultValue: perfil.nome })
                       : perfil.nome}
-                  </option>
+                  </SelectItem>
                 ))}
-            </select>
-            {perfis.isError && <p role="alert" className="text-sm text-destructive">{t("profilesLoadError")}</p>}
+              </SelectContent>
+            </Select>
+            <p id="user-profile-hint" className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("userProfileHint")}</p>
+            {perfis.isError && <p role="alert" className="mt-1.5 text-sm text-destructive">{t("profilesLoadError")}</p>}
           </div>
         )}
       </div>

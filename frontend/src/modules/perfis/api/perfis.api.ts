@@ -1,4 +1,6 @@
 import { httpGet, httpPatchBody, httpPost, httpPut } from "@/core/api/http-client";
+import { useMock } from "@/core/config";
+import { mockPerfilApi } from "@/core/mock/database";
 
 export interface Permissao {
   id: string;
@@ -19,11 +21,11 @@ export interface Perfil {
   codigo: string | null;
 }
 
-export const listarPerfis = () => httpGet<Perfil[]>("/api/perfis");
-export const listarPermissoes = () => httpGet<Permissao[]>("/api/perfis/permissoes");
+export const listarPerfis = () => useMock ? Promise.resolve(mockPerfilApi.listar()) : httpGet<Perfil[]>("/api/perfis");
+export const listarPermissoes = () => useMock ? Promise.resolve(mockPerfilApi.listarPermissoes()) : httpGet<Permissao[]>("/api/perfis/permissoes");
 export const criarPerfil = (nome: string, descricao: string, permissoes: string[]) =>
-  httpPost<Perfil>("/api/perfis", { nome, descricao: descricao || null, permissoes });
+  useMock ? Promise.resolve(mockPerfilApi.criar(nome, descricao || null, permissoes)) : httpPost<Perfil>("/api/perfis", { nome, descricao: descricao || null, permissoes });
 export const salvarPermissoes = (id: string, permissoes: string[]) =>
-  httpPut<Perfil>(`/api/perfis/${id}/permissoes`, { permissoes });
+  useMock ? Promise.resolve(mockPerfilApi.salvarPermissoes(id, permissoes)) : httpPut<Perfil>(`/api/perfis/${id}/permissoes`, { permissoes });
 export const atribuirPerfil = (usuarioId: string, perfilId: string) =>
-  httpPatchBody<void>(`/api/perfis/usuarios/${usuarioId}`, { perfil_id: perfilId });
+  useMock ? Promise.resolve(mockPerfilApi.atribuir(usuarioId, perfilId)) : httpPatchBody<void>(`/api/perfis/usuarios/${usuarioId}`, { perfil_id: perfilId });

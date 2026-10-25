@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useOutletContext } from "react-router";
-import { Eye, SearchX, UserRoundCheck, UserRoundX, UsersRound } from "lucide-react";
+import { Eye, Plus, SearchX, Trash2, UserRoundCheck, UserRoundX, UsersRound } from "lucide-react";
 
 import type { PerfilAtual } from "@/core/auth/api";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
+import { Label } from "@/shared/ui/label";
+import { SELECT_EMPTY_VALUE, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyState, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
 import { toast } from "@/shared/lib/toast";
 import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
@@ -25,7 +27,8 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
   const podeVer = admin || perfil.permissoes.includes("times.consultar");
   const ehGerenteComEscopo = perfil.perfil_codigo === "GERENTE" && perfil.permissoes.includes("times.gerenciar") && perfil.setores_gerenciados.length > 0;
   const podeGerenciar = admin || ehGerenteComEscopo;
-  const podeVisualizarDetalhe = podeGerenciar || (perfil.perfil_codigo === "KP" && perfil.times.length > 0);
+  const podeGerenciarMembros = podeGerenciar || (perfil.perfil_codigo === "KP" && perfil.permissoes.includes("times.gerenciar"));
+  const podeVisualizarDetalhe = podeGerenciar || ((perfil.perfil_codigo === "KP" || perfil.perfil_codigo === "USUARIO_PADRAO") && perfil.times.length > 0);
   const client = useQueryClient();
   const [pagina, setPagina] = useState(1);
   const [tamanho, setTamanho] = useState(DEFAULT_TABLE_PAGE_SIZE);
@@ -44,9 +47,9 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
   const setorSelecionadoParaCriar = setorUnicoGerenciado?.id ?? setorId;
   const times = useQuery({ queryKey: ["times", pagina, tamanho, filtros], queryFn: () => timesApi.listar(pagina, tamanho, filtros), enabled: podeVer });
   const timesVisiveis = times.data?.items ?? [];
-  const membrosPorTime = useQueries({ queries: podeGerenciar ? timesVisiveis.map((time) => ({ queryKey: ["time-membros", time.id], queryFn: () => timesApi.membros(time.id) })) : [] });
+  const membrosPorTime = useQueries({ queries: podeGerenciarMembros ? timesVisiveis.map((time) => ({ queryKey: ["time-membros", time.id], queryFn: () => timesApi.membros(time.id) })) : [] });
   const membros = useQuery({ queryKey: ["time-membros", timeAtual?.id], queryFn: () => timesApi.membros(timeAtual!.id), enabled: Boolean(timeAtual) });
-  const usuarios = useQuery({ queryKey: ["times", "usuarios-disponiveis"], queryFn: timesApi.usuariosDisponiveis, enabled: podeGerenciar });
+  const usuarios = useQuery({ queryKey: ["times", "usuarios-disponiveis"], queryFn: timesApi.usuariosDisponiveis, enabled: podeGerenciarMembros });
   const criar = useMutation({ mutationFn: () => timesApi.criar({ nome: nome.trim(), setor_id: setorSelecionadoParaCriar }), onSuccess: async () => { setCriarAberto(false); setNome(""); setSetorId(""); await client.invalidateQueries({ queryKey: ["times"] }); toast.success(t("teamCreateSuccess")); }, onError: () => toast.error(t("teamCreateError")) });
   const definirAtivo = useMutation({ mutationFn: (input: { id: string; ativo: boolean }) => timesApi.definirAtivo(input.id, input.ativo), onSuccess: async (time) => { await client.invalidateQueries({ queryKey: ["times"] }); setTimeParaInativar(null); toast.success(`${t("team")} ${time.nome} ${time.ativo ? t("activate").toLowerCase() : t("inactivate").toLowerCase()}.`); }, onError: () => toast.error(t("teamStatusError")) });
   const adicionar = useMutation({ mutationFn: () => timesApi.adicionar(timeAtual!.id, usuarioId.trim()), onSuccess: async () => { setUsuarioId(""); await client.invalidateQueries({ queryKey: ["time-membros", timeAtual?.id] }); toast.success(t("memberAdded")); }, onError: () => toast.error(t("memberAddError")) });
@@ -55,24 +58,26 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
   if (!podeVer) return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
   const setorNome = (id: string) => setores.data?.items.find((setor) => setor.id === id)?.nome ?? id;
   const usuarioNome = (id: string) => usuarios.data?.find((usuario) => usuario.id === id)?.nome ?? id;
+  const podeGerenciarTime = (time: Time) => admin ||
+    (ehGerenteComEscopo && perfil.setores_gerenciados.includes(time.setor_id)) ||
+    (perfil.perfil_codigo === "KP" && perfil.permissoes.includes("times.gerenciar") && perfil.times.some((item) => item.id === time.id));
   function abrirCriacaoTime() {
     setNome("");
     setSetorId("");
     setCriarAberto(true);
   }
   return <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
-    <header className="mb-7 flex shrink-0 items-center justify-between"><h1 className="text-2xl font-medium text-[#3478F6]">{t("teams")}</h1>{podeGerenciar && <Button onClick={abrirCriacaoTime}>{t("newTeam")}</Button>}</header>
+    <header className="mb-7 flex shrink-0 items-center justify-between"><h1 className="text-2xl font-medium text-primary">{t("teams")}</h1>{podeGerenciar && <Button onClick={abrirCriacaoTime}>{t("newTeam")}</Button>}</header>
     <TableLayout>
     <Table containerClassName={`min-h-0 ${times.data?.items.length ? "flex-1 overflow-auto" : "shrink-0 overflow-visible"}`}><TableHeader><TableRow>
       <TableHead><TableColumnFilter label={t("teams")} value={filtros.busca ?? ""} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, busca: value || undefined })); }} placeholder={t("searchTeam")} /></TableHead>
       <TableHead><TableColumnFilter label={t("sector")} value={filtros.setor_id ?? ""} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, setor_id: value || undefined })); }} options={[{ value: "", label: t("all") }, ...(setores.data?.items ?? []).map((setor) => ({ value: setor.id, label: setor.nome }))]} /></TableHead>
-      <TableHead><TableColumnFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, ativo: value === "" ? undefined : value === "true" })); }} options={[{ value: "", label: t("all") }, { value: "true", label: t("active") }, { value: "false", label: t("inactive") }]} /></TableHead>{podeGerenciar && <TableHead>{t("members")}</TableHead>}{podeVisualizarDetalhe && <TableHead className="text-right">{t("actions")}</TableHead>}
+      {podeGerenciarMembros && <TableHead>{t("members")}</TableHead>}<TableHead><TableColumnFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, ativo: value === "" ? undefined : value === "true" })); }} options={[{ value: "", label: t("all") }, { value: "true", label: t("active") }, { value: "false", label: t("inactive") }]} /></TableHead>{podeVisualizarDetalhe && <TableHead className="text-right">{t("actions")}</TableHead>}
     </TableRow></TableHeader>{Boolean(times.data?.items.length) && <TableBody>
       {timesVisiveis.map((time, index) => <TableRow key={time.id}>
-        <TableCell className="text-base font-medium text-foreground">{time.nome}</TableCell>
-        <TableCell className="text-base text-muted-foreground">{setorNome(time.setor_id)}</TableCell>
-        <TableCell><Badge variant="secondary" className={time.ativo ? "rounded-md bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700" : "rounded-md bg-secondary px-2.5 py-1 text-xs text-muted-foreground"}>{time.ativo ? t("active") : t("inactive")}</Badge></TableCell>
-        {podeGerenciar && <TableCell>
+        <TableCell className="font-medium text-foreground">{time.nome}</TableCell>
+        <TableCell className="text-muted-foreground">{time.setor_nome ?? setorNome(time.setor_id)}</TableCell>
+        {podeGerenciarMembros && <TableCell>
           {(() => {
             const integrantes = (membrosPorTime[index]?.data ?? []).filter((membro) => membro.ativo).map((membro) => usuarioNome(membro.usuario_id));
             const nomesIntegrantes = integrantes.length ? integrantes : [t("teamMembersEmpty")];
@@ -86,9 +91,10 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
             </span>;
           })()}
         </TableCell>}
+        <TableCell><Badge variant="secondary" className={time.ativo ? "rounded-md bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700" : "rounded-md bg-secondary px-2.5 py-1 text-xs text-muted-foreground"}>{time.ativo ? t("active") : t("inactive")}</Badge></TableCell>
         {podeVisualizarDetalhe && <TableCell className="text-right"><TableRowActions label={time.nome} actions={[
           { label: t("viewTeam"), icon: Eye, onSelect: () => navigate(`${modoAdmin ? "/admin/times" : "/times"}/${time.id}`) },
-          ...((admin || (ehGerenteComEscopo && perfil.setores_gerenciados.includes(time.setor_id))) && time.ativo ? [{ label: t("manageMembers"), icon: UsersRound, onSelect: () => setTimeAtual(time) }] : []),
+          ...(podeGerenciarTime(time) && time.ativo ? [{ label: t("manageMembers"), icon: UsersRound, onSelect: () => setTimeAtual(time) }] : []),
           ...(admin ? [{ label: time.ativo ? t("inactivate") : t("activate"), icon: time.ativo ? UserRoundX : UserRoundCheck, destructive: time.ativo, onSelect: () => time.ativo ? setTimeParaInativar(time) : definirAtivo.mutate({ id: time.id, ativo: true }) }] : []),
         ]} /></TableCell>}
       </TableRow>)}
@@ -101,21 +107,36 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
         <p className="mx-auto mt-1.5 max-w-xs text-sm leading-6 text-muted-foreground">
           {Object.values(filtros).some((value) => value !== undefined && value !== "") ? t("noTeamResults") : t("noTeamHint")}
         </p>
-        {Object.values(filtros).some((value) => value !== undefined && value !== "") ? <Button variant="outline" size="sm" className="mt-5" onClick={() => { setPagina(1); setFiltros({}); }}>{t("clearFilters")}</Button> : podeGerenciar && <Button size="sm" className="mt-5" onClick={() => setCriarAberto(true)}>{t("createFirstTeam")}</Button>}
+        {Object.values(filtros).some((value) => value !== undefined && value !== "") && <Button variant="outline" size="sm" className="mt-5" onClick={() => { setPagina(1); setFiltros({}); }}>{t("clearFilters")}</Button>}
       </div>}
     </TableEmptyState>}
     <TablePagination page={pagina} pageSize={tamanho} totalCount={times.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(n) => { setTamanho(n); setPagina(1); }} />
     </TableLayout>
     <Dialog open={criarAberto} onOpenChange={(open) => { setCriarAberto(open); if (!open) { setNome(""); setSetorId(""); setErrosCriacao({}); } }}>
       <DrawerContent>
-        <DrawerHeader><DrawerTitle>{t("newTeam")}</DrawerTitle></DrawerHeader>
+        <DrawerHeader>
+          <DrawerTitle>{t("newTeam")}</DrawerTitle>
+        </DrawerHeader>
         <form noValidate className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => { event.preventDefault(); const errors: typeof errosCriacao = {}; if (!nome.trim()) errors.nome = t("requiredField"); if (!setorSelecionadoParaCriar) errors.setor = t("requiredField"); setErrosCriacao(errors); if (Object.keys(errors).length) return; criar.mutate(); }}>
-          <div className="flex-1 space-y-5 px-7 py-6">
-            <label className="block space-y-2 text-sm font-medium">{t("teamName")}<Input aria-invalid={Boolean(errosCriacao.nome)} aria-describedby={errosCriacao.nome ? "team-name-error" : undefined} value={nome} onChange={(e) => { setNome(e.target.value); setErrosCriacao((errors) => ({ ...errors, nome: undefined })); }} required maxLength={120} />{errosCriacao.nome && <p id="team-name-error" role="alert" className="text-sm text-destructive">{errosCriacao.nome}</p>}</label>
-            <label className="block space-y-2 text-sm font-medium">{t("sector")}
-              {!admin && ehGerenteComEscopo && setores.isLoading ? <Input aria-label={t("sector")} value={t("loadingSectors")} readOnly disabled /> : setorUnicoGerenciado ? <Input aria-label={t("sector")} value={setorUnicoGerenciado.nome} readOnly /> : <select aria-invalid={Boolean(errosCriacao.setor)} aria-describedby={errosCriacao.setor ? "team-sector-error" : undefined} required aria-label={t("sector")} className="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm aria-invalid:border-destructive aria-invalid:focus-visible:ring-2 aria-invalid:focus-visible:ring-destructive" value={setorId} onChange={(e) => { setSetorId(e.target.value); setErrosCriacao((errors) => ({ ...errors, setor: undefined })); }}><option value="">{t("selectSector")}</option>{setoresAtivos.map((setor) => <option key={setor.id} value={setor.id}>{setor.nome}</option>)}</select>}
-              {errosCriacao.setor && <p id="team-sector-error" role="alert" className="text-sm text-destructive">{errosCriacao.setor}</p>}
-            </label>
+          <div className="flex-1 space-y-6 px-7 py-6">
+            <div className="flex flex-col">
+              <Label htmlFor="team-name">{t("teamName")}</Label>
+              <Input id="team-name" className="mt-2.5" aria-invalid={Boolean(errosCriacao.nome)} aria-describedby={errosCriacao.nome ? "team-name-error" : undefined} value={nome} onChange={(e) => { setNome(e.target.value); setErrosCriacao((errors) => ({ ...errors, nome: undefined })); }} required maxLength={120} />
+              {errosCriacao.nome && <p id="team-name-error" role="alert" className="mt-1.5 text-sm text-destructive">{errosCriacao.nome}</p>}
+            </div>
+            <div className="flex flex-col">
+              <Label htmlFor="team-sector">{t("sector")}</Label>
+              {!admin && ehGerenteComEscopo && setores.isLoading ? <Input id="team-sector" className="mt-2.5" value={t("loadingSectors")} readOnly disabled /> : setorUnicoGerenciado ? <Input id="team-sector" className="mt-2.5" value={setorUnicoGerenciado.nome} readOnly /> : <Select value={setorId} onValueChange={(value) => { setSetorId(value === SELECT_EMPTY_VALUE ? "" : value); setErrosCriacao((errors) => ({ ...errors, setor: undefined })); }}>
+                <SelectTrigger id="team-sector" aria-invalid={Boolean(errosCriacao.setor)} aria-describedby={errosCriacao.setor ? "team-sector-error" : undefined} className="mt-2.5 h-11 rounded-xl px-3.5">
+                  <SelectValue placeholder={t("selectSector")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={SELECT_EMPTY_VALUE}>{t("selectSector")}</SelectItem>
+                  {setoresAtivos.map((setor) => <SelectItem key={setor.id} value={setor.id}>{setor.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>}
+              {errosCriacao.setor && <p id="team-sector-error" role="alert" className="mt-1.5 text-sm text-destructive">{errosCriacao.setor}</p>}
+            </div>
           </div>
           <div className="flex justify-end border-t border-border px-7 py-5"><div className="flex gap-2"><DrawerClose asChild><Button type="button" variant="outline">{t("cancel")}</Button></DrawerClose><Button disabled={criar.isPending || setores.isLoading}>{t("createTeam")}</Button></div></div>
         </form>
@@ -125,22 +146,29 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
       <DrawerContent>
         <DrawerHeader className="border-b border-border pb-5">
           <DrawerTitle>{timeAtual ? t("memberTitle", { name: timeAtual.nome }) : t("members")}</DrawerTitle>
-          <p className="text-sm font-normal text-muted-foreground">{t("teamMembersCount", { count: (membros.data ?? []).filter((membro) => membro.ativo).length })}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("teamMembersCount", { count: (membros.data ?? []).filter((membro) => membro.ativo).length })}</p>
         </DrawerHeader>
         <div className="flex-1 space-y-7 overflow-y-auto px-7 py-6">
           <form className="space-y-4 rounded-2xl border border-border bg-[#FBFBFC] p-4" onSubmit={(event) => { event.preventDefault(); adicionar.mutate(); }}>
             <div>
               <h3 className="text-sm font-semibold text-foreground">{t("addMemberToTeam")}</h3>
-              <p className="mt-1 text-xs text-muted-foreground">{t("addMemberHint")}</p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-              <label className="block min-w-0 space-y-1.5 text-xs font-medium text-muted-foreground">{t("selectUser")}
-                <select className="h-10 w-full min-w-0 rounded-lg border border-input bg-white px-3 text-sm text-foreground" value={usuarioId} onChange={(e) => setUsuarioId(e.target.value)}>
-                  <option value="">{t("selectUser")}</option>
-                  {(usuarios.data ?? []).filter((usuario) => usuario.ativo && !(membros.data ?? []).some((membro) => membro.usuario_id === usuario.id && membro.ativo)).map((usuario) => <option key={usuario.id} value={usuario.id}>{usuario.nome} · {usuario.email}</option>)}
-                </select>
-              </label>
-              <Button disabled={!usuarioId || adicionar.isPending} className="h-10">{adicionar.isPending ? t("pleaseWait") : t("add")}</Button>
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+              <div className="flex min-w-0 flex-col">
+                <Label htmlFor="team-member-user" className="text-xs text-muted-foreground">{t("selectUser")}</Label>
+                <Select value={usuarioId} onValueChange={(value) => setUsuarioId(value === SELECT_EMPTY_VALUE ? "" : value)}>
+                  <SelectTrigger id="team-member-user" className="mt-2.5 rounded-lg bg-white">
+                    <SelectValue placeholder={t("selectUser")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={SELECT_EMPTY_VALUE}>{t("selectUser")}</SelectItem>
+                    {(usuarios.data ?? []).filter((usuario) => usuario.ativo && !(membros.data ?? []).some((membro) => membro.usuario_id === usuario.id && membro.ativo)).map((usuario) => <SelectItem key={usuario.id} value={usuario.id}>{usuario.nome} · {usuario.email}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button type="submit" variant="outline" size="icon" aria-label={adicionar.isPending ? t("pleaseWait") : t("add")} title={adicionar.isPending ? t("pleaseWait") : t("add")} disabled={!usuarioId || adicionar.isPending} className="mt-[27px] text-primary hover:bg-primary/10 hover:text-primary">
+                <Plus aria-hidden="true" className="size-4" />
+              </Button>
             </div>
           </form>
 
@@ -155,7 +183,9 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
                 return <div key={membro.id} className="flex items-center gap-3 rounded-xl border border-border bg-white px-3 py-3">
                   <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#EAF0FF] text-sm font-semibold text-primary">{nome.slice(0, 1).toLocaleUpperCase()}</span>
                   <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-foreground" title={nome}>{nome}</p><p className="mt-0.5 text-xs text-muted-foreground">{perfilNome}</p></div>
-                  <Button type="button" variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setMembroParaRemover(membro.usuario_id)}>{t("remove")}</Button>
+                  <Button type="button" variant="ghost" size="icon" aria-label={`${t("removeTeamMemberTitle")} ${nome}`} title={t("remove")} className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setMembroParaRemover(membro.usuario_id)}>
+                    <Trash2 aria-hidden="true" className="size-4" />
+                  </Button>
                 </div>;
               })}
             </div>}

@@ -48,8 +48,16 @@
 - [x] **T09. Manter autorização, isolamento e proteção de perfis de sistema**
   - Arquivos: endpoints e testes funcionais da API
   - Cobre: CA-12, CA-13
-  - Critérios: 403 sem permissão; perfil de sistema somente leitura na tela e protegido na API; outro tenant não lê nem altera os dados
+  - Critérios: 403 sem permissão; identidade do perfil de sistema protegida e permissões editáveis por administrador; outro tenant não lê nem altera os dados
 - [x] **T10. Validar acessibilidade e responsividade do fluxo completo**
   - Arquivos: testes de componente e E2E
   - Cobre: CA-14
   - Verificação: `cd frontend && npm test -- --run src/modules/perfis` e `npm run e2e -- --grep "perfis"` → teclado, foco visível, estado parcial e viewport estreito
+
+## Fase 5: Edição de permissões em perfis seedados
+
+- [x] **T11. Permitir edição administrativa das permissões de todos os perfis da unidade**
+  - Arquivos: endpoint de permissões, editor, testes e ADR 0031
+  - Cobre: RN-03, RN-13, CA-12, CA-16
+  - Verificação: testes de API e componente confirmam edição de ADMIN_UNIDADE, USUARIO_PADRAO,
+    GERENTE, KP e perfis personalizados; códigos e identidade dos perfis seedados permanecem estáveis

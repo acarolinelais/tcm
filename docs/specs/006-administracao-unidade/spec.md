@@ -2,7 +2,7 @@
 
 - **Status:** Concluída
 - **Data:** 2026-10-23
-- **ADRs relacionados:** 0013, 0018, 0019, 0020, 0021, 0024
+- **ADRs relacionados:** 0013, 0018, 0019, 0020, 0021, 0024, 0031
 - **Specs relacionadas:** 002, 003, 004, 005
 
 ## Problema
@@ -39,10 +39,10 @@ permissões do perfil e o isolamento da unidade.
 - RN-03: A criação de usuários permite selecionar um perfil existente e elegível. Perfil de acesso e
   responsabilidade de gerente são conceitos separados: o perfil concede permissões e a associação
   a setores define o escopo organizacional em que elas podem ser exercidas.
-- RN-03a: O perfil de sistema **Gerente** é seedado, protegido contra edição e atribuível pelo
-  administrador. Ele concede `usuarios.consultar`, `usuarios.gerenciar`, `times.consultar`,
-  `times.criar` e `times.gerenciar`; o vínculo direto de responsabilidade restringe a gestão de
-  contas, e a associação ativa a setor restringe a gestão de times.
+- RN-03a: O perfil de sistema **Gerente** é seedado e atribuível pelo administrador. Seu código,
+  nome e descrição são mantidos pelo sistema; o administrador pode ajustar suas permissões conforme
+  ADR 0031. O vínculo direto de responsabilidade restringe a gestão de contas, e a associação ativa
+  a setor restringe a gestão de times.
 - RN-04: A administração permite criar, editar, inativar e consultar setores da unidade. Um setor
   com times ativos não pode ser inativado. Ao inativar um setor sem times ativos, as associações de
   gerentes a ele também são inativadas. Reativar o setor não reativa associações antigas; o admin

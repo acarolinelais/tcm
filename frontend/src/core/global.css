@@ -6,7 +6,7 @@
   --foreground: 222 47% 11%;
   --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
-  --primary: 217 91% 60%;
+  --primary: 219 92% 58%;
   --primary-foreground: 0 0% 100%;
   --secondary: 210 20% 96%;
   --secondary-foreground: 222 47% 11%;
@@ -16,11 +16,17 @@
   --input: 214 32% 91%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --ring: 217 91% 60%;
+  --ring: 219 92% 58%;
   --radius: 0.5rem;
 }
 
 @theme inline {
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.1875rem;
+  --text-2xl: 1.375rem;
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
   --color-card: hsl(var(--card));
@@ -50,6 +56,53 @@ body {
     -apple-system,
     "Segoe UI",
     sans-serif;
+}
+
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.thin-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.thin-scroll::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: #cbd5e1;
+}
+
+.thin-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.thin-scroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Área de soltar arquivo do Figma: traço tracejado com cantos arredondados, que border-dashed não reproduz.
+   O stroke de 2px fica metade fora do retângulo, então aparece com 1px. */
+.dropzone-tracejada {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='20' ry='20' stroke='%23CBCFD3' stroke-width='2' stroke-dasharray='8 8'/%3e%3c/svg%3e");
+  border-radius: 20px;
+}
+
+.dropzone-tracejada[data-arrastando="true"] {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='20' ry='20' stroke='%233672F2' stroke-width='2' stroke-dasharray='8 8'/%3e%3c/svg%3e");
+}
+
+[data-sonner-toast] [data-close-button] {
+  left: auto !important;
+  right: 0.5rem !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
 }
 
 @keyframes dialog-fade-in {
@@ -88,14 +141,89 @@ body {
   animation: drawer-enter 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* Saídas: mesmo caminho da entrada, mais curtas e suaves. */
+.dialog-overlay[data-state="closed"],
+.drawer-overlay[data-state="closed"] {
+  animation: dialog-fade-in 140ms ease-out reverse;
+}
+
+.dialog-content[data-state="closed"] {
+  animation: dialog-enter 140ms ease-out reverse;
+}
+
+.drawer-content[data-state="closed"] {
+  animation: drawer-enter 160ms ease-out reverse;
+}
+
+/* Menus e popovers nascem do gatilho. */
+@keyframes popover-enter {
+  from { opacity: 0; scale: 0.96; }
+  to { opacity: 1; scale: 1; }
+}
+
+.popover-enter {
+  transform-origin: top right;
+  animation: popover-enter 140ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes popover-exit {
+  from { opacity: 1; scale: 1; }
+  to { opacity: 0; scale: 0.96; }
+}
+
+/* Saída pelo mesmo caminho da entrada (usePresenca mantém o menu montado durante ela). */
+.popover-enter[data-saindo="true"] {
+  animation: popover-exit 100ms cubic-bezier(0.2, 0, 0, 1) forwards;
+  pointer-events: none;
+}
+
+.select-content {
+  transform-origin: var(--radix-select-content-transform-origin);
+}
+
+/* Popups do Base UI: transição (interrompível) que entra e sai pelo mesmo caminho, a partir do gatilho. */
+.base-popup {
+  transform-origin: var(--transform-origin);
+  transition: opacity 140ms cubic-bezier(0.2, 0, 0, 1), scale 140ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.base-popup[data-starting-style],
+.base-popup[data-ending-style] {
+  opacity: 0;
+  scale: 0.96;
+}
+
+/* Movimento reduzido: sem deslizar nem escalar, mas com um fade curto (o retorno visual continua). */
 @media (prefers-reduced-motion: reduce) {
   .dialog-overlay[data-state="open"],
-  .dialog-content[data-state="open"] {
-    animation: none;
+  .dialog-content[data-state="open"],
+  .drawer-overlay[data-state="open"],
+  .drawer-content[data-state="open"],
+  .popover-enter {
+    animation: dialog-fade-in 140ms ease-out;
   }
 
-  .drawer-overlay[data-state="open"],
-  .drawer-content[data-state="open"] {
-    animation: none;
+  .dialog-overlay[data-state="closed"],
+  .dialog-content[data-state="closed"],
+  .drawer-overlay[data-state="closed"],
+  .drawer-content[data-state="closed"] {
+    animation: dialog-fade-in 120ms ease-out reverse;
+  }
+
+  .popover-enter[data-saindo="true"] {
+    animation: dialog-fade-in 100ms ease-out reverse forwards;
+  }
+
+  .base-popup {
+    transition-property: opacity;
+  }
+}
+
+/* Transparência reduzida: overlays sem desfoque e um pouco mais opacos. */
+@media (prefers-reduced-transparency: reduce) {
+  .dialog-overlay,
+  .drawer-overlay {
+    backdrop-filter: none;
+    background-color: rgb(2 6 23 / 0.6);
   }
 }

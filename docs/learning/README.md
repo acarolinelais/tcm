@@ -6,4 +6,4 @@ Arquivo: `AAAA-MM-DD-conceito-em-kebab-case.md`.
 ## Índice
 | Data | Conceito | Tags |
 |---|---|---|
-| — | *(ainda sem entradas)* | — |
+| 2026-10-24 | [Associação, paginação e cache no fluxo do dev](2026-10-24-associacao-paginacao-cache-dev.md) | autorização, SQL, paginação, cache, testes |

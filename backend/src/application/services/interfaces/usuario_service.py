@@ -20,6 +20,9 @@ class UsuarioService(Protocol):
         email: str | None = None,
         ativo: bool | None = None,
         perfil_id: UUID | None = None,
+        responsavel_id: UUID | None = None,
+        sem_responsavel: bool = False,
+        setor_id: UUID | None = None,
     ) -> PagedResult[UsuarioResponse]: ...
 
     async def obter(self, usuario_atual: UsuarioAutenticado, id: UUID) -> UsuarioResponse: ...

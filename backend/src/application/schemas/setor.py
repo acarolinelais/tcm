@@ -7,6 +7,7 @@ from src.domain.entities.setor import Setor
 
 class CriarSetorRequest(BaseModel):
     nome: str = Field(min_length=1, max_length=Setor.NOME_MAX_LENGTH)
+    gerente_id: UUID | None = None
 
     @field_validator("nome")
     @classmethod

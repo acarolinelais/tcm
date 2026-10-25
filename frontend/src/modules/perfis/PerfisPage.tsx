@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, ShieldCheck } from "lucide-react";
 import { useBlocker } from "react-router";
 
 import { usePerfilAtual } from "@/core/auth/usePerfilAtual";
 import { ApiError } from "@/shared/api/problem-details";
 import { Button } from "@/shared/ui/button";
+import { Badge } from "@/shared/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { Input } from "@/shared/ui/input";
+import { Label } from "@/shared/ui/label";
 import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyState, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
+import { PageSkeleton } from "@/shared/ui/skeleton";
 import { criarPerfil, listarPerfis, listarPermissoes, salvarPermissoes } from "./api/perfis.api";
 import type { Perfil, Permissao } from "./api/perfis.api";
 import { PerfilAcoesMenu } from "./PerfilAcoesMenu";
@@ -41,7 +45,7 @@ export function PerfisPage() {
   const baseline = atual?.permissoes ?? [];
   const dirty = criando
     ? Boolean(nome.trim() || descricao.trim() || marcadas.length)
-    : Boolean(modoEditor === "editar" && atual && !atual.codigo && !mesmosCodigos(baseline, marcadas));
+    : Boolean(modoEditor === "editar" && atual && !mesmosCodigos(baseline, marcadas));
   const blocker = useBlocker(dirty);
 
   const grupos = (() => {
@@ -196,7 +200,7 @@ export function PerfisPage() {
     return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
   }
   if (perfis.isLoading || permissoes.isLoading) {
-    return <p className="p-6 text-sm text-muted-foreground">{t("loading")}</p>;
+    return <PageSkeleton />;
   }
   if (perfis.error instanceof ApiError && perfis.error.problem.status === 403) {
     return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
@@ -220,7 +224,7 @@ export function PerfisPage() {
     <section className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
       <header className="mb-7 flex shrink-0 flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-medium leading-8 text-[#3478F6]">{t("profileTitle")}</h1>
+          <h1 className="text-2xl font-medium leading-8 text-primary">{t("profileTitle")}</h1>
         </div>
         {!criando && <Button onClick={() => pedirAcao({ tipo: "novo" })} className="h-10 rounded-lg px-5 text-sm">{t("newProfile")}</Button>}
       </header>
@@ -241,15 +245,21 @@ export function PerfisPage() {
               {perfisPaginados.map((perfil) => (
                 <TableRow key={perfil.id}>
                   <TableCell className="font-medium">{perfil.codigo ? t(`catalog.profile.${perfil.codigo}`, { defaultValue: perfil.nome }) : perfil.nome}</TableCell>
-                  <TableCell className="text-muted-foreground">{perfil.descricao || "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{perfil.codigo ? t(`catalog.profile.description.${perfil.codigo}`, { defaultValue: perfil.descricao || "—" }) : perfil.descricao || "—"}</TableCell>
                   <TableCell>{perfil.codigo ? t("protectedBySystem") : t("unitProfile")}</TableCell>
-                  <TableCell>{t("permissionCount", { count: perfil.permissoes.length })}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="gap-1.5 rounded-md border border-[#DCE7FF] bg-[#F5F8FF] px-2.5 py-1 text-primary">
+                      <ShieldCheck aria-hidden="true" className="size-3.5" />
+                      <span aria-hidden="true">{perfil.permissoes.length}</span>
+                      <span className="sr-only">{t("permissionCount", { count: perfil.permissoes.length })}</span>
+                    </Badge>
+                  </TableCell>
                   <TableCell className="text-center">
                     <PerfilAcoesMenu
                       perfil={perfil}
                       onVisualizar={() => pedirAcao({ tipo: "perfil", perfil, modo: "visualizar" })}
                       onEditar={() => pedirAcao({ tipo: "perfil", perfil, modo: "editar" })}
-                      podeEditar={!perfil.codigo}
+                      podeEditar
                     />
                   </TableCell>
                 </TableRow>
@@ -273,16 +283,16 @@ export function PerfisPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
                   <div className="min-w-0 flex-1">
                     {criando ? (
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <label className="block space-y-1.5 text-sm">
-                          <span className="font-medium">{t("profileName")} <span className="text-destructive" aria-hidden="true">*</span></span>
-                          <input autoFocus required aria-invalid={Boolean(erroNome)} aria-describedby={erroNome ? "profile-name-error" : undefined} maxLength={100} value={nome} onChange={(event) => { setNome(event.target.value); setErroNome(""); }} placeholder={t("profileExample")} className="w-full rounded-lg border border-border bg-background px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-primary aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive" />
-                          {erroNome && <p id="profile-name-error" role="alert" className="text-sm text-destructive">{erroNome}</p>}
-                        </label>
-                        <label className="block space-y-1.5 text-sm">
-                          <span className="font-medium">{t("description")} <span className="text-muted-foreground">({t("optional")})</span></span>
-                          <input maxLength={300} value={descricao} onChange={(event) => setDescricao(event.target.value)} placeholder={t("profileDescriptionHint")} className="w-full rounded-lg border border-border bg-background px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-primary" />
-                        </label>
+                      <div className="grid gap-5 sm:grid-cols-2">
+                        <div className="flex flex-col">
+                          <Label htmlFor="profile-name">{t("profileName")} <span className="text-destructive" aria-hidden="true">*</span></Label>
+                          <Input id="profile-name" className="mt-2.5" autoFocus required aria-invalid={Boolean(erroNome)} aria-describedby={erroNome ? "profile-name-error" : undefined} maxLength={100} value={nome} onChange={(event) => { setNome(event.target.value); setErroNome(""); }} placeholder={t("profileExample")} />
+                          {erroNome && <p id="profile-name-error" role="alert" className="mt-1.5 text-sm text-destructive">{erroNome}</p>}
+                        </div>
+                        <div className="flex flex-col">
+                          <Label htmlFor="profile-description">{t("description")} <span className="text-muted-foreground">({t("optional")})</span></Label>
+                          <Input id="profile-description" className="mt-2.5" maxLength={300} value={descricao} onChange={(event) => setDescricao(event.target.value)} />
+                        </div>
                       </div>
                     ) : (
                       <>
@@ -302,7 +312,7 @@ export function PerfisPage() {
                   {!criando && dirty && <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-900">{t("unsavedChanges")}</span>}
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {grupos.map(([codigo, grupo]) => {
                     const ids = grupo.itens.map((item) => item.id);
                     const selecionadas = grupo.itens.filter((item) => marcadas.includes(item.id));
@@ -317,7 +327,7 @@ export function PerfisPage() {
                         marcadas={marcadas}
                         estado={estado}
                         aberto={aberto}
-                        disabled={Boolean(atual?.codigo) || modoEditor === "visualizar" || mutacaoAtiva}
+                        disabled={modoEditor === "visualizar" || mutacaoAtiva}
                         onToggleOpen={() => alternarGrupo(codigo)}
                         onToggleAll={() => setMarcadas((atuais) => estado === "checked"
                           ? atuais.filter((id) => !ids.includes(id))
@@ -341,7 +351,7 @@ export function PerfisPage() {
                     </p>
                   ) : dirty ? (
                     <p className="text-sm text-muted-foreground">{criando ? t("newProfileNotCreated") : t("pendingChanges")}</p>
-                  ) : atual?.codigo || modoEditor === "visualizar" ? (
+                  ) : modoEditor === "visualizar" ? (
                     <p className="text-sm text-muted-foreground">{t("profileReadOnlyHint")}</p>
                   ) : null}
                 </div>
@@ -354,7 +364,7 @@ export function PerfisPage() {
                       </Button>
                     </>
                   ) : (
-                    <Button type="button" disabled={modoEditor !== "editar" || !dirty || mutacaoAtiva || Boolean(atual?.codigo)} onClick={() => salvar.mutate({ perfilId: selecionado, codigos: marcadas })}>
+                    <Button type="button" disabled={modoEditor !== "editar" || !dirty || mutacaoAtiva} onClick={() => salvar.mutate({ perfilId: selecionado, codigos: marcadas })}>
                       {salvar.isPending ? t("savingChanges") : t("saveChanges")}
                     </Button>
                   )}

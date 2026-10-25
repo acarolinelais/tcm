@@ -68,11 +68,11 @@
   - Arquivos: helpers de formatação e componentes que exibem valores formatados
   - Cobre: RN-07
   - Verificação: testes cobrem formatação equivalente em `en`, `pt-BR` e `ko`
-- [ ] **T14. Validar cobertura de traduções e fluxo entre dispositivos**
+- [x] **T14. Validar cobertura de traduções e fluxo entre dispositivos**
   - Arquivos: scripts de paridade, testes API, componentes e E2E
   - Cobre: CA-01 a CA-11
-  - Verificação: sem chaves faltantes; teste confirma preferência da conta prevalece após login e em nova sessão
-- [ ] **T15. Executar validações completas e corrigir regressões**
+  - Verificação: paridade integral dos catálogos; teste de `AppLayout` confirma que a preferência retornada pelo perfil prevalece numa sessão nova
+- [x] **T15. Executar validações completas e corrigir regressões**
   - Arquivos: nenhuma alteração funcional planejada; corrigir achados
   - Cobre: todos
-  - Verificação: backend tests + Ruff; frontend test/build/lint/E2E aprovados
+  - Verificação: backend (123 testes), Ruff e formatação; frontend (24 testes), build, lint e E2E (5 testes) aprovados

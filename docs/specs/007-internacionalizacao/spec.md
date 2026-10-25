@@ -1,6 +1,6 @@
 # 007. Internacionalização do frontend: Spec
 
-- **Status:** Em andamento
+- **Status:** Concluída
 - **Data:** 2026-10-23
 - **ADRs relacionados:** 0002, 0004, 0006, 0025
 - **Specs relacionadas:** 002, 003, 004, 005, 006

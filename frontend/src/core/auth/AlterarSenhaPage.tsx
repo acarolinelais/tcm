@@ -57,10 +57,11 @@ export function AlterarSenhaPage() {
             {t("initialPasswordHint")}
           </p>
         </div>
-        <div className="space-y-2">
+        <div className="flex flex-col">
           <Label htmlFor="nova-senha">{t("newPassword")}</Label>
           <Input
             id="nova-senha"
+            className="mt-2.5"
             type="password"
             autoComplete="new-password"
             maxLength={128}
@@ -70,12 +71,13 @@ export function AlterarSenhaPage() {
             value={novaSenha}
             onChange={(event) => { setNovaSenha(event.target.value); setErrosCampos((errors) => ({ ...errors, novaSenha: undefined })); }}
           />
-          {errosCampos.novaSenha && <p id="nova-senha-error" role="alert" className="text-sm text-destructive">{errosCampos.novaSenha}</p>}
+          {errosCampos.novaSenha && <p id="nova-senha-error" role="alert" className="mt-1.5 text-sm text-destructive">{errosCampos.novaSenha}</p>}
         </div>
-        <div className="space-y-2">
+        <div className="flex flex-col">
           <Label htmlFor="confirmacao-senha">{t("confirmPassword")}</Label>
           <Input
             id="confirmacao-senha"
+            className="mt-2.5"
             type="password"
             autoComplete="new-password"
             maxLength={128}
@@ -85,7 +87,7 @@ export function AlterarSenhaPage() {
             value={confirmacao}
             onChange={(event) => { setConfirmacao(event.target.value); setErrosCampos((errors) => ({ ...errors, confirmacao: undefined })); }}
           />
-          {errosCampos.confirmacao && <p id="confirmacao-senha-error" role="alert" className="text-sm text-destructive">{errosCampos.confirmacao}</p>}
+          {errosCampos.confirmacao && <p id="confirmacao-senha-error" role="alert" className="mt-1.5 text-sm text-destructive">{errosCampos.confirmacao}</p>}
         </div>
         {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}
         <Button type="submit" className="w-full" disabled={salvando}>

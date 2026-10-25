@@ -4,6 +4,10 @@ import { createPortal } from "react-dom";
 import { ChevronDown, Filter, Search, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { formatarDiaIso, lerDiaIso } from "@/shared/lib/utils";
+import { usePresenca } from "@/shared/lib/use-presenca";
+import { Calendar } from "@/shared/ui/calendar";
+
 export interface TableFilterOption {
   value: string;
   label: string;
@@ -15,12 +19,15 @@ export function TableColumnFilter({
   onChange,
   options,
   placeholder,
+  type = "text",
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options?: TableFilterOption[];
   placeholder?: string;
+  /** "date": o valor é um dia no formato AAAA-MM-DD, escolhido num Calendar. */
+  type?: "text" | "date";
 }) {
   const { t } = useTranslation();
   const [aberto, setAberto] = useState(false);
@@ -28,6 +35,7 @@ export function TableColumnFilter({
   const [posicao, setPosicao] = useState({ top: 0, right: 8 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { montado, saindo } = usePresenca(aberto);
 
   useEffect(() => {
     if (!aberto) return;
@@ -61,7 +69,7 @@ export function TableColumnFilter({
     }
     const bounds = triggerRef.current?.getBoundingClientRect();
     if (bounds) {
-      const alturaMenu = options ? Math.min(300, options.length * 38 + 8) : 132;
+      const alturaMenu = options ? Math.min(300, options.length * 38 + 8) : type === "date" ? 340 : 132;
       const top = bounds.bottom + alturaMenu > window.innerHeight
         ? Math.max(8, bounds.top - alturaMenu - 6)
         : bounds.bottom + 6;
@@ -87,19 +95,22 @@ export function TableColumnFilter({
         aria-label={t("filterBy", { label })}
         aria-haspopup="menu"
         aria-expanded={aberto}
-        className={`inline-flex items-center gap-1.5 text-left text-xs font-semibold uppercase tracking-wide transition-colors ${ativo ? "text-primary" : "text-foreground hover:text-primary"}`}
+        className={`group inline-flex items-center gap-1.5 text-left text-sm font-semibold uppercase tracking-wide transition-colors ${ativo ? "text-primary" : "text-foreground hover:text-primary"}`}
         onClick={alternarMenu}
       >
         {label}
-        {ativo ? <Filter aria-hidden="true" className="h-3.5 w-3.5" /> : <ChevronDown aria-hidden="true" className="h-3.5 w-3.5" />}
+        {ativo ? <Filter aria-hidden="true" className="h-3.5 w-3.5" /> : <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 transition-transform duration-200 ease-in-out group-aria-expanded:rotate-180 motion-reduce:transition-none" />}
       </button>
-      {aberto && createPortal(
+      {montado && createPortal(
         <div
           ref={menuRef}
-          role="menu"
+          data-saindo={saindo}
+          aria-hidden={saindo || undefined}
+          inert={saindo}
+          role={type === "date" ? "dialog" : "menu"}
           aria-label={t("filter", { label })}
           style={{ position: "fixed", top: posicao.top, right: posicao.right }}
-          className="z-50 min-w-48 rounded-xl border border-border bg-card p-1.5 shadow-lg"
+          className="popover-enter z-50 min-w-48 rounded-xl border border-border bg-card p-1.5 shadow-lg"
         >
           {options ? (
             <div className="max-h-72 overflow-y-auto">
@@ -109,7 +120,7 @@ export function TableColumnFilter({
                   type="button"
                   role="menuitemradio"
                   aria-checked={value === option.value}
-                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-secondary ${value === option.value ? "font-medium text-primary" : "text-foreground"}`}
+                  className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-secondary active:bg-secondary ${value === option.value ? "font-medium text-primary" : "text-foreground"}`}
                   onClick={() => {
                     onChange(option.value);
                     setAberto(false);
@@ -119,12 +130,38 @@ export function TableColumnFilter({
                 </button>
               ))}
             </div>
+          ) : type === "date" ? (
+            <div>
+              <Calendar
+                mode="single"
+                selected={value ? lerDiaIso(value) : undefined}
+                defaultMonth={value ? lerDiaIso(value) : undefined}
+                onSelect={(dia) => {
+                  onChange(dia ? formatarDiaIso(dia) : "");
+                  setAberto(false);
+                }}
+                autoFocus
+              />
+              <div className="flex justify-end border-t border-border px-1 pt-1.5">
+                <button
+                  type="button"
+                  className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary active:bg-secondary"
+                  onClick={() => {
+                    onChange("");
+                    setAberto(false);
+                  }}
+                >
+                  {t("clearFilters")}
+                </button>
+              </div>
+            </div>
           ) : (
             <form className="w-64 space-y-2" onSubmit={aplicarTexto}>
               <label className="flex h-9 items-center gap-2 rounded-lg border border-border px-2.5">
                 <Search aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <input
                   autoFocus
+                  aria-label={label}
                   value={rascunho}
                   onChange={(event) => setRascunho(event.target.value)}
                   placeholder={placeholder ?? t("filterPlaceholder", { label })}
@@ -139,7 +176,7 @@ export function TableColumnFilter({
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
-                  className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary"
+                  className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary active:bg-secondary"
                   onClick={() => {
                     setRascunho("");
                     onChange("");

@@ -7,6 +7,7 @@ import { listarPerfis } from "@/modules/perfis/api/perfis.api";
 import { useQuery } from "@tanstack/react-query";
 import { SearchX, UsersRound } from "lucide-react";
 import { usuarioApi } from "../api/usuario.api";
+import { setoresApi } from "@/modules/setores/api/setores.api";
 
 import type { UsuarioFiltros } from "../api/usuario.api";
 import { useUsuariosList } from "../hooks/useUsuarios";
@@ -18,7 +19,7 @@ interface UsuariosTableProps {
   pageSize: number;
   pageSizeOptions: readonly number[];
   filtros: UsuarioFiltros;
-  onFiltroChange: (campo: "nome" | "email" | "ativo" | "perfil", valor: string) => void;
+  onFiltroChange: (campo: "nome" | "email" | "ativo" | "perfil" | "responsavel" | "setor", valor: string) => void;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
   onEditar: (usuario: Usuario) => void;
@@ -27,6 +28,8 @@ interface UsuariosTableProps {
   podeGerenciar?: boolean;
   podeAtribuirPerfil?: boolean;
   podeAtribuirPerfilKP?: boolean;
+  podeConsultarPerfil?: boolean;
+  podeConsultarSetores?: boolean;
   usuarioAtualId?: string;
 }
 
@@ -39,11 +42,12 @@ export function UsuariosTable({
   onPageChange,
   onPageSizeChange,
   onEditar,
-  onNovoUsuario,
   onLimparFiltros,
   podeGerenciar = false,
   podeAtribuirPerfil = false,
   podeAtribuirPerfilKP = false,
+  podeConsultarPerfil = false,
+  podeConsultarSetores = false,
   usuarioAtualId = "",
 }: UsuariosTableProps) {
   const { t } = useTranslation();
@@ -59,18 +63,23 @@ export function UsuariosTable({
     queryFn: () => usuarioApi.listar(1, 100, { perfil_id: perfilGerenteId }),
     enabled: podeAtribuirPerfil && Boolean(perfilGerenteId),
   });
+  const setores = useQuery({
+    queryKey: ["setores", "filtro-usuarios"],
+    queryFn: () => setoresApi.listar(1, 100),
+    enabled: podeConsultarSetores,
+  });
   const mostrarAcoes = podeGerenciar || podeAtribuirPerfil;
 
   if (isLoading) return <p className="text-sm text-muted-foreground">{t("loadingProfile")}</p>;
 
   const items = data?.items ?? [];
   const temFiltro = Boolean(
-    filtros.nome || filtros.email || filtros.ativo !== undefined || filtros.perfil_id,
+    filtros.nome || filtros.email || filtros.ativo !== undefined || filtros.perfil_id || filtros.responsavel_id || filtros.sem_responsavel || filtros.setor_id,
   );
 
   return (
     <TableLayout>
-      <Table containerClassName={items.length > 0 ? "min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
+      <Table className="[&_tbody_td]:py-4" containerClassName={items.length > 0 ? "min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
         <TableHeader>
           <TableRow>
             <TableHead>
@@ -101,28 +110,49 @@ export function UsuariosTable({
                 ]}
               />
             </TableHead>
-            {(podeAtribuirPerfil || podeAtribuirPerfilKP) && (
+            {podeConsultarPerfil && (
               <TableHead>
-                <TableColumnFilter
-                  label={t("profile")}
-                  value={filtros.perfil_id ?? ""}
-                  onChange={(valor) => onFiltroChange("perfil", valor)}
-                  options={[
-                    { value: "", label: t("all") },
-                    ...(perfis.data ?? []).map((perfil) => ({ value: perfil.id, label: perfil.codigo ? t(`catalog.profile.${perfil.codigo}`, { defaultValue: perfil.nome }) : perfil.nome })),
-                  ]}
-                />
+                {(podeAtribuirPerfil || podeAtribuirPerfilKP) ? (
+                  <TableColumnFilter
+                    label={t("profile")}
+                    value={filtros.perfil_id ?? ""}
+                    onChange={(valor) => onFiltroChange("perfil", valor)}
+                    options={[
+                      { value: "", label: t("all") },
+                      ...(perfis.data ?? []).map((perfil) => ({ value: perfil.id, label: perfil.codigo ? t(`catalog.profile.${perfil.codigo}`, { defaultValue: perfil.nome }) : perfil.nome })),
+                    ]}
+                  />
+                ) : t("profile")}
               </TableHead>
             )}
-            {podeAtribuirPerfil && <TableHead>{t("owner")}</TableHead>}
+            {podeAtribuirPerfil && <TableHead>
+              <TableColumnFilter
+                label={t("owner")}
+                value={filtros.sem_responsavel ? "__none" : filtros.responsavel_id ?? ""}
+                onChange={(valor) => onFiltroChange("responsavel", valor)}
+                options={[
+                  { value: "", label: t("all") },
+                  { value: "__none", label: t("noOwner") },
+                  ...(gerentes.data?.items ?? []).map((gerente) => ({ value: gerente.id, label: gerente.nome })),
+                ]}
+              />
+            </TableHead>}
+            {podeConsultarSetores && <TableHead>
+              <TableColumnFilter
+                label={t("sector")}
+                value={filtros.setor_id ?? ""}
+                onChange={(valor) => onFiltroChange("setor", valor)}
+                options={[{ value: "", label: t("all") }, ...(setores.data?.items ?? []).map((setor) => ({ value: setor.id, label: setor.nome }))]}
+              />
+            </TableHead>}
             {mostrarAcoes && <TableHead>{t("actions")}</TableHead>}
           </TableRow>
         </TableHeader>
         {items.length > 0 && <TableBody>
           {items.map((usuario) => (
             <TableRow key={usuario.id}>
-              <TableCell className="text-base font-medium text-foreground">{usuario.nome}</TableCell>
-              <TableCell className="text-base text-muted-foreground">{usuario.email}</TableCell>
+              <TableCell className="font-medium text-foreground">{usuario.nome}</TableCell>
+              <TableCell className="text-muted-foreground">{usuario.email}</TableCell>
               <TableCell>
                 <Badge
                   variant="secondary"
@@ -133,19 +163,22 @@ export function UsuariosTable({
                   {usuario.ativo ? t("active") : t("inactive")}
                 </Badge>
               </TableCell>
-              {(podeAtribuirPerfil || podeAtribuirPerfilKP) && (
+              {podeConsultarPerfil && (
                 <TableCell className="text-sm text-muted-foreground">
                   {(() => {
                     const perfil = perfis.data?.find((item) => item.id === usuario.perfil_id);
-                    return perfil?.codigo
-                      ? t(`catalog.profile.${perfil.codigo}`, { defaultValue: perfil.nome })
-                      : perfil?.nome ?? "—";
+                    const codigo = usuario.perfil_codigo ?? perfil?.codigo;
+                    const nome = usuario.perfil_nome ?? perfil?.nome;
+                    return codigo
+                      ? t(`catalog.profile.${codigo}`, { defaultValue: nome ?? "—" })
+                      : nome ?? "—";
                   })()}
                 </TableCell>
               )}
               {podeAtribuirPerfil && <TableCell className="text-sm text-muted-foreground">
                   {gerentes.data?.items.find((gerente) => gerente.id === usuario.responsavel_id)?.nome ?? t("noOwner")}
               </TableCell>}
+              {podeConsultarSetores && <TableCell className="text-sm text-muted-foreground">{usuario.setores?.join(", ") || "—"}</TableCell>}
               {mostrarAcoes && <TableCell>
                 <UsuarioActionsMenu
                   usuario={usuario}
@@ -176,15 +209,11 @@ export function UsuariosTable({
                 ? t("noUsersResults")
                 : t("noUsersHint")}
             </p>
-            {temFiltro ? (
+            {temFiltro && (
               <Button variant="outline" size="sm" className="mt-5" onClick={onLimparFiltros}>
                 {t("clearFilters")}
               </Button>
-            ) : podeGerenciar ? (
-              <Button size="sm" className="mt-5" onClick={onNovoUsuario}>
-                {t("createFirstUser")}
-              </Button>
-            ) : null}
+            )}
           </div>
         </TableEmptyState>
       )}

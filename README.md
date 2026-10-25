@@ -24,6 +24,21 @@ e traduzidos de stack. **Feature flags não fazem parte deste projeto.**
 - **Pré-requisitos:** Docker (Postgres e testes com Testcontainers), Python 3.13 e Node LTS.
 - Subir o banco: `docker compose up -d`.
 
+### Abrir o frontend com dados de demonstração
+O frontend inclui dados de demonstração persistidos no navegador para explorar as telas e fluxos sem iniciar
+API ou Postgres. Ao clonar, copie `.env.example` para `.env` e mantenha `VITE_USE_MOCK=true`; depois inicie
+somente o frontend:
+
+```bash
+cp .env.example .env
+cd frontend && npm install && npm run dev
+```
+
+Entre com `admin@sdfmanager.com` (a senha pode ser qualquer valor). Há também contas de gerente, KP,
+desenvolvedor e usuário padrão para explorar permissões diferentes. Criações e alterações ficam salvas no
+`localStorage` do navegador. Para restaurar a base inicial, apague a chave `sdf.mock.database.v1` no
+armazenamento local do site. Para conectar ao backend, defina `VITE_USE_MOCK=false` e inicie API e Postgres.
+
 ## Fluxo de desenvolvimento
 Regras nos ADRs [0027](docs/adr/0027-fluxo-de-branches-e-pull-requests.md) (branches e commits),
 [0028](docs/adr/0028-ci-com-github-actions.md) (CI) e [0029](docs/adr/0029-git-hooks-versionados.md) (hooks).

@@ -10,6 +10,10 @@ class ForbiddenException(Exception):
     """Levantada quando a pessoa autenticada não tem permissão para a ação."""
 
 
+class InvalidInputException(ValueError):
+    """Levantada quando uma entrada é sintaticamente válida, mas viola uma regra de formato."""
+
+
 class ServiceUnavailableException(Exception):
     """Levantada quando uma configuração impede temporariamente uma operação."""
 
