@@ -196,9 +196,7 @@ async def listar_form_factor(
     )
 
 
-@router.get(
-    "/{projeto_id}/form-factor/results", response_model=FormFactorResultadosResponse
-)
+@router.get("/{projeto_id}/form-factor/results", response_model=FormFactorResultadosResponse)
 async def listar_resultados_form_factor(
     projeto_id: UUID,
     page: int = Query(1, ge=1),

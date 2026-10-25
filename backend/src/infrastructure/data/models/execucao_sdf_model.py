@@ -26,9 +26,7 @@ class ExecucaoSdfModel(Base):
         ForeignKey("importacoes_sdf.id"), nullable=True
     )
     caso_teste_id: Mapped[UUID] = mapped_column(ForeignKey("casos_teste.id"), nullable=False)
-    sdf_id: Mapped[str | None] = mapped_column(
-        String(ExecucaoSdf.SDF_ID_MAX_LENGTH), nullable=True
-    )
+    sdf_id: Mapped[str | None] = mapped_column(String(ExecucaoSdf.SDF_ID_MAX_LENGTH), nullable=True)
     data_reportada: Mapped[datetime] = mapped_column(nullable=False)
     one_ui: Mapped[str] = mapped_column(String(ExecucaoSdf.ONE_UI_MAX_LENGTH), nullable=False)
     origem: Mapped[str] = mapped_column(
