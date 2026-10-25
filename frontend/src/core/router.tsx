@@ -12,6 +12,7 @@ import { TimesPage } from "@/modules/times/TimesPage";
 import { TimeDetalhePage } from "@/modules/times/TimeDetalhePage";
 import { UsuariosPage } from "@/modules/usuarios/pages/UsuariosPage";
 import { projetosRoutes } from "@/modules/projetos";
+import { ConfiguracoesPage } from "@/modules/configuracoes/ConfiguracoesPage";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -26,6 +27,7 @@ export const router = createBrowserRouter([
       { path: "board", element: <EmBreve titulo="board" ilustracao="board" /> },
       { path: "timeline", element: <EmBreve titulo="timeline" ilustracao="timeline" /> },
       { path: "documentation", element: <EmBreve titulo="documentation" /> },
+      { path: "configuracoes", element: <ConfiguracoesPage /> },
       ...usuariosRoutes,
       { path: "perfis", element: <PerfisPage /> },
       { path: "admin/perfis", element: <PerfisPage /> },

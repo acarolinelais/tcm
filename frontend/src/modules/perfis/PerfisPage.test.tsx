@@ -144,6 +144,19 @@ describe("PerfisPage", () => {
     expect(api.salvarPermissoes).toHaveBeenCalledWith("sys", []);
   });
 
+  it("mostra na tabela a descrição traduzida dos perfis de sistema e a do banco nos personalizados", async () => {
+    api.listarPerfis.mockResolvedValue([
+      { id: "sys", nome: "Gerente", descricao: "Gerencia times dos setores associados.", codigo: "GERENTE", permissoes: [] },
+      { id: "custom", nome: "Auditoria", descricao: "Perfil criado pela unidade.", codigo: null, permissoes: [] },
+    ]);
+    renderPage();
+
+    const tabela = await screen.findByRole("table");
+    expect(tabela).toHaveTextContent("Manages teams in assigned sectors.");
+    expect(tabela).not.toHaveTextContent("Gerencia times dos setores associados.");
+    expect(tabela).toHaveTextContent("Perfil criado pela unidade.");
+  });
+
   it("mantém os campos quando o backend informa conflito ao criar perfil", async () => {
     api.criarPerfil.mockRejectedValue(new ApiError({ type: "about:blank", title: "Conflito", status: 409 }));
     renderPage();
