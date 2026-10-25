@@ -45,12 +45,12 @@ describe("Sidebar project navigation", () => {
     rerender(<MemoryRouter><Sidebar perfil={gerente} recolhida={false} onToggle={() => undefined} /></MemoryRouter>);
     expect(screen.queryByRole("link", { name: "Teams" })).not.toBeInTheDocument();
   });
-  it("shows My Projects only when the profile can consult projects", () => {
+  it("shows Projects only when the profile can consult projects", () => {
     const { rerender } = renderSidebar(perfil);
-    expect(screen.queryByRole("link", { name: "My Projects" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Projects" })).not.toBeInTheDocument();
 
     rerender(<MemoryRouter><Sidebar perfil={{ ...perfil, permissoes: ["projetos.consultar"] }} recolhida={false} onToggle={() => undefined} /></MemoryRouter>);
-    expect(screen.getByRole("link", { name: "My Projects" })).toHaveAttribute("href", "/projetos");
+    expect(screen.getByRole("link", { name: "Projects" })).toHaveAttribute("href", "/projetos");
   });
 
   it("mostra Device models dentro de Administration somente com permissão de catálogo", async () => {

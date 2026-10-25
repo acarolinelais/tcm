@@ -173,7 +173,7 @@ export function ProjetosPage() {
   return <section className={criacaoAberta ? "relative flex h-full min-h-0 flex-col" : "flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10"}>
     {!criacaoAberta ? <>
       <header className="mb-7 flex shrink-0 items-center justify-between gap-4">
-        <h1 className="text-2xl font-medium text-primary">{t("myProjects")}</h1>
+        <h1 className="text-2xl font-medium text-foreground">{t("myProjects")}</h1>
         {podeGerenciar && <Button onClick={() => { limparFormulario(); setCriacaoAberta(true); }}><Plus aria-hidden="true" className="size-4" />{t("newProject")}</Button>}
       </header>
       <TableLayout className="overflow-auto">

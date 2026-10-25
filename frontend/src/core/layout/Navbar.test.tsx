@@ -43,8 +43,8 @@ describe("botão de voltar da navbar", () => {
     const user = userEvent.setup();
     const local = renderEm("/projetos/21ba446b");
 
-    const voltar = screen.getByRole("button", { name: "Back to My Projects" });
-    expect(voltar).toHaveTextContent("My Projects");
+    const voltar = screen.getByRole("button", { name: "Back to Projects" });
+    expect(voltar).toHaveTextContent("Projects");
     await user.click(voltar);
     await waitFor(() => expect(local.pathname).toBe("/projetos"));
   });

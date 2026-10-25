@@ -68,7 +68,7 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
     setCriarAberto(true);
   }
   return <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
-    <header className="mb-7 flex shrink-0 items-center justify-between"><h1 className="text-2xl font-medium text-primary">{t("teams")}</h1>{podeGerenciar && <Button onClick={abrirCriacaoTime}>{t("newTeam")}</Button>}</header>
+    <header className="mb-7 flex shrink-0 items-center justify-between"><h1 className="text-2xl font-medium text-foreground">{t("teams")}</h1>{podeGerenciar && <Button onClick={abrirCriacaoTime}>{t("newTeam")}</Button>}</header>
     <TableLayout>
     <Table containerClassName={`min-h-0 ${times.data?.items.length ? "flex-1 overflow-auto" : "shrink-0 overflow-visible"}`}><TableHeader><TableRow>
       <TableHead><TableColumnFilter label={t("teams")} value={filtros.busca ?? ""} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, busca: value || undefined })); }} placeholder={t("searchTeam")} /></TableHead>

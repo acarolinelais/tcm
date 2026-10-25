@@ -224,7 +224,7 @@ export function PerfisPage() {
     <section className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
       <header className="mb-7 flex shrink-0 flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-medium leading-8 text-primary">{t("profileTitle")}</h1>
+          <h1 className="text-2xl font-medium leading-8 text-foreground">{t("profileTitle")}</h1>
         </div>
         {!criando && <Button onClick={() => pedirAcao({ tipo: "novo" })} className="h-10 rounded-lg px-5 text-sm">{t("newProfile")}</Button>}
       </header>
