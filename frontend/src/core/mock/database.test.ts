@@ -25,6 +25,33 @@ describe("base mock de projetos", () => {
     entrar("admin@sdfmanager.com");
   });
 
+  it("atribui o Gerente Ivan como responsável pelos usuários seed Developer e KP", () => {
+    const database = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
+    const usuariosSeed = database.usuarios.filter((user: { id: string }) =>
+      ["mock-user-kp", "mock-user-dev", "mock-user-standard", "mock-user-inactive"].includes(user.id),
+    );
+    database.schemaVersion = 14;
+    const gerente = database.usuarios.find((user: { id: string }) => user.id === "mock-user-manager");
+    gerente.nome = "Mariana Costa";
+    gerente.email = "mariana.costa@example.com";
+    usuariosSeed.forEach((user: { responsavel_id?: string }) => { delete user.responsavel_id; });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(database));
+
+    mockProjetosApi.listar(1, 10);
+    const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
+    const usuariosMigrados = migrado.usuarios.filter((user: { id: string }) =>
+      ["mock-user-kp", "mock-user-dev", "mock-user-standard", "mock-user-inactive"].includes(user.id),
+    );
+
+    expect(migrado.schemaVersion).toBe(15);
+    expect(migrado.usuarios.find((user: { id: string }) => user.id === "mock-user-manager")).toMatchObject({
+      nome: "Ivan Moreira",
+      email: "ivan.moreira@sidia.com",
+    });
+    expect(usuariosMigrados).toHaveLength(4);
+    expect(usuariosMigrados.every((user: { responsavel_id: string }) => user.responsavel_id === "mock-user-manager")).toBe(true);
+  });
+
   it("filtra projetos e casos pessoais incluindo backup antes de paginar", () => {
     mockTimesApi.adicionar("mock-team-platform", "mock-user-manager");
     const projects = ["Clock", "Gallery", "Weather"].map((app) => mockProjetosApi.criar({ time_id: "mock-team-platform", app, one_ui: "9.5", modelos_ids: [] }));
@@ -237,7 +264,7 @@ describe("base mock de projetos", () => {
     ["mock-user-manager", "mock-user-dev", "mock-user-standard"].forEach((userId) => mockTimesApi.adicionar(outroTime, userId));
     const existente = mockProjetosApi.criar({ time_id: outroTime, app: "Clock", one_ui: "9.5", modelos_ids: [] });
 
-    entrar("mariana.costa@example.com");
+    entrar("ivan.moreira@sidia.com");
     expect(mockTimesApi.listar(1, 100).items.map((team) => team.id)).toEqual(expect.arrayContaining(["mock-team-platform", outroTime]));
     expect(mockProjetosApi.listar(1, 100).items.map((project) => project.id)).toContain(existente.id);
     const novo = mockProjetosApi.criar({ time_id: outroTime, app: "Gallery", one_ui: "9.5", modelos_ids: [] });
@@ -247,7 +274,7 @@ describe("base mock de projetos", () => {
     // Sem participação nem setor, o time sai do escopo.
     entrar("admin@sdfmanager.com");
     mockTimesApi.remover(outroTime, "mock-user-manager");
-    entrar("mariana.costa@example.com");
+    entrar("ivan.moreira@sidia.com");
     expect(mockProjetosApi.listar(1, 100).items.map((project) => project.id)).not.toContain(existente.id);
     expect(() => mockProjetosApi.criar({ time_id: outroTime, app: "Notes", one_ui: "9.5", modelos_ids: [] })).toThrow(/fora do seu escopo/);
   });
@@ -334,7 +361,7 @@ describe("base mock de projetos", () => {
 
     mockProjetosApi.listar(1, 10); // qualquer leitura aplica a migração
     const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-    expect(migrado.schemaVersion).toBe(14);
+    expect(migrado.schemaVersion).toBe(15);
     expect(migrado.casosTeste[0]).toMatchObject({ situation: "New", status: "InReview" });
     expect(migrado.usuarios.every((user: { user_id?: string | null }) => user.user_id === null)).toBe(true);
   });
@@ -347,7 +374,7 @@ describe("base mock de projetos", () => {
 
     mockProjetosApi.listar(1, 10);
     const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-    expect(migrado.schemaVersion).toBe(14);
+    expect(migrado.schemaVersion).toBe(15);
     expect(migrado.usuarios.every((user: { user_id?: string | null }) => user.user_id === null)).toBe(true);
   });
 
@@ -401,7 +428,7 @@ describe("base mock de projetos", () => {
   it("gerente só lista as opções ativas e não gerencia o catálogo", () => {
     entrar("kaique.pereira@example.com");
     mockModelosDispositivoApi.definirAtivo("mock-model-tab-s11", false);
-    entrar("mariana.costa@example.com");
+    entrar("ivan.moreira@sidia.com");
 
     expect(() => mockModelosDispositivoApi.listar(1, 20)).toThrow("permissão");
     expect(() => mockModelosDispositivoApi.criar({ nome: "S28", descricao: null })).toThrow("permissão");
@@ -425,7 +452,7 @@ describe("base mock de projetos", () => {
 
     mockProjetosApi.listar(1, 10);
     const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-    expect(migrado.schemaVersion).toBe(14);
+    expect(migrado.schemaVersion).toBe(15);
     const kp = migrado.perfis.find((profile: { codigo: string }) => profile.codigo === "KP");
     const gerente = migrado.perfis.find((profile: { codigo: string }) => profile.codigo === "GERENTE");
     expect(kp.permissoes).toContain("modelos_dispositivo.gerenciar");
@@ -444,7 +471,7 @@ describe("base mock de projetos", () => {
 
     mockProjetosApi.listar(1, 10);
     const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-    expect(migrado.schemaVersion).toBe(14);
+    expect(migrado.schemaVersion).toBe(15);
     const kp = migrado.perfis.find((profile: { codigo: string }) => profile.codigo === "KP");
     const gerente = migrado.perfis.find((profile: { codigo: string }) => profile.codigo === "GERENTE");
     expect(kp.permissoes).toContain("form_factor.consultar");

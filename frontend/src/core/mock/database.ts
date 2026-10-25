@@ -103,14 +103,14 @@ function createSeed(): Database {
   ];
   const users: Usuario[] = [
     { id: ADMIN_ID, nome: "Administradora", email: "admin@sdfmanager.com", ativo: true, perfil_id: adminProfile.id, created_at: "2026-01-10T12:00:00Z" },
-    { id: MANAGER_ID, nome: "Mariana Costa", email: "mariana.costa@example.com", ativo: true, perfil_id: managerProfile.id, created_at: "2026-01-12T12:00:00Z" },
-    { id: "mock-user-kp", nome: "Kaique Pereira", email: "kaique.pereira@example.com", ativo: true, perfil_id: kpProfile.id, created_at: "2026-01-15T12:00:00Z" },
+    { id: MANAGER_ID, nome: "Ivan Moreira", email: "ivan.moreira@sidia.com", ativo: true, perfil_id: managerProfile.id, created_at: "2026-01-12T12:00:00Z" },
+    { id: "mock-user-kp", nome: "Kaique Pereira", email: "kaique.pereira@example.com", ativo: true, perfil_id: kpProfile.id, responsavel_id: MANAGER_ID, created_at: "2026-01-15T12:00:00Z" },
     { id: "mock-user-dev", nome: "Daniel Oliveira", email: "daniel.oliveira@example.com", ativo: true, perfil_id: standardProfile.id, responsavel_id: MANAGER_ID, created_at: "2026-02-01T12:00:00Z" },
     { id: "mock-user-standard", nome: "Ana Souza", email: "ana.souza@example.com", ativo: true, perfil_id: standardProfile.id, responsavel_id: MANAGER_ID, created_at: "2026-02-05T12:00:00Z" },
-    { id: "mock-user-inactive", nome: "Rafael Lima", email: "rafael.lima@example.com", ativo: false, perfil_id: standardProfile.id, created_at: "2026-02-10T12:00:00Z" },
+    { id: "mock-user-inactive", nome: "Rafael Lima", email: "rafael.lima@example.com", ativo: false, perfil_id: standardProfile.id, responsavel_id: MANAGER_ID, created_at: "2026-02-10T12:00:00Z" },
   ].map((user: Usuario) => ({ ...user, user_id: user.user_id ?? null }));
   return {
-    schemaVersion: 14,
+    schemaVersion: 15,
     unidade: { id: UNIT_ID, nome: "Manaus", ativo: true },
     usuarios: users,
     perfis: [adminProfile, standardProfile, managerProfile, kpProfile],
@@ -247,6 +247,18 @@ function readDb(): Database {
         profile.permissoes = profile.permissoes.filter((permission) => permission !== "modelos_dispositivo.gerenciar");
       });
       db.schemaVersion = 14;
+      writeDb(db);
+    }
+    if ((db.schemaVersion ?? 1) < 15) {
+      const gerente = db.usuarios.find((user) => user.id === MANAGER_ID);
+      if (gerente?.email === "mariana.costa@example.com") {
+        gerente.nome = "Ivan Moreira";
+        gerente.email = "ivan.moreira@sidia.com";
+      }
+      db.usuarios
+        .filter((user) => ["mock-user-kp", "mock-user-dev", "mock-user-standard", "mock-user-inactive"].includes(user.id))
+        .forEach((user) => { user.responsavel_id = MANAGER_ID; });
+      db.schemaVersion = 15;
       return writeDb(db);
     }
     return db;
