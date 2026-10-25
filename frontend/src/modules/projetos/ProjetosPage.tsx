@@ -84,7 +84,7 @@ export function ProjetosPage() {
   };
   const queryMutation = useMutation({
     mutationFn: async () => {
-      if (modo === "manual") return { projeto: await projetosApi.criar({ time_id: timeId, nome: nomeProjeto.trim(), app: app.trim(), one_ui: oneUi.trim(), modelos_ids: modelosIds }), quantidade_casos: 0 };
+      if (modo === "manual") return { projeto: await projetosApi.criar({ time_id: timeId, nome: nomeProjeto.trim() || `${app.trim()} ${oneUi.trim()}`, app: app.trim(), one_ui: oneUi.trim(), modelos_ids: modelosIds }), quantidade_casos: 0 };
       if (!leitura.arquivo) throw new Error(t("projectFileRequired"));
       const result = await projetosApi.importar(leitura.arquivo, timeId, modelosIds, leitura.previa?.app ?? "", leitura.previa?.one_ui ?? "");
       return "projeto" in result ? result : { projeto: result, quantidade_casos: 0 };

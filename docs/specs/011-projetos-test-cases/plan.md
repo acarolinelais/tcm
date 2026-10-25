@@ -150,3 +150,7 @@ Cada item de `errors[]` mantém `campo` e `mensagem` (ADR 0006) e ganha os membr
 Persistir `nome` diretamente em `projetos`, preenchendo registros existentes com `app || ' ' || one_ui` via migration. Ampliar o contrato de criação manual e edição para `nome`, `app`, `one_ui`, `time_id` e `modelos_ids`; a importação inicial continua derivando o nome da planilha. Atualizar o service para validar time ativo e escopo, validar modelos ativos da unidade, impedir troca de time quando houver responsáveis/backups de casos ativos que não pertençam ao time de destino, sincronizar os vínculos de modelos e fazer um único commit. A listagem/detalhe passam a devolver também IDs dos modelos vinculados para inicializar o formulário sem perder associações inativas.
 
 No frontend, o drawer de edição passa a expor nome, App, One UI, time e modelos. A criação manual oferece nome com composição inicial editável; a importação continua usando App e One UI da planilha para sugerir o nome.
+
+## Ajuste: edição rápida de responsável e backup — 2026-10-25
+
+Reutilizar a permissão `test_cases.gerenciar` e o `PUT /api/test-cases/{id}` existente. Nas colunas Assignee e Backup, renderizar dropdowns somente para administrador, gerente ou KP autorizado no escopo (mesma regra de gestão de TC); popular com membros ativos distintos do outro campo. O service já valida escopo, participação ativa, distinção e commit. Form Factor é histórico de resultados e permanece somente leitura para atribuições.

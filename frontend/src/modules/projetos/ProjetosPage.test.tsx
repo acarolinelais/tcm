@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -57,11 +57,11 @@ describe("ProjetosPage", () => {
     renderPage();
 
     await user.click(await screen.findByRole("button", { name: /New project/i }));
-    await user.click(screen.getByRole("tab", { name: /Create manually/i }));
+    await user.click(screen.getByRole("tab", { name: "Manual" }));
     await user.type(screen.getByLabelText("App"), "Clock");
     await user.type(screen.getByLabelText(/One UI/i), "9.5");
 
-    await user.click(screen.getByLabelText("Team"));
+    await user.click(within(document.getElementById("project-manual-panel")!).getByLabelText("Team"));
     await user.click(await screen.findByRole("option", { name: "Plataforma" }));
 
     await user.click(screen.getByRole("button", { name: "Device models" }));
@@ -69,7 +69,7 @@ describe("ProjetosPage", () => {
     await user.keyboard("{Escape}");
     await user.click(screen.getByRole("button", { name: "Create project" }));
 
-    await waitFor(() => expect(projetosApi.criar).toHaveBeenCalledWith({ time_id: "team-1", app: "Clock", one_ui: "9.5", modelos_ids: ["model-1"] }));
+    await waitFor(() => expect(projetosApi.criar).toHaveBeenCalledWith({ time_id: "team-1", nome: "Clock 9.5", app: "Clock", one_ui: "9.5", modelos_ids: ["model-1"] }));
     expect(modelosDispositivoApi.listarOpcoes).toHaveBeenCalled();
     expect(screen.queryByRole("link", { name: "Device models" })).not.toBeInTheDocument();
   });
@@ -102,7 +102,7 @@ describe("ProjetosPage", () => {
     await user.upload(fileInput!, planilhaFile());
     expect(await screen.findByRole("region", { name: "Test Case preview" })).toBeInTheDocument();
     expect(screen.getByText("Clock_001")).toBeInTheDocument();
-    await user.click(screen.getByLabelText("Team"));
+    await user.click(within(document.getElementById("project-import-panel")!).getByLabelText("Team"));
     await user.click(await screen.findByRole("option", { name: "Plataforma" }));
     await user.click(screen.getByRole("button", { name: "Create project" }));
 
@@ -144,7 +144,7 @@ describe("ProjetosPage", () => {
     await user.click(await screen.findByRole("button", { name: /New project/i }));
     await user.upload(container.querySelector('input[type="file"]')!, new File([XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as BlobPart], "casos.xlsx"));
     expect(await screen.findByRole("alert")).not.toHaveTextContent("Assignees column");
-    await user.click(screen.getByLabelText("Team"));
+    await user.click(within(document.getElementById("project-import-panel")!).getByLabelText("Team"));
     await user.click(await screen.findByRole("option", { name: "Plataforma" }));
     await user.click(screen.getByRole("button", { name: "Check spreadsheet" }));
 
@@ -161,7 +161,7 @@ describe("ProjetosPage", () => {
     await user.upload(container.querySelector('input[type="file"]')!, planilhaFile());
     // O botão só libera depois que a barra enche e a prévia aparece (spec 016, RN-12).
     await screen.findByRole("region", { name: "Test Case preview" });
-    await user.click(screen.getByLabelText("Team"));
+    await user.click(within(document.getElementById("project-import-panel")!).getByLabelText("Team"));
     await user.click(await screen.findByRole("option", { name: "Plataforma" }));
     await user.click(screen.getByRole("button", { name: "Create project" }));
 
