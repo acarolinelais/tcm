@@ -6,7 +6,7 @@ const ROTULOS: [RegExp, string][] = [
   [/^\/timeline$/, "timeline"],
   [/^\/projetos$/, "myProjects"],
   [/^\/projetos\/[^/]+$/, "project"],
-  [/^\/modelos-dispositivo$/, "deviceModels"],
+  [/^\/admin\/modelos-dispositivo$/, "deviceModels"],
   [/^\/(admin\/)?usuarios$/, "users"],
   [/^\/admin\/setores$/, "sectors"],
   [/^\/(admin\/)?times$/, "teams"],

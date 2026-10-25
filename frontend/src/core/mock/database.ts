@@ -753,6 +753,8 @@ export const mockCasosTesteApi = {
   },
 };
 
+const nomeModeloDuplicado = () => new ApiError({ type: "about:blank", title: "Conflito.", status: 409, detail: "Já existe um modelo de dispositivo com este nome." });
+
 export const mockModelosDispositivoApi = {
   listar(pageNumber: number, pageSize: number, active?: boolean, search?: string) {
     requireMockPermission("modelos_dispositivo.gerenciar");
@@ -760,7 +762,8 @@ export const mockModelosDispositivoApi = {
     let models = [...db.modelosDispositivo];
     if (active !== undefined) models = models.filter((model) => model.ativo === active);
     if (search) models = models.filter((model) => model.nome.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
-    return page(models, pageNumber, pageSize);
+    // Mesma ordem da API (nome), para a paginação do mock refletir a real.
+    return page(models.sort((a, b) => a.nome.localeCompare(b.nome)), pageNumber, pageSize);
   },
   listarOpcoes(pageNumber: number, pageSize: number) {
     const { db, profile } = mockProfile();
@@ -773,7 +776,7 @@ export const mockModelosDispositivoApi = {
     return updateDb((db) => {
       const normalized = body.nome.trim();
       if (!normalized) throw new Error("O nome do modelo é obrigatório.");
-      if (db.modelosDispositivo.some((model) => model.nome === normalized)) throw new Error("Já existe um modelo de dispositivo com este nome.");
+      if (db.modelosDispositivo.some((model) => model.nome === normalized)) throw nomeModeloDuplicado();
       const now = new Date().toISOString();
       const model: ModeloDispositivo = { id: id("mock-model"), unidade_id: db.unidade.id, nome: normalized, descricao: body.descricao?.trim() || null, ativo: true, created_at: now, updated_at: now };
       db.modelosDispositivo.unshift(model);
@@ -786,7 +789,7 @@ export const mockModelosDispositivoApi = {
       const model = db.modelosDispositivo.find((item) => item.id === modelId);
       if (!model) throw new Error("Modelo de dispositivo não encontrado.");
       const name = body.nome?.trim();
-      if (name && db.modelosDispositivo.some((item) => item.id !== modelId && item.nome === name)) throw new Error("Já existe um modelo de dispositivo com este nome.");
+      if (name && db.modelosDispositivo.some((item) => item.id !== modelId && item.nome === name)) throw nomeModeloDuplicado();
       if (name) model.nome = name;
       if (body.descricao !== undefined) model.descricao = body.descricao?.trim() || null;
       if (body.ativo !== undefined) model.ativo = body.ativo;

@@ -43,15 +43,17 @@ export function Sidebar({
   if (perfil.permissoes.includes("projetos.consultar") || perfil.permissoes.includes("test_cases.consultar")) {
     itens.push({ to: "/projetos", label: t(perfil.perfil_codigo === "USUARIO_PADRAO" ? "projectsNav" : "myProjects"), Icon: ProjectsIcon });
   }
-  if (perfil.perfil_codigo === "ADMIN_UNIDADE" || perfil.permissoes.includes("modelos_dispositivo.gerenciar")) {
-    itens.push({ to: "/modelos-dispositivo", label: t("deviceModels"), Icon: DeviceIcon });
-  }
+  const admin = perfil.perfil_codigo === "ADMIN_UNIDADE";
+  // Administration agrupa as telas de cadastro: o admin vê todas; o KP vê só o catálogo de modelos.
   const itensAdmin = [
-    ["/admin/usuarios", t("users"), UsersIcon],
-    ["/admin/setores", t("sectors"), SectorsIcon],
-    ["/admin/times", t("teams"), TeamsIcon],
-    ["/admin/perfis", t("profiles"), ProfilesIcon],
-  ] as const;
+    ...(admin ? [
+      ["/admin/usuarios", t("users"), UsersIcon],
+      ["/admin/setores", t("sectors"), SectorsIcon],
+      ["/admin/times", t("teams"), TeamsIcon],
+      ["/admin/perfis", t("profiles"), ProfilesIcon],
+    ] as const : []),
+    ...(admin || perfil.permissoes.includes("modelos_dispositivo.gerenciar") ? [["/admin/modelos-dispositivo", t("deviceModels"), DeviceIcon] as const] : []),
+  ];
   // Suporte aparece para todos os perfis (frames "Sidebar - Admin/Manager/KP/Dev" do Figma).
   const itensSuporte = [
     ["/documentation", t("documentation"), DocumentationIcon],
@@ -96,7 +98,7 @@ export function Sidebar({
             </>}
           </NavLink>
         ))}
-        {perfil.perfil_codigo === "ADMIN_UNIDADE" && (
+        {itensAdmin.length > 0 && (
           <>
             <button
               type="button"

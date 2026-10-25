@@ -1,6 +1,6 @@
 # 014. Catálogo de modelos de dispositivo: Spec
 
-- **Status:** Aprovada
+- **Status:** Concluída
 - **Data:** 2026-10-25
 - **ADRs relacionados:** 0013, 0015, 0018, 0026
 - **Evolui:** spec 011 (RN-04, RN-09 e CA-05)
@@ -15,7 +15,7 @@ alterações de quem não é responsável por ele.
 
 ## Objetivo
 
-O catálogo ganha uma entrada própria na navegação, chamada **Device models**, com descrição e datas de
+O catálogo ganha uma entrada própria no grupo **Administration** da navegação, chamada **Device models**, com descrição e datas de
 criação e atualização de cada modelo. Só o KP e o administrador da unidade cadastram, editam, ativam e
 inativam modelos. As demais pessoas continuam vendo os modelos onde eles aparecem em outros contextos,
 como projetos e Form Factor.
@@ -48,8 +48,9 @@ como projetos e Form Factor.
   (somente modelos ativos) e nos resultados da aba Form Factor.
 - RN-08: Um modelo não é excluído. Inativar tira o modelo do seletor de novos vínculos, mas preserva os
   projetos e resultados que já o referenciam e continua exibindo o modelo neles.
-- RN-09: O item **Device models** aparece na navegação lateral, com o ícone de dispositivo, somente para
-  quem pode gerenciar o catálogo (RN-06).
+- RN-09: O item **Device models** aparece dentro do grupo **Administration** da navegação lateral, com o
+  ícone de dispositivo, somente para quem pode gerenciar o catálogo (RN-06). O KP passa a ver o grupo
+  Administration só com esse item; o administrador vê o item junto dos demais.
 - RN-10: A listagem do catálogo segue o padrão universal de tabelas: 20 itens por página, filtros por
   nome e status, estados de carregamento, vazio e erro, e ações por linha.
 - RN-11: Os modelos que já existem mantêm nome, status e vínculos. Eles ficam sem descrição.
@@ -78,9 +79,9 @@ como projetos e Form Factor.
   existe, então o sistema informa que o modelo não foi encontrado, sem revelar dados de outra unidade.
 - **CA-11:** Dado um gerente que cria ou importa um projeto, quando abre o seletor de modelos, então vê
   os modelos ativos da unidade e consegue associá-los ao projeto.
-- **CA-12:** Dado um KP ou o administrador, quando abre a navegação lateral, então vê o item
-  **Device models**; dado um gerente ou um dev, o item não aparece e o acesso direto ao endereço da tela
-  informa que não há permissão.
+- **CA-12:** Dado um KP ou o administrador, quando abre o grupo **Administration** da navegação lateral,
+  então vê o item **Device models**; dado um gerente ou um dev, nem o grupo nem o item aparecem e o
+  acesso direto ao endereço da tela informa que não há permissão.
 - **CA-13:** Dado um catálogo com mais de 20 modelos, quando o KP abre a listagem, então vê 20 por
   página, pode filtrar por nome e status, e a tela informa quando nenhum modelo corresponde aos filtros.
 - **CA-14:** Dados os modelos cadastrados antes desta spec, quando a mudança entra em vigor, então eles

@@ -42,11 +42,12 @@ export function ModeloDispositivoForm({ modelo, onSalvo }: ModeloDispositivoForm
     try {
       onSalvo(modelo ? await atualizar.mutateAsync({ id: modelo.id, body: values }) : await criar.mutateAsync(values));
     } catch (error) {
-      if (error instanceof ApiError && error.problem.status === 409) {
-        setError("nome", { message: t("deviceModelNameInUse") });
-      } else {
-        toast.error(t("deviceModelSaveError"));
-      }
+      if (!(error instanceof ApiError)) return toast.error(t("deviceModelSaveError"));
+      if (error.problem.status === 409) return setError("nome", { message: t("deviceModelNameInUse") });
+      // 422 do backend (ADR 0006): `campo` vem como "body.nome"; marca os campos do formulário apontados.
+      const campos = (error.problem.errors ?? []).map((erro) => erro.campo.split(".").pop()).filter((campo) => campo === "nome" || campo === "descricao");
+      if (!campos.length) return toast.error(t("deviceModelSaveError"));
+      for (const campo of campos) setError(campo, { message: t(campo === "nome" ? "deviceModelNameMax" : "deviceModelDescriptionMax") });
     }
   }
 

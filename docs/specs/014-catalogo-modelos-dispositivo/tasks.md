@@ -82,7 +82,7 @@
 
 ## Fase 3: e2e
 
-- [ ] **T10. E2E do catálogo**
+- [x] **T10. E2E do catálogo**
   - Arquivos: `frontend/e2e/modelos-dispositivo.spec.ts`
   - Cobre: CA-01, CA-04, CA-12
   - Verificação: `cd frontend && npm run e2e -- modelos-dispositivo` → verde. O teste cobre: KP cria,
@@ -118,3 +118,16 @@
   senha de admin em `SDF_E2E_ADMIN_PASSWORD`, e cria usuários nesse banco. Localmente ele falha com 401
   se a API estiver usando o banco de desenvolvimento com outra senha. Vale documentar ou apontar para
   um banco próprio de e2e.
+- **Datas sem fuso na API (code-review).** O backend grava e devolve as datas sem fuso, em UTC
+  (`2026-10-26T02:00:00`, sem `Z`), e o frontend as lê como hora local. Um modelo criado às 22h em
+  Manaus aparece com o dia seguinte. O mesmo vale para as outras entidades que usam o `now()` do banco,
+  então o conserto (serializar com `Z` ou usar `timestamptz`) é transversal e merece uma spec ou um ADR
+  próprio. Está relacionado ao item "Datas de auditoria com uma fonte só".
+- **Seletor de modelos limitado a 100 (code-review).** `listarOpcoes()` busca só a primeira página,
+  com 100 itens, que é o máximo da API. Numa unidade com mais de 100 modelos ativos, os excedentes não
+  aparecem no seletor de projeto. Já era assim antes desta spec e é um risco aceito no plan. O conserto
+  é usar a busca (`busca`) que `/opcoes` já aceita, ou paginar o seletor.
+- **Regra "pode gerenciar modelos" escrita duas vezes (code-review).** A checagem `ADMIN_UNIDADE ||
+  modelos_dispositivo.gerenciar` aparece no `Sidebar` (`core/`) e na `ModelosDispositivoPage`. O `core/`
+  não pode importar de `modules/`, então o lugar certo seria um helper de permissão em `core/auth`,
+  que também serviria aos outros itens do sidebar. Fica fora do bloco.

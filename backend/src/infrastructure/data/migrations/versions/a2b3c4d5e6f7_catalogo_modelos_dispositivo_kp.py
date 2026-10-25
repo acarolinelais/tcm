@@ -55,10 +55,23 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     bind = op.get_bind()
-    bind.execute(
-        sa.text("DELETE FROM perfil_permissoes WHERE permissao_id = :permissao"),
-        {"permissao": PERMISSAO},
+    perfis = (
+        bind.execute(
+            sa.text(
+                "DELETE FROM perfil_permissoes WHERE permissao_id = :permissao RETURNING perfil_id"
+            ),
+            {"permissao": PERMISSAO},
+        )
+        .scalars()
+        .all()
     )
+    if perfis:
+        bind.execute(
+            sa.text(
+                "UPDATE usuarios SET auth_version = auth_version + 1 WHERE perfil_id IN :ids"
+            ).bindparams(sa.bindparam("ids", expanding=True)),
+            {"ids": tuple(set(perfis))},
+        )
     bind.execute(sa.text("DELETE FROM permissoes WHERE id = :permissao"), {"permissao": PERMISSAO})
     op.alter_column("modelos_dispositivo", "updated_at", server_default=None)
     op.drop_column("modelos_dispositivo", "descricao")

@@ -34,7 +34,7 @@ const pagina = (items: ModeloDispositivo[], total = items.length) => ({ items, p
 function renderPage(perfil = kp) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   function ContextOutlet() { return <Outlet context={perfil} />; }
-  const router = createMemoryRouter([{ path: "/", element: <ContextOutlet />, children: [{ path: "modelos-dispositivo", element: <ModelosDispositivoPage /> }] }], { initialEntries: ["/modelos-dispositivo"] });
+  const router = createMemoryRouter([{ path: "/", element: <ContextOutlet />, children: [{ path: "admin/modelos-dispositivo", element: <ModelosDispositivoPage /> }] }], { initialEntries: ["/admin/modelos-dispositivo"] });
   return render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
 }
 
@@ -94,6 +94,23 @@ describe("ModelosDispositivoPage", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(await screen.findByText("A model with this name already exists.")).toBeInTheDocument();
+  });
+
+  it("marca no campo a descrição recusada pela validação do servidor", async () => {
+    vi.mocked(modelosDispositivoApi.criar).mockRejectedValue(new ApiError({
+      type: "about:blank", title: "Unprocessable", status: 422,
+      errors: [{ campo: "body.descricao", mensagem: "String should have at most 100 characters" }],
+    }));
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "New device model" }));
+    await user.type(screen.getByLabelText("Model name"), "S27 Ultra");
+    await user.type(screen.getByLabelText("Description"), "Flagship");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText("Use up to 100 characters.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Description")).toHaveAttribute("aria-invalid", "true");
   });
 
   it("edita nome e descrição de um modelo", async () => {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Pencil, Plus, Power, PowerOff, SearchX, Smartphone } from "lucide-react";
@@ -38,6 +38,9 @@ export function ModelosDispositivoPage() {
   const [paraInativar, setParaInativar] = useState<ModeloDispositivo | null>(null);
   const modelos = useModelosDispositivoList(pagina, tamanho, filtros, podeGerenciar);
   const definirAtivo = useDefinirAtivoModeloDispositivo();
+  const totalPaginas = Math.max(1, Math.ceil((modelos.data?.total_count ?? 0) / tamanho));
+  // Inativar o último item de uma página filtrada encolhe a lista: volta para a última página que existe.
+  useEffect(() => { if (modelos.data && pagina > totalPaginas) setPagina(totalPaginas); }, [modelos.data, pagina, totalPaginas]);
 
   if (!podeGerenciar) return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
 
@@ -74,7 +77,7 @@ export function ModelosDispositivoPage() {
             { label: t("edit"), icon: Pencil, onSelect: () => setEmEdicao(modelo) },
             modelo.ativo
               ? { label: t("inactivate"), icon: PowerOff, destructive: true, onSelect: () => setParaInativar(modelo) }
-              : { label: t("activate"), icon: Power, onSelect: () => alterarAtivo(modelo, true) },
+              : { label: t("activate"), icon: Power, disabled: definirAtivo.isPending, onSelect: () => alterarAtivo(modelo, true) },
           ]} /></TableCell>
         </TableRow>)}</TableBody> : null}
       </Table>

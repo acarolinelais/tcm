@@ -92,3 +92,6 @@ def test_migration_preserva_modelos_e_concede_gestao_somente_ao_kp(schema_alembi
         )
         assert "descricao" not in colunas
         assert _perfis_com_permissao(connection) == set()
+        assert _auth_versions(connection, "KP") == {
+            id: versao + 2 for id, versao in kp_antes.items()
+        }

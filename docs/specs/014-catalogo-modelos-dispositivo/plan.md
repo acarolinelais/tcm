@@ -13,7 +13,7 @@ permissão nova, `modelos_dispositivo.gerenciar`, concedida por padrão só ao p
 todas as permissões por `UsuarioAutenticado.pode` (ADR 0018). O seletor de modelos dos projetos ganha
 uma rota própria, `/opcoes`, que devolve só os modelos ativos e aceita `projetos.gerenciar`. Assim o
 gerente continua associando modelos a projetos sem acessar o catálogo. No frontend, a tela sai do módulo
-`projetos` e vira o módulo `modelos-dispositivo`, com item próprio no sidebar e tabela no padrão
+`projetos` e vira o módulo `modelos-dispositivo`, com item no grupo Administration do sidebar e tabela no padrão
 universal.
 
 ## Modelo de dados
@@ -100,7 +100,7 @@ Seguindo as skills `react-crud` e `table-rules`:
   - `ModelosDispositivoPage.tsx`: `TableLayout` com as colunas Nome, Descrição, Status, Criado em,
     Atualizado em e Ações. Paginação de 20, filtros de nome e status, estados de carregamento, vazio e
     erro, e drawer de criação/edição com react-hook-form;
-  - `routes.tsx`, com a rota `/modelos-dispositivo`;
+  - `routes.tsx`, com a rota `/admin/modelos-dispositivo`, junto das demais telas de Administration;
   - `ModelosDispositivoPage.test.tsx`.
 - **Remover** `src/modules/projetos/ModelosDispositivoPage.tsx` e o teste dele. Tirar a rota de
   `projetos/routes.tsx`, o `modelosDispositivoApi` e os hooks de modelos de `projetos`. O botão
@@ -109,7 +109,8 @@ Seguindo as skills `react-crud` e `table-rules`:
   `listarOpcoes` do novo módulo. Um módulo pode importar a API pública de outro, conforme a skill
   `react-crud`. Se ela proibir, a chamada vai para `shared/`.
 - `src/core/layout/Sidebar.tsx` e `sidebar-icons.tsx`: o item **Device models** com `DeviceIcon`
-  (smartphone, no traço dos ícones atuais), visível com `modelos_dispositivo.gerenciar` ou para admin.
+  (smartphone, no traço dos ícones atuais), dentro do grupo Administration, visível com
+  `modelos_dispositivo.gerenciar` ou para admin. O grupo aparece sempre que tiver ao menos um item.
 - `src/core/layout/voltar.ts` e o teste dele: a tela deixa de ser filha de `/projetos`.
 - `src/app` (registro de rotas do módulo novo) e `src/core/i18n/resources.ts`: chaves em en, pt e ko
   para descrição, datas, filtros e item do sidebar.
@@ -120,20 +121,20 @@ Seguindo as skills `react-crud` e `table-rules`:
 
 | CA | Nível | Teste |
 |---|---|---|
-| CA-01 | Unidade + funcional + e2e | `test_criar_com_descricao`, `test_kp_cria_modelo_retorna_201_com_datas`, e2e KP cria |
-| CA-02 | Unidade + funcional | `test_criar_sem_descricao_fica_nula`, `test_criar_so_com_nome_retorna_201` |
-| CA-03 | Integração + funcional | `test_atualizar_muda_updated_at_preserva_created_at`, `test_put_altera_nome_e_descricao` |
-| CA-04 | Funcional | `test_inativo_nao_aparece_em_opcoes_e_segue_no_projeto` |
-| CA-05 | Funcional | `test_reativar_volta_para_opcoes` |
-| CA-06 | Funcional | `test_admin_gerencia_modelo` |
-| CA-07 | Funcional (falha) | `test_nome_duplicado_com_espacos_retorna_409` em POST e PUT |
-| CA-08 | Unidade + funcional (falha) | `test_nome_vazio_ou_longo_invalido`, `test_descricao_acima_de_100_retorna_422` |
-| CA-09 | Unidade + funcional (falha) | `test_gerente_e_dev_recebem_403_no_catalogo` |
-| CA-10 | Integração + funcional (falha) | `test_modelo_de_outra_unidade_retorna_404` |
-| CA-11 | Funcional + Vitest | `test_gerente_lista_opcoes_ativas`; teste do seletor em `ProjetosPage.test.tsx` |
-| CA-12 | Vitest + e2e | `Sidebar.test.tsx` (item por permissão); página sem permissão; e2e gerente não vê o item |
-| CA-13 | Vitest | `ModelosDispositivoPage.test.tsx`: paginação de 20, filtros e vazio com filtro |
-| CA-14 | Integração | `test_migration_preserva_modelos_existentes_sem_descricao` |
+| CA-01 | Unidade + funcional + e2e | `test_criar_modelo_com_descricao_normaliza_texto`, `test_kp_cria_modelo_com_descricao_e_datas`, e2e "KP cria, edita e inativa um modelo…" |
+| CA-02 | Unidade + funcional | `test_criar_modelo_sem_descricao_fica_nula`, `test_kp_cria_modelo_so_com_nome` |
+| CA-03 | Integração + funcional | `test_descricao_persiste_e_edicao_preserva_created_at`, `test_put_altera_nome_e_descricao` |
+| CA-04 | Integração + funcional + e2e | `test_vinculo_modelo_do_projeto_persiste_e_lista_no_tenant` (vínculo segue após inativar), `test_kp_inativa_e_reativa_modelo[inativar]`, e2e (some do seletor) |
+| CA-05 | Funcional + unidade | `test_kp_inativa_e_reativa_modelo[ativar]`, `test_gerente_lista_somente_opcoes_ativas` |
+| CA-06 | Unidade + funcional | `test_admin_gerencia_modelo_sem_permissao_explicita`, `test_admin_gerencia_modelo` |
+| CA-07 | Funcional (falha) | `test_nome_duplicado_com_espacos_retorna_409[post/put]`, `test_renomear_para_nome_duplicado_falha_sem_commit` |
+| CA-08 | Unidade + funcional + Vitest (falha) | `test_criar_modelo_com_nome_invalido_levanta_erro`, `test_descricao_acima_do_limite_levanta_erro`, `test_campos_invalidos_retornam_422`, `modelo-dispositivo.test.ts` |
+| CA-09 | Unidade + funcional (falha) | `test_gerente_e_dev_nao_acessam_catalogo`, `test_gerente_e_dev_recebem_403_no_catalogo` |
+| CA-10 | Integração + funcional (falha) | `test_obter_modelo_de_outra_unidade_retorna_none`, `test_modelo_de_outra_unidade_retorna_404` |
+| CA-11 | Funcional + Vitest | `test_gerente_lista_opcoes_ativas`, `ProjetosPage.test.tsx` ("cria projeto manual…") |
+| CA-12 | Vitest + e2e | `Sidebar.test.tsx` ("mostra Device models para KP e admin…"), `ModelosDispositivoPage.test.tsx` ("nega acesso ao gerente…"), e2e "gerente não vê Device models…" |
+| CA-13 | Vitest | `ModelosDispositivoPage.test.tsx` ("lista os modelos… 20 por página", "filtra por status… e limpa o filtro") |
+| CA-14 | Integração | `test_migration_preserva_modelos_e_concede_gestao_somente_ao_kp` |
 
 ## Riscos e decisões pendentes
 

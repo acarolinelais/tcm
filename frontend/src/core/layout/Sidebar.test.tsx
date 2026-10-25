@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 
@@ -28,16 +29,26 @@ describe("Sidebar project navigation", () => {
     expect(screen.getByRole("link", { name: "My Projects" })).toHaveAttribute("href", "/projetos");
   });
 
-  it("mostra Device models para KP e admin e esconde de gerente e dev", () => {
-    const { rerender } = renderSidebar({ ...perfil, perfil_codigo: "KP", permissoes: ["modelos_dispositivo.gerenciar"] });
-    expect(screen.getByRole("link", { name: "Device models" })).toHaveAttribute("href", "/modelos-dispositivo");
+  it("mostra Device models dentro de Administration para KP e admin", async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderSidebar({ ...perfil, perfil_codigo: "KP", permissoes: ["modelos_dispositivo.gerenciar"] });
+    await user.click(screen.getByRole("button", { name: "Administration" }));
+    expect(screen.getByRole("link", { name: "Device models" })).toHaveAttribute("href", "/admin/modelos-dispositivo");
+    expect(screen.queryByRole("link", { name: "Users" })).not.toBeInTheDocument();
+    unmount();
 
-    rerender(<MemoryRouter><Sidebar perfil={{ ...perfil, perfil_codigo: "ADMIN_UNIDADE" }} recolhida={false} onToggle={() => undefined} /></MemoryRouter>);
+    renderSidebar({ ...perfil, perfil_codigo: "ADMIN_UNIDADE" });
+    await user.click(screen.getByRole("button", { name: "Administration" }));
+    expect(screen.getByRole("link", { name: "Users" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Device models" })).toBeInTheDocument();
+  });
 
+  it("esconde Administration de gerente e dev sem a permissão do catálogo", () => {
     for (const outro of [{ perfil_codigo: "GERENTE", permissoes: ["projetos.gerenciar"] }, { perfil_codigo: "USUARIO_PADRAO", permissoes: ["projetos.consultar"] }]) {
-      rerender(<MemoryRouter><Sidebar perfil={{ ...perfil, ...outro }} recolhida={false} onToggle={() => undefined} /></MemoryRouter>);
-      expect(screen.queryByRole("link", { name: "Device models" })).not.toBeInTheDocument();
+      const { unmount } = renderSidebar({ ...perfil, ...outro });
+      expect(screen.queryByRole("button", { name: "Administration" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Device models", hidden: true })).not.toBeInTheDocument();
+      unmount();
     }
   });
 });
