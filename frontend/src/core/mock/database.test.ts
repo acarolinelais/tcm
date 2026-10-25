@@ -43,7 +43,7 @@ describe("base mock de projetos", () => {
       ["mock-user-kp", "mock-user-dev", "mock-user-standard", "mock-user-inactive"].includes(user.id),
     );
 
-    expect(migrado.schemaVersion).toBe(15);
+    expect(migrado.schemaVersion).toBe(16);
     expect(migrado.usuarios.find((user: { id: string }) => user.id === "mock-user-manager")).toMatchObject({
       nome: "Ivan Moreira",
       email: "ivan.moreira@sidia.com",
@@ -361,7 +361,7 @@ describe("base mock de projetos", () => {
 
     mockProjetosApi.listar(1, 10); // qualquer leitura aplica a migração
     const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-    expect(migrado.schemaVersion).toBe(15);
+    expect(migrado.schemaVersion).toBe(16);
     expect(migrado.casosTeste[0]).toMatchObject({ situation: "New", status: "InReview" });
     expect(migrado.usuarios.every((user: { user_id?: string | null }) => user.user_id === null)).toBe(true);
   });
@@ -374,7 +374,7 @@ describe("base mock de projetos", () => {
 
     mockProjetosApi.listar(1, 10);
     const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-    expect(migrado.schemaVersion).toBe(15);
+    expect(migrado.schemaVersion).toBe(16);
     expect(migrado.usuarios.every((user: { user_id?: string | null }) => user.user_id === null)).toBe(true);
   });
 
@@ -452,7 +452,7 @@ describe("base mock de projetos", () => {
 
     mockProjetosApi.listar(1, 10);
     const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-    expect(migrado.schemaVersion).toBe(15);
+    expect(migrado.schemaVersion).toBe(16);
     const kp = migrado.perfis.find((profile: { codigo: string }) => profile.codigo === "KP");
     const gerente = migrado.perfis.find((profile: { codigo: string }) => profile.codigo === "GERENTE");
     expect(kp.permissoes).toContain("modelos_dispositivo.gerenciar");
@@ -471,7 +471,7 @@ describe("base mock de projetos", () => {
 
     mockProjetosApi.listar(1, 10);
     const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-    expect(migrado.schemaVersion).toBe(15);
+    expect(migrado.schemaVersion).toBe(16);
     const kp = migrado.perfis.find((profile: { codigo: string }) => profile.codigo === "KP");
     const gerente = migrado.perfis.find((profile: { codigo: string }) => profile.codigo === "GERENTE");
     expect(kp.permissoes).toContain("form_factor.consultar");

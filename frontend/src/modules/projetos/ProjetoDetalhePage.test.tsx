@@ -310,6 +310,37 @@ describe("ProjetoDetalhePage", () => {
     }
   });
 
+  it("edita Assignee e Backup direto na tabela com membros ativos distintos", async () => {
+    const manager = { ...perfil, id: "manager", perfil_codigo: "GERENTE", perfil: "Gerente", permissoes: [...perfil.permissoes, "test_cases.gerenciar"] };
+    const user = userEvent.setup();
+    renderPage(manager);
+
+    const row = await screen.findByRole("row", { name: /Clock_001/ });
+    await user.click(within(row).getByRole("combobox", { name: "Assignee Clock_001" }));
+    expect(screen.queryByRole("option", { name: "kaique-id" })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole("option", { name: "outro-id" }));
+    await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { responsavel_id: "user-2" }));
+
+    await user.click(within(row).getByRole("combobox", { name: "Backup Clock_001" }));
+    expect(screen.queryByRole("option", { name: "daniel-id" })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole("option", { name: "outro-id" }));
+    await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { backup_id: "user-2" }));
+  });
+
+  it("restaura a atribuição na tabela quando a API recusa a alteração", async () => {
+    vi.mocked(casosTesteApi.atualizar).mockRejectedValueOnce(new Error("403"));
+    const manager = { ...perfil, id: "manager", perfil_codigo: "GERENTE", perfil: "Gerente", permissoes: [...perfil.permissoes, "test_cases.gerenciar"] };
+    const user = userEvent.setup();
+    renderPage(manager);
+
+    const row = await screen.findByRole("row", { name: /Clock_001/ });
+    const assignee = within(row).getByRole("combobox", { name: "Assignee Clock_001" });
+    await user.click(assignee);
+    await user.click(await screen.findByRole("option", { name: "outro-id" }));
+
+    await waitFor(() => expect(assignee).toHaveTextContent("daniel-id"));
+  });
+
   it("Form Factor sem casos para o Assignee oferece limpar semana e Assignee", async () => {
     const admin = { ...perfil, id: "admin", perfil_codigo: "ADMIN_UNIDADE", perfil: "Administrador" };
     const user = userEvent.setup();

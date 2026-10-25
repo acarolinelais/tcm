@@ -109,6 +109,14 @@ Permitir que gerente ou KP crie projetos vinculados a um time e cadastre Test Ca
 
 - Nenhuma decisão bloqueante conhecida para a spec.
 
+## Ajuste: edição rápida de responsável e backup — 2026-10-25
+
+- Nas colunas Assignee e Backup da tabela Test Cases, administrador da unidade, gerente ou KP com `test_cases.gerenciar` e escopo sobre o time pode trocar diretamente a pessoa atribuída por um dropdown.
+- As opções são membros ativos do time do projeto, excluindo a pessoa já escolhida no outro campo. A validação existente do backend continua exigindo pessoas distintas e membros ativos.
+- Demais usuários continuam vendo os nomes sem controles de edição. Os resultados Form Factor permanecem históricos e não editam atribuições.
+
+**Critério adicional:** Dado um usuário autorizado a gerenciar Test Cases no escopo do projeto, quando escolhe outro membro ativo em Assignee ou Backup, então a atribuição é salva; usuário sem essa autorização não recebe controles de edição e chamadas sem autorização são recusadas.
+
 ## Ajuste: edição dos dados do projeto — 2026-10-25
 
 - O nome do projeto é um campo próprio, obrigatório e editável (máximo de 150 caracteres). Na criação, começa preenchido com `<App> <One UI>`; depois pode ser alterado sem mudar App ou One UI.

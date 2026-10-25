@@ -12,6 +12,21 @@
 
 - **Spec:** [spec.md](spec.md) · **Plan:** [plan.md](plan.md)
 
+## Ajuste: edição rápida de responsável e backup — 2026-10-25
+
+- [x] **T55. Editar Assignee e Backup diretamente na tabela**
+  - Arquivos: `frontend/src/modules/projetos/ProjetoDetalhePage.tsx`, `ProjetoDetalhePage.test.tsx`, `docs/specs/011-projetos-test-cases/{spec,plan}.md`.
+  - Cobre o critério adicional da spec: gestores autorizados no escopo trocam cada atribuição por dropdown com membros ativos distintos; demais perfis veem texto; falha de API restaura o valor anterior.
+  - Verificação: frontend 44 arquivos/223 testes passaram, lint e build passaram; backend 461 testes passaram com Postgres, Ruff e formatação aprovados.
+
+## Correções do CI frontend — 2026-10-25
+
+- [x] Atualizar as expectativas de versão do mock para schema 16.
+- [x] Atualizar os testes de criação de projeto para os painéis Manual/Import e seus controles duplicados.
+- [x] Enviar o nome composto (`App One UI`) na criação manual quando o campo editável não foi alterado.
+  - CI analisado: run `40230014954`, frontend falhava em `npm test` (5 expectativas de schema e 4 testes da página); lint e backend passaram.
+  - Verificação local final: `npm test` 223/223, `npm run lint` e `npm run build` aprovados; backend com integrações Postgres 461/461, Ruff e formatação aprovados.
+
 > Uma task = um objetivo, ~30 min, verificável. Os testes vão junto com o código que eles cobrem.
 > Implementar com a skill `implement-task`, um bloco (fase) por vez.
 > Na fase 4, `[~]` indica implementação parcial; a pendência está descrita em cada tarefa.
