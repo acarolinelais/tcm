@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Eye, FileSpreadsheet, Pencil, Plus, Smartphone, Trash2 } from "lucide-react";
+import { ChevronLeft, Eye, Pencil, Plus, Smartphone, Trash2 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -145,6 +145,24 @@ export function ProjetosPage() {
     const keys: Record<StatusProjeto, string> = { Created: "projectCreated", "To Do": "toDo", InProgress: "inProgress", Completed: "completed", Canceled: "projectCanceled" };
     return t(keys[status]);
   }
+  function projectSetup(visivel: boolean, sufixo: "import" | "manual") {
+    if (!visivel) return null;
+    return <section className="mt-7 border-t border-border pt-6">
+      <h2 className="mb-5 text-base font-semibold">{t("projectSetup")}</h2>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <div><Label htmlFor={`project-team-${sufixo}`}>{t("team")}</Label><Select value={timeId} onValueChange={(value) => setTimeId(value === SELECT_EMPTY_VALUE ? "" : value)}><SelectTrigger id={`project-team-${sufixo}`} className="mt-2"><SelectValue placeholder={t("selectTeam")} /></SelectTrigger><SelectContent><SelectItem value={SELECT_EMPTY_VALUE}>{t("selectTeam")}</SelectItem>{timesDisponiveis.map((team) => <SelectItem key={team.id} value={team.id}>{team.nome}</SelectItem>)}</SelectContent></Select></div>
+        <MultiSelectCombobox
+          label={t("deviceModels")}
+          placeholder={t("selectDeviceModels", { defaultValue: "Selecionar modelos" })}
+          options={opcoesModelos}
+          value={modelosIds}
+          onValueChange={setModelosIds}
+          emptyLabel={modelos.isLoading ? t("loadingDeviceModels") : t("noDeviceModels")}
+          removeLabel={(name) => t("removeSelectedModel", { defaultValue: "Remover {{name}}", name })}
+        />
+      </div>
+    </section>;
+  }
 
   if (!podeConsultar) return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
 
@@ -177,35 +195,36 @@ export function ProjetosPage() {
         <TablePagination page={pagina} pageSize={tamanhoPagina} totalCount={projetos.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
       </TableLayout>
     </> : <>
-      <header className="mb-8 flex shrink-0 items-center gap-4">
-        <Button variant="outline" size="icon" aria-label={t("backToProjects")} onClick={() => { setCriacaoAberta(false); limparFormulario(); }}><ArrowLeft aria-hidden="true" className="size-4" /></Button>
-        <h1 className="text-2xl font-medium text-primary">{t("newProject")}</h1>
-      </header>
+      <div className="mb-6 shrink-0">
+        <Button variant="ghost" className="-ml-2 h-auto gap-2 px-2 py-1 text-sm font-normal text-muted-foreground hover:text-foreground" onClick={() => { setCriacaoAberta(false); limparFormulario(); }}><ChevronLeft aria-hidden="true" className="size-4" />{t("projectsNav")}</Button>
+      </div>
       <div className="thin-scroll min-h-0 flex-1 overflow-auto">
         <div className="mx-auto flex min-h-full max-w-[52.5rem] flex-col">
-          <div className="mb-4 inline-flex self-start rounded-xl border border-border bg-[#F7F8FA] p-1" role="tablist" aria-label={t("projectCreationMethod")}>
-            <button role="tab" aria-selected={modo === "planilha"} type="button" onClick={() => setModo("planilha")} className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-colors ${modo === "planilha" ? "bg-white font-medium text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}><FileSpreadsheet aria-hidden="true" className="size-4" />{t("importSpreadsheet")}</button>
-            <button role="tab" aria-selected={modo === "manual"} type="button" onClick={() => setModo("manual")} className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-colors ${modo === "manual" ? "bg-white font-medium text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}><Plus aria-hidden="true" className="size-4" />{t("createManually")}</button>
-          </div>
-          {modo === "planilha" ? <section aria-label={t("uploadSpreadsheet")} className="flex flex-1 flex-col">
-            <h2 className="mb-3 text-lg font-medium leading-6 text-[#454442]">{t("uploadSpreadsheet")}</h2>
-            <UploadPlanilha leitura={leitura} onBaixarModelo={downloadTemplate} />
-          </section> : <section className="rounded-2xl border border-border bg-white p-5 sm:p-7"><div className="mb-6"><h2 className="text-base font-semibold">{t("projectDetails")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("projectNameFormulaHint")}</p></div><div className="grid gap-5 sm:grid-cols-2"><div><Label htmlFor="project-app">{t("app")}</Label><Input id="project-app" value={app} onChange={(event) => setApp(event.target.value)} className="mt-2" placeholder={t("appPlaceholder")} maxLength={80} /></div><div><Label htmlFor="project-oneui">{t("oneUi")}</Label><Input id="project-oneui" value={oneUi} onChange={(event) => setOneUi(event.target.value)} className="mt-2" placeholder="9.5" maxLength={40} /></div></div><p className="mt-3 text-sm text-muted-foreground">{app.trim() && oneUi.trim() ? `${t("projectNamePreview")}: ${app.trim()} ${oneUi.trim()}` : t("projectNamePreviewHint")}</p></section>}
-
-          {(modo === "manual" || leitura.arquivo) && <section className="mt-7 border-t border-border pt-6">
-            <h2 className="mb-5 text-base font-semibold">{t("projectSetup")}</h2>
-            <div className="grid gap-5 sm:grid-cols-2"><div><Label htmlFor="project-team">{t("team")}</Label><Select value={timeId} onValueChange={(value) => setTimeId(value === SELECT_EMPTY_VALUE ? "" : value)}><SelectTrigger id="project-team" className="mt-2"><SelectValue placeholder={t("selectTeam")} /></SelectTrigger><SelectContent><SelectItem value={SELECT_EMPTY_VALUE}>{t("selectTeam")}</SelectItem>{timesDisponiveis.map((team) => <SelectItem key={team.id} value={team.id}>{team.nome}</SelectItem>)}</SelectContent></Select></div>
-              <MultiSelectCombobox
-                label={t("deviceModels")}
-                placeholder={t("selectDeviceModels", { defaultValue: "Selecionar modelos" })}
-                options={opcoesModelos}
-                value={modelosIds}
-                onValueChange={setModelosIds}
-                emptyLabel={modelos.isLoading ? t("loadingDeviceModels") : t("noDeviceModels")}
-                removeLabel={(name) => t("removeSelectedModel", { defaultValue: "Remover {{name}}", name })}
-              />
+          <header className="mb-4 flex items-center justify-between gap-4">
+            <h1 className="text-2xl font-medium text-foreground">{t("newProject")}</h1>
+            <div className="relative grid w-52 shrink-0 grid-cols-2 rounded-xl bg-[#F7F8FA] p-1" role="tablist" aria-label={t("projectCreationMethod")}>
+              <span aria-hidden="true" className="pointer-events-none absolute inset-y-1 left-1 right-1 grid grid-cols-2"><span className={`col-start-1 rounded-lg bg-white shadow-sm transition-transform duration-150 ease-out motion-reduce:transition-none ${modo === "manual" ? "translate-x-full" : "translate-x-0"}`} /></span>
+              <button id="project-import-tab" role="tab" aria-controls="project-import-panel" aria-selected={modo === "planilha"} type="button" onClick={() => setModo("planilha")} className={`relative z-10 rounded-lg px-3 py-2 text-sm transition-colors duration-150 motion-reduce:transition-none ${modo === "planilha" ? "font-medium text-primary" : "text-muted-foreground hover:text-foreground"}`}>{t("import")}</button>
+              <button id="project-manual-tab" role="tab" aria-controls="project-manual-panel" aria-selected={modo === "manual"} type="button" onClick={() => setModo("manual")} className={`relative z-10 rounded-lg px-3 py-2 text-sm transition-colors duration-150 motion-reduce:transition-none ${modo === "manual" ? "font-medium text-primary" : "text-muted-foreground hover:text-foreground"}`}>{t("manual")}</button>
             </div>
-          </section>}
+          </header>
+          <div className="relative grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)]">
+            {(["planilha", "manual"] as const).map((painel) => {
+              const ativo = modo === painel;
+              const importacao = painel === "planilha";
+              const painelId = importacao ? "project-import-panel" : "project-manual-panel";
+              const tabId = importacao ? "project-import-tab" : "project-manual-tab";
+              return <section key={painel} id={painelId} role="tabpanel" aria-labelledby={tabId} aria-hidden={!ativo} inert={!ativo} className={`col-start-1 row-start-1 flex min-w-0 flex-col transition-[opacity,transform,visibility] duration-150 ease-out motion-reduce:transition-none ${ativo ? "relative visible translate-y-0 opacity-100" : "invisible pointer-events-none absolute inset-x-0 top-0 translate-y-1 opacity-0"}`}>
+                <div className="mx-auto flex min-h-full w-full max-w-[52.5rem] flex-col">
+                  {importacao ? <section aria-label={t("uploadSpreadsheet")} className="flex flex-1 flex-col">
+                    <h2 className="mb-3 text-lg font-medium leading-6 text-[#454442]">{t("uploadSpreadsheet")}</h2>
+                    <UploadPlanilha leitura={leitura} onBaixarModelo={downloadTemplate} />
+                  </section> : <section className="rounded-2xl border border-border bg-white p-5 sm:p-7"><div className="mb-6"><h2 className="text-base font-semibold">{t("projectDetails")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("projectNameFormulaHint")}</p></div><div className="grid gap-5 sm:grid-cols-2"><div><Label htmlFor="project-app">{t("app")}</Label><Input id="project-app" value={app} onChange={(event) => setApp(event.target.value)} className="mt-2" placeholder={t("appPlaceholder")} maxLength={80} /></div><div><Label htmlFor="project-oneui">{t("oneUi")}</Label><Input id="project-oneui" value={oneUi} onChange={(event) => setOneUi(event.target.value)} className="mt-2" placeholder="9.5" maxLength={40} /></div></div><p className="mt-3 text-sm text-muted-foreground">{app.trim() && oneUi.trim() ? `${t("projectNamePreview")}: ${app.trim()} ${oneUi.trim()}` : t("projectNamePreviewHint")}</p></section>}
+                  {projectSetup(importacao ? Boolean(leitura.arquivo) : true, importacao ? "import" : "manual")}
+                </div>
+              </section>;
+            })}
+          </div>
         </div>
       </div>
       <footer className="mt-6 flex shrink-0 items-center justify-end gap-4 border-t border-border pt-5"><div className="flex gap-2"><Button variant="outline" onClick={() => { setCriacaoAberta(false); limparFormulario(); }}>{t("cancel")}</Button><Button disabled={queryMutation.isPending || leitura.fase === "lendo" || !timeId || (modo === "manual" ? !app.trim() || !oneUi.trim() : !leitura.arquivo)} onClick={() => queryMutation.mutate()}>{queryMutation.isPending ? t("saving") : conferirPlanilha ? t("checkSpreadsheet") : t("createProject")}</Button></div></footer>
