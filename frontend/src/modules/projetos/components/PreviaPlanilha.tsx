@@ -9,13 +9,8 @@ import type { PlanilhaProjeto } from "../utils/planilha-projeto";
 /** Prévia paginada no cliente: a planilha já foi lida inteira no navegador. */
 export function PreviaPlanilha({ previa }: { previa: PlanilhaProjeto }) {
   const { t } = useTranslation();
+  // A prévia remonta a cada leitura, então começa sempre na primeira página.
   const [pagina, setPagina] = useState(1);
-  // Reler o arquivo (mesmo com o mesmo nome) volta para a primeira página.
-  const [previaAnterior, setPreviaAnterior] = useState(previa);
-  if (previaAnterior !== previa) {
-    setPreviaAnterior(previa);
-    setPagina(1);
-  }
   const [tamanho, setTamanho] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const casosDaPagina = previa.casos.slice((pagina - 1) * tamanho, pagina * tamanho);
 
@@ -28,7 +23,8 @@ export function PreviaPlanilha({ previa }: { previa: PlanilhaProjeto }) {
         </div>
         <span className="text-xs tabular-nums text-muted-foreground">{t("testCaseCount", { count: previa.casos.length, countLabel: formatNumber(previa.casos.length) })}</span>
       </div>
-      <div className="thin-scroll max-h-96 overflow-auto">
+      {/* Com mais de uma página a altura é fixa, para a paginação não pular ao trocar de página (RN-21). */}
+      <div className={`thin-scroll overflow-auto ${previa.casos.length > tamanho ? "h-96" : "max-h-96"}`}>
         <Table>
           <TableHeader>
             <TableRow>

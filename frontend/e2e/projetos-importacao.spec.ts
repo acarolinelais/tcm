@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import * as XLSX from "@e965/xlsx";
 
 import { project, setupProjectSession, setupTeamsAndModels } from "./projetos-fixtures";
@@ -146,4 +146,54 @@ test("abrir o seletor de modelos com a prévia rolada não estica a página", as
   await expect(page.getByRole("option", { name: "S27 Ultra" })).toBeVisible();
 
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(720);
+});
+
+async function abrirNovoProjeto(page: Page) {
+  await page.goto("/projetos");
+  await page.getByRole("button", { name: "Novo projeto" }).click();
+}
+
+const escolher = (page: Page, arquivo: Parameters<Locator["setInputFiles"]>[0]) => page.locator('input[type="file"]').setInputFiles(arquivo);
+const modelo = (page: Page) => page.getByRole("button", { name: "Baixar template" });
+const previaDe = (page: Page) => page.getByRole("region", { name: "Prévia dos Test Cases" });
+
+test("lê a planilha com barra até 100%, recolhe a área e reabre ao remover", async ({ page }) => {
+  await abrirNovoProjeto(page);
+  const area = page.getByRole("button", { name: /Arraste e solte sua planilha aqui/ });
+  await expect(modelo(page)).toBeVisible();
+
+  await escolher(page, planilha(casos(1000)));
+
+  await expect(page.getByText("clock.xlsx")).toBeVisible();
+  await expect(previaDe(page)).toContainText("1.000 Test Cases");
+  await expect(page.getByRole("progressbar", { name: "Progresso da leitura da planilha" })).toHaveAttribute("aria-valuenow", "100");
+  await expect(area).toBeHidden();
+  await expect(modelo(page)).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Remover arquivo" }).click();
+  await expect(area).toBeFocused();
+  await expect(previaDe(page)).toHaveCount(0);
+  await expect(modelo(page)).toBeVisible();
+  await expect(page.getByText("Planilha removida")).toBeVisible();
+});
+
+test("trocar de arquivo logo após escolher descarta a leitura anterior", async ({ page }) => {
+  await abrirNovoProjeto(page);
+
+  await escolher(page, planilha(casos(1000)));
+  await page.getByRole("button", { name: "Remover arquivo" }).click();
+  await escolher(page, planilha(casos(1)));
+
+  await expect(previaDe(page)).toContainText("1 Test Case");
+  await expect(previaDe(page)).not.toContainText("1.000 Test Cases");
+});
+
+test("recusa um arquivo .csv mostrando o motivo junto da área", async ({ page }) => {
+  await abrirNovoProjeto(page);
+
+  await escolher(page, { name: "casos.csv", mimeType: "text/csv", buffer: Buffer.from("a,b") });
+
+  await expect(page.getByText("Selecione uma planilha XLS ou XLSX.").first()).toBeVisible();
+  await expect(page.getByRole("progressbar")).toHaveCount(0);
+  await expect(modelo(page)).toBeVisible();
 });
