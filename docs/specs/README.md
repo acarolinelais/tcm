@@ -38,6 +38,7 @@ ser registradas em ADR antes de serem introduzidas.
 | 011 | Projetos e Test Cases | Concluída |
 | 012 | Perfil Dev em Projetos e Test Cases | Concluída |
 | 012 | Identificador externo de usuário | Concluída |
+| 013 | Seed organizacional SVP | Concluída |
 
 > As duas specs 012 foram criadas em paralelo. Os diretórios e históricos foram preservados nesta integração; a harmonização da numeração está registrada no backlog da spec de perfil Dev.
 

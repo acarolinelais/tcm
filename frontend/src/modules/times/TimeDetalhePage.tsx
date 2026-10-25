@@ -34,7 +34,7 @@ export function TimeDetalhePage({ modoAdmin = false }: { modoAdmin?: boolean }) 
   const podeConsultar = admin || perfil.permissoes.includes("times.consultar");
   const times = useQuery({ queryKey: ["times", "detalhe", timeId], queryFn: () => timesApi.listar(1, 100), enabled: podeConsultar });
   const time = times.data?.items.find((item) => item.id === timeId);
-  const escopoPermitido = Boolean(time && (admin || perfil.setores_gerenciados.includes(time.setor_id) || (perfil.perfil_codigo === "KP" && perfil.times.some((item) => item.id === time.id))));
+  const escopoPermitido = Boolean(time && (admin || perfil.setores_gerenciados.includes(time.setor_id) || ((perfil.perfil_codigo === "KP" || perfil.perfil_codigo === "USUARIO_PADRAO") && perfil.permissoes.includes("times.consultar") && perfil.times.some((item) => item.id === time.id))));
   const podeGerenciarMembros = Boolean(time && (admin ||
     (perfil.permissoes.includes("times.gerenciar") && perfil.setores_gerenciados.includes(time.setor_id)) ||
     (perfil.perfil_codigo === "KP" && perfil.permissoes.includes("times.gerenciar") && perfil.times.some((item) => item.id === time.id))));

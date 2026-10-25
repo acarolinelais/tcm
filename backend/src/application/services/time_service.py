@@ -120,6 +120,20 @@ class TimeServiceImpl:
                 ativo,
                 busca,
             )
+        elif (
+            usuario_atual.perfil_codigo == "USUARIO_PADRAO"
+            and usuario_atual.pode("times.consultar")
+            and usuario_atual.time_ids
+        ):
+            result = await self._repo.listar_visiveis(
+                usuario_atual.unidade_id,
+                page,
+                page_size,
+                usuario_atual.time_ids,
+                setor_id,
+                ativo,
+                busca,
+            )
         else:
             result = PagedResult([], page, page_size, 0)
         nomes_por_ids = getattr(self._setor_repo, "nomes_por_ids", None)
@@ -188,7 +202,7 @@ class TimeServiceImpl:
             )
             and not (
                 usuario_atual.perfil_codigo == "USUARIO_PADRAO"
-                and usuario_atual.pode("test_cases.consultar")
+                and usuario_atual.pode("times.consultar")
                 and id in usuario_atual.time_ids
             )
         ):
