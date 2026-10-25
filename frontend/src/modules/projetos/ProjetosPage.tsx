@@ -69,7 +69,7 @@ export function ProjetosPage() {
   // responsável e backup, que a prévia não consegue verificar, e não cria nada (CA-26, CA-27).
   const conferirPlanilha = modo === "planilha" && errosImportacao.length > 0;
   const timesDisponiveis = times.data?.items ?? timesVazios;
-  const opcoesModelos = useMemo(() => (modelos.data?.items ?? []).map((model) => ({ value: model.id, label: model.nome })), [modelos.data?.items]);
+  const opcoesModelos = useMemo(() => (modelos.data?.items ?? []).map((model) => ({ value: model.id, label: model.nome, description: model.descricao })), [modelos.data?.items]);
   const nomeTime = useMemo(() => Object.fromEntries([...perfil.times, ...timesDisponiveis].map((time) => [time.id, time.nome])), [perfil.times, timesDisponiveis]);
   const projetosFiltrados = (projetos.data?.items ?? []).filter((project) => {
     const createdAt = project.created_at ? formatDate(project.created_at) : "";

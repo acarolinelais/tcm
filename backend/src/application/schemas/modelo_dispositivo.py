@@ -58,6 +58,7 @@ class ModeloDispositivoResponse(BaseModel):
 class ModeloDispositivoOpcaoResponse(BaseModel):
     id: UUID
     nome: str
+    descricao: str | None
 
 
 def to_response(modelo: ModeloDispositivo) -> ModeloDispositivoResponse:
@@ -73,4 +74,6 @@ def to_response(modelo: ModeloDispositivo) -> ModeloDispositivoResponse:
 
 
 def to_opcao_response(modelo: ModeloDispositivo) -> ModeloDispositivoOpcaoResponse:
-    return ModeloDispositivoOpcaoResponse(id=modelo.id, nome=modelo.nome)
+    return ModeloDispositivoOpcaoResponse(
+        id=modelo.id, nome=modelo.nome, descricao=modelo.descricao
+    )

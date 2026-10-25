@@ -768,7 +768,7 @@ export const mockModelosDispositivoApi = {
   listarOpcoes(pageNumber: number, pageSize: number) {
     const { db, profile } = mockProfile();
     if (!profile?.permissoes.includes("projetos.gerenciar")) requireMockPermission("modelos_dispositivo.gerenciar");
-    const models = db.modelosDispositivo.filter((model) => model.ativo).map(({ id: modelId, nome }) => ({ id: modelId, nome }));
+    const models = db.modelosDispositivo.filter((model) => model.ativo).map(({ id: modelId, nome, descricao }) => ({ id: modelId, nome, descricao }));
     return page(models, pageNumber, pageSize);
   },
   criar(body: { nome: string; descricao: string | null }) {

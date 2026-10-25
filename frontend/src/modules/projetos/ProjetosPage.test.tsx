@@ -46,14 +46,10 @@ function renderPage() {
 describe("ProjetosPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    HTMLElement.prototype.hasPointerCapture ??= () => false;
-    HTMLElement.prototype.setPointerCapture ??= () => undefined;
-    HTMLElement.prototype.releasePointerCapture ??= () => undefined;
-    HTMLElement.prototype.scrollIntoView ??= () => undefined;
     vi.mocked(projetosApi.listar).mockResolvedValue({ items: [], page: 1, page_size: 10, total_count: 0 });
     vi.mocked(projetosApi.criar).mockResolvedValue({ id: "new-project" } as never);
     vi.mocked(timesApi.listar).mockResolvedValue({ items: [{ id: "team-1", nome: "Plataforma", ativo: true }], page: 1, page_size: 100, total_count: 1 } as never);
-    vi.mocked(modelosDispositivoApi.listarOpcoes).mockResolvedValue({ items: [{ id: "model-1", nome: "S27 Ultra" }], page: 1, page_size: 100, total_count: 1 });
+    vi.mocked(modelosDispositivoApi.listarOpcoes).mockResolvedValue({ items: [{ id: "model-1", nome: "S27 Ultra", descricao: "Flagship" }], page: 1, page_size: 100, total_count: 1 });
   });
 
   it("cria projeto manual derivando o nome do App e One UI e associa o time/modelo", async () => {
@@ -69,7 +65,7 @@ describe("ProjetosPage", () => {
     await user.click(await screen.findByRole("option", { name: "Plataforma" }));
 
     await user.click(screen.getByRole("button", { name: "Device models" }));
-    await user.click(await screen.findByRole("option", { name: "S27 Ultra" }));
+    await user.click(await screen.findByRole("option", { name: "S27 Ultra Flagship" }));
     await user.keyboard("{Escape}");
     await user.click(screen.getByRole("button", { name: "Create project" }));
 

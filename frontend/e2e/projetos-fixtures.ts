@@ -65,6 +65,6 @@ export async function setupTeams(page: Page) {
 export async function setupTeamsAndModels(page: Page) {
   await setupTeams(page);
   await page.route("**/api/modelos-dispositivo/opcoes?*", (route) => route.fulfill({ json: {
-    items: [{ id: modelId, nome: "S27 Ultra" }], page: 1, page_size: 100, total_count: 1,
+    items: [{ id: modelId, nome: "S27 Ultra", descricao: null }], page: 1, page_size: 100, total_count: 1,
   } }));
 }

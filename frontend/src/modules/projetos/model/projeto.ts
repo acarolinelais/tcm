@@ -31,6 +31,7 @@ export interface Projeto {
 export interface OpcaoModeloDispositivo {
   id: string;
   nome: string;
+  descricao: string | null;
 }
 
 export interface CasoTeste {
