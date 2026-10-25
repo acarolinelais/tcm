@@ -14,7 +14,7 @@ class UsuarioAutenticado:
     perfil: str = ""
     permissoes: frozenset[str] = frozenset()
     time_ids: tuple[UUID, ...] = ()
-    times_gerenciados: tuple[UUID, ...] = ()  # Times no escopo dos setores associados ao gerente.
+    times_gerenciados: tuple[UUID, ...] = ()  # Times dos setores do gerente (sem participação).
     time_atual_id: UUID | None = None
     sessao_id: UUID | None = None
     senha_alteracao_obrigatoria: bool = False
@@ -26,3 +26,18 @@ class UsuarioAutenticado:
     @property
     def eh_administrador(self) -> bool:
         return self.perfil_codigo == "ADMIN_UNIDADE"
+
+    def time_no_escopo(self, time_id: UUID, setor_id: UUID) -> bool:
+        """Escopo de projetos (ADR 0036): gerente pelo setor ou como membro; demais, como membro."""
+        if self.eh_administrador:
+            return True
+        if self.perfil_codigo == "GERENTE" and setor_id in self.setores_gerenciados:
+            return True
+        return time_id in self.time_ids
+
+    @property
+    def times_no_escopo(self) -> tuple[UUID, ...]:
+        """Times para filtrar listagens com a mesma regra de `time_no_escopo` (sem o admin)."""
+        if self.perfil_codigo == "GERENTE":
+            return tuple(dict.fromkeys((*self.times_gerenciados, *self.time_ids)))
+        return self.time_ids

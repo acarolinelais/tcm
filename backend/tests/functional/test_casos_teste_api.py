@@ -297,6 +297,49 @@ async def test_gerente_nao_consulta_test_case_de_outro_setor(api_client):
     assert response.status_code == 404
 
 
+async def test_gerente_membro_do_time_consulta_test_case_de_outro_setor(api_client):
+    from src.api.main import app
+
+    unidade_id, usuario_id, time_id = (uuid4() for _ in range(3))
+    gerente = UsuarioAutenticado(
+        usuario_id,
+        unidade_id,
+        "GERENTE",
+        permissoes=frozenset({"test_cases.consultar"}),
+        setores_gerenciados=(uuid4(),),
+        time_ids=(time_id,),
+    )
+    caso_repo, projeto_repo, time_repo, membro_repo, usuario_repo, uow = (
+        AsyncMock() for _ in range(6)
+    )
+    projeto = Projeto(unidade_id, time_id, "Clock", "9.5")
+    caso = CasoTeste(
+        unidade_id,
+        projeto.id,
+        "Clock_001",
+        CategoriaCasoTeste.A,
+        DificuldadeCasoTeste.LOW,
+        uuid4(),
+        uuid4(),
+        SituacaoCasoTeste.NEW,
+    )
+    time = Time(unidade_id, uuid4(), "Time de outro setor", uuid4())
+    time.id = time_id
+    caso_repo.obter_por_id.return_value = caso
+    projeto_repo.obter_por_id.return_value = projeto
+    time_repo.obter_por_id.return_value = time
+    service = CasoTesteServiceImpl(
+        caso_repo, projeto_repo, time_repo, membro_repo, usuario_repo, uow
+    )
+    app.dependency_overrides[get_usuario_atual] = dependency_override(gerente)
+    app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
+
+    response = await api_client.get(f"/api/test-cases/{caso.id}")
+
+    assert response.status_code == 200
+    assert response.json()["tc_id"] == "Clock_001"
+
+
 async def test_test_case_de_outra_unidade_nao_e_encontrado(api_client):
     from src.api.main import app
 

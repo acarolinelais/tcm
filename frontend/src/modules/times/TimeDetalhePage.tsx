@@ -34,10 +34,12 @@ export function TimeDetalhePage({ modoAdmin = false }: { modoAdmin?: boolean }) 
   const podeConsultar = admin || perfil.permissoes.includes("times.consultar");
   const times = useQuery({ queryKey: ["times", "detalhe", timeId], queryFn: () => timesApi.listar(1, 100), enabled: podeConsultar });
   const time = times.data?.items.find((item) => item.id === timeId);
-  const escopoPermitido = Boolean(time && (admin || perfil.setores_gerenciados.includes(time.setor_id) || ((perfil.perfil_codigo === "KP" || perfil.perfil_codigo === "USUARIO_PADRAO") && perfil.permissoes.includes("times.consultar") && perfil.times.some((item) => item.id === time.id))));
+  const membroDoTime = Boolean(time && perfil.times.some((item) => item.id === time.id));
+  // Gerente vê o time pelo setor ou como membro (ADR 0036); gerir membros continua exigindo o setor.
+  const escopoPermitido = Boolean(time && (admin || perfil.setores_gerenciados.includes(time.setor_id) || membroDoTime));
   const podeGerenciarMembros = Boolean(time && (admin ||
     (perfil.permissoes.includes("times.gerenciar") && perfil.setores_gerenciados.includes(time.setor_id)) ||
-    (perfil.perfil_codigo === "KP" && perfil.permissoes.includes("times.gerenciar") && perfil.times.some((item) => item.id === time.id))));
+    (perfil.perfil_codigo === "KP" && perfil.permissoes.includes("times.gerenciar") && membroDoTime)));
   const membros = useQuery({ queryKey: ["time-membros", timeId], queryFn: () => timesApi.membros(timeId), enabled: escopoPermitido });
   const usuariosDisponiveis = useQuery({ queryKey: ["times", "usuarios-disponiveis"], queryFn: timesApi.usuariosDisponiveis, enabled: podeGerenciarMembros });
   const setores = useQuery({ queryKey: ["setores", "times"], queryFn: () => setoresApi.listar(1, 100), enabled: escopoPermitido });

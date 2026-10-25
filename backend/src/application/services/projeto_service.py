@@ -75,7 +75,7 @@ class ProjetoServiceImpl:
             self._exigir_consulta(usuario_atual)
             projetos = await self._projeto_repo.listar_associados_por_times(
                 usuario_atual.unidade_id,
-                None if usuario_atual.eh_administrador else self._times_no_escopo(usuario_atual),
+                None if usuario_atual.eh_administrador else usuario_atual.times_no_escopo,
                 usuario_atual.id,
                 page,
                 page_size,
@@ -86,7 +86,7 @@ class ProjetoServiceImpl:
             )
         else:
             self._exigir_consulta(usuario_atual)
-            time_ids = self._times_no_escopo(usuario_atual)
+            time_ids = usuario_atual.times_no_escopo
             projetos = await self._projeto_repo.listar_por_times(
                 usuario_atual.unidade_id, time_ids, page, page_size
             )
@@ -104,7 +104,7 @@ class ProjetoServiceImpl:
         if projeto is None or not projeto.ativo:
             raise NotFoundException("Projeto não encontrado.")
         time = await self._time_repo.obter_por_id(usuario_atual.unidade_id, projeto.time_id)
-        if time is None or not self._time_esta_no_escopo(usuario_atual, time.id, time.setor_id):
+        if time is None or not usuario_atual.time_no_escopo(time.id, time.setor_id):
             raise NotFoundException("Projeto não encontrado.")
         return await self._to_response_com_modelos(projeto)
 
@@ -182,28 +182,6 @@ class ProjetoServiceImpl:
     ) -> None:
         if usuario_atual.eh_administrador:
             return
-        dentro_do_escopo = (
-            usuario_atual.perfil_codigo == "GERENTE"
-            and setor_id in usuario_atual.setores_gerenciados
-        ) or (usuario_atual.perfil_codigo == "KP" and time_id in usuario_atual.time_ids)
-        if not dentro_do_escopo:
+        gerencia_projetos = usuario_atual.perfil_codigo in {"GERENTE", "KP"}
+        if not (gerencia_projetos and usuario_atual.time_no_escopo(time_id, setor_id)):
             raise ForbiddenException("O time está fora do seu escopo de projetos.")
-
-    @staticmethod
-    def _times_no_escopo(usuario_atual: UsuarioAutenticado) -> tuple[UUID, ...]:
-        if usuario_atual.perfil_codigo == "GERENTE":
-            return usuario_atual.times_gerenciados
-        if usuario_atual.perfil_codigo == "KP":
-            return usuario_atual.time_ids
-        return usuario_atual.time_ids
-
-    @staticmethod
-    def _time_esta_no_escopo(
-        usuario_atual: UsuarioAutenticado, time_id: UUID, setor_id: UUID
-    ) -> bool:
-        if usuario_atual.eh_administrador:
-            return True
-        return (
-            usuario_atual.perfil_codigo == "GERENTE"
-            and setor_id in usuario_atual.setores_gerenciados
-        ) or time_id in usuario_atual.time_ids

@@ -235,6 +235,66 @@ async def test_gerente_fora_do_setor_nao_cria_caso(contexto):
     uow.commit.assert_not_awaited()
 
 
+def gerente_membro(
+    admin, time, permissoes=frozenset({"test_cases.consultar", "test_cases.gerenciar"})
+):
+    """Gerente que participa do time, mas não gerencia o setor dele (ADR 0036)."""
+    return UsuarioAutenticado(
+        uuid4(),
+        admin.unidade_id,
+        "GERENTE",
+        permissoes=permissoes,
+        setores_gerenciados=(uuid4(),),
+        time_ids=(time.id,),
+    )
+
+
+async def test_gerente_membro_consulta_e_gerencia_casos_do_time(contexto):
+    service, casos, _, _, membros, usuarios, uow, admin, projeto, time = contexto
+    gerente = gerente_membro(admin, time)
+    casos.listar_por_projeto.return_value = PagedResult([], 1, 20, 0)
+    request = request_criar()
+    tornar_membro(membros, usuarios, admin.unidade_id, time.id, request.responsavel_id)
+    caso_de_outro = CasoTeste(
+        admin.unidade_id,
+        projeto.id,
+        "Clock_002",
+        CategoriaCasoTeste.A,
+        DificuldadeCasoTeste.LOW,
+        uuid4(),
+        uuid4(),
+        SituacaoCasoTeste.NEW,
+    )
+    casos.obter_por_id.return_value = caso_de_outro
+
+    await service.listar(gerente, projeto.id, 1, 20)
+    await service.criar(gerente, projeto.id, request)
+    resposta = await service.atualizar(
+        gerente,
+        caso_de_outro.id,
+        AtualizarCasoTesteRequest(
+            status=StatusCasoTeste.IN_REVIEW, responsavel_id=request.responsavel_id
+        ),
+    )
+
+    casos.listar_por_projeto.assert_awaited_once()
+    casos.adicionar.assert_awaited_once()
+    assert resposta.status is StatusCasoTeste.IN_REVIEW
+    assert resposta.responsavel_id == request.responsavel_id
+    assert uow.commit.await_count == 2
+
+
+async def test_gerente_membro_sem_permissao_nao_cria_caso(contexto):
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    gerente = gerente_membro(admin, time, permissoes=frozenset({"test_cases.consultar"}))
+
+    with pytest.raises(ForbiddenException):
+        await service.criar(gerente, projeto.id, request_criar())
+
+    casos.adicionar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
 async def test_atualizar_caso_proprio_permite_campos_do_responsavel(contexto):
     service, casos, _, _, _, _, uow, admin, projeto, time = contexto
     responsavel = UsuarioAutenticado(

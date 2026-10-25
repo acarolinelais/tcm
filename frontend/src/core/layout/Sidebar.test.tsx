@@ -21,6 +21,14 @@ describe("Sidebar project navigation", () => {
     renderSidebar({ ...perfil, perfil_codigo: "USUARIO_PADRAO", permissoes: ["test_cases.consultar"] });
     expect(screen.getByRole("link", { name: "Projects" })).toHaveAttribute("href", "/projetos");
   });
+  it("mostra Teams para gerente que só participa de times e esconde sem setor nem participação", () => {
+    const gerente = { ...perfil, perfil_codigo: "GERENTE", permissoes: ["times.consultar"] };
+    const { rerender } = renderSidebar({ ...gerente, times: [{ id: "time-1", nome: "Produto" }] });
+    expect(screen.getByRole("link", { name: "Teams" })).toHaveAttribute("href", "/times");
+
+    rerender(<MemoryRouter><Sidebar perfil={gerente} recolhida={false} onToggle={() => undefined} /></MemoryRouter>);
+    expect(screen.queryByRole("link", { name: "Teams" })).not.toBeInTheDocument();
+  });
   it("shows My Projects only when the profile can consult projects", () => {
     const { rerender } = renderSidebar(perfil);
     expect(screen.queryByRole("link", { name: "My Projects" })).not.toBeInTheDocument();
