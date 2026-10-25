@@ -10,4 +10,4 @@ export const statusBadges: Record<StatusCasoTeste, { badge: string; icon: string
   Pass: { badge: "bg-green-50 text-green-800", icon: "bg-green-800", Icon: Check },
   Fail: { badge: "bg-red-50 text-red-800", icon: "bg-red-700", Icon: X },
 };
-export const statusBadgeBase = "h-7 w-fit gap-1.5 rounded-md border-0 px-2 py-0 text-sm font-medium shadow-none";
+export const statusBadgeBase = "h-7 w-fit gap-1.5 rounded-full border-0 px-2 py-0 text-sm font-medium shadow-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";

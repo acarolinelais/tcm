@@ -18,6 +18,8 @@ import { WeekPicker } from "@/shared/ui/week-picker";
 
 import { FormFactorTabela } from "./components/FormFactorTabela";
 import { FormFactorManualDialog } from "./components/FormFactorManualDialog";
+import { CategoriaBadge, DificuldadeBadge, SituacaoBadge } from "./components/AtributosCasoBadge";
+import { categoriaBadgeClass, dificuldadeBadgeClass, situacaoBadgeClass } from "./components/atributos-caso-badge-estilos";
 import { FormFactorResultadosTabela } from "./components/FormFactorResultadosTabela";
 import { ProjetoSwitcher } from "./components/ProjetoSwitcher";
 import { CasosTesteEmptyState } from "./components/CasosTesteEmptyState";
@@ -216,6 +218,7 @@ function ProjetoDetalhe() {
       {aba === "cases" && podeConsultarCasos ? <div id="project-cases-panel" role="tabpanel" aria-labelledby="project-cases-tab" className="flex min-h-0 flex-1 flex-col"><TableLayout>
         <Table containerClassName={casos.data?.items.length ? "thin-scroll min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
           <TableHeader><TableRow>
+            <TableHead aria-hidden="true" className="w-14 px-4" />
             <TableHead><TableColumnFilter label={t("tcId")} value={filtrosCaso.tcId} onChange={(value) => alterarFiltroCaso("tcId", value)} /></TableHead>
             <TableHead><TableColumnFilter label={t("status")} value={filtrosCaso.status} onChange={(value) => alterarFiltroCaso("status", value)} options={[{ value: "", label: t("all") }, ...STATUS_CASO_TESTE.map((value) => ({ value, label: t(ROTULO_STATUS[value]) }))]} /></TableHead>
             <TableHead><TableColumnFilter label={t("tcSituation")} value={filtrosCaso.situation} onChange={(value) => alterarFiltroCaso("situation", value)} options={[{ value: "", label: t("all") }, ...SITUACOES_CASO_TESTE.map((value) => ({ value, label: t(ROTULO_SITUACAO[value]) }))]} /></TableHead>
@@ -226,17 +229,19 @@ function ProjetoDetalhe() {
             <TableHead><TableColumnFilter label={t("backup")} value={filtrosCaso.backup} onChange={(value) => alterarFiltroCaso("backup", value)} /></TableHead>
             {mostrarAcoes && <TableHead className="text-right">{t("actions")}</TableHead>}
           </TableRow></TableHeader>
-          {casosFiltrados.length ? <TableBody>{casosFiltrados.map((testCase) => {
+          {casosFiltrados.length ? <TableBody>{casosFiltrados.map((testCase, index) => {
             const canManage = podeGerenciarCasos;
             const canEditOwn = testCase.responsavel_id === responsavelAtual;
             const endDate = testCase.status === "Pass" ? testCase.updated_at ?? testCase.created_at : null;
+            const numeroDaLinha = (pagina - 1) * tamanhoPagina + index + 1;
             return <TableRow key={testCase.id}>
+              <TableCell className="w-14 px-4 text-right tabular-nums text-muted-foreground">{String(numeroDaLinha).padStart(2, "0")}</TableCell>
               <TableCell className="font-medium">{testCase.tc_id}</TableCell>
               <TableCell>{canManage || canEditOwn ? <Select value={testCase.status} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "status", value })}><SelectTrigger aria-label={`${t("status")} ${testCase.tc_id}`} className={`${statusBadgeBase} ${statusBadges[testCase.status].badge}`}><StatusBadgeContent status={testCase.status} label={t(ROTULO_STATUS[testCase.status])} /></SelectTrigger><SelectContent>{STATUS_CASO_TESTE.map((value) => <SelectItem key={value} value={value}>{t(ROTULO_STATUS[value])}</SelectItem>)}</SelectContent></Select> : <StatusPill status={testCase.status} label={t(ROTULO_STATUS[testCase.status])} />}</TableCell>
-              <TableCell>{canManage ? <Select value={testCase.situation} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "situation", value })}><SelectTrigger aria-label={`${t("tcSituation")} ${testCase.tc_id}`} className="h-8 w-40"><SelectValue /></SelectTrigger><SelectContent>{SITUACOES_CASO_TESTE.map((value) => <SelectItem key={value} value={value}>{t(ROTULO_SITUACAO[value])}</SelectItem>)}</SelectContent></Select> : <span className="text-muted-foreground">{t(ROTULO_SITUACAO[testCase.situation])}</span>}</TableCell>
+              <TableCell>{canManage ? <Select value={testCase.situation} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "situation", value })}><SelectTrigger aria-label={`${t("tcSituation")} ${testCase.tc_id}`} className={situacaoBadgeClass(testCase.situation)}><SelectValue /></SelectTrigger><SelectContent>{SITUACOES_CASO_TESTE.map((value) => <SelectItem key={value} value={value}>{t(ROTULO_SITUACAO[value])}</SelectItem>)}</SelectContent></Select> : <SituacaoBadge value={testCase.situation} label={t(ROTULO_SITUACAO[testCase.situation])} />}</TableCell>
               <TableCell className="text-muted-foreground">{identificadoresMembros[testCase.responsavel_id] ?? "—"}</TableCell>
-              <TableCell>{canEditOwn && !canManage ? <Select value={testCase.difficulty} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "difficulty", value })}><SelectTrigger aria-label={`${t("difficulty")} ${testCase.tc_id}`} className="h-8 w-28"><SelectValue /></SelectTrigger><SelectContent>{dificuldades.map((value) => <SelectItem key={value} value={value}>{t(difficultyLabels[value])}</SelectItem>)}</SelectContent></Select> : t(difficultyLabels[testCase.difficulty])}</TableCell>
-              <TableCell>{canEditOwn && !canManage ? <Select value={testCase.category} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "category", value })}><SelectTrigger aria-label={`${t("category")} ${testCase.tc_id}`} className="h-8 w-20"><SelectValue /></SelectTrigger><SelectContent>{categorias.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select> : testCase.category}</TableCell>
+              <TableCell>{canManage || canEditOwn ? <Select value={testCase.difficulty} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "difficulty", value })}><SelectTrigger aria-label={`${t("difficulty")} ${testCase.tc_id}`} className={dificuldadeBadgeClass(testCase.difficulty)}><SelectValue /></SelectTrigger><SelectContent>{dificuldades.map((value) => <SelectItem key={value} value={value}>{t(difficultyLabels[value])}</SelectItem>)}</SelectContent></Select> : <DificuldadeBadge value={testCase.difficulty} label={t(difficultyLabels[testCase.difficulty])} />}</TableCell>
+              <TableCell>{canManage || canEditOwn ? <Select value={testCase.category} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "category", value })}><SelectTrigger aria-label={`${t("category")} ${testCase.tc_id}`} className={categoriaBadgeClass(testCase.category)}><SelectValue /></SelectTrigger><SelectContent>{categorias.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select> : <CategoriaBadge value={testCase.category} />}</TableCell>
               <TableCell className="text-muted-foreground">{endDate ? formatDate(endDate) : "—"}</TableCell>
               <TableCell className="text-muted-foreground">{testCase.backup_id ? identificadoresMembros[testCase.backup_id] ?? "—" : "—"}</TableCell>
               {mostrarAcoes && <TableCell className="text-right">{(canManage || canEditOwn) && <TableRowActions label={testCase.tc_id} actions={[

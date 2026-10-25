@@ -44,6 +44,7 @@ export function FormFactorTabela({ dados, carregando, erro, identificadoresMembr
   return <TableLayout>
     <Table className="min-w-max" containerClassName={linhas.length ? "thin-scroll min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
       <TableHeader><TableRow>
+        <TableHead aria-hidden="true" className="w-14 px-4" />
         <TableHead><TableColumnFilter label={t("tcId")} value={tcId} onChange={(valor) => onFiltroTexto?.("tcId", valor)} /></TableHead>
         <TableHead><TableColumnFilter label={t("sdfId")} value={sdfId} onChange={(valor) => onFiltroTexto?.("sdfId", valor)} /></TableHead>
         <TableHead><TableColumnFilter label={t("assignee")} value={assignee} onChange={onAssigneeChange} options={[{ value: "", label: t("all") }, ...opcoesAssignee]} searchable /></TableHead>
@@ -51,7 +52,10 @@ export function FormFactorTabela({ dados, carregando, erro, identificadoresMembr
         <TableHead>{t("date")}</TableHead>
         {podeRegistrar && <TableHead className="text-right">{t("actions")}</TableHead>}
       </TableRow></TableHeader>
-      {linhas.length ? <TableBody>{linhas.map((linha) => <TableRow key={linha.caso_teste_id} className="transition-colors duration-150 hover:bg-muted/30 motion-reduce:transition-none">
+      {linhas.length ? <TableBody>{linhas.map((linha, index) => {
+        const numeroDaLinha = (page - 1) * pageSize + index + 1;
+        return <TableRow key={linha.caso_teste_id} className="transition-colors duration-150 hover:bg-muted/30 motion-reduce:transition-none">
+        <TableCell className="w-14 px-4 text-right tabular-nums text-muted-foreground">{String(numeroDaLinha).padStart(2, "0")}</TableCell>
         <TableCell className="font-medium">{linha.tc_id}</TableCell>
         <TableCell className="text-muted-foreground">{linha.sdf_id ?? "—"}</TableCell>
         <TableCell className="text-muted-foreground">{identificadoresMembros[linha.responsavel_id] ?? "—"}</TableCell>
@@ -60,7 +64,7 @@ export function FormFactorTabela({ dados, carregando, erro, identificadoresMembr
         {podeRegistrar && <TableCell className="text-right"><TableRowActions label={linha.tc_id} actions={[
           { label: t("recordResult", { defaultValue: "Record result" }), icon: Plus, onSelect: () => onRegistrar?.(linha) },
         ]} /></TableCell>}
-      </TableRow>)}</TableBody> : null}
+      </TableRow>})}</TableBody> : null}
     </Table>
     {!carregando && !erro && !linhas.length && <CasosTesteEmptyState temFiltros={temFiltros} onLimparFiltros={onLimparFiltros} />}
     {carregando && <p role="status" className="p-5 text-sm text-muted-foreground">{t("loading")}</p>}
