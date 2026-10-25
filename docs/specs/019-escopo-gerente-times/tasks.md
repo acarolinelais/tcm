@@ -68,7 +68,8 @@
 - `projectInMockScope` chama `mockProfile()` (que relê e faz `JSON.parse` do localStorage) uma vez por projeto
   dentro do filtro de `listar`. Passar `db`, `user` e `profile` já carregados, como `canManageMockTeam` faz.
   Já existia antes desta spec (achado da simplify do bloco 2).
-- A listagem de setores do gerente (`SetorService`) só traz os setores que ele gerencia. Na área de Times, o
-  filtro e o rótulo de setor dos times em que ele só participa ficam sem o nome do setor (mostram o id). A spec
-  deixou a gestão de setores fora de escopo; resolver exige decidir se o gerente pode ver setores em que só
-  participa (achado do code-review).
+- [x] ~~Setores dos times em que o gerente só participa~~: descartado. A API já devolve `setor_nome` em cada
+  time, e a tabela e o detalhe de Times usam esse campo, então o nome do setor aparece. O filtro de Setor
+  oferece só os setores que o gerente gerencia, o que segue a regra confirmada pelo usuário: o gerente é
+  responsável pelos setores dele (ver, criar e editar times, adicionar pessoas, ADR 0021) e, nos times em que só
+  participa, atua nos projetos (ADR 0036) (achado do code-review).
