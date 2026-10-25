@@ -57,13 +57,15 @@ mensagem falha 'hotfix: corrige login'
 mensagem falha ''
 
 echo '# branch'
-for b in feat/009-x fix/login hotfix/corrige-login docs/adr-0027; do espera ok "branch $b" branch "$b"; done
-for b in main dev feature/abluble minha-branch feat/sem-numero fix/Maiuscula; do
+for b in dev feat/009-x fix/login hotfix/corrige-login docs/adr-0027; do espera ok "branch $b" branch "$b"; done
+for b in main feature/abluble minha-branch feat/sem-numero fix/Maiuscula; do
   espera falha "branch $b" branch "$b"
 done
 
 echo '# push'
 espera falha 'push apagando a main' push '(delete)' refs/heads/main
+espera falha 'push apagando a dev' push '(delete)' refs/heads/dev
+espera ok 'push direto para a dev' push refs/heads/dev refs/heads/dev
 espera ok 'push de tag (não se aplica)' push refs/tags/v1 refs/tags/v1
 
 echo '# pr-titulo'
@@ -107,6 +109,8 @@ espera falha 'pr com commit Feat: Abluble' pr dev fix/abluble "$valido" "$invali
 saida_contem 'commit inválido aparece com o SHA' "$sha_invalido Feat: Abluble"
 espera falha 'pr com SHA inexistente (git log falha)' pr dev feat/009-x "$base" 0000000000000000000000000000000000000000
 espera ok 'pr com range vazio' pr dev feat/009-x "$valido" "$valido"
+espera ok 'commits do push com merge commit' commits "$base" "$valido"
+espera falha 'commits do push com Feat: Abluble' commits "$valido" "$invalido"
 
 echo '# hooks'
 git init -q --bare "$TMP/remoto.git"
@@ -115,7 +119,8 @@ git remote add origin "$TMP/remoto.git"
 git switch -q main
 confere falha 'pre-commit recusa commit na main' git commit -q --allow-empty -m 'chore: x'
 git switch -q -c dev
-confere falha 'pre-commit recusa commit na dev' git commit -q --allow-empty -m 'chore: x'
+confere ok 'pre-commit aceita commit na dev' git commit -q --allow-empty -m 'chore: x'
+confere falha 'commit-msg recusa "Feat: x" na dev' git commit -q --allow-empty -m 'Feat: x'
 git switch -q -c feature/abluble
 confere falha 'pre-commit recusa branch fora do padrão' git commit -q --allow-empty -m 'chore: x'
 git switch -q -c chore/teste
@@ -124,7 +129,7 @@ saida_contem 'recusa vem do commit-msg' 'Mensagem fora do padrão'
 confere ok 'commit "chore: x" em chore/teste' git commit -q --allow-empty -m 'chore: x'
 confere falha 'pre-push recusa push para a main' git push -q origin HEAD:main
 saida_contem 'recusa vem do pre-push' "Push direto para 'main'"
-confere falha 'pre-push recusa push para a dev' git push -q origin HEAD:dev
+confere ok 'pre-push aceita push para a dev' git push -q origin HEAD:dev
 confere falha 'pre-push recusa branch remota fora do padrão' git push -q origin HEAD:minha-branch
 confere ok 'pre-push aceita chore/teste' git push -q origin chore/teste
 confere ok 'pre-push aceita apagar branch de trabalho' git push -q origin --delete chore/teste
