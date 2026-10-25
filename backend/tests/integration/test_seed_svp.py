@@ -91,6 +91,13 @@ async def test_seed_svp_cria_usuarios_e_hierarquia_com_senha_inicial():
                 assert usuario.senha_hash is not None
                 assert hasher.verify(usuario.senha_hash, os.environ["SENHA_INICIAL_USUARIOS"])
 
+            ivan = por_email["ivan.moreira@sidia.com"][0]
+            assert all(
+                usuario.responsavel_id == ivan.id
+                for usuario, perfil in por_email.values()
+                if perfil.codigo in {"KP", "USUARIO_PADRAO"}
+            )
+
             setor = await session.scalar(
                 select(SetorModel).where(
                     SetorModel.unidade_id == unidade.id, SetorModel.nome.ilike("svp")
@@ -103,7 +110,6 @@ async def test_seed_svp_cria_usuarios_e_hierarquia_com_senha_inicial():
                 )
             )
             assert time is not None and time.setor_id == setor.id and time.ativo
-            ivan = por_email["ivan.moreira@sidia.com"][0]
             assert (
                 await session.scalar(
                     select(SetorGerenteModel.id).where(

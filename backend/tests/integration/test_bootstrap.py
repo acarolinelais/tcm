@@ -99,7 +99,35 @@ async def test_migration_seed_gerente_e_responsavel_usuario():
                 "times.criar",
                 "times.gerenciar",
             } <= permissoes
-            assert await session.scalar(select(UsuarioModel.responsavel_id).limit(1)) is None
+            ivan = await session.scalar(
+                select(UsuarioModel).where(UsuarioModel.user_id == "ivan.moreira")
+            )
+            assert ivan is not None
+            responsaveis_seed = (
+                await session.execute(
+                    select(UsuarioModel.responsavel_id).where(
+                        UsuarioModel.unidade_id == ivan.unidade_id,
+                        UsuarioModel.user_id.in_(
+                            (
+                                "a.fagundes",
+                                "maria.pernalete",
+                                "caroline.silva",
+                                "raquel.batista",
+                                "isabel.gama",
+                                "nivea.pereira",
+                                "victoria.andrade",
+                                "janderson.brandao",
+                                "gilmar.silva",
+                                "marcio.marques",
+                                "guilherme.rabaioli",
+                            )
+                        ),
+                    )
+                )
+            ).scalars()
+            responsaveis_seed = list(responsaveis_seed)
+            assert len(responsaveis_seed) == 11
+            assert all(responsavel_id == ivan.id for responsavel_id in responsaveis_seed)
     finally:
         await engine.dispose()
 
