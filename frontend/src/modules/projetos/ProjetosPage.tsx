@@ -196,7 +196,7 @@ export function ProjetosPage() {
       </TableLayout>
     </> : <>
       <div className="shrink-0">
-        <Button variant="ghost" className="h-auto gap-1 px-1 py-1 text-sm font-normal text-muted-foreground hover:text-foreground" onClick={() => { setCriacaoAberta(false); limparFormulario(); }}><ChevronLeft aria-hidden="true" className="size-4" />{t("projectsNav")}</Button>
+        <Button variant="ghost" className="h-auto gap-1 px-1 py-1 text-base font-normal text-foreground hover:text-foreground" onClick={() => { setCriacaoAberta(false); limparFormulario(); }}><ChevronLeft aria-hidden="true" className="size-4" />{t("projectsNav")}</Button>
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
       <div className="thin-scroll min-h-0 flex-1 overflow-auto">
