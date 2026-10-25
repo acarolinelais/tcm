@@ -39,6 +39,7 @@ jobs:
       # senha de bootstrap que os testes assumem (tests/integration/test_bootstrap.py).
       DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/sdf_manager
       BOOTSTRAP_ADMIN_SENHA: mude-esta-senha
+      SENHA_INICIAL_USUARIOS: senha-inicial-ci
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6

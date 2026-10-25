@@ -28,7 +28,7 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
   const ehGerenteComEscopo = perfil.perfil_codigo === "GERENTE" && perfil.permissoes.includes("times.gerenciar") && perfil.setores_gerenciados.length > 0;
   const podeGerenciar = admin || ehGerenteComEscopo;
   const podeGerenciarMembros = podeGerenciar || (perfil.perfil_codigo === "KP" && perfil.permissoes.includes("times.gerenciar"));
-  const podeVisualizarDetalhe = podeGerenciar || (perfil.perfil_codigo === "KP" && perfil.times.length > 0);
+  const podeVisualizarDetalhe = podeGerenciar || ((perfil.perfil_codigo === "KP" || perfil.perfil_codigo === "USUARIO_PADRAO") && perfil.times.length > 0);
   const client = useQueryClient();
   const [pagina, setPagina] = useState(1);
   const [tamanho, setTamanho] = useState(DEFAULT_TABLE_PAGE_SIZE);

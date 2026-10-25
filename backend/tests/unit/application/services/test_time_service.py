@@ -121,7 +121,7 @@ async def test_developer_consulta_membros_apenas_do_time_associado(contexto):
         atual.id,
         atual.unidade_id,
         "USUARIO_PADRAO",
-        permissoes=frozenset({"projetos.consultar", "test_cases.consultar"}),
+        permissoes=frozenset({"times.consultar"}),
         time_ids=(time.id,),
     )
     membros.listar_por_time.return_value = []
