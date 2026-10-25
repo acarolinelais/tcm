@@ -54,7 +54,9 @@ class ProjetoServiceImpl:
         if len(modelos) != len(modelo_ids):
             raise ConflictException("Todos os modelos devem existir e estar ativos nesta unidade.")
 
-        projeto = Projeto(usuario_atual.unidade_id, time.id, request.app, request.one_ui)
+        projeto = Projeto(
+            usuario_atual.unidade_id, time.id, request.app, request.one_ui, request.nome
+        )
         await self._projeto_repo.adicionar(projeto)
         for modelo in modelos:
             await self._projeto_modelo_repo.adicionar(
@@ -93,8 +95,15 @@ class ProjetoServiceImpl:
         nomes_modelos = await self._projeto_modelo_repo.listar_nomes_por_projetos(
             usuario_atual.unidade_id, tuple(projeto.id for projeto in projetos.items)
         )
+        ids_modelos = await self._projeto_modelo_repo.listar_ids_por_projetos(
+            usuario_atual.unidade_id, tuple(projeto.id for projeto in projetos.items)
+        )
         return projetos.map(
-            lambda projeto: to_response(projeto, list(nomes_modelos.get(projeto.id, ())))
+            lambda projeto: to_response(
+                projeto,
+                list(nomes_modelos.get(projeto.id, ())),
+                list(ids_modelos.get(projeto.id, ())),
+            )
         )
 
     async def obter(self, usuario_atual: UsuarioAutenticado, projeto_id: UUID) -> ProjetoResponse:
@@ -119,7 +128,47 @@ class ProjetoServiceImpl:
         if time_atual is None:
             raise NotFoundException("Time do projeto não encontrado.")
         self._validar_escopo_time(usuario_atual, time_atual.id, time_atual.setor_id)
-        projeto.atualizar_dados(request.app, request.one_ui)
+
+        time_id = request.time_id or projeto.time_id
+        time_novo = (
+            time_atual
+            if time_id == time_atual.id
+            else await self._time_repo.obter_por_id(usuario_atual.unidade_id, time_id)
+        )
+        if time_novo is None:
+            raise NotFoundException("Time não encontrado.")
+        if not time_novo.ativo:
+            raise ConflictException("Não é possível associar o projeto a um time inativo.")
+        self._validar_escopo_time(usuario_atual, time_novo.id, time_novo.setor_id)
+        if (
+            time_novo.id != projeto.time_id
+            and await self._projeto_repo.tem_atribuicoes_fora_do_time(
+                usuario_atual.unidade_id, projeto.id, time_novo.id
+            )
+        ):
+            raise ConflictException(
+                "Não é possível trocar o time enquanto houver responsáveis ou backups "
+                "fora do time de destino."
+            )
+
+        modelos_ids = request.modelos_ids
+        if modelos_ids is not None:
+            ids_unicos = tuple(dict.fromkeys(modelos_ids))
+            if len(ids_unicos) != len(modelos_ids):
+                raise ConflictException("A lista contém modelos de dispositivo duplicados.")
+            modelos = await self._modelo_repo.listar_por_ids(usuario_atual.unidade_id, ids_unicos)
+            if len(modelos) != len(ids_unicos):
+                raise ConflictException(
+                    "Todos os modelos devem existir e estar ativos nesta unidade."
+                )
+
+        projeto.atualizar_dados(
+            request.nome or projeto.nome, request.app, request.one_ui, time_novo.id
+        )
+        if modelos_ids is not None:
+            await self._projeto_modelo_repo.substituir_modelos(
+                usuario_atual.unidade_id, projeto.id, tuple(modelos_ids)
+            )
         await self._projeto_repo.atualizar(projeto)
         await self._uow.commit()
         return await self._to_response_com_modelos(projeto)
@@ -162,7 +211,14 @@ class ProjetoServiceImpl:
         nomes_modelos = await self._projeto_modelo_repo.listar_nomes_por_projetos(
             projeto.unidade_id, (projeto.id,)
         )
-        return to_response(projeto, list(nomes_modelos.get(projeto.id, ())))
+        ids_modelos = await self._projeto_modelo_repo.listar_ids_por_projetos(
+            projeto.unidade_id, (projeto.id,)
+        )
+        return to_response(
+            projeto,
+            list(nomes_modelos.get(projeto.id, ())),
+            list(ids_modelos.get(projeto.id, ())),
+        )
 
     @staticmethod
     def _exigir_permissao(usuario_atual: UsuarioAutenticado, permissao: str) -> None:

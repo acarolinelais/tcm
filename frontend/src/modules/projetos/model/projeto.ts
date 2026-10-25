@@ -25,6 +25,7 @@ export interface Projeto {
   nome: string;
   status: StatusProjeto;
   modelos_dispositivo?: string[];
+  modelos_ids?: string[];
   ativo: boolean;
   created_at: string | null;
   updated_at: string | null;
@@ -139,14 +140,18 @@ export interface ImportacaoSdf {
 
 export interface CriarProjetoInput {
   time_id: string;
+  nome?: string;
   app: string;
   one_ui: string;
   modelos_ids: string[];
 }
 
 export interface AtualizarProjetoInput {
+  nome: string;
   app: string;
   one_ui: string;
+  time_id: string;
+  modelos_ids: string[];
 }
 
 export interface CriarCasoTesteInput {

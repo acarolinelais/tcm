@@ -108,3 +108,16 @@ Permitir que gerente ou KP crie projetos vinculados a um time e cadastre Test Ca
 ## Dúvidas em aberto
 
 - Nenhuma decisão bloqueante conhecida para a spec.
+
+## Ajuste: edição dos dados do projeto — 2026-10-25
+
+- O nome do projeto é um campo próprio, obrigatório e editável (máximo de 150 caracteres). Na criação, começa preenchido com `<App> <One UI>`; depois pode ser alterado sem mudar App ou One UI.
+- A edição do projeto permite alterar nome, App, One UI, time e modelos de dispositivo. Status continua editável na listagem; datas permanecem gerenciadas pelo sistema.
+- O time de destino deve estar ativo e dentro do escopo do usuário. A troca é recusada se qualquer responsável ou backup de Test Case ativo do projeto não for membro ativo do time de destino.
+- Os modelos selecionados devem existir, estar ativos e pertencer à unidade. A atualização substitui as associações atuais em uma única operação.
+
+**Critérios de aceite adicionais:**
+
+- **CA-34:** Dado um projeto, quando uma pessoa autorizada altera o nome, App, One UI, time e modelos válidos, então os dados atualizados são persistidos e o nome não é recalculado quando App ou One UI mudar depois.
+- **CA-35 (falha):** Dado um projeto com Test Cases ativos, quando o time de destino não contém todos os responsáveis e backups ativos, então a edição é recusada sem alterar o projeto nem suas associações de modelos.
+- **CA-36 (falha):** Dado um modelo inativo, inexistente ou de outra unidade, quando é enviado na edição, então a operação é recusada sem alterar o projeto.

@@ -25,3 +25,7 @@ class ProjetoRepository(RepositoryBase[Projeto], Protocol):
         page: int,
         page_size: int,
     ) -> PagedResult[Projeto]: ...
+
+    async def tem_atribuicoes_fora_do_time(
+        self, unidade_id: UUID, projeto_id: UUID, time_id: UUID
+    ) -> bool: ...

@@ -75,7 +75,7 @@ export function ResultadosGeraisPage() {
   return <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-[#EEEEF1] bg-card px-4 py-5 sm:rounded-[42px] sm:px-11 sm:py-10">
     <header className="mb-5 flex shrink-0 flex-wrap items-start gap-4">
       <div className="min-w-0 flex-1">
-        <h1 className="text-2xl font-medium text-primary">{t("generalResults")}</h1>
+        <h1 className="text-2xl font-medium text-foreground">{t("generalResults")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("generalResultsDescription")}</p>
       </div>
       <WeekPicker label={t("week")} value={semana} onChange={(value) => { setSemana(value); setFiltros((atual) => ({ ...atual, page: 1 })); }} />

@@ -1,16 +1,39 @@
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 
 from src.domain.common.paged_result import PagedResult
 from src.domain.entities.projeto import Projeto, StatusProjeto
 from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
 from src.infrastructure.data.models.projeto_model import ProjetoModel
+from src.infrastructure.data.models.time_membro_model import TimeMembroModel
 from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
 
 
 class ProjetoRepositoryImpl(RepositoryBaseImpl[Projeto, ProjetoModel]):
     model = ProjetoModel
+
+    async def tem_atribuicoes_fora_do_time(
+        self, unidade_id: UUID, projeto_id: UUID, time_id: UUID
+    ) -> bool:
+        membros_ativos = select(TimeMembroModel.usuario_id).where(
+            TimeMembroModel.unidade_id == unidade_id,
+            TimeMembroModel.time_id == time_id,
+            TimeMembroModel.ativo.is_(True),
+        )
+        atribuicao_invalida = select(CasoTesteModel.id).where(
+            CasoTesteModel.unidade_id == unidade_id,
+            CasoTesteModel.projeto_id == projeto_id,
+            CasoTesteModel.ativo.is_(True),
+            or_(
+                ~CasoTesteModel.responsavel_id.in_(membros_ativos),
+                and_(
+                    CasoTesteModel.backup_id.is_not(None),
+                    ~CasoTesteModel.backup_id.in_(membros_ativos),
+                ),
+            ),
+        )
+        return (await self.session.execute(select(atribuicao_invalida.exists()))).scalar_one()
 
     async def listar_associados_por_times(
         self,
@@ -135,7 +158,7 @@ class ProjetoRepositoryImpl(RepositoryBaseImpl[Projeto, ProjetoModel]):
             model.ativo = False
 
     def _to_entity(self, model: ProjetoModel) -> Projeto:
-        projeto = Projeto(model.unidade_id, model.time_id, model.app, model.one_ui)
+        projeto = Projeto(model.unidade_id, model.time_id, model.app, model.one_ui, model.nome)
         projeto.id = model.id
         projeto.ativo = model.ativo
         projeto.status = StatusProjeto(model.status)
@@ -148,6 +171,7 @@ class ProjetoRepositoryImpl(RepositoryBaseImpl[Projeto, ProjetoModel]):
             id=entity.id,
             unidade_id=entity.unidade_id,
             time_id=entity.time_id,
+            nome=entity.nome,
             app=entity.app,
             one_ui=entity.one_ui,
             status=entity.status.value,

@@ -54,7 +54,7 @@ export function ModelosDispositivoPage() {
 
   return <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
     <header className="mb-7 flex shrink-0 items-center justify-between gap-4">
-      <h1 className="text-2xl font-medium text-primary">{t("deviceModels")}</h1>
+      <h1 className="text-2xl font-medium text-foreground">{t("deviceModels")}</h1>
       <Button onClick={() => setEmEdicao(null)}><Plus aria-hidden="true" className="size-4" />{t("addDeviceModel")}</Button>
     </header>
     <TableLayout>

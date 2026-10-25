@@ -21,6 +21,7 @@ from src.domain.entities.time import Time
 def contexto():
     projeto_repo, time_repo, modelo_repo, vinculo_repo, uow = [AsyncMock() for _ in range(5)]
     vinculo_repo.listar_nomes_por_projetos.return_value = {}
+    vinculo_repo.listar_ids_por_projetos.return_value = {}
     unidade_id, time_id, setor_id, usuario_id = (uuid4() for _ in range(4))
     time = Time(unidade_id, setor_id, "Clock", usuario_id)
     time.id = time_id

@@ -63,6 +63,7 @@ async def contexto():
                     id=uuid4(),
                     unidade_id=unidade_id,
                     time_id=time,
+                    nome="Clock 9.5",
                     app="Clock",
                     one_ui="9.5",
                     ativo=ativo,

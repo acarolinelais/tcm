@@ -54,6 +54,53 @@ class ProjetoModeloRepositoryImpl(RepositoryBaseImpl[ProjetoModelo, ProjetoModel
             nomes.setdefault(projeto_id, []).append(nome)
         return {projeto_id: tuple(itens) for projeto_id, itens in nomes.items()}
 
+    async def listar_ids_por_projetos(
+        self, unidade_id: UUID, projeto_ids: tuple[UUID, ...]
+    ) -> dict[UUID, tuple[UUID, ...]]:
+        if not projeto_ids:
+            return {}
+        linhas = await self.session.execute(
+            select(ProjetoModeloModel.projeto_id, ProjetoModeloModel.modelo_dispositivo_id)
+            .join(
+                ModeloDispositivoModel,
+                (ModeloDispositivoModel.id == ProjetoModeloModel.modelo_dispositivo_id)
+                & (ModeloDispositivoModel.unidade_id == ProjetoModeloModel.unidade_id),
+            )
+            .where(
+                ProjetoModeloModel.unidade_id == unidade_id,
+                ProjetoModeloModel.projeto_id.in_(projeto_ids),
+                ProjetoModeloModel.ativo.is_(True),
+                ModeloDispositivoModel.ativo.is_(True),
+            )
+            .order_by(ProjetoModeloModel.projeto_id, ProjetoModeloModel.modelo_dispositivo_id)
+        )
+        ids: dict[UUID, list[UUID]] = {}
+        for projeto_id, modelo_id in linhas.all():
+            ids.setdefault(projeto_id, []).append(modelo_id)
+        return {projeto_id: tuple(itens) for projeto_id, itens in ids.items()}
+
+    async def substituir_modelos(
+        self, unidade_id: UUID, projeto_id: UUID, modelos_ids: tuple[UUID, ...]
+    ) -> None:
+        existentes = (
+            (
+                await self.session.execute(
+                    select(ProjetoModeloModel).where(
+                        ProjetoModeloModel.unidade_id == unidade_id,
+                        ProjetoModeloModel.projeto_id == projeto_id,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        por_modelo = {vinculo.modelo_dispositivo_id: vinculo for vinculo in existentes}
+        desejados = set(modelos_ids)
+        for modelo_id, vinculo in por_modelo.items():
+            vinculo.ativo = modelo_id in desejados
+        for modelo_id in desejados - por_modelo.keys():
+            await self.adicionar(ProjetoModelo(unidade_id, projeto_id, modelo_id))
+
     async def listar_modelos_do_projeto(
         self, unidade_id: UUID, projeto_id: UUID
     ) -> tuple[ModeloDoProjeto, ...]:
