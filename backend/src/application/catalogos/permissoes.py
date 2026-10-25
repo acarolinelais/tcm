@@ -23,6 +23,7 @@ MODULOS_PERMISSOES = (
     ModuloPermissoes("projetos", "Projetos", 5, ("consultar", "gerenciar")),
     ModuloPermissoes("test_cases", "Test Cases", 6, ("consultar", "gerenciar")),
     ModuloPermissoes("form_factor", "Form Factor", 7, ("consultar", "importar")),
+    ModuloPermissoes("modelos_dispositivo", "Modelos de dispositivo", 8, ("gerenciar",)),
 )
 
 _POR_CODIGO = {modulo.codigo: modulo for modulo in MODULOS_PERMISSOES}

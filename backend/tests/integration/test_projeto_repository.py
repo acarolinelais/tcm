@@ -11,6 +11,9 @@ from src.infrastructure.data.models.setor_model import SetorModel
 from src.infrastructure.data.models.time_model import TimeModel
 from src.infrastructure.data.models.unidade_model import UnidadeModel
 from src.infrastructure.data.models.usuario_model import UsuarioModel  # noqa: F401
+from src.infrastructure.repositories.modelo_dispositivo_repository import (
+    ModeloDispositivoRepositoryImpl,
+)
 from src.infrastructure.repositories.projeto_modelo_repository import ProjetoModeloRepositoryImpl
 from src.infrastructure.repositories.projeto_repository import ProjetoRepositoryImpl
 
@@ -114,5 +117,16 @@ async def test_vinculo_modelo_do_projeto_persiste_e_lista_no_tenant():
             assert len(encontrados) == 1
             assert encontrados[0].modelo_dispositivo_id == modelo_id
             assert await repository.listar_por_projeto(uuid4(), projeto_id) == ()
+
+            modelos = ModeloDispositivoRepositoryImpl(session)
+            modelo = await modelos.obter_por_id(unidade_id, modelo_id)
+            assert modelo is not None
+            modelo.inativar()
+            await modelos.atualizar(modelo)
+            await session.flush()
+
+            assert len(await repository.listar_por_projeto(unidade_id, projeto_id)) == 1
+            ativos = await modelos.listar_paginado(unidade_id, 1, 100, True)
+            assert ativos.total_count == 0
     finally:
         await engine.dispose()
