@@ -62,7 +62,7 @@ class ProjetoServiceImpl:
             )
         await self._uow.commit()
         projeto_criado = await self._projeto_repo.obter_por_id(projeto.unidade_id, projeto.id)
-        return to_response(projeto_criado or projeto)
+        return await self._to_response_com_modelos(projeto_criado or projeto)
 
     async def listar(
         self,
@@ -90,7 +90,12 @@ class ProjetoServiceImpl:
             projetos = await self._projeto_repo.listar_por_times(
                 usuario_atual.unidade_id, time_ids, page, page_size
             )
-        return projetos.map(to_response)
+        nomes_modelos = await self._projeto_modelo_repo.listar_nomes_por_projetos(
+            usuario_atual.unidade_id, tuple(projeto.id for projeto in projetos.items)
+        )
+        return projetos.map(
+            lambda projeto: to_response(projeto, list(nomes_modelos.get(projeto.id, ())))
+        )
 
     async def obter(self, usuario_atual: UsuarioAutenticado, projeto_id: UUID) -> ProjetoResponse:
         if not usuario_atual.eh_administrador:
@@ -101,7 +106,7 @@ class ProjetoServiceImpl:
         time = await self._time_repo.obter_por_id(usuario_atual.unidade_id, projeto.time_id)
         if time is None or not self._time_esta_no_escopo(usuario_atual, time.id, time.setor_id):
             raise NotFoundException("Projeto não encontrado.")
-        return to_response(projeto)
+        return await self._to_response_com_modelos(projeto)
 
     async def atualizar(
         self, usuario_atual: UsuarioAutenticado, projeto_id: UUID, request: AtualizarProjetoRequest
@@ -117,7 +122,7 @@ class ProjetoServiceImpl:
         projeto.atualizar_dados(request.app, request.one_ui)
         await self._projeto_repo.atualizar(projeto)
         await self._uow.commit()
-        return to_response(projeto)
+        return await self._to_response_com_modelos(projeto)
 
     async def excluir(self, usuario_atual: UsuarioAutenticado, projeto_id: UUID) -> None:
         self._exigir_permissao(usuario_atual, "projetos.gerenciar")
@@ -151,7 +156,13 @@ class ProjetoServiceImpl:
         projeto_atualizado = await self._projeto_repo.obter_por_id(
             usuario_atual.unidade_id, projeto_id
         )
-        return to_response(projeto_atualizado or projeto)
+        return await self._to_response_com_modelos(projeto_atualizado or projeto)
+
+    async def _to_response_com_modelos(self, projeto: Projeto) -> ProjetoResponse:
+        nomes_modelos = await self._projeto_modelo_repo.listar_nomes_por_projetos(
+            projeto.unidade_id, (projeto.id,)
+        )
+        return to_response(projeto, list(nomes_modelos.get(projeto.id, ())))
 
     @staticmethod
     def _exigir_permissao(usuario_atual: UsuarioAutenticado, permissao: str) -> None:

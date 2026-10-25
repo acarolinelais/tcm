@@ -549,9 +549,16 @@ export const mockProjetosApi = {
       throw new Error("Você não tem permissão para consultar projetos.");
     }
     const { db, user } = mockProfile();
-    return page(db.projetos.filter((project) => project.ativo && project.unidade_id === db.unidade.id && projectInMockScope(project)
+    const projects = db.projetos.filter((project) => project.ativo && project.unidade_id === db.unidade.id && projectInMockScope(project)
       && (!associadosAMim || db.casosTeste.some((item) => item.projeto_id === project.id && item.unidade_id === db.unidade.id && item.ativo && (item.responsavel_id === user.id || item.backup_id === user.id))))
-      .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "") || a.id.localeCompare(b.id)), pageNumber, pageSize);
+      .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "") || a.id.localeCompare(b.id))
+      .map((project) => ({
+        ...project,
+        modelos_dispositivo: db.projetoModelos
+          .filter((link) => link.projeto_id === project.id)
+          .flatMap((link) => db.modelosDispositivo.find((model) => model.id === link.modelo_dispositivo_id)?.nome ?? []),
+      }));
+    return page(projects, pageNumber, pageSize);
   },
   obter(projectId: string) {
     const { profile } = mockProfile();

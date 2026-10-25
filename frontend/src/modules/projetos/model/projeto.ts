@@ -22,6 +22,7 @@ export interface Projeto {
   one_ui: string;
   nome: string;
   status: StatusProjeto;
+  modelos_dispositivo?: string[];
   ativo: boolean;
   created_at: string | null;
   updated_at: string | null;
