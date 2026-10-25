@@ -334,7 +334,7 @@ describe("base mock de projetos", () => {
 
     mockProjetosApi.listar(1, 10); // qualquer leitura aplica a migração
     const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-    expect(migrado.schemaVersion).toBe(11);
+    expect(migrado.schemaVersion).toBe(14);
     expect(migrado.casosTeste[0]).toMatchObject({ situation: "New", status: "InReview" });
     expect(migrado.usuarios.every((user: { user_id?: string | null }) => user.user_id === null)).toBe(true);
   });
@@ -347,7 +347,7 @@ describe("base mock de projetos", () => {
 
     mockProjetosApi.listar(1, 10);
     const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-    expect(migrado.schemaVersion).toBe(12);
+    expect(migrado.schemaVersion).toBe(14);
     expect(migrado.usuarios.every((user: { user_id?: string | null }) => user.user_id === null)).toBe(true);
   });
 

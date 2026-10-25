@@ -213,12 +213,12 @@ function readDb(): Database {
       const developer = db.perfis.find((profile) => profile.codigo === "USUARIO_PADRAO");
       if (developer) developer.permissoes = [...new Set([...developer.permissoes, "times.consultar", "usuarios.perfil.consultar"])];
       db.schemaVersion = 10;
-      return writeDb(db);
+      writeDb(db);
     }
     if ((db.schemaVersion ?? 1) < 11) {
       db.usuarios.forEach((user) => { user.user_id ??= null; });
       db.schemaVersion = 11;
-      return writeDb(db);
+      writeDb(db);
     }
     if ((db.schemaVersion ?? 1) < 12) {
       // Mesma seed da migration a2b3c4d5e6f7: descrição nos modelos e gestão do catálogo pelo KP.
@@ -232,14 +232,14 @@ function readDb(): Database {
         model.updated_at ??= model.created_at;
       });
       db.schemaVersion = 12;
-      return writeDb(db);
+      writeDb(db);
     }
     if ((db.schemaVersion ?? 1) < 13) {
       db.perfis.filter((profile) => profile.codigo === "GERENTE" || profile.codigo === "KP").forEach((profile) => {
         profile.permissoes = [...new Set([...profile.permissoes, "form_factor.consultar"])];
       });
       db.schemaVersion = 13;
-      return writeDb(db);
+      writeDb(db);
     }
     if ((db.schemaVersion ?? 1) < 14) {
       db.permissoes = permissoes;
