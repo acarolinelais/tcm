@@ -13,17 +13,17 @@ import { formatarDiaIso, semanaIso } from "@/shared/lib/utils";
 
 vi.mock("./api/projetos.api", () => ({
   projetosApi: { obter: vi.fn(), listar: vi.fn() }, casosTesteApi: { listar: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), transferirParaBackup: vi.fn() },
-  formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), criarRodadaManual: vi.fn(), importar: vi.fn() }, modelosDispositivoApi: {},
+  formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), criarRodada: vi.fn(), listarCasosRodada: vi.fn(), registrarResultadosRodada: vi.fn(), importar: vi.fn() }, modelosDispositivoApi: {},
 }));
 vi.mock("@/modules/times/api/times.api", () => ({ timesApi: { membros: vi.fn() } }));
 
 const projeto = { id: "project-1", unidade_id: "unit-1", time_id: "team-1", nome: "Clock 9.5", app: "Clock", one_ui: "9.5", status: "Created" as const, ativo: true, created_at: null, updated_at: null };
 const casos = [
   { id: "case-1", unidade_id: "unit-1", projeto_id: "project-1", tc_id: "Clock_001", category: "A" as const, difficulty: "Low" as const, situation: "New" as const, status: "To-Do" as const, responsavel_id: "user-1", backup_id: "backup-1", ativo: true, created_at: null, updated_at: null },
-  { id: "case-2", unidade_id: "unit-1", projeto_id: "project-1", tc_id: "Clock_002", category: "B" as const, difficulty: "Medium" as const, situation: "New Step" as const, status: "Pass" as const, responsavel_id: "user-2", backup_id: null, ativo: true, created_at: null, updated_at: null },
+  { id: "case-2", unidade_id: "unit-1", projeto_id: "project-1", tc_id: "Clock_002", category: "B" as const, difficulty: "Medium" as const, situation: "New Step" as const, status: "Done" as const, responsavel_id: "user-2", backup_id: null, ativo: true, created_at: null, updated_at: null },
 ];
 // Literal de propósito: a ordem do progresso é requisito (spec 017).
-const ROTULOS_STATUS = ["To-Do", "In Progress", "In Review", "In Validation", "Pass", "Fail"];
+const ROTULOS_STATUS = ["To-Do", "In Progress", "In Review", "In Validation", "Done", "Cancelled"];
 const perfil: PerfilAtual = {
   id: "user-1", nome: "Dev", email: "dev@example.com", unidade_id: "unit-1", unidade_nome: "Unidade",
   perfil_codigo: null, perfil: "Desenvolvedor", permissoes: ["projetos.consultar", "test_cases.consultar"], times: [], setores_gerenciados: [],
@@ -55,12 +55,13 @@ describe("ProjetoDetalhePage", () => {
     ]);
   });
 
-  it("consulta os casos como principal ou backup sem conceder edição ao backup", async () => {
+  it("permite ao backup cancelar, sem liberar edição dos demais campos", async () => {
     const backup = { ...casos[1], backup_id: "user-1" };
     vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [casos[0], backup], page: 1, page_size: 20, total_count: 2 });
     renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO" });
     const row = await screen.findByRole("row", { name: /Clock_002/ });
-    expect(within(row).queryByRole("combobox")).not.toBeInTheDocument();
+    await userEvent.setup().click(within(row).getByRole("combobox", { name: "Status Clock_002" }));
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["Done", "Cancelled"]);
     expect(within(row).queryByRole("button", { name: /Actions for/ })).not.toBeInTheDocument();
     expect(casosTesteApi.listar).toHaveBeenCalledWith("project-1", 1, DEFAULT_TABLE_PAGE_SIZE, { responsavelId: undefined, associadosAMim: true });
   });
@@ -215,9 +216,10 @@ describe("ProjetoDetalhePage", () => {
     expect(within(proprioCaso).queryByRole("button", { name: /^Edit$/i })).not.toBeInTheDocument();
   });
 
-  it("oferece In Validation entre In Review e Pass no select, no filtro e no badge, sem Data final", async () => {
+  it("oferece transições válidas e mostra Done sem Data final em outros estados", async () => {
     const validando = { ...casos[1], id: "case-3", tc_id: "Clock_003", status: "InValidation" as const, updated_at: "2026-10-20T12:00:00Z" };
-    vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [...casos, validando], page: 1, page_size: 20, total_count: 3 });
+    const emProgresso = { ...casos[0], status: "InProgress" as const };
+    vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [emProgresso, casos[1], validando], page: 1, page_size: 20, total_count: 3 });
     const user = userEvent.setup();
     renderPage();
 
@@ -228,7 +230,7 @@ describe("ProjetoDetalhePage", () => {
 
     const proprioCaso = screen.getByRole("row", { name: /Clock_001/ });
     await user.click(within(proprioCaso).getByRole("combobox", { name: "Status Clock_001" }));
-    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(ROTULOS_STATUS);
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["In Progress", "In Validation", "Cancelled"]);
     await user.click(screen.getByRole("option", { name: "In Validation" }));
     await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { status: "InValidation" }));
 
@@ -361,6 +363,7 @@ describe("ProjetoDetalhePage", () => {
   it("apresenta resultados do Form Factor com filtros e importa relatório SDF", async () => {
     vi.mocked(formFactorApi.listar).mockResolvedValue({
       modelos: [{ id: "model-1", nome: "S27 Ultra" }],
+      casos_elegiveis: [{ caso_teste_id: "case-2", tc_id: "Clock_002", responsavel_id: "user-2", backup_id: "backup-1" }],
       items: [{ caso_teste_id: "case-1", tc_id: "Clock_001", responsavel_id: "user-1", sdf_id: "12837-93482", data_reportada: "2026-03-23T00:00:00Z", resultados: { "model-1": "PASS" } }],
       page: 1, page_size: 10, total_count: 1,
     });
@@ -371,6 +374,7 @@ describe("ProjetoDetalhePage", () => {
     await user.click(screen.getByRole("tab", { name: "Form Factor" }));
 
     expect(await screen.findByRole("columnheader", { name: "S27 Ultra" })).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Eligible Test Cases" })).toHaveTextContent("Clock_002");
     expect(screen.getByRole("row", { name: /Clock_001 12837-93482 daniel-id PASS/ })).toBeInTheDocument();
     expect(formFactorApi.listar).toHaveBeenCalledWith("project-1", expect.objectContaining({ page: 1, pageSize: DEFAULT_TABLE_PAGE_SIZE }));
 

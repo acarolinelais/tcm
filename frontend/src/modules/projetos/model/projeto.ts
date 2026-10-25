@@ -10,11 +10,11 @@ export type SituacaoCasoTeste = "New" | "New Step" | "Without Changes";
 
 export const SITUACOES_CASO_TESTE: SituacaoCasoTeste[] = ["New", "New Step", "Without Changes"];
 /** Progresso do caso no projeto, na ordem exibida. */
-export const STATUS_CASO_TESTE = ["To-Do", "InProgress", "InReview", "InValidation", "Pass", "Fail"] as const;
+export const STATUS_CASO_TESTE = ["To-Do", "InProgress", "InReview", "InValidation", "Done", "Cancelled"] as const;
 export type StatusCasoTeste = (typeof STATUS_CASO_TESTE)[number];
 /** Chaves i18n dos rótulos de TC Situation e Status. */
 export const ROTULO_SITUACAO: Record<SituacaoCasoTeste, string> = { New: "situationNew", "New Step": "situationNewStep", "Without Changes": "situationWithoutChanges" };
-export const ROTULO_STATUS: Record<StatusCasoTeste, string> = { "To-Do": "statusTodo", InProgress: "statusInProgress", InReview: "statusInReview", InValidation: "statusInValidation", Pass: "statusPass", Fail: "statusFail" };
+export const ROTULO_STATUS: Record<StatusCasoTeste, string> = { "To-Do": "statusTodo", InProgress: "statusInProgress", InReview: "statusInReview", InValidation: "statusInValidation", Done: "statusDone", Cancelled: "statusCancelled" };
 
 export interface Projeto {
   id: string;
@@ -72,12 +72,22 @@ export interface LinhaFormFactor {
 
 export interface FormFactorMatriz extends PagedResult<LinhaFormFactor> {
   modelos: ModeloFormFactor[];
+  casos_elegiveis?: CasoFormFactorElegivel[];
+}
+
+export interface CasoFormFactorElegivel {
+  caso_teste_id: string;
+  tc_id: string;
+  responsavel_id: string;
+  backup_id: string | null;
 }
 
 export interface FormFactorExecucao extends LinhaFormFactor {
   execucao_id: string;
   data_reportada: string;
   origem: "SDF" | "MANUAL";
+  rodada_id?: string | null;
+  resultados_registrados?: boolean;
 }
 
 export interface FormFactorResultados extends PagedResult<FormFactorExecucao> {
@@ -123,8 +133,35 @@ export interface FiltrosFormFactor {
 }
 
 export interface CriarRodadaFormFactorInput {
-  caso_teste_id: string;
+  sdf_id?: string | null;
+}
+
+export interface EnviarResultadosRodadaInput {
   resultados: Record<string, "PASS" | "FAIL">;
+}
+
+export interface RodadaFormFactor {
+  id: string;
+  projeto_id: string;
+  sdf_id: string | null;
+  created_at: string;
+  total_test_cases: number;
+}
+
+export interface CasoTesteRodada {
+  execucao_id: string;
+  caso_teste_id: string;
+  tc_id: string;
+  responsavel_id: string;
+  backup_id: string | null;
+  status: StatusCasoTeste;
+  resultados: Record<string, string>;
+  resultados_registrados: boolean;
+}
+
+export interface FormFactorRodadaCasos extends PagedResult<CasoTesteRodada> {
+  rodada: RodadaFormFactor;
+  modelos: ModeloFormFactor[];
 }
 
 export interface ImportacaoProjeto {

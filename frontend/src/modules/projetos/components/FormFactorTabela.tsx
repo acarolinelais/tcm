@@ -6,16 +6,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableLayout, Table
 import { TableColumnFilter } from "@/shared/ui/table-column-filter";
 import { TableRowActions } from "@/shared/ui/table-row-actions";
 
-import type { FormFactorMatriz, StatusCasoTeste } from "../model/projeto";
+import type { FormFactorMatriz } from "../model/projeto";
 import { CasosTesteEmptyState } from "./CasosTesteEmptyState";
-import { StatusPill } from "./StatusBadge";
+import { FormFactorResultBadge } from "./FormFactorResultBadge";
 
 /** Pass e Fail ganham o mesmo pill do Status; outros valores do SDF aparecem como texto, sem alteração. */
 function ResultadoCelula({ valor }: { valor: string | undefined }) {
   if (!valor) return <span className="text-muted-foreground">—</span>;
-  const status: StatusCasoTeste | null = /^pass$/i.test(valor) ? "Pass" : /^fail$/i.test(valor) ? "Fail" : null;
-  if (!status) return <>{valor}</>;
-  return <StatusPill status={status} label={valor} />;
+  return <FormFactorResultBadge value={valor} />;
 }
 
 export function FormFactorTabela({ dados, carregando, erro, identificadoresMembros, opcoesAssignee, assignee, onAssigneeChange, tcId = "", sdfId = "", onFiltroTexto, modeloDispositivoId = "", resultadoFiltro = "", onFiltroResultado, podeRegistrar = false, onRegistrar, temFiltros, onLimparFiltros, page, pageSize, onPageChange, onPageSizeChange }: {

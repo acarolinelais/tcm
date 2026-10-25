@@ -22,11 +22,14 @@ import type {
   FiltrosFormFactor,
   FiltrosFormFactorGlobal,
   CriarRodadaFormFactorInput,
+  EnviarResultadosRodadaInput,
+  FormFactorRodadaCasos,
   ImportacaoProjeto,
   ImportacaoSdf,
   OpcaoModeloDispositivo,
   Projeto,
   StatusProjeto,
+  RodadaFormFactor,
 } from "../model/projeto";
 
 export type {
@@ -34,6 +37,7 @@ export type {
   AtualizarProjetoInput,
   CategoriaCasoTeste,
   CasoTeste,
+  CasoTesteRodada,
   CriarCasoTesteInput,
   CriarProjetoInput,
   DificuldadeCasoTeste,
@@ -45,6 +49,8 @@ export type {
   FiltrosFormFactor,
   FiltrosFormFactorGlobal,
   CriarRodadaFormFactorInput,
+  EnviarResultadosRodadaInput,
+  FormFactorRodadaCasos,
   ImportacaoProjeto,
   ImportacaoSdf,
   LinhaFormFactor,
@@ -52,6 +58,7 @@ export type {
   Projeto,
   SituacaoCasoTeste,
   StatusProjeto,
+  RodadaFormFactor,
 } from "../model/projeto";
 
 export const projetosApi = {
@@ -199,10 +206,20 @@ export const formFactorApi = {
         ...(origem ? { origem } : {}),
       });
   },
-  criarRodadaManual(projetoId: string, input: CriarRodadaFormFactorInput) {
+  criarRodada(projetoId: string, input: CriarRodadaFormFactorInput) {
     return useMock
-      ? Promise.resolve(mockFormFactorApi.criarRodadaManual(projetoId, input))
-      : httpPost<FormFactorExecucao>(`/api/projetos/${projetoId}/form-factor/results`, input);
+      ? Promise.resolve(mockFormFactorApi.criarRodada(projetoId, input))
+      : httpPost<RodadaFormFactor>(`/api/projetos/${projetoId}/form-factor/rodadas`, input);
+  },
+  listarCasosRodada(projetoId: string, rodadaId: string, page = 1, pageSize = 20) {
+    return useMock
+      ? Promise.resolve(mockFormFactorApi.listarCasosRodada(projetoId, rodadaId, page, pageSize))
+      : httpGet<FormFactorRodadaCasos>(`/api/projetos/${projetoId}/form-factor/rodadas/${rodadaId}/test-cases`, { page, page_size: pageSize });
+  },
+  registrarResultadosRodada(projetoId: string, rodadaId: string, casoTesteId: string, input: EnviarResultadosRodadaInput) {
+    return useMock
+      ? Promise.resolve(mockFormFactorApi.registrarResultadosRodada(projetoId, rodadaId, casoTesteId, input))
+      : httpPost<FormFactorExecucao>(`/api/projetos/${projetoId}/form-factor/rodadas/${rodadaId}/test-cases/${casoTesteId}/resultados`, input);
   },
   importar(projetoId: string, arquivo: File) {
     if (useMock) return Promise.resolve(mockFormFactorApi.importar(projetoId, arquivo));

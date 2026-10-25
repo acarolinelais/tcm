@@ -13,10 +13,14 @@ from src.api.dependencies import (
 )
 from src.application.schemas.caso_teste import CasoTesteResponse, CriarCasoTesteRequest
 from src.application.schemas.form_factor import (
+    CriarRodadaFormFactorLoteRequest,
     CriarRodadaFormFactorRequest,
+    EnviarResultadosRodadaRequest,
     FormFactorExecucaoResponse,
     FormFactorResponse,
     FormFactorResultadosResponse,
+    RodadaFormFactorCasosResponse,
+    RodadaFormFactorResponse,
 )
 from src.application.schemas.importacao_projeto import (
     ImportarProjetoPlanilhaRequest,
@@ -152,6 +156,53 @@ async def criar_test_case(
     caso = await service.criar(usuario_atual, projeto_id, request)
     response.headers["Location"] = f"/api/test-cases/{caso.id}"
     return caso
+
+
+@router.post(
+    "/{projeto_id}/form-factor/rodadas",
+    response_model=RodadaFormFactorResponse,
+    status_code=201,
+)
+async def criar_rodada_form_factor(
+    projeto_id: UUID,
+    request: CriarRodadaFormFactorLoteRequest,
+    service: FormFactorService = Depends(get_form_factor_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.criar_rodada(usuario_atual, projeto_id, request)
+
+
+@router.get(
+    "/{projeto_id}/form-factor/rodadas/{rodada_id}/test-cases",
+    response_model=RodadaFormFactorCasosResponse,
+)
+async def listar_casos_rodada_form_factor(
+    projeto_id: UUID,
+    rodada_id: UUID,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    service: FormFactorService = Depends(get_form_factor_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.listar_casos_rodada(usuario_atual, projeto_id, rodada_id, page, page_size)
+
+
+@router.post(
+    "/{projeto_id}/form-factor/rodadas/{rodada_id}/test-cases/{caso_teste_id}/resultados",
+    response_model=FormFactorExecucaoResponse,
+    status_code=201,
+)
+async def registrar_resultados_rodada_form_factor(
+    projeto_id: UUID,
+    rodada_id: UUID,
+    caso_teste_id: UUID,
+    request: EnviarResultadosRodadaRequest,
+    service: FormFactorService = Depends(get_form_factor_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.registrar_resultados_rodada(
+        usuario_atual, projeto_id, rodada_id, caso_teste_id, request
+    )
 
 
 @router.post(

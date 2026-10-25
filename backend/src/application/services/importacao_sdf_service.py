@@ -46,7 +46,11 @@ class ImportacaoSdfServiceImpl:
     async def importar(
         self, usuario_atual: UsuarioAutenticado, projeto_id, conteudo: bytes
     ) -> ImportarRelatorioSdfResponse:
-        if not usuario_atual.pode("form_factor.importar"):
+        if usuario_atual.perfil_codigo not in {
+            "ADMIN_UNIDADE",
+            "GERENTE",
+            "KP",
+        } or not usuario_atual.pode("form_factor.importar"):
             raise ForbiddenException("Você não tem permissão para importar resultados Form Factor.")
         relatorio = validar_relatorio_sdf(conteudo)
         projeto = await self._projeto_repo.obter_por_id(usuario_atual.unidade_id, projeto_id)

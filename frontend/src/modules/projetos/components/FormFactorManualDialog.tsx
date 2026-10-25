@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/di
 import { Label } from "@/shared/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 
-import type { CriarRodadaFormFactorInput, LinhaFormFactor, ModeloFormFactor } from "../model/projeto";
+import type { EnviarResultadosRodadaInput, LinhaFormFactor, ModeloFormFactor } from "../model/projeto";
 
 type ResultadoManual = "PASS" | "FAIL";
 
@@ -16,7 +16,7 @@ export function FormFactorManualDialog({ aberto, onAbertoChange, linha, modelos,
   linha: Pick<LinhaFormFactor, "caso_teste_id" | "tc_id"> | null;
   modelos: ModeloFormFactor[];
   salvando: boolean;
-  onSalvar: (input: CriarRodadaFormFactorInput) => void;
+  onSalvar: (input: EnviarResultadosRodadaInput) => void;
 }) {
   const { t } = useTranslation();
   const [resultados, setResultados] = useState<Record<string, ResultadoManual>>({});
@@ -25,11 +25,10 @@ export function FormFactorManualDialog({ aberto, onAbertoChange, linha, modelos,
     if (aberto) setResultados({});
   }, [aberto, linha?.caso_teste_id]);
 
-  const selecionados = Object.keys(resultados).length;
   const salvar = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!linha || !selecionados || salvando) return;
-    onSalvar({ caso_teste_id: linha.caso_teste_id, resultados });
+    if (!linha || salvando) return;
+    onSalvar({ resultados });
   };
 
   return <Dialog open={aberto} onOpenChange={onAbertoChange}>
@@ -68,7 +67,7 @@ export function FormFactorManualDialog({ aberto, onAbertoChange, linha, modelos,
         </div>
         <div className="flex justify-end gap-2 border-t border-border pt-4">
           <Button type="button" variant="outline" onClick={() => onAbertoChange(false)}>{t("cancel")}</Button>
-          <Button type="submit" disabled={!selecionados || salvando}>
+          <Button type="submit" disabled={salvando}>
             {salvando ? t("saving") : t("save")}
           </Button>
         </div>

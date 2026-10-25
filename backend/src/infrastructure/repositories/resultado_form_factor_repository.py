@@ -446,6 +446,8 @@ class ResultadoFormFactorRepositoryImpl(
                     ExecucaoSdfModel.sdf_id,
                     ExecucaoSdfModel.data_reportada,
                     ExecucaoSdfModel.origem,
+                    ExecucaoSdfModel.rodada_id,
+                    ExecucaoSdfModel.resultados_registrados,
                 )
                 .join(CasoTesteModel, CasoTesteModel.id == ExecucaoSdfModel.caso_teste_id)
                 .join(ProjetoModel, ProjetoModel.id == CasoTesteModel.projeto_id)
@@ -531,6 +533,8 @@ class ResultadoFormFactorRepositoryImpl(
                 data_reportada=row.data_reportada,
                 origem=row.origem,
                 resultados=resultados_por_execucao.get(row.id, {}),
+                rodada_id=row.rodada_id,
+                resultados_registrados=row.resultados_registrados,
             )
             for row in execucoes
         ]
@@ -616,6 +620,7 @@ class ResultadoFormFactorRepositoryImpl(
             CasoTesteModel.unidade_id == unidade_id,
             CasoTesteModel.projeto_id == projeto_id,
             CasoTesteModel.ativo.is_(True),
+            CasoTesteModel.status == "InValidation",
         ]
         if responsavel_id is not None:
             filtros_caso.append(CasoTesteModel.responsavel_id == responsavel_id)
@@ -767,7 +772,7 @@ class ResultadoFormFactorRepositoryImpl(
             CasoTesteModel.projeto_id == projeto_id,
             CasoTesteModel.ativo.is_(True),
             or_(importacao_valida, manual_valida),
-            tem_resultado_no_projeto,
+            or_(ExecucaoSdfModel.rodada_id.is_not(None), tem_resultado_no_projeto),
         ]
         if inicio is not None:
             filtros.append(ExecucaoSdfModel.data_reportada >= inicio)
@@ -815,6 +820,8 @@ class ResultadoFormFactorRepositoryImpl(
                     ExecucaoSdfModel.sdf_id,
                     ExecucaoSdfModel.data_reportada,
                     ExecucaoSdfModel.origem,
+                    ExecucaoSdfModel.rodada_id,
+                    ExecucaoSdfModel.resultados_registrados,
                 )
                 .select_from(ExecucaoSdfModel)
                 .join(CasoTesteModel, ExecucaoSdfModel.caso_teste_id == CasoTesteModel.id)
@@ -872,6 +879,8 @@ class ResultadoFormFactorRepositoryImpl(
                 data_reportada=execucao.data_reportada,
                 origem=execucao.origem,
                 resultados=resultados.get(execucao.id, {}),
+                rodada_id=execucao.rodada_id,
+                resultados_registrados=execucao.resultados_registrados,
             )
             for execucao in execucoes
         ]

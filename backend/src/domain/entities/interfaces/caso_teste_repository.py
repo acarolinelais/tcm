@@ -26,3 +26,7 @@ class CasoTesteRepository(RepositoryBase[CasoTeste], Protocol):
     async def obter_por_projeto_tc_id(
         self, unidade_id: UUID, projeto_id: UUID, tc_id: str
     ) -> CasoTeste | None: ...
+
+    async def listar_em_validacao(
+        self, unidade_id: UUID, projeto_id: UUID
+    ) -> tuple[CasoTeste, ...]: ...

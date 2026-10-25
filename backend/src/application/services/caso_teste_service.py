@@ -10,7 +10,7 @@ from src.application.validators.semana import intervalo_semana_iso
 from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
-from src.domain.entities.caso_teste import CasoTeste
+from src.domain.entities.caso_teste import CasoTeste, StatusCasoTeste
 from src.domain.entities.interfaces.caso_teste_repository import CasoTesteRepository
 from src.domain.entities.interfaces.projeto_repository import ProjetoRepository
 from src.domain.entities.interfaces.time_membro_repository import TimeMembroRepository
@@ -131,11 +131,35 @@ class CasoTesteServiceImpl:
             if not usuario_atual.pode("test_cases.consultar"):
                 raise ForbiddenException("Você não tem permissão para editar Test Cases.")
             if caso.responsavel_id != usuario_atual.id:
-                raise ForbiddenException("Você só pode editar Test Cases atribuídos a você.")
+                if (
+                    caso.backup_id != usuario_atual.id
+                    or campos_enviados != {"status"}
+                    or request.status is not StatusCasoTeste.CANCELLED
+                ):
+                    raise ForbiddenException("Você só pode editar Test Cases atribuídos a você.")
+                caso.cancelar()
+                await self._caso_repo.atualizar(caso)
+                await self._uow.commit()
+                caso_atualizado = await self._caso_repo.obter_por_id(
+                    usuario_atual.unidade_id, caso_id
+                )
+                return to_response(caso_atualizado or caso)
             if campos_enviados - self.CAMPOS_RESPONSAVEL:
                 raise ForbiddenException(
                     "O responsável só pode editar Status, Category e Difficulty."
                 )
+            if "status" in campos_enviados and request.status is not None:
+                transicoes = {
+                    StatusCasoTeste.TO_DO: {StatusCasoTeste.IN_PROGRESS},
+                    StatusCasoTeste.IN_PROGRESS: {StatusCasoTeste.IN_VALIDATION},
+                    StatusCasoTeste.IN_REVIEW: {StatusCasoTeste.IN_VALIDATION},
+                }
+                if request.status is StatusCasoTeste.CANCELLED:
+                    caso.cancelar()
+                elif request.status is not caso.status and request.status not in transicoes.get(
+                    caso.status, set()
+                ):
+                    raise ConflictException("A transição de Status solicitada não é permitida.")
             caso.atualizar_campos_do_responsavel(
                 request.status or caso.status,
                 request.category or caso.category,

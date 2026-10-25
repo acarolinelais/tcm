@@ -11,6 +11,7 @@ from src.domain.entities.caso_teste import (
     CategoriaCasoTeste,
     DificuldadeCasoTeste,
     SituacaoCasoTeste,
+    StatusCasoTeste,
 )
 from src.domain.entities.projeto import Projeto
 from src.domain.entities.time import Time
@@ -129,18 +130,24 @@ def _usar_service_real_com_caso(caso_do_membro: bool):
 
 async def test_responsavel_que_envia_situation_recebe_403(api_client):
     caso, _ = _usar_service_real_com_caso(caso_do_membro=True)
+    caso.atualizar_campos_do_responsavel(
+        StatusCasoTeste.IN_PROGRESS, caso.category, caso.difficulty
+    )
 
     negado = await api_client.put(f"/api/test-cases/{caso.id}", json={"situation": "New Step"})
-    permitido = await api_client.put(f"/api/test-cases/{caso.id}", json={"status": "InReview"})
+    permitido = await api_client.put(f"/api/test-cases/{caso.id}", json={"status": "InValidation"})
 
     assert negado.status_code == 403
     assert permitido.status_code == 200
-    assert permitido.json()["status"] == "InReview"
+    assert permitido.json()["status"] == "InValidation"
     assert permitido.json()["situation"] == "New"
 
 
 async def test_responsavel_atualiza_status_para_in_validation(api_client):
     caso, uow = _usar_service_real_com_caso(caso_do_membro=True)
+    caso.atualizar_campos_do_responsavel(
+        StatusCasoTeste.IN_PROGRESS, caso.category, caso.difficulty
+    )
 
     response = await api_client.put(f"/api/test-cases/{caso.id}", json={"status": "InValidation"})
 

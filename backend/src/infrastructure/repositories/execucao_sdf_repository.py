@@ -29,6 +29,21 @@ class ExecucaoSdfRepositoryImpl(RepositoryBaseImpl[ExecucaoSdf, ExecucaoSdfModel
         )
         return tuple(self._to_entity(modelo) for modelo in modelos)
 
+    async def obter_por_rodada_e_caso(
+        self, unidade_id: UUID, rodada_id: UUID, caso_teste_id: UUID
+    ) -> ExecucaoSdf | None:
+        modelo = (
+            await self.session.execute(
+                select(ExecucaoSdfModel).where(
+                    ExecucaoSdfModel.unidade_id == unidade_id,
+                    ExecucaoSdfModel.rodada_id == rodada_id,
+                    ExecucaoSdfModel.caso_teste_id == caso_teste_id,
+                    ExecucaoSdfModel.ativo.is_(True),
+                )
+            )
+        ).scalar_one_or_none()
+        return self._to_entity(modelo) if modelo is not None else None
+
     def _to_entity(self, model: ExecucaoSdfModel) -> ExecucaoSdf:
         execucao = ExecucaoSdf(
             model.unidade_id,
@@ -38,6 +53,8 @@ class ExecucaoSdfRepositoryImpl(RepositoryBaseImpl[ExecucaoSdf, ExecucaoSdfModel
             model.data_reportada,
             model.one_ui,
             model.origem,
+            model.rodada_id,
+            model.resultados_registrados,
         )
         execucao.id = model.id
         execucao.ativo = model.ativo
@@ -55,6 +72,8 @@ class ExecucaoSdfRepositoryImpl(RepositoryBaseImpl[ExecucaoSdf, ExecucaoSdfModel
             data_reportada=entity.data_reportada,
             one_ui=entity.one_ui,
             origem=entity.origem,
+            rodada_id=entity.rodada_id,
+            resultados_registrados=entity.resultados_registrados,
             ativo=entity.ativo,
             created_at=entity.created_at,
             updated_at=entity.updated_at,

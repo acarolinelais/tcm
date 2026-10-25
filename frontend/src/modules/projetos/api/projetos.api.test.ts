@@ -68,7 +68,7 @@ describe("APIs de projetos", () => {
     expect(fetch).toHaveBeenLastCalledWith("/api/modelos-dispositivo/opcoes?page=1&page_size=100", expect.any(Object));
   });
 
-  it("envia filtros do Form Factor, consulta Results e cria rodada manual", async () => {
+  it("envia filtros do Form Factor, consulta Results e opera rodadas", async () => {
     await formFactorApi.listarGlobal({ page: 2, pageSize: 10, semana: "2026-W13", projetoId: "project-1", responsavelId: "user-1", tcId: "TC-001" });
     expect(fetch).toHaveBeenLastCalledWith(
       "/api/form-factor/general?page=2&page_size=10&semana=2026-W13&projeto_id=project-1&responsavel_id=user-1&tc_id=TC-001",
@@ -98,12 +98,17 @@ describe("APIs de projetos", () => {
       "/api/projetos/project-1/form-factor/results?page=1&page_size=20&tc_id=TC-001",
       expect.any(Object),
     );
-    const manual = { caso_teste_id: "case-1", resultados: { "model-1": "PASS" as const } };
-    await formFactorApi.criarRodadaManual("project-1", manual);
+    const roundInput = { sdf_id: "SDF-1" };
+    await formFactorApi.criarRodada("project-1", roundInput);
     expect(fetch).toHaveBeenLastCalledWith(
-      "/api/projetos/project-1/form-factor/results",
-      expect.objectContaining({ method: "POST", body: JSON.stringify(manual) }),
+      "/api/projetos/project-1/form-factor/rodadas",
+      expect.objectContaining({ method: "POST", body: JSON.stringify(roundInput) }),
     );
+    await formFactorApi.listarCasosRodada("project-1", "round-1", 2, 10);
+    expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/form-factor/rodadas/round-1/test-cases?page=2&page_size=10", expect.any(Object));
+    const resultInput = { resultados: { "model-1": "PASS" as const } };
+    await formFactorApi.registrarResultadosRodada("project-1", "round-1", "case-1", resultInput);
+    expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/form-factor/rodadas/round-1/test-cases/case-1/resultados", expect.objectContaining({ method: "POST", body: JSON.stringify(resultInput) }));
     const report = new File(["resultado"], "sdf.xlsx");
     await formFactorApi.importar("project-1", report);
     const [url, init] = vi.mocked(fetch).mock.calls.at(-1)!;

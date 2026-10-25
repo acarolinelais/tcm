@@ -66,15 +66,38 @@ def test_gestao_atualiza_situation_e_status():
     assert caso.status == StatusCasoTeste.IN_REVIEW
 
 
-def test_status_segue_a_ordem_do_progresso_com_in_validation_antes_de_pass():
+def test_status_inclui_conclusao_e_cancelamento():
     assert list(StatusCasoTeste) == [
         "To-Do",
         "InProgress",
         "InReview",
         "InValidation",
-        "Pass",
-        "Fail",
+        "Done",
+        "Cancelled",
     ]
+
+
+def test_resultado_fail_move_tc_para_revisao_e_pass_completo_para_done():
+    caso = criar_caso()
+    modelos = {uuid4(), uuid4()}
+
+    caso.registrar_resultado_form_factor({next(iter(modelos)): "FAIL"}, modelos)
+    assert caso.status is StatusCasoTeste.IN_REVIEW
+
+    caso.atualizar_campos_do_responsavel(
+        StatusCasoTeste.IN_VALIDATION, caso.category, caso.difficulty
+    )
+    caso.registrar_resultado_form_factor({modelo_id: "PASS" for modelo_id in modelos}, modelos)
+    assert caso.status is StatusCasoTeste.DONE
+
+
+def test_resultado_parcial_mantem_tc_em_validacao():
+    caso = criar_caso()
+    modelos = {uuid4(), uuid4()}
+
+    caso.registrar_resultado_form_factor({next(iter(modelos)): "PASS"}, modelos)
+
+    assert caso.status is StatusCasoTeste.IN_VALIDATION
 
 
 @pytest.mark.parametrize("situation", ["To-Do", "Changed", ""])

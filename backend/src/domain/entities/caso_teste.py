@@ -31,8 +31,8 @@ class StatusCasoTeste(StrEnum):
     IN_PROGRESS = "InProgress"
     IN_REVIEW = "InReview"
     IN_VALIDATION = "InValidation"
-    PASS = "Pass"
-    FAIL = "Fail"
+    DONE = "Done"
+    CANCELLED = "Cancelled"
 
 
 class CasoTeste(EntidadeTenant):
@@ -73,6 +73,19 @@ class CasoTeste(EntidadeTenant):
         self.status = StatusCasoTeste(status)
         self.category = CategoriaCasoTeste(category)
         self.difficulty = DificuldadeCasoTeste(difficulty)
+
+    def registrar_resultado_form_factor(
+        self, resultados: dict[UUID, str], modelos_ids: set[UUID]
+    ) -> None:
+        if any(resultado == "FAIL" for resultado in resultados.values()):
+            self.status = StatusCasoTeste.IN_REVIEW
+        elif modelos_ids and all(resultados.get(modelo_id) == "PASS" for modelo_id in modelos_ids):
+            self.status = StatusCasoTeste.DONE
+        elif self.status is not StatusCasoTeste.CANCELLED:
+            self.status = StatusCasoTeste.IN_VALIDATION
+
+    def cancelar(self) -> None:
+        self.status = StatusCasoTeste.CANCELLED
 
     def atualizar_gerenciamento(
         self,

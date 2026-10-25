@@ -2,12 +2,16 @@ from typing import Protocol
 from uuid import UUID
 
 from src.application.schemas.form_factor import (
+    CriarRodadaFormFactorLoteRequest,
     CriarRodadaFormFactorRequest,
+    EnviarResultadosRodadaRequest,
     FormFactorExecucaoResponse,
     FormFactorGlobalResponse,
     FormFactorResponse,
     FormFactorResultadosGlobaisResponse,
     FormFactorResultadosResponse,
+    RodadaFormFactorCasosResponse,
+    RodadaFormFactorResponse,
 )
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 
@@ -76,4 +80,29 @@ class FormFactorService(Protocol):
         usuario_atual: UsuarioAutenticado,
         projeto_id: UUID,
         request: CriarRodadaFormFactorRequest,
+    ) -> FormFactorExecucaoResponse: ...
+
+    async def criar_rodada(
+        self,
+        usuario_atual: UsuarioAutenticado,
+        projeto_id: UUID,
+        request: CriarRodadaFormFactorLoteRequest,
+    ) -> RodadaFormFactorResponse: ...
+
+    async def listar_casos_rodada(
+        self,
+        usuario_atual: UsuarioAutenticado,
+        projeto_id: UUID,
+        rodada_id: UUID,
+        page: int,
+        page_size: int,
+    ) -> RodadaFormFactorCasosResponse: ...
+
+    async def registrar_resultados_rodada(
+        self,
+        usuario_atual: UsuarioAutenticado,
+        projeto_id: UUID,
+        rodada_id: UUID,
+        caso_teste_id: UUID,
+        request: EnviarResultadosRodadaRequest,
     ) -> FormFactorExecucaoResponse: ...

@@ -1,12 +1,14 @@
+import { ArrowUpRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { formatDate } from "@/core/i18n/format";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
 import { TableColumnFilter, type TableFilterOption } from "@/shared/ui/table-column-filter";
 import type { FormFactorResultados } from "../model/projeto";
-import { StatusPill } from "./StatusBadge";
+import { FormFactorResultBadge } from "./FormFactorResultBadge";
+import { TableRowActions } from "@/shared/ui/table-row-actions";
 
-export function FormFactorResultadosTabela({ dados, carregando, erro, identificadoresMembros, opcoesAssignee, filtros, onFiltroChange, page, pageSize, onPageChange, onPageSizeChange }: {
+export function FormFactorResultadosTabela({ dados, carregando, erro, identificadoresMembros, opcoesAssignee, filtros, onFiltroChange, onAbrirRodada, page, pageSize, onPageChange, onPageSizeChange }: {
   dados?: FormFactorResultados;
   carregando: boolean;
   erro: boolean;
@@ -14,6 +16,7 @@ export function FormFactorResultadosTabela({ dados, carregando, erro, identifica
   opcoesAssignee: TableFilterOption[];
   filtros: { tcId: string; sdfId: string; responsavelId: string; origem: string; modeloDispositivoId: string; resultado: string };
   onFiltroChange: (campo: keyof typeof filtros, valor: string) => void;
+  onAbrirRodada?: (rodadaId: string) => void;
   page: number; pageSize: number; onPageChange: (page: number) => void; onPageSizeChange: (size: number) => void;
 }) {
   const { t } = useTranslation();
@@ -27,6 +30,7 @@ export function FormFactorResultadosTabela({ dados, carregando, erro, identifica
         <TableHead><TableColumnFilter label={t("origin", { defaultValue: "Origin" })} value={filtros.origem} onChange={(v) => onFiltroChange("origem", v)} options={[{ value: "", label: t("all") }, { value: "SDF", label: "SDF" }, { value: "MANUAL", label: t("manual", { defaultValue: "Manual" }) }]} /></TableHead>
         {dados?.modelos.map((modelo) => <TableHead key={modelo.id}><div className="flex items-center gap-1">{modelo.nome}<TableColumnFilter label="" accessibleLabel={t("filterResultForModel", { defaultValue: "Result for {{model}}", model: modelo.nome })} value={filtros.modeloDispositivoId === modelo.id ? filtros.resultado : ""} onChange={(v) => { onFiltroChange("modeloDispositivoId", v ? modelo.id : ""); onFiltroChange("resultado", v); }} options={[{ value: "", label: t("all") }, { value: "PASS", label: "PASS" }, { value: "FAIL", label: "FAIL" }]} /></div></TableHead>)}
         <TableHead>{t("date")}</TableHead>
+        {onAbrirRodada && <TableHead className="text-right">{t("actions")}</TableHead>}
       </TableRow></TableHeader>
       {items.length > 0 && <TableBody>{items.map((execucao) => <TableRow key={execucao.execucao_id} className="transition-colors duration-150 hover:bg-muted/30 motion-reduce:transition-none">
         <TableCell className="font-medium">{execucao.tc_id}</TableCell>
@@ -36,10 +40,10 @@ export function FormFactorResultadosTabela({ dados, carregando, erro, identifica
         {dados?.modelos.map((modelo) => {
           const resultado = execucao.resultados[modelo.id];
           if (!resultado) return <TableCell key={modelo.id}><span className="text-muted-foreground">—</span></TableCell>;
-          if (!/^(pass|fail)$/i.test(resultado)) return <TableCell key={modelo.id}>{resultado}</TableCell>;
-          return <TableCell key={modelo.id}><StatusPill status={resultado.toLowerCase() === "pass" ? "Pass" : "Fail"} label={resultado} /></TableCell>;
+          return <TableCell key={modelo.id}><FormFactorResultBadge value={resultado} /></TableCell>;
         })}
         <TableCell className="whitespace-nowrap text-muted-foreground">{formatDate(execucao.data_reportada, { dateStyle: "short", timeStyle: "short" })}</TableCell>
+        {onAbrirRodada && <TableCell className="text-right">{execucao.rodada_id && <TableRowActions label={execucao.tc_id} actions={[{ label: t("openRound", { defaultValue: "Open round" }), icon: ArrowUpRight, onSelect: () => onAbrirRodada(execucao.rodada_id!) }]} />}</TableCell>}
       </TableRow>)}</TableBody>}
     </Table>
     {carregando && <p role="status" className="p-5 text-sm text-muted-foreground">{t("loading")}</p>}

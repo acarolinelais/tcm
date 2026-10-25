@@ -7,13 +7,16 @@ from src.api.dependencies import (
     get_usuario_atual,
 )
 from src.application.schemas.form_factor import (
+    CriarRodadaFormFactorLoteRequest,
     CriarRodadaFormFactorRequest,
+    EnviarResultadosRodadaRequest,
     FormFactorExecucaoResponse,
     FormFactorGlobalResponse,
     FormFactorLinhaResponse,
     FormFactorModeloResponse,
     FormFactorResponse,
     FormFactorResultadosResponse,
+    RodadaFormFactorResponse,
 )
 from src.application.schemas.importacao_sdf import ImportarRelatorioSdfResponse
 from src.application.services.form_factor_service import FormFactorServiceImpl
@@ -232,6 +235,88 @@ async def test_criar_rodada_manual_retorna_201(api_client):
         usuario,
         projeto_id,
         CriarRodadaFormFactorRequest(caso_teste_id=caso_id, resultados={modelo_id: "PASS"}),
+    )
+
+
+async def test_criar_rodada_form_factor_retorna_201(api_client):
+    from datetime import UTC, datetime
+
+    from src.api.main import app
+
+    usuario = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
+    projeto_id, rodada_id = uuid4(), uuid4()
+    service = AsyncMock()
+    service.criar_rodada.return_value = RodadaFormFactorResponse(
+        id=rodada_id,
+        projeto_id=projeto_id,
+        sdf_id="SDF / 1",
+        created_at=datetime.now(UTC),
+        total_test_cases=250,
+    )
+    app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
+    app.dependency_overrides[get_form_factor_service] = dependency_override(service)
+
+    response = await api_client.post(
+        f"/api/projetos/{projeto_id}/form-factor/rodadas", json={"sdf_id": "SDF / 1"}
+    )
+
+    assert response.status_code == 201
+    assert response.json()["id"] == str(rodada_id)
+    assert response.json()["total_test_cases"] == 250
+    service.criar_rodada.assert_awaited_once_with(
+        usuario, projeto_id, CriarRodadaFormFactorLoteRequest(sdf_id="SDF / 1")
+    )
+
+
+async def test_criar_rodada_recusa_sdf_id_acima_de_cinquenta(api_client):
+    from src.api.main import app
+
+    usuario = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
+    service = AsyncMock()
+    app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
+    app.dependency_overrides[get_form_factor_service] = dependency_override(service)
+
+    response = await api_client.post(
+        f"/api/projetos/{uuid4()}/form-factor/rodadas", json={"sdf_id": "x" * 51}
+    )
+
+    assert response.status_code == 422
+    service.criar_rodada.assert_not_awaited()
+
+
+async def test_registrar_resultados_rodada_aceita_map_vazio(api_client):
+    from datetime import UTC, datetime
+
+    from src.api.main import app
+
+    usuario = UsuarioAutenticado(uuid4(), uuid4(), "USUARIO_PADRAO")
+    projeto_id, rodada_id, caso_id, execucao_id = (uuid4() for _ in range(4))
+    service = AsyncMock()
+    service.registrar_resultados_rodada.return_value = FormFactorExecucaoResponse(
+        execucao_id=execucao_id,
+        caso_teste_id=caso_id,
+        tc_id="TC-001",
+        responsavel_id=usuario.id,
+        sdf_id=None,
+        data_reportada=datetime.now(UTC),
+        origem="MANUAL",
+        resultados={},
+        rodada_id=rodada_id,
+        resultados_registrados=True,
+    )
+    app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
+    app.dependency_overrides[get_form_factor_service] = dependency_override(service)
+
+    response = await api_client.post(
+        f"/api/projetos/{projeto_id}/form-factor/rodadas/{rodada_id}"
+        f"/test-cases/{caso_id}/resultados",
+        json={"resultados": {}},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["rodada_id"] == str(rodada_id)
+    service.registrar_resultados_rodada.assert_awaited_once_with(
+        usuario, projeto_id, rodada_id, caso_id, EnviarResultadosRodadaRequest(resultados={})
     )
 
 

@@ -18,6 +18,8 @@ import { WeekPicker } from "@/shared/ui/week-picker";
 
 import { FormFactorTabela } from "./components/FormFactorTabela";
 import { FormFactorManualDialog } from "./components/FormFactorManualDialog";
+import { FormFactorCriarRodadaDialog } from "./components/FormFactorCriarRodadaDialog";
+import { FormFactorRodadaTabela } from "./components/FormFactorRodadaTabela";
 import { CategoriaBadge, DificuldadeBadge, SituacaoBadge } from "./components/AtributosCasoBadge";
 import { atributoCasoBadgeClass } from "./components/atributos-caso-badge-estilos";
 import { FormFactorResultadosTabela } from "./components/FormFactorResultadosTabela";
@@ -26,12 +28,12 @@ import { CasosTesteEmptyState } from "./components/CasosTesteEmptyState";
 import { StatusBadgeContent, StatusPill } from "./components/StatusBadge";
 import { statusBadgeBase, statusBadges } from "./components/status-badge-estilos";
 import { ProjetosEntradaPage } from "./ProjetosEntradaPage";
-import { useCasosTeste, useCriarRodadaFormFactor, useFormFactor, useFormFactorResultados } from "./hooks/useProjetos";
+import { useCasosRodadaFormFactor, useCasosTeste, useCriarRodadaFormFactor, useFormFactor, useFormFactorResultados, useRegistrarResultadosRodadaFormFactor } from "./hooks/useProjetos";
 import { TableColumnFilter } from "@/shared/ui/table-column-filter";
 import { toast } from "@/shared/lib/toast";
 import { formatarDiaIso } from "@/shared/lib/utils";
 
-import { casosTesteApi, formFactorApi, projetosApi, type CasoTeste, type CategoriaCasoTeste, type DificuldadeCasoTeste, type LinhaFormFactor, type SituacaoCasoTeste } from "./api/projetos.api";
+import { casosTesteApi, formFactorApi, projetosApi, type CasoTeste, type CasoTesteRodada, type CategoriaCasoTeste, type DificuldadeCasoTeste, type SituacaoCasoTeste } from "./api/projetos.api";
 import { CATEGORIAS_CASO_TESTE as categorias, DIFICULDADES_CASO_TESTE as dificuldades, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, type StatusCasoTeste } from "./model/projeto";
 
 const difficultyLabels: Record<DificuldadeCasoTeste, string> = { Low: "difficultyLow", Medium: "difficultyMedium", High: "difficultyHigh" };
@@ -69,7 +71,9 @@ function ProjetoDetalhe() {
   const [filtrosResumo, setFiltrosResumo] = useState({ tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" });
   const [visaoFormFactor, setVisaoFormFactor] = useState<"summary" | "results">("summary");
   const [filtrosResultados, setFiltrosResultados] = useState({ tcId: "", sdfId: "", responsavelId: "", origem: "", modeloDispositivoId: "", resultado: "" });
-  const [linhaManual, setLinhaManual] = useState<Pick<LinhaFormFactor, "caso_teste_id" | "tc_id"> | null>(null);
+  const [linhaManual, setLinhaManual] = useState<CasoTesteRodada | null>(null);
+  const [rodadaId, setRodadaId] = useState<string | null>(null);
+  const [abrirCriacaoRodada, setAbrirCriacaoRodada] = useState(false);
   const [semanaCasos, setSemanaCasos] = useState("");
   const [arquivoSdf, setArquivoSdf] = useState<File | null>(null);
   const inputSdf = useRef<HTMLInputElement>(null);
@@ -83,7 +87,10 @@ function ProjetoDetalhe() {
   const podeGerenciarCasos = admin || (["GERENTE", "KP"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("test_cases.gerenciar"));
   const podeConsultarCasos = admin || perfil.permissoes.includes("test_cases.consultar");
   const podeConsultarFormFactor = admin || perfil.permissoes.includes("form_factor.consultar");
-  const podeImportarSdf = admin || perfil.permissoes.includes("form_factor.importar");
+  const perfilGestao = admin || ["GERENTE", "KP"].includes(perfil.perfil_codigo ?? "");
+  const podeCriarRodada = perfilGestao && (admin || perfil.permissoes.includes("form_factor.registrar"));
+  const podeImportarSdf = perfilGestao && (admin || perfil.permissoes.includes("form_factor.importar"));
+  const podeRegistrarResultado = admin || (["GERENTE", "KP", "USUARIO_PADRAO"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("form_factor.registrar"));
   const projeto = useQuery({ queryKey: ["projetos", "detalhe", projetoId, perfil.unidade_id, perfil.id], queryFn: () => projetosApi.obter(projetoId), enabled: podeConsultar && Boolean(projetoId) });
   const casos = useCasosTeste(projetoId, pagina, tamanhoPagina, { responsavelId: filtrosCaso.assignee || undefined, ...(dev ? { associadosAMim: true } : {}), ...(semanaCasos ? { semana: semanaCasos } : {}) }, perfil, Boolean(projeto.isSuccess && podeConsultarCasos && aba === "cases"));
   const associacao = useCasosTeste(projetoId, 1, 1, { associadosAMim: true }, perfil, dev && projeto.isSuccess && podeConsultarCasos);
@@ -91,6 +98,8 @@ function ProjetoDetalhe() {
   const resultados = useFormFactor(projetoId, { page: pagina, pageSize: tamanhoPagina, semana: semana || undefined, responsavelId: assigneeFormFactor || undefined, tcId: filtrosResumo.tcId || undefined, sdfId: filtrosResumo.sdfId || undefined, modeloDispositivoId: filtrosResumo.modeloDispositivoId || undefined, resultado: filtrosResumo.resultado || undefined }, perfil, projeto.isSuccess && podeConsultarFormFactor && aba === "form-factor" && visaoFormFactor === "summary");
   const historico = useFormFactorResultados(projetoId, { page: pagina, pageSize: tamanhoPagina, semana: semana || undefined, tcId: filtrosResultados.tcId || undefined, sdfId: filtrosResultados.sdfId || undefined, responsavelId: filtrosResultados.responsavelId || undefined, origem: filtrosResultados.origem ? filtrosResultados.origem as "SDF" | "MANUAL" : undefined, modeloDispositivoId: filtrosResultados.modeloDispositivoId || undefined, resultado: filtrosResultados.resultado || undefined }, perfil, projeto.isSuccess && podeConsultarFormFactor && aba === "form-factor" && visaoFormFactor === "results");
   const criarRodada = useCriarRodadaFormFactor(projetoId);
+  const registrarResultadoRodada = useRegistrarResultadosRodadaFormFactor(projetoId);
+  const casosRodada = useCasosRodadaFormFactor(projetoId, rodadaId, pagina, tamanhoPagina, perfil);
 
   const saveCase = useMutation({
     mutationFn: () => editar
@@ -143,7 +152,7 @@ function ProjetoDetalhe() {
   const mostrarAcoes = podeGerenciarCasos || Boolean(casos.data?.items.some((item) => item.responsavel_id === responsavelAtual));
   const temFiltrosCaso = Boolean(semanaCasos || Object.values(filtrosCaso).some(Boolean));
   const casosFiltrados = (casos.isError ? [] : casos.data?.items ?? []).filter((item) => {
-    const endDate = item.status === "Pass" ? item.updated_at ?? item.created_at : null;
+    const endDate = item.status === "Done" ? item.updated_at ?? item.created_at : null;
     const dataFinal = endDate ? formatarDiaIso(new Date(endDate)) : "";
     return item.tc_id.toLocaleLowerCase().includes(filtrosCaso.tcId.toLocaleLowerCase())
       && (!filtrosCaso.status || item.status === filtrosCaso.status)
@@ -232,12 +241,18 @@ function ProjetoDetalhe() {
           {casosFiltrados.length ? <TableBody>{casosFiltrados.map((testCase, index) => {
             const canManage = podeGerenciarCasos;
             const canEditOwn = testCase.responsavel_id === responsavelAtual;
-            const endDate = testCase.status === "Pass" ? testCase.updated_at ?? testCase.created_at : null;
+            const endDate = testCase.status === "Done" ? testCase.updated_at ?? testCase.created_at : null;
+            const canCancel = canManage || canEditOwn || testCase.backup_id === responsavelAtual;
+            const statusOptions = canManage
+              ? STATUS_CASO_TESTE
+              : canEditOwn
+                ? [testCase.status, ...(testCase.status === "To-Do" ? ["InProgress" as const] : []), ...(testCase.status === "InProgress" || testCase.status === "InReview" ? ["InValidation" as const] : []), "Cancelled" as const]
+                : canCancel ? [testCase.status, "Cancelled" as const] : [];
             const numeroDaLinha = (pagina - 1) * tamanhoPagina + index + 1;
             return <TableRow key={testCase.id}>
               <TableCell className="w-14 px-4 text-right tabular-nums text-muted-foreground">{String(numeroDaLinha).padStart(2, "0")}</TableCell>
               <TableCell className="font-medium">{testCase.tc_id}</TableCell>
-              <TableCell>{canManage || canEditOwn ? <Select value={testCase.status} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "status", value })}><SelectTrigger aria-label={`${t("status")} ${testCase.tc_id}`} className={`${statusBadgeBase} ${statusBadges[testCase.status].badge}`}><StatusBadgeContent status={testCase.status} label={t(ROTULO_STATUS[testCase.status])} /></SelectTrigger><SelectContent>{STATUS_CASO_TESTE.map((value) => <SelectItem key={value} value={value}>{t(ROTULO_STATUS[value])}</SelectItem>)}</SelectContent></Select> : <StatusPill status={testCase.status} label={t(ROTULO_STATUS[testCase.status])} />}</TableCell>
+              <TableCell>{statusOptions.length > 0 ? <Select value={testCase.status} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "status", value })}><SelectTrigger aria-label={`${t("status")} ${testCase.tc_id}`} className={`${statusBadgeBase} ${statusBadges[testCase.status].badge}`}><StatusBadgeContent status={testCase.status} label={t(ROTULO_STATUS[testCase.status])} /></SelectTrigger><SelectContent>{statusOptions.map((value) => <SelectItem key={value} value={value}>{t(ROTULO_STATUS[value])}</SelectItem>)}</SelectContent></Select> : <StatusPill status={testCase.status} label={t(ROTULO_STATUS[testCase.status])} />}</TableCell>
               <TableCell>{canManage ? <Select value={testCase.situation} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "situation", value })}><SelectTrigger aria-label={`${t("tcSituation")} ${testCase.tc_id}`} className={atributoCasoBadgeClass}><SelectValue /></SelectTrigger><SelectContent>{SITUACOES_CASO_TESTE.map((value) => <SelectItem key={value} value={value}>{t(ROTULO_SITUACAO[value])}</SelectItem>)}</SelectContent></Select> : <SituacaoBadge label={t(ROTULO_SITUACAO[testCase.situation])} />}</TableCell>
               <TableCell className="text-muted-foreground">{canManage ? <Select value={testCase.responsavel_id} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "responsavel_id", value })}><SelectTrigger aria-label={`${t("assignee")} ${testCase.tc_id}`} className="h-8 w-auto min-w-28 border-0 bg-transparent px-0 text-muted-foreground shadow-none"><SelectValue /></SelectTrigger><SelectContent>{membrosAtivos.filter((member) => member.usuario_id !== testCase.backup_id).map((member) => <SelectItem key={member.usuario_id} value={member.usuario_id}>{member.usuario_user_id ?? "—"}</SelectItem>)}</SelectContent></Select> : identificadoresMembros[testCase.responsavel_id] ?? "—"}</TableCell>
               <TableCell>{canManage || canEditOwn ? <Select value={testCase.difficulty} onValueChange={(value) => updateMemberCase.mutate({ id: testCase.id, field: "difficulty", value })}><SelectTrigger aria-label={`${t("difficulty")} ${testCase.tc_id}`} className={atributoCasoBadgeClass}><SelectValue /></SelectTrigger><SelectContent>{dificuldades.map((value) => <SelectItem key={value} value={value}>{t(difficultyLabels[value])}</SelectItem>)}</SelectContent></Select> : <DificuldadeBadge label={t(difficultyLabels[testCase.difficulty])} />}</TableCell>
@@ -273,9 +288,29 @@ function ProjetoDetalhe() {
           <p className="text-sm text-muted-foreground">{t(visaoFormFactor === "summary" ? "formFactorSummaryHint" : "formFactorResultsHint", { defaultValue: visaoFormFactor === "summary" ? "Latest result per test case and model." : "Every recorded run, one row per execution." })}</p>
         </div>
         <div id="form-factor-summary-panel" role="tabpanel" aria-labelledby="form-factor-summary-tab" hidden={visaoFormFactor !== "summary"} className="flex min-h-0 flex-1 flex-col">
-        <FormFactorTabela dados={resultados.data} carregando={resultados.isLoading} erro={resultados.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} assignee={assigneeFormFactor} onAssigneeChange={(valor) => { setAssigneeFormFactor(valor); setPagina(1); }} tcId={filtrosResumo.tcId} sdfId={filtrosResumo.sdfId} onFiltroTexto={(campo, valor) => { setFiltrosResumo((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} modeloDispositivoId={filtrosResumo.modeloDispositivoId} resultadoFiltro={filtrosResumo.resultado} onFiltroResultado={(modeloId, valor) => { setFiltrosResumo({ ...filtrosResumo, modeloDispositivoId: valor ? modeloId : "", resultado: valor }); setPagina(1); }} podeRegistrar={podeImportarSdf} onRegistrar={(linha) => setLinhaManual(linha)} temFiltros={Boolean(semana || assigneeFormFactor || filtrosResumo.tcId || filtrosResumo.sdfId || filtrosResumo.resultado)} onLimparFiltros={() => { setSemana(""); setAssigneeFormFactor(""); setFiltrosResumo({ tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" }); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">{t("validationCasesReady", { defaultValue: "Test Cases in In Validation are ready for a test round." })}</p>
+          {podeCriarRodada && <Button size="sm" onClick={() => setAbrirCriacaoRodada(true)}><Plus className="mr-1.5 size-4" />{t("createTestRound", { defaultValue: "Create a test round" })}</Button>}
         </div>
-        <div id="form-factor-results-panel" role="tabpanel" aria-labelledby="form-factor-results-tab" hidden={visaoFormFactor !== "results"} className="flex min-h-0 flex-1 flex-col"><FormFactorResultadosTabela dados={historico.data} carregando={historico.isLoading} erro={historico.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} filtros={filtrosResultados} onFiltroChange={(campo, valor) => { setFiltrosResultados((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} /></div>
+        <section aria-label={t("eligibleTestCases", { defaultValue: "Eligible Test Cases" })} className="mb-3 rounded-xl border border-border/70 px-4 py-3">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold">{t("eligibleTestCases", { defaultValue: "Eligible Test Cases" })}</h3>
+            <span className="text-xs text-muted-foreground">{resultados.data?.casos_elegiveis?.length ?? 0}</span>
+          </div>
+          {resultados.data?.casos_elegiveis?.length ? <ul className="flex flex-wrap gap-2" aria-label={t("eligibleTestCases", { defaultValue: "Eligible Test Cases" })}>
+            {resultados.data.casos_elegiveis.map((caso) => <li key={caso.caso_teste_id} className="rounded-md bg-muted px-2 py-1 text-xs font-medium">{caso.tc_id}</li>)}
+          </ul> : <p className="text-sm text-muted-foreground">{t("noEligibleTestCases", { defaultValue: "No Test Cases are currently in In Validation." })}</p>}
+        </section>
+        <FormFactorTabela dados={resultados.data} carregando={resultados.isLoading} erro={resultados.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} assignee={assigneeFormFactor} onAssigneeChange={(valor) => { setAssigneeFormFactor(valor); setPagina(1); }} tcId={filtrosResumo.tcId} sdfId={filtrosResumo.sdfId} onFiltroTexto={(campo, valor) => { setFiltrosResumo((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} modeloDispositivoId={filtrosResumo.modeloDispositivoId} resultadoFiltro={filtrosResumo.resultado} onFiltroResultado={(modeloId, valor) => { setFiltrosResumo({ ...filtrosResumo, modeloDispositivoId: valor ? modeloId : "", resultado: valor }); setPagina(1); }} temFiltros={Boolean(semana || assigneeFormFactor || filtrosResumo.tcId || filtrosResumo.sdfId || filtrosResumo.resultado)} onLimparFiltros={() => { setSemana(""); setAssigneeFormFactor(""); setFiltrosResumo({ tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" }); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
+        {rodadaId && <section className="mt-5 flex min-h-0 flex-1 flex-col rounded-xl border border-border/70 p-4">
+          <header className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div><h3 className="font-semibold">{t("roundTestCases", { defaultValue: "Test Cases in round" })}</h3><p className="text-xs text-muted-foreground">{casosRodada.data?.rodada.sdf_id || t("noSdfId", { defaultValue: "No SDF ID" })} · {rodadaId.slice(0, 8)}</p></div>
+            <Button size="sm" variant="outline" onClick={() => { setRodadaId(null); setPagina(1); }}>{t("closeRound", { defaultValue: "Close round" })}</Button>
+          </header>
+          <FormFactorRodadaTabela dados={casosRodada.data} carregando={casosRodada.isLoading} erro={casosRodada.isError} identificadoresMembros={identificadoresMembros} podeRegistrar={(item) => podeRegistrarResultado && (perfilGestao || item.responsavel_id === perfil.id || item.backup_id === perfil.id)} onRegistrar={setLinhaManual} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
+        </section>}
+        </div>
+        <div id="form-factor-results-panel" role="tabpanel" aria-labelledby="form-factor-results-tab" hidden={visaoFormFactor !== "results"} className="flex min-h-0 flex-1 flex-col"><FormFactorResultadosTabela dados={historico.data} carregando={historico.isLoading} erro={historico.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} filtros={filtrosResultados} onFiltroChange={(campo, valor) => { setFiltrosResultados((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} onAbrirRodada={(id) => { setRodadaId(id); setVisaoFormFactor("summary"); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} /></div>
       </div>}
     </>}
 
@@ -296,13 +331,22 @@ function ProjetoDetalhe() {
         </form>
       </DrawerContent>
     </Dialog>
+    <FormFactorCriarRodadaDialog
+      aberto={abrirCriacaoRodada}
+      onAbertoChange={setAbrirCriacaoRodada}
+      salvando={criarRodada.isPending}
+      onCriar={(sdfId) => criarRodada.mutate({ sdf_id: sdfId }, {
+        onSuccess: (rodada) => { setAbrirCriacaoRodada(false); setRodadaId(rodada.id); setPagina(1); toast.success(t("testRoundCreated", { defaultValue: "Test round created with {{count}} Test Cases.", count: rodada.total_test_cases })); },
+        onError: (error) => toast.error(error instanceof Error ? error.message : t("roundCreateError", { defaultValue: "Could not create the test round." })),
+      })}
+    />
     <FormFactorManualDialog
       aberto={Boolean(linhaManual)}
       onAbertoChange={(aberto) => { if (!aberto) setLinhaManual(null); }}
       linha={linhaManual}
-      modelos={resultados.data?.modelos ?? []}
-      salvando={criarRodada.isPending}
-      onSalvar={(input) => criarRodada.mutate(input, {
+      modelos={casosRodada.data?.modelos ?? []}
+      salvando={registrarResultadoRodada.isPending}
+      onSalvar={(input) => linhaManual && rodadaId && registrarResultadoRodada.mutate({ rodadaId, casoTesteId: linhaManual.caso_teste_id, input }, {
         onSuccess: () => { setLinhaManual(null); toast.success(t("manualResultSaved", { defaultValue: "Results recorded." })); },
         onError: (error) => toast.error(error instanceof Error ? error.message : t("manualResultSaveError", { defaultValue: "Could not record results." })),
       })}

@@ -23,6 +23,8 @@ class FormFactorExecucaoLinha:
     data_reportada: datetime
     origem: str
     resultados: dict[UUID, str]
+    rodada_id: UUID | None = None
+    resultados_registrados: bool = True
 
 
 @dataclass(frozen=True)
@@ -63,3 +65,5 @@ class FormFactorExecucaoLinhaGlobal:
     data_reportada: datetime
     origem: str
     resultados: dict[UUID, str]
+    rodada_id: UUID | None = None
+    resultados_registrados: bool = True

@@ -2,19 +2,26 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from src.application.schemas.form_factor import (
+    CriarRodadaFormFactorLoteRequest,
     CriarRodadaFormFactorRequest,
+    EnviarResultadosRodadaRequest,
     FormFactorExecucaoResponse,
     FormFactorGlobalResponse,
     FormFactorResponse,
     FormFactorResultadosGlobaisResponse,
     FormFactorResultadosResponse,
+    RodadaFormFactorCasosResponse,
+    RodadaFormFactorResponse,
     to_global_response,
     to_global_resultados_response,
     to_response,
     to_resultados_response,
+    to_rodada_casos_response,
+    to_rodada_response,
 )
 from src.application.validators.semana import intervalo_semana_iso as _intervalo_semana_iso
 from src.domain.common.exceptions import (
+    ConflictException,
     ForbiddenException,
     NotFoundException,
 )
@@ -27,9 +34,11 @@ from src.domain.entities.interfaces.projeto_repository import ProjetoRepository
 from src.domain.entities.interfaces.resultado_form_factor_repository import (
     ResultadoFormFactorRepository,
 )
+from src.domain.entities.interfaces.rodada_form_factor_repository import RodadaFormFactorRepository
 from src.domain.entities.interfaces.time_repository import TimeRepository
 from src.domain.entities.interfaces.unit_of_work import UnitOfWork
 from src.domain.entities.resultado_form_factor import ResultadoFormFactor
+from src.domain.entities.rodada_form_factor import RodadaFormFactor
 
 
 class FormFactorServiceImpl:
@@ -42,6 +51,7 @@ class FormFactorServiceImpl:
         caso_repo: CasoTesteRepository,
         execucao_repo: ExecucaoSdfRepository,
         uow: UnitOfWork,
+        rodada_repo: RodadaFormFactorRepository | None = None,
     ) -> None:
         self._projeto_repo = projeto_repo
         self._time_repo = time_repo
@@ -50,6 +60,7 @@ class FormFactorServiceImpl:
         self._caso_repo = caso_repo
         self._execucao_repo = execucao_repo
         self._uow = uow
+        self._rodada_repo = rodada_repo
 
     async def listar_global(
         self,
@@ -177,7 +188,10 @@ class FormFactorServiceImpl:
         modelos = await self._projeto_modelo_repo.listar_modelos_do_projeto(
             usuario_atual.unidade_id, projeto.id
         )
-        return to_response(modelos, dados)
+        casos_elegiveis = await self._caso_repo.listar_em_validacao(
+            usuario_atual.unidade_id, projeto.id
+        )
+        return to_response(modelos, dados, casos_elegiveis)
 
     async def listar_resultados(
         self,
@@ -222,10 +236,7 @@ class FormFactorServiceImpl:
         projeto_id: UUID,
         request: CriarRodadaFormFactorRequest,
     ) -> FormFactorExecucaoResponse:
-        if not usuario_atual.pode("form_factor.importar"):
-            raise ForbiddenException(
-                "Você não tem permissão para registrar resultados Form Factor."
-            )
+        self._exigir_gestao_rodadas(usuario_atual)
         projeto = await self._obter_projeto_no_escopo(usuario_atual, projeto_id)
         caso = await self._caso_repo.obter_por_id(usuario_atual.unidade_id, request.caso_teste_id)
         if caso is None or caso.projeto_id != projeto.id or not caso.ativo:
@@ -269,6 +280,162 @@ class FormFactorServiceImpl:
             origem=execucao.origem,
             resultados=request.resultados,
         )
+
+    async def criar_rodada(
+        self,
+        usuario_atual: UsuarioAutenticado,
+        projeto_id: UUID,
+        request: CriarRodadaFormFactorLoteRequest,
+    ) -> RodadaFormFactorResponse:
+        self._exigir_gestao_rodadas(usuario_atual)
+        projeto = await self._obter_projeto_no_escopo(usuario_atual, projeto_id)
+        casos = await self._caso_repo.listar_em_validacao(usuario_atual.unidade_id, projeto.id)
+        if not casos:
+            raise ConflictException("Não há Test Cases em In Validation para iniciar uma rodada.")
+        agora = datetime.now(UTC).replace(tzinfo=None)
+        rodada = RodadaFormFactor(
+            usuario_atual.unidade_id, projeto.id, usuario_atual.id, request.sdf_id, agora
+        )
+        if self._rodada_repo is None:
+            raise RuntimeError("Repositório de rodadas não configurado.")
+        try:
+            await self._rodada_repo.adicionar(rodada)
+            for caso in casos:
+                await self._execucao_repo.adicionar(
+                    ExecucaoSdf(
+                        usuario_atual.unidade_id,
+                        None,
+                        caso.id,
+                        request.sdf_id,
+                        agora,
+                        projeto.one_ui,
+                        origem="MANUAL",
+                        rodada_id=rodada.id,
+                    )
+                )
+            await self._uow.commit()
+        except Exception:
+            await self._uow.rollback()
+            raise
+        return to_rodada_response(rodada, len(casos))
+
+    async def listar_casos_rodada(
+        self,
+        usuario_atual: UsuarioAutenticado,
+        projeto_id: UUID,
+        rodada_id: UUID,
+        page: int,
+        page_size: int,
+    ) -> RodadaFormFactorCasosResponse:
+        if not usuario_atual.pode("form_factor.consultar"):
+            raise ForbiddenException("Você não tem permissão para consultar Form Factor.")
+        projeto = await self._obter_projeto_no_escopo(usuario_atual, projeto_id)
+        if self._rodada_repo is None:
+            raise RuntimeError("Repositório de rodadas não configurado.")
+        rodada = await self._rodada_repo.obter_no_projeto(
+            usuario_atual.unidade_id, projeto.id, rodada_id
+        )
+        if rodada is None:
+            raise NotFoundException("Rodada Form Factor não encontrada.")
+        casos = await self._rodada_repo.listar_casos(
+            usuario_atual.unidade_id, projeto.id, rodada.id, page, page_size
+        )
+        modelos = await self._projeto_modelo_repo.listar_modelos_do_projeto(
+            usuario_atual.unidade_id, projeto.id
+        )
+        return to_rodada_casos_response(rodada, casos, modelos)
+
+    async def registrar_resultados_rodada(
+        self,
+        usuario_atual: UsuarioAutenticado,
+        projeto_id: UUID,
+        rodada_id: UUID,
+        caso_teste_id: UUID,
+        request: EnviarResultadosRodadaRequest,
+    ) -> FormFactorExecucaoResponse:
+        if not self._pode_registrar(usuario_atual):
+            raise ForbiddenException(
+                "Você não tem permissão para registrar resultados Form Factor."
+            )
+        projeto = await self._obter_projeto_no_escopo(usuario_atual, projeto_id)
+        if self._rodada_repo is None:
+            raise RuntimeError("Repositório de rodadas não configurado.")
+        rodada = await self._rodada_repo.obter_no_projeto(
+            usuario_atual.unidade_id, projeto.id, rodada_id
+        )
+        if rodada is None:
+            raise NotFoundException("Rodada Form Factor não encontrada.")
+        caso = await self._caso_repo.obter_por_id(usuario_atual.unidade_id, caso_teste_id)
+        if caso is None or caso.projeto_id != projeto.id or not caso.ativo:
+            raise NotFoundException("Test Case não encontrado no projeto.")
+        execucao = await self._execucao_repo.obter_por_rodada_e_caso(
+            usuario_atual.unidade_id, rodada.id, caso.id
+        )
+        if execucao is None:
+            raise NotFoundException("Test Case não pertence à rodada.")
+        if execucao.resultados_registrados:
+            raise ConflictException("Os resultados deste Test Case já foram registrados na rodada.")
+
+        gestor = usuario_atual.perfil_codigo in {"ADMIN_UNIDADE", "GERENTE", "KP"}
+        if (
+            not gestor
+            and caso.responsavel_id != usuario_atual.id
+            and caso.backup_id != usuario_atual.id
+        ):
+            raise ForbiddenException("Você só pode registrar resultados dos TCs atribuídos a você.")
+
+        modelos = await self._projeto_modelo_repo.listar_modelos_do_projeto(
+            usuario_atual.unidade_id, projeto.id
+        )
+        modelos_ids = {modelo.id for modelo in modelos}
+        if not request.resultados.keys() <= modelos_ids:
+            raise NotFoundException("Modelo não encontrado no projeto.")
+        caso.registrar_resultado_form_factor(request.resultados, modelos_ids)
+        execucao.resultados_registrados = True
+        data_reportada = execucao.data_reportada
+        try:
+            await self._caso_repo.atualizar(caso)
+            await self._execucao_repo.atualizar(execucao)
+            for modelo_id, valor in request.resultados.items():
+                await self._resultado_repo.adicionar(
+                    ResultadoFormFactor(usuario_atual.unidade_id, execucao.id, modelo_id, valor)
+                )
+            await self._uow.commit()
+        except Exception:
+            await self._uow.rollback()
+            raise
+        return FormFactorExecucaoResponse(
+            execucao_id=execucao.id,
+            caso_teste_id=caso.id,
+            tc_id=caso.tc_id,
+            responsavel_id=caso.responsavel_id,
+            sdf_id=rodada.sdf_id,
+            data_reportada=data_reportada.replace(tzinfo=UTC),
+            origem=execucao.origem,
+            resultados=request.resultados,
+            rodada_id=rodada.id,
+            resultados_registrados=True,
+        )
+
+    @staticmethod
+    def _pode_registrar(usuario_atual: UsuarioAutenticado) -> bool:
+        return usuario_atual.perfil_codigo in {
+            "ADMIN_UNIDADE",
+            "GERENTE",
+            "KP",
+            "USUARIO_PADRAO",
+        } and usuario_atual.pode("form_factor.registrar")
+
+    @staticmethod
+    def _exigir_gestao_rodadas(usuario_atual: UsuarioAutenticado) -> None:
+        if usuario_atual.perfil_codigo not in {
+            "ADMIN_UNIDADE",
+            "GERENTE",
+            "KP",
+        } or not usuario_atual.pode("form_factor.registrar"):
+            raise ForbiddenException(
+                "Somente Admin, Gerente ou KP podem gerenciar rodadas e resultados de gestão."
+            )
 
     async def _obter_projeto_no_escopo(self, usuario_atual: UsuarioAutenticado, projeto_id: UUID):
         projeto = await self._projeto_repo.obter_por_id(usuario_atual.unidade_id, projeto_id)

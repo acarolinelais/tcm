@@ -433,12 +433,12 @@ async def test_gestor_altera_situation_e_status(contexto):
         admin,
         caso.id,
         AtualizarCasoTesteRequest(
-            situation=SituacaoCasoTeste.NEW_STEP, status=StatusCasoTeste.PASS
+            situation=SituacaoCasoTeste.NEW_STEP, status=StatusCasoTeste.DONE
         ),
     )
 
     assert resposta.situation is SituacaoCasoTeste.NEW_STEP
-    assert resposta.status is StatusCasoTeste.PASS
+    assert resposta.status is StatusCasoTeste.DONE
     membros.obter_por_time_e_usuario.assert_not_awaited()
     uow.commit.assert_awaited_once()
 
