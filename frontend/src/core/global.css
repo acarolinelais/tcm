@@ -1,23 +1,42 @@
 @import "tailwindcss";
 @import "@fontsource-variable/inter";
 
+/* HeroUI v3 em camadas, sem reimportar o Tailwind (ADR 0037). */
+@import "tw-animate-css";
+@import "@heroui/styles/base/base.css" layer(base);
+@import "@heroui/styles/components/index.css" layer(components);
+@import "@heroui/styles/themes/default" layer(theme);
+@import "@heroui/styles/utilities";
+@import "@heroui/styles/variants";
+
+/* Tokens com o mesmo nome no shadcn e no HeroUI: um valor só, em cor completa. Ficam fora de camada para
+   vencer o tema do HeroUI. --muted segue o HeroUI (texto secundário); o fundo cinza do shadcn é bg-secondary. */
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222 47% 11%;
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(222 47% 11%);
+  --border: hsl(214 32% 91%);
+  --muted: #71717a;
+  --accent: #3672f2;
+  --focus: var(--accent);
+  --radius: 0.5rem;
+  /* Campos do HeroUI vêm sem borda; num painel branco ficariam invisíveis. */
+  --field-border: var(--border);
+  --field-border-width: 1px;
+}
+
+/* Tokens só do shadcn, em tripla HSL. */
+:root {
   --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
   --primary: 219 92% 58%;
   --primary-foreground: 0 0% 100%;
   --secondary: 210 20% 96%;
   --secondary-foreground: 222 47% 11%;
-  --muted: 210 20% 96%;
   --muted-foreground: 215 16% 47%;
-  --border: 214 32% 91%;
   --input: 214 32% 91%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
   --ring: 219 92% 58%;
-  --radius: 0.5rem;
 }
 
 @theme inline {
@@ -27,29 +46,22 @@
   --text-lg: 1.0625rem;
   --text-xl: 1.1875rem;
   --text-2xl: 1.375rem;
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
   --color-secondary: hsl(var(--secondary));
   --color-secondary-foreground: hsl(var(--secondary-foreground));
-  --color-muted: hsl(var(--muted));
   --color-muted-foreground: hsl(var(--muted-foreground));
-  --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-destructive: hsl(var(--destructive));
   --color-destructive-foreground: hsl(var(--destructive-foreground));
   --color-ring: hsl(var(--ring));
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
 }
 
 body {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
+  background-color: var(--background);
+  color: var(--foreground);
   font-family:
     "Inter Variable",
     system-ui,
@@ -124,13 +136,6 @@ body {
     --surgir-y: 0px;
     animation-duration: 150ms;
   }
-}
-
-[data-sonner-toast] [data-close-button] {
-  left: auto !important;
-  right: 0.5rem !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
 }
 
 @keyframes dialog-fade-in {

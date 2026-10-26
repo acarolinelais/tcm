@@ -81,7 +81,7 @@ export function FormFactorGlobalTabela(props: Props<FormFactorGlobal>) {
       </TableRow></TableHeader>
       {rows.length > 0 && <TableBody>{rows.map((row, index) => {
         const aplicaveis = new Set(row.modelos_ids);
-        return <TableRow key={row.caso_teste_id} className="transition-colors hover:bg-muted/30 motion-reduce:transition-none">
+        return <TableRow key={row.caso_teste_id} className="transition-colors hover:bg-secondary/30 motion-reduce:transition-none">
           <TableCell className="w-14 px-4 text-right tabular-nums text-muted-foreground">{String((props.page - 1) * props.pageSize + index + 1).padStart(2, "0")}</TableCell>
           <TableCell><ProjetoCell projetoId={row.projeto_id} nome={row.projeto_nome} /></TableCell>
           <TableCell className="font-medium">{row.tc_id}</TableCell>
@@ -112,7 +112,7 @@ export function FormFactorGlobalResultadosTabela(props: Props<FormFactorResultad
         {modelos.map((modelo) => <TableHead key={modelo.id}><div className="flex items-center gap-1">{modelo.nome}<TableColumnFilter label="" accessibleLabel={t("filterResultForModel", { model: modelo.nome })} value={props.filtros.modeloDispositivoId === modelo.id ? props.filtros.resultado ?? "" : ""} onChange={(value) => { props.onFiltroChange("modeloDispositivoId", value ? modelo.id : ""); props.onFiltroChange("resultado", value); }} options={[{ value: "", label: t("all") }, { value: "PASS", label: "PASS" }, { value: "FAIL", label: "FAIL" }]} /></div></TableHead>)}
         <TableHead>{t("date")}</TableHead>
       </TableRow></TableHeader>
-      {rows.length > 0 && <TableBody>{rows.map((row) => <TableRow key={row.execucao_id} className="transition-colors hover:bg-muted/30 motion-reduce:transition-none">
+      {rows.length > 0 && <TableBody>{rows.map((row) => <TableRow key={row.execucao_id} className="transition-colors hover:bg-secondary/30 motion-reduce:transition-none">
         <TableCell><ProjetoCell projetoId={row.projeto_id} nome={row.projeto_nome} /></TableCell>
         <TableCell className="font-medium">{row.tc_id}</TableCell>
         <TableCell className="text-muted-foreground">{row.sdf_id ?? "—"}</TableCell>
