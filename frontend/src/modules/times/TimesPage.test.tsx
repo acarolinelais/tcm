@@ -38,10 +38,7 @@ describe("TimesPage", () => {
     const user = userEvent.setup();
     renderPage({ ...gerente, times: [{ id: time.id, nome: time.nome }] });
 
-    await user.click(await screen.findByRole("button", { name: /Produto/ }));
-    expect(screen.queryByRole("menuitem", { name: "Manage members" })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("menuitem", { name: "View team" }));
-
+    await user.click(await screen.findByRole("button", { name: "View team Produto" }));
     expect(await screen.findByText("detalhe")).toBeInTheDocument();
   });
 
@@ -49,6 +46,32 @@ describe("TimesPage", () => {
     renderPage(gerente);
 
     expect(await screen.findByText("Produto")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Produto/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "View team Produto" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Actions" })).not.toBeInTheDocument();
+  });
+
+  it("dev membro do time vê o time ativo e o botão de visualizar, sem menu", async () => {
+    renderPage({ ...gerente, id: "dev-1", perfil_codigo: "USUARIO_PADRAO", perfil: "Dev", times: [{ id: time.id, nome: time.nome }] });
+
+    expect(await screen.findByRole("button", { name: "View team Produto" })).toBeInTheDocument();
+    expect(screen.getByText("Active")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Actions for|Manage members/ })).not.toBeInTheDocument();
+  });
+
+  it("admin vê visualizar, gerenciar membros e inativar, com a destrutiva por último", async () => {
+    api.membros.mockResolvedValue([]);
+    api.usuariosDisponiveis.mockResolvedValue([]);
+    renderPage({ ...gerente, perfil_codigo: "ADMIN_UNIDADE", perfil: "Admin", permissoes: ["times.consultar", "times.gerenciar"] });
+
+    await screen.findByRole("button", { name: "View team Produto" });
+    const acoes = screen.getAllByRole("button", { name: / Produto$/ }).map((botao) => botao.getAttribute("aria-label"));
+    expect(acoes).toEqual(["View team Produto", "Manage members Produto", "Deactivate Produto"]);
+  });
+
+  it("falha ao carregar mostra o erro no lugar da lista", async () => {
+    api.listar.mockRejectedValue(new Error("offline"));
+    renderPage(gerente);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not load teams. Try again.");
   });
 });

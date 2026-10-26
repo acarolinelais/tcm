@@ -4,18 +4,8 @@ import { useState } from "react";
 import type { WeekNumberProps } from "react-day-picker";
 import { useTranslation } from "react-i18next";
 
-import { cn, semanaIso } from "@/shared/lib/utils";
+import { cn, diasDaSemana, semanaIso } from "@/shared/lib/utils";
 import { Calendar } from "@/shared/ui/calendar";
-
-function diasDaSemana(valor: string) {
-  const [ano, semana] = valor.split("-W").map(Number);
-  // 4 de janeiro sempre cai na semana 1 ISO.
-  const quatroDeJaneiro = new Date(ano, 0, 4);
-  const segunda = new Date(ano, 0, 4 - ((quatroDeJaneiro.getDay() || 7) - 1) + (semana - 1) * 7);
-  const domingo = new Date(segunda);
-  domingo.setDate(segunda.getDate() + 6);
-  return { segunda, domingo, ano, semana };
-}
 
 interface WeekPickerProps {
   label: string;

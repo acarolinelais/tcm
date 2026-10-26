@@ -80,7 +80,8 @@ export function useCriarCasoTeste(projetoId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CriarCasoTesteInput) => casosTesteApi.criar(projetoId, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "test-cases"] }),
+    // Toda a árvore de projetos: a lista e os contadores também mudam com um caso novo.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projetos"] }),
   });
 }
 

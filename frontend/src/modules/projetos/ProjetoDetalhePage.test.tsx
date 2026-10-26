@@ -10,12 +10,14 @@ import { casosTesteApi, formFactorApi, projetosApi } from "./api/projetos.api";
 import { timesApi } from "@/modules/times/api/times.api";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/ui/table";
 import { formatarDiaIso, semanaIso } from "@/shared/lib/utils";
+import { toast } from "@/shared/lib/toast";
 
 vi.mock("./api/projetos.api", () => ({
   projetosApi: { obter: vi.fn(), listar: vi.fn() }, casosTesteApi: { listar: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), transferirParaBackup: vi.fn() },
   formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), criarRodadaManual: vi.fn(), importar: vi.fn() }, modelosDispositivoApi: {},
 }));
 vi.mock("@/modules/times/api/times.api", () => ({ timesApi: { membros: vi.fn() } }));
+vi.mock("@/shared/lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const projeto = { id: "project-1", unidade_id: "unit-1", time_id: "team-1", nome: "Clock 9.5", app: "Clock", one_ui: "9.5", status: "Created" as const, ativo: true, created_at: null, updated_at: null };
 const casos = [
@@ -60,8 +62,8 @@ describe("ProjetoDetalhePage", () => {
     vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [casos[0], backup], page: 1, page_size: 20, total_count: 2 });
     renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO" });
     const row = await screen.findByRole("row", { name: /Clock_002/ });
-    expect(within(row).queryByRole("combobox")).not.toBeInTheDocument();
-    expect(within(row).queryByRole("button", { name: /Actions for/ })).not.toBeInTheDocument();
+    expect(within(row).queryByRole("button", { name: /Status Clock_002/ })).not.toBeInTheDocument();
+    expect(within(row).queryByRole("button", { name: /Transfer to backup/ })).not.toBeInTheDocument();
     expect(casosTesteApi.listar).toHaveBeenCalledWith("project-1", 1, DEFAULT_TABLE_PAGE_SIZE, { responsavelId: undefined, associadosAMim: true });
   });
 
@@ -123,22 +125,21 @@ describe("ProjetoDetalhePage", () => {
     expect(screen.queryByRole("button", { name: /New Test Case/i })).not.toBeInTheDocument();
     const proprioCaso = screen.getByRole("row", { name: /Clock_001/ });
     const casoAlheio = screen.getByRole("row", { name: /Clock_002/ });
-    expect(within(proprioCaso).getByRole("combobox", { name: "Category Clock_001" })).toBeInTheDocument();
+    expect(within(proprioCaso).getByRole("button", { name: /Category Clock_001/ })).toBeInTheDocument();
     expect(within(proprioCaso).getByText("daniel-id")).toBeInTheDocument();
     expect(within(proprioCaso).getByText("kaique-id")).toBeInTheDocument();
-    expect(within(proprioCaso).getByRole("button", { name: /Actions for Clock_001/i })).toBeInTheDocument();
+    expect(within(proprioCaso).getByRole("button", { name: "Transfer to backup Clock_001" })).toBeInTheDocument();
     expect(within(casoAlheio).getByText("outro-id")).toBeInTheDocument();
-    expect(within(casoAlheio).queryByRole("combobox", { name: "Category Clock_002" })).not.toBeInTheDocument();
-    expect(within(casoAlheio).queryByRole("button", { name: /Actions for Clock_002/i })).not.toBeInTheDocument();
+    expect(within(casoAlheio).queryByRole("button", { name: /Category Clock_002/ })).not.toBeInTheDocument();
+    expect(within(casoAlheio).queryByRole("button", { name: /Transfer to backup/ })).not.toBeInTheDocument();
 
-    await user.click(within(proprioCaso).getByRole("button", { name: /Actions for Clock_001/i }));
-    await user.click(await screen.findByRole("menuitem", { name: /Transfer to backup/i }));
+    await user.click(within(proprioCaso).getByRole("button", { name: "Transfer to backup Clock_001" }));
     expect(vi.mocked(casosTesteApi.transferirParaBackup).mock.calls[0][0]).toBe("case-1");
 
     await user.click(screen.getByRole("button", { name: /Filter by Assignee/i }));
-    expect(await screen.findByRole("menuitemradio", { name: "daniel-id" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitemradio", { name: "outro-id" })).toBeInTheDocument();
-    await user.click(screen.getByRole("menuitemradio", { name: "outro-id" }));
+    expect(await screen.findByRole("option", { name: "daniel-id" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "outro-id" })).toBeInTheDocument();
+    await user.click(screen.getByRole("option", { name: "outro-id" }));
     await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("project-1", 1, DEFAULT_TABLE_PAGE_SIZE, { responsavelId: "user-2" }));
     expect(screen.queryByRole("row", { name: /Clock_001/ })).not.toBeInTheDocument();
     expect(screen.getByRole("row", { name: /Clock_002/ })).toBeInTheDocument();
@@ -156,7 +157,8 @@ describe("ProjetoDetalhePage", () => {
     const escolherDia = async (dia: Date) => {
       await user.click(screen.getByRole("button", { name: /Filter by End date/i }));
       const calendario = await screen.findByRole("dialog", { name: /End date/i });
-      await user.click(within(calendario.querySelector(`[data-day="${formatarDiaIso(dia)}"]`) as HTMLElement).getByRole("button"));
+      const dataPorExtenso = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(dia);
+      await user.click(within(calendario).getByRole("button", { name: new RegExp(dataPorExtenso) }));
     };
 
     await escolherDia(hoje);
@@ -175,7 +177,7 @@ describe("ProjetoDetalhePage", () => {
     renderPage();
 
     await user.click(await screen.findByRole("button", { name: "Clock 9.5" }));
-    const menu = await screen.findByRole("menu", { name: "Switch project" });
+    const menu = await screen.findByRole("menu", { name: "Clock 9.5" });
     expect(within(menu).getByRole("menuitemradio", { name: "Clock 9.5" })).toHaveAttribute("aria-checked", "true");
     await user.click(within(menu).getByRole("menuitemradio", { name: "Gallery 1.0" }));
 
@@ -196,23 +198,23 @@ describe("ProjetoDetalhePage", () => {
     renderPage();
     const proprioCaso = await screen.findByRole("row", { name: /Clock_001/ });
 
-    await user.click(within(proprioCaso).getByRole("combobox", { name: "Category Clock_001" }));
+    await user.click(within(proprioCaso).getByRole("button", { name: /Category Clock_001/ }));
     await user.click(await screen.findByRole("option", { name: "C" }));
     await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { category: "C" }));
 
-    await user.click(within(proprioCaso).getByRole("combobox", { name: "Difficulty Clock_001" }));
+    await user.click(within(proprioCaso).getByRole("button", { name: /Difficulty Clock_001/ }));
     await user.click(await screen.findByRole("option", { name: "High" }));
     await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { difficulty: "High" }));
 
-    await user.click(within(proprioCaso).getByRole("combobox", { name: "Status Clock_001" }));
+    await user.click(within(proprioCaso).getByRole("button", { name: /Status Clock_001/ }));
     await user.click(await screen.findByRole("option", { name: "In Progress" }));
     await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { status: "InProgress" }));
 
     // TC Situation é só da gestão: o responsável vê o valor, sem controle de edição.
-    expect(within(proprioCaso).queryByRole("combobox", { name: "TC Situation Clock_001" })).not.toBeInTheDocument();
+    expect(within(proprioCaso).queryByRole("button", { name: /TC Situation Clock_001/ })).not.toBeInTheDocument();
     expect(within(proprioCaso).getByText("New")).toBeInTheDocument();
 
-    expect(within(proprioCaso).queryByRole("button", { name: /^Edit$/i })).not.toBeInTheDocument();
+    expect(within(proprioCaso).queryByRole("button", { name: "Edit Clock_001" })).not.toBeInTheDocument();
   });
 
   it("oferece In Validation entre In Review e Pass no select, no filtro e no badge, sem Data final", async () => {
@@ -224,17 +226,17 @@ describe("ProjetoDetalhePage", () => {
     const linhaValidando = await screen.findByRole("row", { name: /Clock_003/ });
     expect(within(linhaValidando).getByText("In Validation")).toBeInTheDocument();
     const colunaDataFinal = screen.getAllByRole("columnheader").findIndex((header) => /End date/.test(header.textContent ?? ""));
-    expect(within(linhaValidando).getAllByRole("cell")[colunaDataFinal + 1]).toHaveTextContent("—");
+    expect(linhaValidando.querySelectorAll("th, td")[colunaDataFinal]).toHaveTextContent("—");
 
     const proprioCaso = screen.getByRole("row", { name: /Clock_001/ });
-    await user.click(within(proprioCaso).getByRole("combobox", { name: "Status Clock_001" }));
+    await user.click(within(proprioCaso).getByRole("button", { name: /Status Clock_001/ }));
     expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(ROTULOS_STATUS);
     await user.click(screen.getByRole("option", { name: "In Validation" }));
     await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { status: "InValidation" }));
 
     await user.click(screen.getByRole("button", { name: "Filter by Status" }));
-    expect(screen.getAllByRole("menuitemradio").map((item) => item.textContent)).toEqual(["All", ...ROTULOS_STATUS]);
-    await user.click(screen.getByRole("menuitemradio", { name: "In Validation" }));
+    expect((await screen.findAllByRole("option")).map((item) => item.textContent)).toEqual(["All", ...ROTULOS_STATUS]);
+    await user.click(screen.getByRole("option", { name: "In Validation" }));
     expect(screen.getByRole("row", { name: /Clock_003/ })).toBeInTheDocument();
     expect(screen.queryByRole("row", { name: /Clock_001/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("row", { name: /Clock_002/ })).not.toBeInTheDocument();
@@ -245,8 +247,7 @@ describe("ProjetoDetalhePage", () => {
     const user = userEvent.setup();
     renderPage(admin);
     const linha = await screen.findByRole("row", { name: /Clock_001/ });
-    await user.click(within(linha).getByRole("button", { name: /Actions for Clock_001/i }));
-    await user.click(await screen.findByRole("menuitem", { name: "Edit" }));
+    await user.click(within(linha).getByRole("button", { name: "Edit Clock_001" }));
     await user.click(within(screen.getByRole("dialog")).getByLabelText("Status"));
     expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(ROTULOS_STATUS);
     await user.click(screen.getByRole("option", { name: "In Validation" }));
@@ -263,10 +264,9 @@ describe("ProjetoDetalhePage", () => {
     const drawer = screen.getByRole("dialog");
     await user.type(within(drawer).getByLabelText("TC ID"), "Clock_003");
 
-    const selects = within(drawer).getAllByRole("combobox");
-    await user.click(selects[3]);
+    await user.click(within(drawer).getByLabelText("Assignee"));
     await user.click(await screen.findByRole("option", { name: /Daniel Oliveira/ }));
-    await user.click(selects[4]);
+    await user.click(within(drawer).getByLabelText("Backup"));
     await user.click(await screen.findByRole("option", { name: /Kaique Pereira/ }));
     // Sem TC Situation o caso não pode ser salvo.
     expect(within(drawer).getByRole("button", { name: "Save" })).toBeDisabled();
@@ -291,16 +291,14 @@ describe("ProjetoDetalhePage", () => {
       await screen.findByRole("heading", { name: "Clock 9.5" });
       expect(await screen.findByRole("button", { name: /New Test Case/i })).toBeInTheDocument();
       const otherCase = await screen.findByRole("row", { name: /Clock_002/ });
-      await user.click(within(otherCase).getByRole("combobox", { name: "TC Situation Clock_002" }));
+      await user.click(within(otherCase).getByRole("button", { name: /TC Situation Clock_002/ }));
       await user.click(await screen.findByRole("option", { name: "New" }));
       await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-2", { situation: "New" }));
-      await user.click(within(otherCase).getByRole("button", { name: /Actions for Clock_002/i }));
-      await user.click(await screen.findByRole("menuitem", { name: "Edit" }));
+      await user.click(within(otherCase).getByRole("button", { name: "Edit Clock_002" }));
       const drawer = screen.getByRole("dialog");
-      const selects = within(drawer).getAllByRole("combobox");
-      await user.click(selects[4]);
+      await user.click(within(drawer).getByLabelText("Assignee"));
       await user.click(await screen.findByRole("option", { name: /Daniel Oliveira/ }));
-      await user.click(selects[5]);
+      await user.click(within(drawer).getByLabelText("Backup"));
       await user.click(await screen.findByRole("option", { name: /Kaique Pereira/ }));
       await user.click(within(drawer).getByRole("button", { name: "Save" }));
       // Só os campos alterados vão na requisição, para não desfazer mudanças de outra pessoa.
@@ -316,12 +314,12 @@ describe("ProjetoDetalhePage", () => {
     renderPage(manager);
 
     const row = await screen.findByRole("row", { name: /Clock_001/ });
-    await user.click(within(row).getByRole("combobox", { name: "Assignee Clock_001" }));
+    await user.click(within(row).getByRole("button", { name: /Assignee Clock_001/ }));
     expect(screen.queryByRole("option", { name: "kaique-id" })).not.toBeInTheDocument();
     await user.click(await screen.findByRole("option", { name: "outro-id" }));
     await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { responsavel_id: "user-2" }));
 
-    await user.click(within(row).getByRole("combobox", { name: "Backup Clock_001" }));
+    await user.click(within(row).getByRole("button", { name: /Backup Clock_001/ }));
     expect(screen.queryByRole("option", { name: "daniel-id" })).not.toBeInTheDocument();
     await user.click(await screen.findByRole("option", { name: "outro-id" }));
     await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { backup_id: "user-2" }));
@@ -334,7 +332,7 @@ describe("ProjetoDetalhePage", () => {
     renderPage(manager);
 
     const row = await screen.findByRole("row", { name: /Clock_001/ });
-    const assignee = within(row).getByRole("combobox", { name: "Assignee Clock_001" });
+    const assignee = within(row).getByRole("button", { name: /Assignee Clock_001/ });
     await user.click(assignee);
     await user.click(await screen.findByRole("option", { name: "outro-id" }));
 
@@ -350,7 +348,7 @@ describe("ProjetoDetalhePage", () => {
     await user.click(within(container.querySelector("header")!).getByRole("button", { name: "Week: Select a week" }));
     await user.click(within(await screen.findByRole("dialog", { name: "Week" })).getByRole("button", { name: "This week" }));
     await user.click(screen.getByRole("button", { name: /Filter by Assignee/i }));
-    await user.click(await screen.findByRole("menuitemradio", { name: "outro-id" }));
+    await user.click(await screen.findByRole("option", { name: "outro-id" }));
 
     await user.click(await screen.findByRole("button", { name: "Clear filters" }));
 
@@ -371,7 +369,7 @@ describe("ProjetoDetalhePage", () => {
     await user.click(screen.getByRole("tab", { name: "Form Factor" }));
 
     expect(await screen.findByRole("columnheader", { name: "S27 Ultra" })).toBeInTheDocument();
-    expect(screen.getByRole("row", { name: /Clock_001 12837-93482 daniel-id PASS/ })).toBeInTheDocument();
+    expect(screen.getByRole("row", { name: "Clock_001" })).toHaveTextContent(/Clock_001.*12837-93482.*daniel-id.*PASS/);
     expect(formFactorApi.listar).toHaveBeenCalledWith("project-1", expect.objectContaining({ page: 1, pageSize: DEFAULT_TABLE_PAGE_SIZE }));
 
     await user.click(within(container.querySelector("header")!).getByRole("button", { name: "Week: Select a week" }));
@@ -392,7 +390,7 @@ describe("ProjetoDetalhePage", () => {
 
     // Assignee filtra no servidor e volta para a página 1.
     await user.click(screen.getByRole("button", { name: /Filter by Assignee/i }));
-    await user.click(await screen.findByRole("menuitemradio", { name: "outro-id" }));
+    await user.click(await screen.findByRole("option", { name: "outro-id" }));
     await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("project-1", { page: 1, pageSize: DEFAULT_TABLE_PAGE_SIZE, semana: undefined, responsavelId: "user-2" }));
 
     const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]');
@@ -423,5 +421,84 @@ describe("ProjetoDetalhePage", () => {
     expect(await screen.findByRole("columnheader", { name: "Origin" })).toBeInTheDocument();
     expect(screen.getAllByRole("row", { name: /Clock_001/ })).toHaveLength(2);
     expect(formFactorApi.listarResultados).toHaveBeenCalledWith("project-1", expect.objectContaining({ page: 1 }));
+  });
+});
+
+describe("ProjetoDetalhePage: seleção e transferência em lote (spec 022)", () => {
+  const dev = { ...perfil, perfil_codigo: "USUARIO_PADRAO" };
+  const meus = [
+    { ...casos[0], id: "case-a", tc_id: "Clock_101" },
+    { ...casos[0], id: "case-b", tc_id: "Clock_102", status: "InReview" as const },
+    { ...casos[0], id: "case-c", tc_id: "Clock_103", backup_id: null },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(projetosApi.obter).mockResolvedValue(projeto);
+    vi.mocked(projetosApi.listar).mockResolvedValue({ items: [projeto], page: 1, page_size: 100, total_count: 1 });
+    vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: meus, page: 1, page_size: 20, total_count: 3 });
+    vi.mocked(casosTesteApi.transferirParaBackup).mockResolvedValue(casos[0]);
+    vi.mocked(timesApi.membros).mockResolvedValue([]);
+  });
+
+  it("mostra as etiquetas de status sem a coluna de numeração", async () => {
+    renderPage(dev);
+    const linha = await screen.findByRole("row", { name: /Clock_101/ });
+    // O Select do React Aria repete as opções num <select> nativo escondido; a etiqueta é o chip.
+    const etiqueta = (linhaDoCaso: HTMLElement, texto: string) => within(linhaDoCaso).getAllByText(texto).find((elemento) => elemento.closest(".chip"));
+    expect(etiqueta(linha, "To-Do")).toBeDefined();
+    expect(etiqueta(screen.getByRole("row", { name: /Clock_102/ }), "In Review")).toBeDefined();
+    expect(within(linha).queryByText("01")).not.toBeInTheDocument();
+  });
+
+  it("transfere os selecionados após confirmar e limpa a seleção", async () => {
+    const user = userEvent.setup();
+    renderPage(dev);
+    await user.click(await screen.findByRole("checkbox", { name: "Select Clock_101" }));
+    await user.click(screen.getByRole("checkbox", { name: "Select Clock_102" }));
+    await user.click(screen.getByRole("button", { name: "Transfer to backup (2)" }));
+
+    const confirmacao = await screen.findByRole("alertdialog", { name: "Transfer 2 Test Cases to backup?" });
+    await user.click(within(confirmacao).getByRole("button", { name: "Transfer" }));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("2 Test Cases transferred."));
+    expect(vi.mocked(casosTesteApi.transferirParaBackup).mock.calls.map(([id]) => id).sort()).toEqual(["case-a", "case-b"]);
+    expect(screen.queryByRole("button", { name: /Transfer to backup \(/ })).not.toBeInTheDocument();
+  });
+
+  it("caso sem backup tem a caixa desabilitada com o motivo", async () => {
+    renderPage(dev);
+    const caixa = await screen.findByRole("checkbox", { name: "Select Clock_103" });
+    expect(caixa).toBeDisabled();
+    expect(caixa).toHaveAccessibleDescription("This Test Case has no backup to receive it.");
+  });
+
+  it("informa a falha parcial com o TC ID que não foi transferido", async () => {
+    vi.mocked(casosTesteApi.transferirParaBackup).mockImplementation(async (id) => {
+      if (id === "case-b") throw new Error("409");
+      return casos[0];
+    });
+    const user = userEvent.setup();
+    renderPage(dev);
+    await user.click(await screen.findByRole("checkbox", { name: "Select Clock_101" }));
+    await user.click(screen.getByRole("checkbox", { name: "Select Clock_102" }));
+    await user.click(screen.getByRole("button", { name: "Transfer to backup (2)" }));
+    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Transfer" }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("1 transferred, 1 failed: Clock_102."));
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it("trocar de página limpa a seleção", async () => {
+    vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: meus, page: 1, page_size: 20, total_count: 45 });
+    const user = userEvent.setup();
+    renderPage(dev);
+    await user.click(await screen.findByRole("checkbox", { name: "Select Clock_101" }));
+    expect(screen.getByRole("button", { name: "Transfer to backup (1)" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Page 2" }));
+
+    await waitFor(() => expect(casosTesteApi.listar).toHaveBeenCalledWith("project-1", 2, DEFAULT_TABLE_PAGE_SIZE, expect.anything()));
+    expect(screen.queryByRole("button", { name: /Transfer to backup \(/ })).not.toBeInTheDocument();
   });
 });

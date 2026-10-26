@@ -312,7 +312,7 @@ function ProjectDeviceCount({ projectId, models, label }: { projectId: string; m
   }, [open, models.length]);
 
   return <>
-    <button ref={triggerRef} type="button" aria-label={`${label}: ${models.length}`} aria-describedby={open && models.length > 0 ? tooltipId : undefined} onMouseEnter={showTooltip} onMouseLeave={hideTooltip} onFocus={showTooltip} onBlur={() => setOpen(false)} onClick={showTooltip} className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><Smartphone aria-hidden="true" className="size-4" /><span>{models.length}</span></button>
+    <button ref={triggerRef} type="button" aria-label={`${label}: ${models.length}`} aria-describedby={open && models.length > 0 ? tooltipId : undefined} onMouseEnter={showTooltip} onMouseLeave={hideTooltip} onFocus={showTooltip} onBlur={() => setOpen(false)} onClick={showTooltip} className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><Smartphone aria-hidden="true" className="size-4" /><span>{models.length}</span></button>
     {open && models.length > 0 && createPortal(<div ref={tooltipRef} id={tooltipId} role="tooltip" onMouseEnter={showTooltip} onMouseLeave={hideTooltip} style={{ position: "fixed", left: position.left, top: position.top }} className="z-[80] max-h-48 w-max max-w-64 overflow-y-auto rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground shadow-lg">{models.map((name, index) => <span key={`${name}-${index}`} className="block truncate">{name}</span>)}</div>, document.body)}
   </>;
 }

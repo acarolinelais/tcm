@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -44,15 +44,34 @@ describe("TimeDetalhePage", () => {
   it("mostra o perfil da conta na linha do membro", async () => {
     renderPage({ ...perfilBase, times: [{ id: time.id, nome: time.nome }] });
 
-    expect(await screen.findByRole("row", { name: "Pat Key Person" })).toBeInTheDocument();
+    expect(within(await screen.findByRole("row", { name: "Pat" })).getByText("Key Person")).toBeInTheDocument();
     expect(api.membros).toHaveBeenCalledWith(time.id);
+  });
+
+  it("mostra a visão geral do time com setor, status e membros, sem voltar no cabeçalho", async () => {
+    setoresApi.listar.mockResolvedValue({ items: [{ id: "setor-1", nome: "SVP", ativo: true }], page: 1, page_size: 100, total_count: 1 });
+    renderPage({ ...perfilBase, perfil_codigo: "USUARIO_PADRAO", perfil: "Dev", times: [{ id: time.id, nome: time.nome }] });
+
+    expect(await screen.findByText("Team overview")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Produto" })).toBeInTheDocument();
+    expect(await screen.findByText("SVP")).toBeInTheDocument();
+    expect(screen.getByText("Active")).toBeInTheDocument();
+    expect(screen.getByText("1 team members")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Back to teams" })).not.toBeInTheDocument();
+  });
+
+  it("falha ao carregar os membros mostra o erro no lugar da lista", async () => {
+    api.membros.mockRejectedValue(new Error("offline"));
+    renderPage({ ...perfilBase, times: [{ id: time.id, nome: time.nome }] });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not load the team members. Try again.");
   });
 
   it("gerente que participa do time vê os membros sem as ações de gestão", async () => {
     const gerente = { ...perfilBase, id: "gerente-1", perfil_codigo: "GERENTE", perfil: "Gerente", permissoes: ["times.consultar", "times.gerenciar"], setores_gerenciados: ["outro-setor"], times: [{ id: time.id, nome: time.nome }] };
     renderPage(gerente);
 
-    expect(await screen.findByRole("row", { name: "Pat Key Person" })).toBeInTheDocument();
+    expect(await screen.findByRole("row", { name: "Pat" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add a team member" })).not.toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "Actions" })).not.toBeInTheDocument();
   });

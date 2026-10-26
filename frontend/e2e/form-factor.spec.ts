@@ -4,6 +4,14 @@ import { managerId, modelId, project, projectId, setupProjectSession } from "./p
 
 const s26Id = "model-2";
 const modelos = [{ id: s26Id, nome: "S26 Ultra" }, { id: modelId, nome: "S27 Ultra" }];
+
+/** Célula da linha na coluna de cabeçalho `coluna`, achada pela posição do cabeçalho (não por um índice fixo). */
+async function celula(page: Page, linha: RegExp, coluna: string) {
+  const cabecalhos = await page.getByRole("columnheader").allTextContents();
+  const indice = cabecalhos.findIndex((texto) => texto.trim() === coluna);
+  expect(indice, `coluna ${coluna}`).toBeGreaterThanOrEqual(0);
+  return page.getByRole("row", { name: linha }).locator("th, td").nth(indice);
+}
 const membros = [
   { id: "m1", time_id: "team-1", usuario_id: managerId, usuario_nome: "Gerente Ana", usuario_user_id: "ana.id", usuario_perfil: "Gerente", usuario_perfil_codigo: "GERENTE", ativo: true },
   { id: "m2", time_id: "team-1", usuario_id: "dev-1", usuario_nome: "Bia Dev", usuario_user_id: "bia.id", usuario_perfil: "Developer", usuario_perfil_codigo: "USUARIO_PADRAO", ativo: true },
@@ -45,18 +53,18 @@ test("mostra a matriz por modelo, troca pelo resultado mais recente após import
   await expect(page.getByRole("columnheader", { name: /One UI/ })).toHaveCount(0);
   await expect(page.getByRole("row", { name: /Clock_001/ })).toHaveCount(1);
   await expect(page.getByRole("row", { name: /Clock_001/ })).toContainText("SDF-OLD");
-  await expect(page.getByRole("row", { name: /Clock_001/ }).getByRole("cell").nth(3)).toHaveText("Fail");
-  await expect(page.getByRole("row", { name: /Clock_001/ }).getByRole("cell").nth(4)).toHaveText("Pass");
+  await expect(await celula(page, /Clock_001/, "S26 Ultra")).toHaveText("Fail");
+  await expect(await celula(page, /Clock_001/, "S27 Ultra")).toHaveText("Pass");
   await expect(page.getByRole("row", { name: /Clock_002/ })).toContainText("bia.id");
 
   await page.locator('input[type="file"]').setInputFiles({ name: "sdf-report.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from("report") });
   await page.getByRole("button", { name: "Importar", exact: true }).click();
   await expect(page.getByText("Relatório importado: 1 execuções e 2 resultados.")).toBeVisible();
   await expect(page.getByRole("row", { name: /Clock_001/ })).toContainText("SDF-NEW");
-  await expect(page.getByRole("row", { name: /Clock_001/ }).getByRole("cell").nth(4)).toHaveText("Fail");
+  await expect(await celula(page, /Clock_001/, "S27 Ultra")).toHaveText("Fail");
 
   await page.getByRole("button", { name: /Filtrar por Responsável/ }).click();
-  await page.getByRole("menuitemradio", { name: "bia.id" }).click();
+  await page.getByRole("option", { name: "bia.id" }).click();
   await expect(page.getByRole("row", { name: /Clock_002/ })).toBeVisible();
   await expect(page.getByRole("row", { name: /Clock_001/ })).toHaveCount(0);
 });

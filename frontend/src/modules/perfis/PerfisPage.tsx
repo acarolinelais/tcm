@@ -451,7 +451,7 @@ function PermissionGroup({ codigo, nome, itens, marcadas, estado, aberto, disabl
           <span className="hidden sm:inline">{t("all")}</span>
         </label>
       </div>
-      <div id={panelId} hidden={!aberto} className="grid gap-2 border-t border-border bg-muted/20 p-3 sm:grid-cols-2 sm:p-4">
+      <div id={panelId} hidden={!aberto} className="grid gap-2 border-t border-border bg-secondary/20 p-3 sm:grid-cols-2 sm:p-4">
           {itens.map((item) => (
             <label key={item.id} className={`flex min-w-0 items-start gap-3 rounded-lg border border-border bg-card p-3 text-sm ${disabled ? "opacity-70" : "hover:border-primary/40"}`}>
               <input type="checkbox" aria-label={t(`catalog.permission.${item.id}`, { defaultValue: item.descricao })} checked={marcadas.includes(item.id)} disabled={disabled} onChange={(event) => onToggle(item.id, event.target.checked)} className="mt-0.5 size-4 shrink-0 accent-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" />

@@ -1,6 +1,7 @@
 # 0022. Padrão visual universal para tabelas
 
-- **Status:** Aceito; regra de tamanho padrão substituída por [0034](0034-paginacao-padrao-vinte-itens.md)
+- **Status:** Aceito; regra de tamanho padrão substituída por [0034](0034-paginacao-padrao-vinte-itens.md);
+  obrigatoriedade de `shared/ui/table.tsx` substituída por [0037](0037-heroui-como-base-de-ui.md)
 - **Data:** 2026-10-23
 - **Relacionado:** spec 004, spec 006
 

@@ -5,9 +5,9 @@ import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { useTranslation } from "react-i18next";
+import { TABLE_PAGE_SIZE_OPTIONS } from "@/shared/lib/paginacao";
 
-export const DEFAULT_TABLE_PAGE_SIZE = 20;
-export const TABLE_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
+export { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS } from "@/shared/lib/paginacao";
 
 interface TableProps extends HTMLAttributes<HTMLTableElement> {
   containerClassName?: string;
