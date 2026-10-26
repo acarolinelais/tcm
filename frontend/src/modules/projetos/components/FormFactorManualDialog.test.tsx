@@ -12,7 +12,7 @@ describe("FormFactorManualDialog", () => {
 
     const save = screen.getByRole("button", { name: "Save" });
     expect(save).toBeDisabled();
-    await user.click(screen.getByRole("combobox", { name: "Result for S25" }));
+    await user.click(screen.getByRole("button", { name: /Result for S25/ }));
     await user.click(await screen.findByRole("option", { name: "PASS" }));
     expect(save).toBeEnabled();
     await user.click(save);

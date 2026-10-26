@@ -12,9 +12,18 @@ export const SITUACOES_CASO_TESTE: SituacaoCasoTeste[] = ["New", "New Step", "Wi
 /** Progresso do caso no projeto, na ordem exibida. */
 export const STATUS_CASO_TESTE = ["To-Do", "InProgress", "InReview", "InValidation", "Pass", "Fail"] as const;
 export type StatusCasoTeste = (typeof STATUS_CASO_TESTE)[number];
-/** Chaves i18n dos rótulos de TC Situation e Status. */
+/** Chaves i18n dos rótulos de TC Situation, Status e Difficulty. */
 export const ROTULO_SITUACAO: Record<SituacaoCasoTeste, string> = { New: "situationNew", "New Step": "situationNewStep", "Without Changes": "situationWithoutChanges" };
 export const ROTULO_STATUS: Record<StatusCasoTeste, string> = { "To-Do": "statusTodo", InProgress: "statusInProgress", InReview: "statusInReview", InValidation: "statusInValidation", Pass: "statusPass", Fail: "statusFail" };
+export const ROTULO_DIFICULDADE: Record<DificuldadeCasoTeste, string> = { Low: "difficultyLow", Medium: "difficultyMedium", High: "difficultyHigh" };
+
+/** Resultados que o filtro por modelo do Form Factor oferece. */
+export const OPCOES_RESULTADO = [{ value: "PASS", label: "PASS" }, { value: "FAIL", label: "FAIL" }] as const;
+
+/** Opções `{ value, label }` de um conjunto fechado, com o rótulo traduzido pela chave i18n de cada valor. */
+export function opcoesRotuladas<V extends string>(valores: readonly V[], rotulos: Record<V, string>, t: (chave: string) => string) {
+  return valores.map((valor) => ({ value: valor, label: t(rotulos[valor]) }));
+}
 
 export interface Projeto {
   id: string;

@@ -1,22 +1,21 @@
-import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { formatDate } from "@/core/i18n/format";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
-import { TableColumnFilter } from "@/shared/ui/table-column-filter";
-import { TableRowActions } from "@/shared/ui/table-row-actions";
+import { comOpcaoTodos } from "@/shared/lib/opcoes";
+import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
+import { DataTableFilter } from "@/shared/ui/data-table-filter";
+import { DataTablePagination } from "@/shared/ui/data-table-pagination";
+import { RowActions } from "@/shared/ui/row-action-button";
+import { rowActionIconProps } from "@/shared/ui/row-action-icon";
 
-import type { FormFactorMatriz, StatusCasoTeste } from "../model/projeto";
-import { CasosTesteEmptyState } from "./CasosTesteEmptyState";
-import { StatusPill } from "./StatusBadge";
+import type { FormFactorMatriz } from "../model/projeto";
+import { colunasPorModelo } from "./colunas-form-factor";
+import { estadoCasosTeste } from "./estado-casos-teste";
 
-/** Pass e Fail ganham o mesmo pill do Status; outros valores do SDF aparecem como texto, sem alteração. */
-function ResultadoCelula({ valor }: { valor: string | undefined }) {
-  if (!valor) return <span className="text-muted-foreground">—</span>;
-  const status: StatusCasoTeste | null = /^pass$/i.test(valor) ? "Pass" : /^fail$/i.test(valor) ? "Fail" : null;
-  if (!status) return <>{valor}</>;
-  return <StatusPill status={status} label={valor} />;
-}
+type Linha = FormFactorMatriz["items"][number];
+const chaveDaLinha = (linha: Linha) => linha.caso_teste_id;
+const SEM_LINHAS: Linha[] = [];
 
 export function FormFactorTabela({ dados, carregando, erro, identificadoresMembros, opcoesAssignee, assignee, onAssigneeChange, tcId = "", sdfId = "", onFiltroTexto, modeloDispositivoId = "", resultadoFiltro = "", onFiltroResultado, podeRegistrar = false, onRegistrar, temFiltros, onLimparFiltros, page, pageSize, onPageChange, onPageSizeChange }: {
   dados: FormFactorMatriz | undefined;
@@ -29,7 +28,7 @@ export function FormFactorTabela({ dados, carregando, erro, identificadoresMembr
   tcId?: string; sdfId?: string; onFiltroTexto?: (campo: "tcId" | "sdfId", valor: string) => void;
   modeloDispositivoId?: string; resultadoFiltro?: string; onFiltroResultado?: (modeloId: string, resultado: string) => void;
   podeRegistrar?: boolean;
-  onRegistrar?: (linha: FormFactorMatriz["items"][number]) => void;
+  onRegistrar?: (linha: Linha) => void;
   temFiltros: boolean;
   onLimparFiltros: () => void;
   page: number;
@@ -38,37 +37,32 @@ export function FormFactorTabela({ dados, carregando, erro, identificadoresMembr
   onPageSizeChange: (size: number) => void;
 }) {
   const { t } = useTranslation();
-  const linhas = erro ? [] : dados?.items ?? [];
   const modelos = dados?.modelos ?? [];
+  const linhas = erro ? SEM_LINHAS : dados?.items ?? SEM_LINHAS;
+  const primeiraDaPagina = (page - 1) * pageSize;
 
-  return <TableLayout>
-    <Table className="min-w-max" containerClassName={linhas.length ? "thin-scroll min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
-      <TableHeader><TableRow>
-        <TableHead aria-hidden="true" className="w-14 px-4" />
-        <TableHead><TableColumnFilter label={t("tcId")} value={tcId} onChange={(valor) => onFiltroTexto?.("tcId", valor)} /></TableHead>
-        <TableHead><TableColumnFilter label={t("sdfId")} value={sdfId} onChange={(valor) => onFiltroTexto?.("sdfId", valor)} /></TableHead>
-        <TableHead><TableColumnFilter label={t("assignee")} value={assignee} onChange={onAssigneeChange} options={[{ value: "", label: t("all") }, ...opcoesAssignee]} searchable /></TableHead>
-        {modelos.map((modelo) => <TableHead key={modelo.id}><div className="flex items-center gap-1">{modelo.nome}<TableColumnFilter label="" accessibleLabel={t("filterResultForModel", { defaultValue: "Result for {{model}}", model: modelo.nome })} value={modeloDispositivoId === modelo.id ? resultadoFiltro : ""} onChange={(valor) => onFiltroResultado?.(modelo.id, valor)} options={[{ value: "", label: t("all") }, { value: "PASS", label: "PASS" }, { value: "FAIL", label: "FAIL" }]} /></div></TableHead>)}
-        <TableHead>{t("date")}</TableHead>
-        {podeRegistrar && <TableHead className="text-right">{t("actions")}</TableHead>}
-      </TableRow></TableHeader>
-      {linhas.length ? <TableBody>{linhas.map((linha, index) => {
-        const numeroDaLinha = (page - 1) * pageSize + index + 1;
-        return <TableRow key={linha.caso_teste_id} className="transition-colors duration-150 hover:bg-muted/30 motion-reduce:transition-none">
-        <TableCell className="w-14 px-4 text-right tabular-nums text-muted-foreground">{String(numeroDaLinha).padStart(2, "0")}</TableCell>
-        <TableCell className="font-medium">{linha.tc_id}</TableCell>
-        <TableCell className="text-muted-foreground">{linha.sdf_id ?? "—"}</TableCell>
-        <TableCell className="text-muted-foreground">{identificadoresMembros[linha.responsavel_id] ?? "—"}</TableCell>
-        {modelos.map((modelo) => <TableCell key={modelo.id}><ResultadoCelula valor={linha.resultados[modelo.id]} /></TableCell>)}
-        <TableCell className="text-muted-foreground">{linha.data_reportada ? formatDate(linha.data_reportada) : "—"}</TableCell>
-        {podeRegistrar && <TableCell className="text-right"><TableRowActions label={linha.tc_id} actions={[
-          { label: t("recordResult", { defaultValue: "Record result" }), icon: Plus, onSelect: () => onRegistrar?.(linha) },
-        ]} /></TableCell>}
-      </TableRow>})}</TableBody> : null}
-    </Table>
-    {!carregando && !erro && !linhas.length && <CasosTesteEmptyState temFiltros={temFiltros} onLimparFiltros={onLimparFiltros} />}
-    {carregando && <p role="status" className="p-5 text-sm text-muted-foreground">{t("loading")}</p>}
-    {erro && <p role="alert" className="p-5 text-sm text-destructive">{t("formFactorLoadError")}</p>}
-    <TablePagination page={page} pageSize={pageSize} totalCount={dados?.total_count ?? 0} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} />
-  </TableLayout>;
+  const colunas: DataTableColumn<Linha>[] = [
+    { id: "numero", header: "", className: "w-12 text-right tabular-nums text-muted after:hidden", cell: (linha) => String(primeiraDaPagina + linhas.indexOf(linha) + 1).padStart(2, "0") },
+    { id: "tcId", isRowHeader: true, header: <DataTableFilter label={t("tcId")} value={tcId} onChange={(valor) => onFiltroTexto?.("tcId", valor)} />, cell: (linha) => linha.tc_id },
+    { id: "sdfId", header: <DataTableFilter label={t("sdfId")} value={sdfId} onChange={(valor) => onFiltroTexto?.("sdfId", valor)} />, cell: (linha) => linha.sdf_id ?? "—" },
+    { id: "assignee", header: <DataTableFilter label={t("assignee")} value={assignee} onChange={onAssigneeChange} options={comOpcaoTodos(t("all"), opcoesAssignee)} searchable />, cell: (linha) => identificadoresMembros[linha.responsavel_id] ?? "—" },
+    ...colunasPorModelo<Linha>(t, modelos, { modeloId: modeloDispositivoId, resultado: resultadoFiltro }, (modeloId, valor) => onFiltroResultado?.(modeloId, valor)),
+    { id: "data", header: t("date"), cell: (linha) => linha.data_reportada ? formatDate(linha.data_reportada) : "—" },
+    ...(podeRegistrar ? [{
+      id: "acoes",
+      header: t("actions"),
+      className: "w-px whitespace-nowrap",
+      cell: (linha: Linha) => <RowActions identificador={linha.tc_id} actions={[{ label: t("recordResult"), icon: <Plus {...rowActionIconProps} />, onPress: () => onRegistrar?.(linha) }]} />,
+    }] : []),
+  ];
+
+  return <DataTable
+    aria-label={t("formFactorSummary")}
+    columns={colunas}
+    items={linhas}
+    getKey={chaveDaLinha}
+    rowDependencies={[t, modelos, identificadoresMembros, podeRegistrar, onRegistrar, primeiraDaPagina]}
+    state={estadoCasosTeste(t, { isLoading: carregando, isError: erro, isEmpty: !linhas.length, hasFilters: temFiltros, onClearFilters: onLimparFiltros, errorLabel: t("formFactorLoadError") })}
+    pagination={<DataTablePagination page={page} pageSize={pageSize} totalCount={dados?.total_count ?? 0} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} />}
+  />;
 }

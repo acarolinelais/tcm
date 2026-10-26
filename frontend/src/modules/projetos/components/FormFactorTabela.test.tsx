@@ -29,24 +29,27 @@ function renderTabela(props: Partial<Parameters<typeof FormFactorTabela>[0]> = {
 }
 
 const linhasDoCorpo = () => within(screen.getAllByRole("rowgroup")[1]).getAllByRole("row");
+// No React Aria a célula da coluna-título é rowheader e as demais, gridcell: leia na ordem das colunas.
+const celulas = (linha: HTMLElement) => Array.from(linha.querySelectorAll<HTMLElement>("th, td"));
+const fundoDaEtiqueta = (celula: HTMLElement) => celula.querySelector<HTMLElement>(".chip")?.style.getPropertyValue("--chip-bg");
 
 describe("FormFactorTabela", () => {
   it("mostra uma coluna por modelo, o resultado de cada caso e — onde não há resultado", () => {
     renderTabela();
 
     const cabecalhos = screen.getAllByRole("columnheader").map((header) => header.textContent);
-    expect(cabecalhos).toEqual(["TC ID", "SDF ID", "Assignee", "SAMSUNG S25", "SAMSUNG S26", "Date"]);
+    expect(cabecalhos).toEqual(["", "TC ID", "SDF ID", "Assignee", "SAMSUNG S25", "SAMSUNG S26", "Date"]);
     expect(screen.queryByRole("columnheader", { name: "One UI version" })).not.toBeInTheDocument();
 
-    const [primeira, segunda, terceira] = linhasDoCorpo().map((row) => within(row).getAllByRole("cell"));
+    const [primeira, segunda, terceira] = linhasDoCorpo().map(celulas);
     expect(primeira.map((cell) => cell.textContent)).toEqual(["01", "TC-001", "SDF-10", "ana.silva", "PASS", "Fail", expect.stringMatching(/2026/)]);
-    expect(primeira[4].querySelector(".bg-green-50")).not.toBeNull();
-    expect(primeira[5].querySelector(".bg-red-50")).not.toBeNull();
+    expect(fundoDaEtiqueta(primeira[4])).toBe("#DCF7E8");
+    expect(fundoDaEtiqueta(primeira[5])).toBe("#FDEEEE");
     expect(segunda.map((cell) => cell.textContent)).toEqual(["02", "TC-002", "—", "bia.souza", "—", "—", "—"]);
     // Valor que não é Pass nem Fail aparece como veio do SDF, sem badge; responsável fora do time vira —.
     expect(terceira[3]).toHaveTextContent("—");
     expect(terceira[4]).toHaveTextContent("Blocked");
-    expect(terceira[4].querySelector(".bg-green-50, .bg-red-50")).toBeNull();
+    expect(terceira[4].querySelector(".chip")).toBeNull();
   });
 
   it("filtra por Assignee pelo cabeçalho", async () => {
@@ -54,7 +57,7 @@ describe("FormFactorTabela", () => {
     const { onAssigneeChange } = renderTabela();
 
     await user.click(screen.getByRole("button", { name: /Filter by Assignee/i }));
-    await user.click(await screen.findByRole("menuitemradio", { name: "bia.souza" }));
+    await user.click(await screen.findByRole("option", { name: "bia.souza" }));
 
     expect(onAssigneeChange).toHaveBeenCalledWith("bia");
   });
