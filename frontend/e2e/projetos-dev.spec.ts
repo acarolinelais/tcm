@@ -1,33 +1,12 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
-// Usar uma API/banco dedicados aos testes. Não executar contra produção.
-const api = process.env.SDF_E2E_API_URL ?? "http://127.0.0.1:8000";
-const senha = "tcm@123";
+import { api, post, prepararTimeComDev } from "./api-fixtures";
+
 test.setTimeout(60_000);
 test.afterEach(async ({ page }) => { await page.unrouteAll({ behavior: "wait" }); });
 
-async function post(request: APIRequestContext, path: string, data: object, token?: string) {
-  const response = await request.post(`${api}/api/${path}`, { data, headers: token ? { Authorization: `Bearer ${token}` } : {} });
-  expect(response.ok(), `${path}: ${await response.text()}`).toBeTruthy();
-  return response.json();
-}
-
 async function preparar(request: APIRequestContext, page: Page) {
-  const admin = await post(request, "auth/login", { email: "admin@sdfmanager.com", senha: process.env.SDF_E2E_ADMIN_PASSWORD ?? "mude-esta-senha" });
-  const sufixo = crypto.randomUUID();
-  const usuarios = [];
-  for (let i = 0; i < 3; i++) {
-    usuarios.push(await post(request, "usuarios", { nome: `Dev ${i} ${sufixo}`, email: `dev-${i}-${sufixo}@example.com`, user_id: `DEV-${i}-${sufixo}` }, admin.access_token));
-  }
-  const setor = await post(request, "setores", { nome: `Setor ${sufixo}` }, admin.access_token);
-  const time = await post(request, "times", { nome: `Time ${sufixo}`, setor_id: setor.id }, admin.access_token);
-  for (const usuario of usuarios) await post(request, `times/${time.id}/membros`, { usuario_id: usuario.id }, admin.access_token);
-  let dev = await post(request, "auth/login", { email: usuarios[0].email, senha }, undefined);
-  dev = await post(request, "auth/trocar-senha", { nova_senha: senha }, dev.access_token);
-  await page.addInitScript((tokens) => {
-    sessionStorage.setItem("sdf.access", tokens.access_token);
-    sessionStorage.setItem("sdf.refresh", tokens.refresh_token);
-  }, dev);
+  const { admin, dev, usuarios, time } = await prepararTimeComDev(request, page);
   // O proxy Vite usa SDF_E2E_API_URL; as respostas de sucesso vêm da API real.
   async function projeto(nome: string) {
     return post(request, "projetos", { time_id: time.id, app: nome, one_ui: "9.5", modelos_ids: [] }, admin.access_token);
@@ -59,7 +38,7 @@ test("entrada: somente backup abre diretamente os TCs pessoais", async ({ reques
   await expect(page.getByRole("row", { name: /Backup_001/ })).toContainText(dados.usuarios[1].user_id);
   await expect(page.getByRole("row", { name: /Backup_001/ })).toContainText(dados.usuarios[0].user_id);
   await expect(page.getByText("Colega_001")).toHaveCount(0);
-  await expect(page.getByRole("combobox", { name: "Status Backup_001" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Status Backup_001/ })).toHaveCount(0);
   const negado = await request.put(`${api}/api/test-cases/${backup.id}`, { data: { status: "Pass" }, headers: { Authorization: `Bearer ${dados.dev.access_token}` } });
   expect(negado.status()).toBe(403);
   const transferencia = await request.patch(`${api}/api/test-cases/${backup.id}/transferir-para-backup`, { headers: { Authorization: `Bearer ${dados.dev.access_token}` } });
@@ -80,10 +59,32 @@ test("múltiplos: troca pelo dropdown e recupera perda da associação", async (
   await page.getByRole("menuitemradio", { name: "Clock 9.5" }).click();
   await expect(page.getByRole("row", { name: /Clock_001/ })).toBeVisible();
   await expect(page.getByText("Gallery_001")).toHaveCount(0);
-  await page.getByRole("button", { name: "Actions for Clock_001" }).click();
-  await page.getByRole("menuitem", { name: "Transfer to backup" }).click();
+  await page.getByRole("button", { name: "Transfer to backup Clock_001" }).click();
   await expect(page).toHaveURL(new RegExp(`/projetos/${segundo.id}$`));
   await expect(page.getByRole("row", { name: /Gallery_001/ })).toBeVisible();
+});
+
+test("lote: transfere os selecionados ao backup e eles saem da lista", async ({ request, page }) => {
+  const dados = await preparar(request, page);
+  const projeto = await dados.projeto("Lote");
+  await dados.caso(projeto.id, "Lote_001");
+  await dados.caso(projeto.id, "Lote_002");
+  await dados.caso(projeto.id, "Lote_003");
+  await page.goto(`/projetos/${projeto.id}`);
+  // O input do React Aria fica escondido; o usuário clica na caixa desenhada (o label) dentro da célula.
+  for (const tcId of ["Lote_001", "Lote_002"]) {
+    await page.getByRole("row", { name: tcId }).locator("label").click();
+    await expect(page.getByRole("checkbox", { name: `Select ${tcId}` })).toBeChecked();
+  }
+
+  await page.getByRole("button", { name: "Transfer to backup (2)" }).click();
+  const confirmacao = page.getByRole("alertdialog", { name: "Transfer 2 Test Cases to backup?" });
+  await confirmacao.getByRole("button", { name: "Transfer", exact: true }).click();
+
+  await expect(page.getByText("2 Test Cases transferred.")).toBeVisible();
+  await expect(page.getByRole("row", { name: /Lote_00[12]/ })).toHaveCount(0);
+  await expect(page.getByRole("row", { name: /Lote_003/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Transfer to backup \(/ })).toHaveCount(0);
 });
 
 test("entrada: falha mostra erro sem simular ausência", async ({ request, page }) => {

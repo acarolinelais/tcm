@@ -37,7 +37,7 @@ test("cria projeto manualmente, atribui casos e transfere um caso ao backup", as
 
   await page.goto("/projetos");
   await page.getByRole("button", { name: "Novo projeto" }).click();
-  await page.getByRole("tab", { name: "Criar manualmente" }).click();
+  await page.getByRole("tab", { name: "Manual", exact: true }).click();
   await page.getByLabel("App").fill("Clock");
   await page.getByLabel(/One UI/).fill("9.5");
   await page.getByLabel("Time").click();
@@ -53,19 +53,17 @@ test("cria projeto manualmente, atribui casos e transfere um caso ao backup", as
   await dialog.getByLabel("ID do TC").fill("Clock_001");
   await dialog.getByLabel("Situação do TC").click();
   await page.getByRole("option", { name: "Novo passo" }).click();
-  const selects = dialog.getByRole("combobox");
-  await selects.nth(3).click();
+  await dialog.getByLabel("Responsável", { exact: true }).click();
   await page.getByRole("option", { name: "Gerente Ana" }).click();
-  await selects.nth(4).click();
+  await dialog.getByLabel("Backup", { exact: true }).click();
   await page.getByRole("option", { name: "Kaique Pereira" }).click();
   await dialog.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByRole("row", { name: /Clock_001/ })).toBeVisible();
   expect(createdBody).toMatchObject({ situation: "New Step" });
   expect(createdBody).not.toHaveProperty("status");
   await expect(page.getByRole("row", { name: /Clock_001/ })).toContainText("A fazer");
-  await expect(page.getByRole("combobox", { name: "Situação do TC Clock_001" })).toContainText("Novo passo");
-  await page.getByRole("row", { name: /Clock_001/ }).getByRole("button", { name: /Clock_001/ }).click();
-  await page.getByRole("menuitem", { name: "Transferir ao backup" }).click();
+  await expect(page.getByRole("button", { name: /Situação do TC Clock_001/ })).toContainText("Novo passo");
+  await page.getByRole("button", { name: "Transferir ao backup Clock_001" }).click();
   await expect(page.getByText("Test Case transferido para o backup.")).toBeVisible();
   await expect(page.getByRole("row", { name: /Clock_001/ })).toContainText("KP-002");
 });
