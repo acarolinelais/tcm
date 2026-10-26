@@ -164,7 +164,7 @@ async def test_registrar_resultado_fail_atualiza_status_e_salva_atomicamente():
     )
 
     assert response.rodada_id == rodada_id and response.sdf_id == "SDF"
-    assert caso.status is StatusCasoTeste.IN_REVIEW
+    assert caso.status is StatusCasoTeste.IN_FIXES
     assert execucao_repo.atualizar.await_count == 1
     assert caso_repo.atualizar.await_args.args[0] is caso
     resultado_repo.adicionar.assert_awaited_once()
@@ -227,6 +227,78 @@ async def test_dev_nao_registra_resultado_de_tc_alheio():
 
     resultado_repo.adicionar.assert_not_awaited()
     uow.commit.assert_not_awaited()
+
+
+@pytest.mark.parametrize("vinculo", ["responsavel", "backup"])
+async def test_dev_atribuido_registra_resultado_parcial(vinculo):
+    (
+        projeto_repo,
+        time_repo,
+        resultado_repo,
+        modelo_repo,
+        caso_repo,
+        execucao_repo,
+        uow,
+        rodada_repo,
+    ) = (AsyncMock() for _ in range(8))
+    unidade_id, principal_id, backup_id, time_id, setor_id, modelo_id = (uuid4() for _ in range(6))
+    dev_id = principal_id if vinculo == "responsavel" else backup_id
+    projeto = Projeto(unidade_id, time_id, "Clock", "9.5")
+    caso = CasoTeste(unidade_id, projeto.id, "TC-1", "A", "Low", principal_id, backup_id, "New")
+    caso.atualizar_campos_do_responsavel(
+        StatusCasoTeste.IN_VALIDATION, caso.category, caso.difficulty
+    )
+    rodada = RodadaFormFactor(unidade_id, projeto.id, principal_id, None, datetime.now())
+    projeto_repo.obter_por_id.return_value = projeto
+    time = Time(unidade_id, setor_id, "QA", principal_id)
+    time.id = time_id
+    time_repo.obter_por_id.return_value = time
+    rodada_repo.obter_no_projeto.return_value = rodada
+    caso_repo.obter_por_id.return_value = caso
+    execucao_repo.obter_por_rodada_e_caso.return_value = ExecucaoSdf(
+        unidade_id,
+        None,
+        caso.id,
+        None,
+        datetime.now(),
+        projeto.one_ui,
+        origem="MANUAL",
+        rodada_id=rodada.id,
+    )
+    modelo_repo.listar_modelos_do_projeto.return_value = (
+        ModeloDoProjeto(modelo_id, "S25"),
+        ModeloDoProjeto(uuid4(), "S26"),
+    )
+    dev = UsuarioAutenticado(
+        dev_id,
+        unidade_id,
+        "USUARIO_PADRAO",
+        permissoes=frozenset({"form_factor.registrar", "test_cases.consultar"}),
+        time_ids=(time_id,),
+    )
+    service = FormFactorServiceImpl(
+        projeto_repo,
+        time_repo,
+        resultado_repo,
+        modelo_repo,
+        caso_repo,
+        execucao_repo,
+        uow,
+        rodada_repo,
+    )
+
+    await service.registrar_resultados_rodada(
+        dev,
+        projeto.id,
+        rodada.id,
+        caso.id,
+        EnviarResultadosRodadaRequest(resultados={modelo_id: "PASS"}),
+    )
+
+    assert caso.status is StatusCasoTeste.IN_VALIDATION
+    caso_repo.atualizar.assert_awaited_once_with(caso)
+    resultado_repo.adicionar.assert_awaited_once()
+    uow.commit.assert_awaited_once()
 
 
 async def test_consulta_form_factor_com_semana_responsavel_e_modelos():

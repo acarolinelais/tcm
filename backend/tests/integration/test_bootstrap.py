@@ -161,11 +161,14 @@ async def test_migration_seed_permissoes_de_projetos_por_perfil():
             assert PERMISSOES_PROJETOS <= permissoes_por_codigo["ADMIN_UNIDADE"]
             assert PERMISSOES_PROJETOS <= permissoes_por_codigo["GERENTE"]
             assert PERMISSOES_PROJETOS <= permissoes_por_codigo["KP"]
+            for codigo in ("ADMIN_UNIDADE", "GERENTE", "KP"):
+                assert "form_factor.registrar" in permissoes_por_codigo[codigo]
             assert nomes_por_codigo["USUARIO_PADRAO"] == "Developer"
             assert permissoes_por_codigo["USUARIO_PADRAO"] == {
                 "projetos.consultar",
                 "test_cases.consultar",
                 "form_factor.consultar",
+                "form_factor.registrar",
                 "times.consultar",
                 "usuarios.perfil.consultar",
             }

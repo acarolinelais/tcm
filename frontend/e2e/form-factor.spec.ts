@@ -80,39 +80,46 @@ test("recusa relatório fora do escopo e mantém o resultado exibido", async ({ 
   await expect(page.getByRole("row", { name: /Clock_001/ })).toContainText("SDF-KEEP");
 });
 
-test("cria rodada com SDF ID e permite registrar resultados por TC", async ({ page }) => {
+test("cria rodada com SDF ID e registra o resultado pela linha do Resumo", async ({ page }) => {
   await setupProjectSession(page, { permissoes: ["projetos.consultar", "test_cases.consultar", "form_factor.consultar", "form_factor.registrar"] });
   const elegivel = { ...caseItem, status: "InValidation" };
   await page.route(`**/api/projetos/${projectId}/test-cases?*`, (route) => route.fulfill({ json: { items: [elegivel], page: 1, page_size: 10, total_count: 1 } }));
   const roundId = "round-1";
-  let dadosRodada: { execucao_id: string; caso_teste_id: string; tc_id: string; responsavel_id: string; backup_id: string; status: string; resultados: Record<string, string>; resultados_registrados: boolean } = { execucao_id: "execution-1", caso_teste_id: elegivel.id, tc_id: elegivel.tc_id, responsavel_id: elegivel.responsavel_id, backup_id: elegivel.backup_id, status: "InValidation", resultados: {}, resultados_registrados: false };
-  await rotasDoProjeto(page, () => ({ modelos: [modelos[0]], casos_elegiveis: [{ caso_teste_id: elegivel.id, tc_id: elegivel.tc_id, responsavel_id: elegivel.responsavel_id, backup_id: elegivel.backup_id }], items: [], page: 1, page_size: 20, total_count: 0 }));
+  const linhaResumo = { caso_teste_id: elegivel.id, tc_id: elegivel.tc_id, responsavel_id: elegivel.responsavel_id, backup_id: elegivel.backup_id, sdf_id: null, data_reportada: null, resultados: {} };
+  let rodadaPendente: string | null = null;
+  let emValidacao = true;
+  await rotasDoProjeto(page, () => {
+    const items = emValidacao ? [{ ...linhaResumo, rodada_pendente_id: rodadaPendente }] : [];
+    return { modelos: [modelos[0]], items, page: 1, page_size: 20, total_count: items.length };
+  });
   await page.route(`**/api/projetos/${projectId}/form-factor/rodadas`, async (route) => {
     expect(route.request().method()).toBe("POST");
     expect(route.request().postDataJSON()).toEqual({ sdf_id: "SDF-ROUND-1" });
+    rodadaPendente = roundId;
     await route.fulfill({ json: { id: roundId, projeto_id: projectId, sdf_id: "SDF-ROUND-1", created_at: "2026-10-25T10:00:00Z", total_test_cases: 1 } });
   });
-  await page.route(`**/api/projetos/${projectId}/form-factor/rodadas/${roundId}/test-cases?*`, (route) => route.fulfill({ json: { rodada: { id: roundId, projeto_id: projectId, sdf_id: "SDF-ROUND-1", created_at: "2026-10-25T10:00:00Z", total_test_cases: 1 }, modelos: [modelos[0]], items: [dadosRodada], page: 1, page_size: 20, total_count: 1 } }));
   await page.route(`**/api/projetos/${projectId}/form-factor/rodadas/${roundId}/test-cases/${elegivel.id}/resultados`, async (route) => {
     expect(route.request().postDataJSON()).toEqual({ resultados: { [s26Id]: "FAIL" } });
-    dadosRodada = { ...dadosRodada, status: "InReview", resultados: { [s26Id]: "FAIL" }, resultados_registrados: true };
-    await route.fulfill({ json: { execucao_id: "execution-1", caso_teste_id: elegivel.id, tc_id: elegivel.tc_id, responsavel_id: elegivel.responsavel_id, sdf_id: "SDF-ROUND-1", data_reportada: "2026-10-25T10:00:00Z", origem: "MANUAL", resultados: dadosRodada.resultados, rodada_id: roundId, resultados_registrados: true } });
+    // FAIL leva o TC para In Fixes: ele sai do Resumo, que só lista In Validation.
+    emValidacao = false;
+    await route.fulfill({ json: { execucao_id: "execution-1", caso_teste_id: elegivel.id, tc_id: elegivel.tc_id, responsavel_id: elegivel.responsavel_id, sdf_id: "SDF-ROUND-1", data_reportada: "2026-10-25T10:00:00Z", origem: "MANUAL", resultados: { [s26Id]: "FAIL" }, rodada_id: roundId, resultados_registrados: true } });
   });
 
   await abrirFormFactor(page);
-  await expect(page.getByRole("list", { name: "Test Cases elegíveis" })).toContainText("Clock_001");
+  await expect(page.getByText("Test Cases elegíveis")).toHaveCount(0);
+  const linha = page.getByRole("row", { name: /Clock_001/ });
+  await expect(linha).toBeVisible();
+  await expect(linha.getByRole("button", { name: "Ações para Clock_001" })).toHaveCount(0);
   await page.getByRole("button", { name: "Criar rodada de testes" }).click();
   await page.getByRole("textbox", { name: "ID do SDF" }).fill("SDF-ROUND-1");
   await page.getByRole("button", { name: "Criar rodada de testes" }).last().click();
-  await expect(page.getByText("SDF-ROUND-1")).toBeVisible();
-  const abrirResultados = page.getByRole("button", { name: "Ações para Clock_001" });
-  await abrirResultados.focus();
-  await abrirResultados.press("Enter");
-  await expect(page.getByRole("menuitem", { name: "Registrar resultado" })).toBeVisible();
+  const acoes = linha.getByRole("button", { name: "Ações para Clock_001" });
+  await acoes.focus();
+  await acoes.press("Enter");
   await page.getByRole("menuitem", { name: "Registrar resultado" }).click();
   await page.getByRole("combobox", { name: "Resultado para S26 Ultra" }).click();
   await page.getByRole("option", { name: "FAIL" }).click();
   await page.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByText("Resultados registrados.")).toBeVisible();
-  await expect(page.getByRole("row", { name: /Clock_001/ })).toContainText("Em revisão");
+  await expect(page.getByRole("row", { name: /Clock_001/ })).toHaveCount(0);
 });

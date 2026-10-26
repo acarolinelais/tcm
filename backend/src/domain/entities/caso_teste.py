@@ -32,6 +32,7 @@ class StatusCasoTeste(StrEnum):
     IN_REVIEW = "InReview"
     IN_VALIDATION = "InValidation"
     DONE = "Done"
+    IN_FIXES = "InFixes"
     CANCELLED = "Cancelled"
 
 
@@ -77,12 +78,14 @@ class CasoTeste(EntidadeTenant):
     def registrar_resultado_form_factor(
         self, resultados: dict[UUID, str], modelos_ids: set[UUID]
     ) -> None:
+        # Só um TC em validação muda de Status; um TC excluído (ou que já saiu da validação por
+        # outra rodada) guarda os resultados no histórico sem voltar ao fluxo.
+        if self.status is not StatusCasoTeste.IN_VALIDATION:
+            return
         if any(resultado == "FAIL" for resultado in resultados.values()):
-            self.status = StatusCasoTeste.IN_REVIEW
+            self.status = StatusCasoTeste.IN_FIXES
         elif modelos_ids and all(resultados.get(modelo_id) == "PASS" for modelo_id in modelos_ids):
             self.status = StatusCasoTeste.DONE
-        elif self.status is not StatusCasoTeste.CANCELLED:
-            self.status = StatusCasoTeste.IN_VALIDATION
 
     def cancelar(self) -> None:
         self.status = StatusCasoTeste.CANCELLED

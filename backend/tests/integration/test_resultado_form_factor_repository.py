@@ -219,7 +219,9 @@ class _Cenario:
         await self.session.flush()
         return self
 
-    async def caso(self, tc_id, responsavel_id=None, ativo=True, status="InValidation"):
+    async def caso(
+        self, tc_id, responsavel_id=None, ativo=True, status="InValidation", backup_id=None
+    ):
         caso_id = uuid4()
         self.session.add(
             CasoTesteModel(
@@ -232,7 +234,7 @@ class _Cenario:
                 situation="New",
                 status=status,
                 responsavel_id=responsavel_id or self.ana,
-                backup_id=None,
+                backup_id=backup_id,
                 ativo=ativo,
             )
         )
@@ -515,7 +517,8 @@ async def test_listar_historico_inclui_execucoes_sdf_e_manuais_com_filtros(cenar
 
 @pytest.mark.asyncio
 async def test_rodada_lista_tc_sem_resultado_e_historico_preserva_sdf_id(cenario):
-    caso_id = await cenario.caso("TC-RODADA")
+    caso_id = await cenario.caso("TC-RODADA", backup_id=cenario.bia)
+    sem_rodada = await cenario.caso("TC-SEM-RODADA")
     agora = datetime(2026, 10, 25, tzinfo=UTC).replace(tzinfo=None)
     rodada = RodadaFormFactor(
         cenario.unidade_id, cenario.projeto_id, cenario.ana, "  SDF #1  ", agora
@@ -551,8 +554,24 @@ async def test_rodada_lista_tc_sem_resultado_e_historico_preserva_sdf_id(cenario
     resumo = await cenario.repo().listar_form_factor_por_projeto(
         cenario.unidade_id, cenario.projeto_id, 1, 20
     )
-    assert resumo.items[0].resultados == {cenario.s25: "PASS"}
-    assert resumo.items[0].sdf_id is None
+    assert resumo.items[0].resultados == {}
+    assert resumo.items[0].sdf_id == "  SDF #1  "
+    assert resumo.items[0].backup_id == cenario.bia
+    assert resumo.items[0].rodada_pendente_id == rodada.id
+    assert resumo.items[1].caso_teste_id == sem_rodada
+    assert resumo.items[1].rodada_pendente_id is None
+
+    await cenario.session.execute(
+        update(ExecucaoSdfModel)
+        .where(ExecucaoSdfModel.id == execucao.id)
+        .values(resultados_registrados=True)
+    )
+    await cenario.session.flush()
+    registrado = await cenario.repo().listar_form_factor_por_projeto(
+        cenario.unidade_id, cenario.projeto_id, 1, 20
+    )
+    assert registrado.items[0].rodada_pendente_id is None
+    assert registrado.items[0].sdf_id is None
 
 
 @pytest.mark.asyncio

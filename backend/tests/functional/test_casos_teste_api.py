@@ -130,9 +130,7 @@ def _usar_service_real_com_caso(caso_do_membro: bool):
 
 async def test_responsavel_que_envia_situation_recebe_403(api_client):
     caso, _ = _usar_service_real_com_caso(caso_do_membro=True)
-    caso.atualizar_campos_do_responsavel(
-        StatusCasoTeste.IN_PROGRESS, caso.category, caso.difficulty
-    )
+    caso.atualizar_campos_do_responsavel(StatusCasoTeste.IN_REVIEW, caso.category, caso.difficulty)
 
     negado = await api_client.put(f"/api/test-cases/{caso.id}", json={"situation": "New Step"})
     permitido = await api_client.put(f"/api/test-cases/{caso.id}", json={"status": "InValidation"})
@@ -143,7 +141,7 @@ async def test_responsavel_que_envia_situation_recebe_403(api_client):
     assert permitido.json()["situation"] == "New"
 
 
-async def test_responsavel_atualiza_status_para_in_validation(api_client):
+async def test_responsavel_que_pula_a_revisao_do_pr_recebe_409(api_client):
     caso, uow = _usar_service_real_com_caso(caso_do_membro=True)
     caso.atualizar_campos_do_responsavel(
         StatusCasoTeste.IN_PROGRESS, caso.category, caso.difficulty
@@ -151,9 +149,9 @@ async def test_responsavel_atualiza_status_para_in_validation(api_client):
 
     response = await api_client.put(f"/api/test-cases/{caso.id}", json={"status": "InValidation"})
 
-    assert response.status_code == 200
-    assert response.json()["status"] == "InValidation"
-    uow.commit.assert_awaited_once()
+    assert response.status_code == 409
+    assert caso.status is StatusCasoTeste.IN_PROGRESS
+    uow.commit.assert_not_awaited()
 
 
 async def test_atualizar_status_invalido_retorna_422(api_client):

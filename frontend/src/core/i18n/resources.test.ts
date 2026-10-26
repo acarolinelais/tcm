@@ -62,17 +62,20 @@ describe("translation resources", () => {
     expect(resources["pt-BR"].translation.deviceModelName).toBe("Nome do modelo");
   });
 
-  it("translates round, pending result and final Status labels in all languages", () => {
+  it("translates round and final Status labels in all languages", () => {
     for (const language of ["en", "pt-BR", "ko"] as const) {
       const translation = resources[language].translation;
       expect(translation.createTestRound).toBeTruthy();
-      expect(translation.eligibleTestCases).toBeTruthy();
-      expect(translation.noEligibleTestCases).toBeTruthy();
       expect(translation.sdfIdOptionalHint).toBeTruthy();
-      expect(translation.resultsPending).toBeTruthy();
       expect(translation.statusDone).toBeTruthy();
       expect(translation.statusCancelled).toBeTruthy();
       expect(translation.roundCreateError).toBeTruthy();
     }
+  });
+
+  it("names the fixes and excluded Status in all languages", () => {
+    expect([resources.en.translation.statusInFixes, resources.en.translation.statusCancelled]).toEqual(["In Fixes", "Excluded"]);
+    expect([resources["pt-BR"].translation.statusInFixes, resources["pt-BR"].translation.statusCancelled]).toEqual(["Em correção", "Excluído"]);
+    expect([resources.ko.translation.statusInFixes, resources.ko.translation.statusCancelled]).toEqual(["수정 중", "제외됨"]);
   });
 });

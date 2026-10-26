@@ -149,14 +149,6 @@ export function useCriarRodadaFormFactor(projetoId: string) {
   });
 }
 
-export function useCasosRodadaFormFactor(projetoId: string, rodadaId: string | null, page: number, pageSize: number, perfil?: PerfilAtual) {
-  return useQuery({
-    queryKey: ["projetos", projetoId, "form-factor-rodada", rodadaId, page, pageSize, perfil?.unidade_id, perfil?.id],
-    queryFn: () => formFactorApi.listarCasosRodada(projetoId, rodadaId!, page, pageSize),
-    enabled: Boolean(projetoId && rodadaId),
-  });
-}
-
 export function useRegistrarResultadosRodadaFormFactor(projetoId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -167,7 +159,6 @@ export function useRegistrarResultadosRodadaFormFactor(projetoId: string) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "form-factor"] }),
         queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "form-factor-results"] }),
-        queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "form-factor-rodada"] }),
         queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "test-cases"] }),
       ]);
     },

@@ -35,6 +35,8 @@ class FormFactorLinhaResponse(BaseModel):
     sdf_id: str | None
     data_reportada: datetime | None
     resultados: dict[UUID, str]
+    backup_id: UUID | None = None
+    rodada_pendente_id: UUID | None = None
 
 
 class FormFactorCasoElegivelResponse(BaseModel):
@@ -208,6 +210,8 @@ def to_response(
                 sdf_id=linha.sdf_id,
                 data_reportada=linha.data_reportada,
                 resultados=linha.resultados,
+                backup_id=linha.backup_id,
+                rodada_pendente_id=linha.rodada_pendente_id,
             )
             for linha in resultado.items
         ],

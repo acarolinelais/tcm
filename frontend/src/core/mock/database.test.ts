@@ -300,7 +300,7 @@ describe("base mock de projetos", () => {
 
     const matriz = mockFormFactorApi.listar(project.id, { page: 1, pageSize: 20 });
     expect(matriz.modelos.map((model) => model.nome)).toEqual(["S26 Ultra", "S27 Ultra"]);
-    expect(matriz.casos_elegiveis.map((testCase) => testCase.tc_id)).toEqual(["TC-001", "TC-002"]);
+    expect(matriz.casos_elegiveis?.map((testCase) => testCase.tc_id)).toEqual(["TC-001", "TC-002"]);
     expect(matriz.items.map((row) => row.tc_id)).toEqual(["TC-001", "TC-002"]);
     expect(matriz.items[0]).toMatchObject({ sdf_id: "SDF-2", resultados: { "mock-model-s27-ultra": "Pass", "mock-model-s26-ultra": "Fail" } });
     // Mesma data: vence a importação mais recente (a última gravada).
@@ -332,6 +332,44 @@ describe("base mock de projetos", () => {
     expect(historico.items.map((item) => item.rodada_id)).toContain(segunda.id);
     expect(historico.items.every((item) => item.origem === "MANUAL")).toBe(true);
     expect(mockFormFactorApi.listar(project.id, { tcId: "TC-ROUNDS" }).items).toHaveLength(0);
+  });
+
+  it("segue o ciclo do DEV: revisão de PR antes da validação e FAIL leva a In Fixes", () => {
+    const project = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: ["mock-model-s27-ultra"] });
+    const testCase = mockCasosTesteApi.criar(project.id, { category: "A", difficulty: "Low", situation: "New", tc_id: "TC-CICLO", responsavel_id: "mock-user-dev", backup_id: "mock-user-kp" });
+    entrar("daniel.oliveira@example.com");
+
+    mockCasosTesteApi.atualizar(testCase.id, { status: "InProgress" });
+    expect(() => mockCasosTesteApi.atualizar(testCase.id, { status: "InValidation" })).toThrow("transição");
+    mockCasosTesteApi.atualizar(testCase.id, { status: "InReview" });
+    mockCasosTesteApi.atualizar(testCase.id, { status: "InValidation" });
+    entrar("admin@sdfmanager.com");
+    const rodada = mockFormFactorApi.criarRodada(project.id, { sdf_id: null });
+    mockFormFactorApi.registrarResultadosRodada(project.id, rodada.id, testCase.id, { resultados: { "mock-model-s27-ultra": "FAIL" } });
+    entrar("daniel.oliveira@example.com");
+
+    expect(mockCasosTesteApi.obter(testCase.id).status).toBe("InFixes");
+    expect(() => mockCasosTesteApi.atualizar(testCase.id, { status: "Done" })).toThrow("transição");
+    expect(mockCasosTesteApi.atualizar(testCase.id, { status: "InReview" }).status).toBe("InReview");
+  });
+
+  it("schema 18 move para In Fixes o TC em revisão com FAIL na execução mais recente", () => {
+    const database = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+    const base = { unidade_id: database.unidade.id, projeto_id: "p", category: "A", difficulty: "Low", situation: "New", responsavel_id: "mock-user-dev", backup_id: null, ativo: true, created_at: null, updated_at: null };
+    database.casosTeste = [{ ...base, id: "falhou", tc_id: "TC-F", status: "InReview" }, { ...base, id: "corrigido", tc_id: "TC-C", status: "InReview" }];
+    const resultado = (execucao_id: string, caso_teste_id: string, resultado: string, data_reportada: string) => ({ execucao_id, caso_teste_id, tc_id: caso_teste_id, sdf_id: null, modelo_dispositivo_id: "m", resultado, data_reportada });
+    database.formFactor = [
+      resultado("e1", "falhou", "PASS", "2026-10-01T00:00:00Z"), resultado("e2", "falhou", "Fail", "2026-10-20T00:00:00Z"),
+      resultado("e3", "corrigido", "FAIL", "2026-10-01T00:00:00Z"), resultado("e4", "corrigido", "PASS", "2026-10-20T00:00:00Z"),
+    ];
+    database.schemaVersion = 17;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(database));
+
+    mockProjetosApi.listar(1, 10);
+    const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+
+    expect(migrado.schemaVersion).toBe(18);
+    expect(migrado.casosTeste.map((testCase: { status: string }) => testCase.status)).toEqual(["InFixes", "InReview"]);
   });
 
   it("Form Factor global agrega Resumo e todas as execuções apenas nos projetos do KP", () => {

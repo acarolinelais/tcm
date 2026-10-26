@@ -10,11 +10,17 @@ export type SituacaoCasoTeste = "New" | "New Step" | "Without Changes";
 
 export const SITUACOES_CASO_TESTE: SituacaoCasoTeste[] = ["New", "New Step", "Without Changes"];
 /** Progresso do caso no projeto, na ordem exibida. */
-export const STATUS_CASO_TESTE = ["To-Do", "InProgress", "InReview", "InValidation", "Done", "Cancelled"] as const;
+export const STATUS_CASO_TESTE = ["To-Do", "InProgress", "InReview", "InValidation", "Done", "InFixes", "Cancelled"] as const;
 export type StatusCasoTeste = (typeof STATUS_CASO_TESTE)[number];
 /** Chaves i18n dos rótulos de TC Situation e Status. */
 export const ROTULO_SITUACAO: Record<SituacaoCasoTeste, string> = { New: "situationNew", "New Step": "situationNewStep", "Without Changes": "situationWithoutChanges" };
-export const ROTULO_STATUS: Record<StatusCasoTeste, string> = { "To-Do": "statusTodo", InProgress: "statusInProgress", InReview: "statusInReview", InValidation: "statusInValidation", Done: "statusDone", Cancelled: "statusCancelled" };
+export const ROTULO_STATUS: Record<StatusCasoTeste, string> = { "To-Do": "statusTodo", InProgress: "statusInProgress", InReview: "statusInReview", InValidation: "statusInValidation", Done: "statusDone", InFixes: "statusInFixes", Cancelled: "statusCancelled" };
+/** Próximo passo do responsável principal (spec 023); Done e InFixes vêm só dos resultados da rodada. */
+export const PROXIMO_STATUS_RESPONSAVEL: Partial<Record<StatusCasoTeste, readonly StatusCasoTeste[]>> = { "To-Do": ["InProgress"], InProgress: ["InReview"], InReview: ["InValidation"], InFixes: ["InReview"] };
+/** Opções do seletor do responsável: Status atual, próximo passo e Excluded. */
+export function opcoesStatusResponsavel(status: StatusCasoTeste): StatusCasoTeste[] {
+  return [...new Set([status, ...(PROXIMO_STATUS_RESPONSAVEL[status] ?? []), "Cancelled" as const])];
+}
 
 export interface Projeto {
   id: string;
@@ -68,6 +74,9 @@ export interface LinhaFormFactor {
   sdf_id: string | null;
   data_reportada: string | null;
   resultados: Record<string, string>;
+  backup_id?: string | null;
+  /** Rodada mais recente em que o TC ainda aguarda resultados (spec 023). */
+  rodada_pendente_id?: string | null;
 }
 
 export interface FormFactorMatriz extends PagedResult<LinhaFormFactor> {
@@ -146,22 +155,6 @@ export interface RodadaFormFactor {
   sdf_id: string | null;
   created_at: string;
   total_test_cases: number;
-}
-
-export interface CasoTesteRodada {
-  execucao_id: string;
-  caso_teste_id: string;
-  tc_id: string;
-  responsavel_id: string;
-  backup_id: string | null;
-  status: StatusCasoTeste;
-  resultados: Record<string, string>;
-  resultados_registrados: boolean;
-}
-
-export interface FormFactorRodadaCasos extends PagedResult<CasoTesteRodada> {
-  rodada: RodadaFormFactor;
-  modelos: ModeloFormFactor[];
 }
 
 export interface ImportacaoProjeto {

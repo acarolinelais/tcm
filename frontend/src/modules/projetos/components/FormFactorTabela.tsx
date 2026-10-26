@@ -16,7 +16,7 @@ function ResultadoCelula({ valor }: { valor: string | undefined }) {
   return <FormFactorResultBadge value={valor} />;
 }
 
-export function FormFactorTabela({ dados, carregando, erro, identificadoresMembros, opcoesAssignee, assignee, onAssigneeChange, tcId = "", sdfId = "", onFiltroTexto, modeloDispositivoId = "", resultadoFiltro = "", onFiltroResultado, podeRegistrar = false, onRegistrar, temFiltros, onLimparFiltros, page, pageSize, onPageChange, onPageSizeChange }: {
+export function FormFactorTabela({ dados, carregando, erro, identificadoresMembros, opcoesAssignee, assignee, onAssigneeChange, tcId = "", sdfId = "", onFiltroTexto, modeloDispositivoId = "", resultadoFiltro = "", onFiltroResultado, podeRegistrar, onRegistrar, temFiltros, onLimparFiltros, page, pageSize, onPageChange, onPageSizeChange }: {
   dados: FormFactorMatriz | undefined;
   carregando: boolean;
   erro: boolean;
@@ -26,7 +26,7 @@ export function FormFactorTabela({ dados, carregando, erro, identificadoresMembr
   onAssigneeChange: (valor: string) => void;
   tcId?: string; sdfId?: string; onFiltroTexto?: (campo: "tcId" | "sdfId", valor: string) => void;
   modeloDispositivoId?: string; resultadoFiltro?: string; onFiltroResultado?: (modeloId: string, resultado: string) => void;
-  podeRegistrar?: boolean;
+  podeRegistrar?: (linha: FormFactorMatriz["items"][number]) => boolean;
   onRegistrar?: (linha: FormFactorMatriz["items"][number]) => void;
   temFiltros: boolean;
   onLimparFiltros: () => void;
@@ -38,6 +38,8 @@ export function FormFactorTabela({ dados, carregando, erro, identificadoresMembr
   const { t } = useTranslation();
   const linhas = erro ? [] : dados?.items ?? [];
   const modelos = dados?.modelos ?? [];
+  // A coluna só aparece quando alguma linha da página tem ação para este usuário.
+  const comAcoes = podeRegistrar ? linhas.some(podeRegistrar) : false;
 
   return <TableLayout>
     <Table className="min-w-max" containerClassName={linhas.length ? "thin-scroll min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
@@ -48,7 +50,7 @@ export function FormFactorTabela({ dados, carregando, erro, identificadoresMembr
         <TableHead><TableColumnFilter label={t("assignee")} value={assignee} onChange={onAssigneeChange} options={[{ value: "", label: t("all") }, ...opcoesAssignee]} searchable /></TableHead>
         {modelos.map((modelo) => <TableHead key={modelo.id}><div className="flex items-center gap-1">{modelo.nome}<TableColumnFilter label="" accessibleLabel={t("filterResultForModel", { defaultValue: "Result for {{model}}", model: modelo.nome })} value={modeloDispositivoId === modelo.id ? resultadoFiltro : ""} onChange={(valor) => onFiltroResultado?.(modelo.id, valor)} options={[{ value: "", label: t("all") }, { value: "PASS", label: "PASS" }, { value: "FAIL", label: "FAIL" }]} /></div></TableHead>)}
         <TableHead>{t("date")}</TableHead>
-        {podeRegistrar && <TableHead className="text-right">{t("actions")}</TableHead>}
+        {comAcoes && <TableHead className="text-right">{t("actions")}</TableHead>}
       </TableRow></TableHeader>
       {linhas.length ? <TableBody>{linhas.map((linha, index) => {
         const numeroDaLinha = (page - 1) * pageSize + index + 1;
@@ -59,9 +61,9 @@ export function FormFactorTabela({ dados, carregando, erro, identificadoresMembr
         <TableCell className="text-muted-foreground">{identificadoresMembros[linha.responsavel_id] ?? "—"}</TableCell>
         {modelos.map((modelo) => <TableCell key={modelo.id}><ResultadoCelula valor={linha.resultados[modelo.id]} /></TableCell>)}
         <TableCell className="text-muted-foreground">{linha.data_reportada ? formatDate(linha.data_reportada) : "—"}</TableCell>
-        {podeRegistrar && <TableCell className="text-right"><TableRowActions label={linha.tc_id} actions={[
+        {comAcoes && <TableCell className="text-right">{podeRegistrar?.(linha) && <TableRowActions label={linha.tc_id} actions={[
           { label: t("recordResult", { defaultValue: "Record result" }), icon: Plus, onSelect: () => onRegistrar?.(linha) },
-        ]} /></TableCell>}
+        ]} />}</TableCell>}
       </TableRow>})}</TableBody> : null}
     </Table>
     {!carregando && !erro && !linhas.length && <CasosTesteEmptyState temFiltros={temFiltros} onLimparFiltros={onLimparFiltros} />}

@@ -9,7 +9,7 @@ import type { PerfilAtual } from "@/core/auth/api";
 vi.mock("../api/projetos.api", () => ({
   casosTesteApi: { listar: vi.fn(), transferirParaBackup: vi.fn() },
   projetosApi: { criar: vi.fn(), listar: vi.fn() },
-  formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), listarGlobal: vi.fn(), listarResultadosGlobais: vi.fn(), criarRodada: vi.fn(), listarCasosRodada: vi.fn(), registrarResultadosRodada: vi.fn() }, modelosDispositivoApi: {},
+  formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), listarGlobal: vi.fn(), listarResultadosGlobais: vi.fn(), criarRodada: vi.fn(), registrarResultadosRodada: vi.fn() }, modelosDispositivoApi: {},
 }));
 
 function criarWrapper() {

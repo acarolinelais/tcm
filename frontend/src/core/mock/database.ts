@@ -5,28 +5,27 @@ import type { Setor, SetorGerente } from "@/modules/setores/api/setores.api";
 import type { Time, TimeMembro } from "@/modules/times/api/times.api";
 import type { Usuario, UsuarioFormValues } from "@/modules/usuarios/model/usuario";
 import type { UsuarioFiltros } from "@/modules/usuarios/api/usuario.api";
-import type {
-  AtualizarCasoTesteInput,
-  AtualizarProjetoInput,
-  CasoTeste,
-  CriarCasoTesteInput,
-  CriarProjetoInput,
-  FormFactorMatriz,
-  FormFactorExecucao,
-  FormFactorResultados,
-  FormFactorGlobal,
-  FormFactorExecucaoGlobal,
-  FormFactorResultadosGlobais,
-  FiltrosFormFactorGlobal,
-  FiltrosFormFactor,
-  CriarRodadaFormFactorInput,
-  EnviarResultadosRodadaInput,
-  RodadaFormFactor,
-  CasoTesteRodada,
-  FormFactorRodadaCasos,
-  LinhaFormFactor,
-  Projeto,
-  StatusProjeto,
+import {
+  opcoesStatusResponsavel,
+  type AtualizarCasoTesteInput,
+  type AtualizarProjetoInput,
+  type CasoTeste,
+  type CriarCasoTesteInput,
+  type CriarProjetoInput,
+  type FormFactorMatriz,
+  type FormFactorExecucao,
+  type FormFactorResultados,
+  type FormFactorGlobal,
+  type FormFactorExecucaoGlobal,
+  type FormFactorResultadosGlobais,
+  type FiltrosFormFactorGlobal,
+  type FiltrosFormFactor,
+  type CriarRodadaFormFactorInput,
+  type EnviarResultadosRodadaInput,
+  type RodadaFormFactor,
+  type LinhaFormFactor,
+  type Projeto,
+  type StatusProjeto,
 } from "@/modules/projetos/model/projeto";
 import type { ModeloDispositivo } from "@/modules/modelos-dispositivo/model/modelo-dispositivo";
 import { lerPlanilhaProjeto, PlanilhaProjetoError, type PessoasDaLinha, type PlanilhaProjeto } from "@/modules/projetos/utils/planilha-projeto";
@@ -127,7 +126,7 @@ function createSeed(): Database {
     { id: "mock-user-inactive", nome: "Rafael Lima", email: "rafael.lima@example.com", ativo: false, perfil_id: standardProfile.id, responsavel_id: MANAGER_ID, created_at: "2026-02-10T12:00:00Z" },
   ].map((user: Usuario) => ({ ...user, user_id: user.user_id ?? null }));
   return {
-    schemaVersion: 17,
+    schemaVersion: 18,
     unidade: { id: UNIT_ID, nome: "Manaus", ativo: true },
     usuarios: users,
     perfis: [adminProfile, standardProfile, managerProfile, kpProfile],
@@ -305,6 +304,17 @@ function readDb(): Database {
         }
       });
       db.schemaVersion = 17;
+      return writeDb(db);
+    }
+    if ((db.schemaVersion ?? 1) < 18) {
+      // Spec 023: TC em revisão cuja execução mais recente teve FAIL passa a In Fixes.
+      db.casosTeste.forEach((testCase) => {
+        if (testCase.status !== "InReview") return;
+        const resultados = db.formFactor.filter((item) => item.caso_teste_id === testCase.id);
+        const ultima = resultados.reduce<ResultadoFormFactorMock | undefined>((maisRecente, item) => !maisRecente || item.data_reportada > maisRecente.data_reportada ? item : maisRecente, undefined);
+        if (ultima && resultados.some((item) => item.execucao_id === ultima.execucao_id && item.resultado.trim().toUpperCase() === "FAIL")) testCase.status = "InFixes";
+      });
+      db.schemaVersion = 18;
       return writeDb(db);
     }
     return db;
@@ -874,8 +884,7 @@ export const mockCasosTesteApi = {
       const camposPermitidos = ["category", "difficulty", "status"];
       if (Object.keys(input).some((field) => !camposPermitidos.includes(field))) throw new Error("Você só pode editar Status, Category e Difficulty.");
       if (input.status) {
-        const transitions: Record<string, string[]> = { "To-Do": ["InProgress"], InProgress: ["InValidation"], InReview: ["InValidation"] };
-        if (input.status !== "Cancelled" && input.status !== testCase.status && !transitions[testCase.status]?.includes(input.status)) throw new Error("A transição de Status solicitada não é permitida.");
+        if (!opcoesStatusResponsavel(testCase.status).includes(input.status)) throw new Error("A transição de Status solicitada não é permitida.");
       }
       Object.assign(testCase, input);
     }
@@ -1107,7 +1116,7 @@ export const mockFormFactorApi = {
     getMockProject(db, projectId);
     const { page: pageNumber = 1, pageSize = 20, semana: week, responsavelId, tcId, sdfId, modeloDispositivoId, resultado } = filtros;
     const modelos = db.projetoModelos
-      .filter((link) => link.projeto_id === projectId)
+      .filter((link) => link.projeto_id === projectId && link.ativo !== false)
       .map((link) => db.modelosDispositivo.find((model) => model.id === link.modelo_dispositivo_id))
       .filter((model) => model !== undefined)
       .map(({ id: modelId, nome }) => ({ id: modelId, nome }))
@@ -1126,7 +1135,9 @@ export const mockFormFactorApi = {
         if (modeloDispositivoId && !results.some((result) => result.modelo_dispositivo_id === modeloDispositivoId && (!resultado || result.resultado.toLocaleLowerCase() === resultado.toLocaleLowerCase()))) return [];
         const resultados: Record<string, string> = {};
         results.forEach((result) => { resultados[result.modelo_dispositivo_id] ??= result.resultado; });
-        return [{ caso_teste_id: testCase.id, tc_id: testCase.tc_id, responsavel_id: testCase.responsavel_id, sdf_id: results[0]?.sdf_id ?? null, data_reportada: results[0]?.data_reportada ?? null, resultados }];
+        const rodadasPendentes = new Set(db.execucoesFormFactor.filter((execucao) => execucao.caso_teste_id === testCase.id && !execucao.resultados_registrados).map((execucao) => execucao.rodada_id));
+        const rodadaPendente = db.rodadasFormFactor.filter((rodada) => rodadasPendentes.has(rodada.id)).sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+        return [{ caso_teste_id: testCase.id, tc_id: testCase.tc_id, responsavel_id: testCase.responsavel_id, backup_id: testCase.backup_id, rodada_pendente_id: rodadaPendente?.id ?? null, sdf_id: rodadaPendente?.sdf_id ?? results[0]?.sdf_id ?? null, data_reportada: results[0]?.data_reportada ?? null, resultados }];
       });
     const casosElegiveis = db.casosTeste
       .filter((testCase) => testCase.projeto_id === projectId && testCase.ativo && testCase.status === "InValidation")
@@ -1191,24 +1202,6 @@ export const mockFormFactorApi = {
     writeDb(db);
     return rodada;
   },
-  listarCasosRodada(projectId: string, rodadaId: string, pageNumber = 1, pageSize = 20): FormFactorRodadaCasos {
-    requireMockPermission("form_factor.consultar");
-    const { db } = mockProfile();
-    getMockProject(db, projectId);
-    const rodada = db.rodadasFormFactor.find((item) => item.id === rodadaId && item.projeto_id === projectId);
-    if (!rodada) throw new Error("Rodada Form Factor não encontrada.");
-    const rows: CasoTesteRodada[] = db.execucoesFormFactor.filter((item) => item.rodada_id === rodadaId).flatMap((execucao) => {
-      const testCase = db.casosTeste.find((item) => item.id === execucao.caso_teste_id && item.ativo);
-      if (!testCase) return [];
-      const resultados = Object.fromEntries(db.formFactor.filter((item) => item.execucao_id === execucao.execucao_id).map((item) => [item.modelo_dispositivo_id, item.resultado]));
-      return [{ execucao_id: execucao.execucao_id, caso_teste_id: testCase.id, tc_id: testCase.tc_id, responsavel_id: testCase.responsavel_id, backup_id: testCase.backup_id, status: testCase.status, resultados, resultados_registrados: execucao.resultados_registrados }];
-    }).sort((a, b) => a.tc_id.localeCompare(b.tc_id));
-    const modelos = db.projetoModelos.filter((link) => link.projeto_id === projectId && link.ativo !== false).flatMap((link) => {
-      const modelo = db.modelosDispositivo.find((item) => item.id === link.modelo_dispositivo_id && item.ativo);
-      return modelo ? [{ id: modelo.id, nome: modelo.nome }] : [];
-    });
-    return { ...page(rows, pageNumber, pageSize), rodada: { ...rodada, total_test_cases: rows.length }, modelos };
-  },
   registrarResultadosRodada(projectId: string, rodadaId: string, casoTesteId: string, input: EnviarResultadosRodadaInput): FormFactorExecucao {
     requireMockPermission("form_factor.registrar");
     const { db, user, profile } = mockProfile();
@@ -1225,9 +1218,11 @@ export const mockFormFactorApi = {
     if (entries.some(([modelId, value]) => !linked.has(modelId) || !["PASS", "FAIL"].includes(value))) throw new Error("Modelo ou resultado inválido.");
     entries.forEach(([modelo_dispositivo_id, resultado]) => db.formFactor.push({ execucao_id: execucao.execucao_id, caso_teste_id: testCase.id, tc_id: testCase.tc_id, responsavel_id: testCase.responsavel_id, sdf_id: rodada.sdf_id, modelo_dispositivo_id, resultado, data_reportada: execucao.data_reportada, origem: "MANUAL" }));
     const values = Object.values(input.resultados);
-    if (values.includes("FAIL")) testCase.status = "InReview";
-    else if (linked.size > 0 && [...linked].every((modelId) => input.resultados[modelId] === "PASS")) testCase.status = "Done";
-    else if (testCase.status !== "Cancelled") testCase.status = "InValidation";
+    // Como na API: só um TC em validação muda de Status; os resultados ficam no histórico.
+    if (testCase.status === "InValidation") {
+      if (values.includes("FAIL")) testCase.status = "InFixes";
+      else if (linked.size > 0 && [...linked].every((modelId) => input.resultados[modelId] === "PASS")) testCase.status = "Done";
+    }
     testCase.updated_at = new Date().toISOString();
     execucao.resultados_registrados = true;
     writeDb(db);

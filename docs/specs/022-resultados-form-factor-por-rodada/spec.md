@@ -1,6 +1,6 @@
 # 022. Resultados Form Factor por rodada: Spec
 
-- **Status:** Em andamento
+- **Status:** Concluída
 - **Data:** 2026-10-25
 
 ## Problema

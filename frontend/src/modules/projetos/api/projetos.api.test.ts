@@ -104,8 +104,6 @@ describe("APIs de projetos", () => {
       "/api/projetos/project-1/form-factor/rodadas",
       expect.objectContaining({ method: "POST", body: JSON.stringify(roundInput) }),
     );
-    await formFactorApi.listarCasosRodada("project-1", "round-1", 2, 10);
-    expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/form-factor/rodadas/round-1/test-cases?page=2&page_size=10", expect.any(Object));
     const resultInput = { resultados: { "model-1": "PASS" as const } };
     await formFactorApi.registrarResultadosRodada("project-1", "round-1", "case-1", resultInput);
     expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/form-factor/rodadas/round-1/test-cases/case-1/resultados", expect.objectContaining({ method: "POST", body: JSON.stringify(resultInput) }));

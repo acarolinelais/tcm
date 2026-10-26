@@ -23,7 +23,6 @@ import type {
   FiltrosFormFactorGlobal,
   CriarRodadaFormFactorInput,
   EnviarResultadosRodadaInput,
-  FormFactorRodadaCasos,
   ImportacaoProjeto,
   ImportacaoSdf,
   OpcaoModeloDispositivo,
@@ -37,7 +36,6 @@ export type {
   AtualizarProjetoInput,
   CategoriaCasoTeste,
   CasoTeste,
-  CasoTesteRodada,
   CriarCasoTesteInput,
   CriarProjetoInput,
   DificuldadeCasoTeste,
@@ -50,7 +48,6 @@ export type {
   FiltrosFormFactorGlobal,
   CriarRodadaFormFactorInput,
   EnviarResultadosRodadaInput,
-  FormFactorRodadaCasos,
   ImportacaoProjeto,
   ImportacaoSdf,
   LinhaFormFactor,
@@ -210,11 +207,6 @@ export const formFactorApi = {
     return useMock
       ? Promise.resolve(mockFormFactorApi.criarRodada(projetoId, input))
       : httpPost<RodadaFormFactor>(`/api/projetos/${projetoId}/form-factor/rodadas`, input);
-  },
-  listarCasosRodada(projetoId: string, rodadaId: string, page = 1, pageSize = 20) {
-    return useMock
-      ? Promise.resolve(mockFormFactorApi.listarCasosRodada(projetoId, rodadaId, page, pageSize))
-      : httpGet<FormFactorRodadaCasos>(`/api/projetos/${projetoId}/form-factor/rodadas/${rodadaId}/test-cases`, { page, page_size: pageSize });
   },
   registrarResultadosRodada(projetoId: string, rodadaId: string, casoTesteId: string, input: EnviarResultadosRodadaInput) {
     return useMock

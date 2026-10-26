@@ -43,7 +43,8 @@ def upgrade() -> None:
     op.create_unique_constraint(
         "uq_execucoes_sdf_rodada_caso", "execucoes_sdf", ["rodada_id", "caso_teste_id"]
     )
-    op.drop_constraint("ck_execucoes_sdf_origem", "execucoes_sdf", type_="check")
+    # Bancos que aplicaram uma versão antiga de a4b5c6d7e8f9 não têm esta constraint.
+    op.execute("ALTER TABLE execucoes_sdf DROP CONSTRAINT IF EXISTS ck_execucoes_sdf_origem")
     op.create_check_constraint(
         "ck_execucoes_sdf_origem",
         "execucoes_sdf",
