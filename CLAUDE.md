@@ -50,9 +50,11 @@ Documentação em PT-BR. Termos de domínio no código em português; termos té
   sem DELETE (exclusão lógica por padrão; DELETE físico só com justificativa no `plan.md`, ADRs 0004 e 0008),
   documentação com Scalar em `/scalar` (ADR 0008). As migrations Alembic são aplicadas automaticamente quando a
   API inicia (ADR 0012).
-- **Frontend:** React + Vite + TypeScript com arquitetura Modular (`core`/`shared`/`modules`) + shadcn/ui +
-  Tailwind (ADR 0009). Cada domínio é um módulo autossuficiente. Dados com TanStack Query; formulários com
-  react-hook-form + zod.
+- **Frontend:** React + Vite + TypeScript com arquitetura Modular (`core`/`shared`/`modules`) + Tailwind
+  (ADR 0009). Cada domínio é um módulo autossuficiente. Dados com TanStack Query; formulários com
+  react-hook-form + zod. A base de UI é o **HeroUI v3**, com migração gradual a partir do shadcn/ui (ADR 0037):
+  tela nova ou redesenhada usa só HeroUI, tela não migrada continua em shadcn, sem misturar as duas na mesma
+  página e sem adicionar componentes shadcn novos.
 - **Testes:** unidade, integração, funcional, e2e e arquitetura, sempre com um cenário de sucesso
   e um de falha (ADR 0010).
 - **Multi-tenancy:** `Unidade` é a fronteira do tenant; hierarquia `Unidade → Setor → Time → TimeMembro`,
