@@ -12,7 +12,11 @@ from src.application.services.form_factor_service import (
     FormFactorServiceImpl,
     _intervalo_semana_iso,
 )
-from src.domain.common.exceptions import ForbiddenException, NotFoundException
+from src.domain.common.exceptions import (
+    ConflictException,
+    ForbiddenException,
+    NotFoundException,
+)
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.caso_teste import CasoTeste, StatusCasoTeste
@@ -133,6 +137,7 @@ async def test_registrar_resultado_fail_atualiza_status_e_salva_atomicamente():
         origem="MANUAL",
         rodada_id=rodada_id,
     )
+    execucao_repo.obter_rodada_atual_do_caso.return_value = rodada_id
     modelo_repo.listar_modelos_do_projeto.return_value = (
         ModeloDoProjeto(modelo_id, "S25"),
         ModeloDoProjeto(uuid4(), "S26"),
@@ -169,6 +174,70 @@ async def test_registrar_resultado_fail_atualiza_status_e_salva_atomicamente():
     assert caso_repo.atualizar.await_args.args[0] is caso
     resultado_repo.adicionar.assert_awaited_once()
     uow.commit.assert_awaited_once()
+
+
+async def test_registrar_em_rodada_anterior_e_recusado_sem_gravar():
+    (
+        projeto_repo,
+        time_repo,
+        resultado_repo,
+        modelo_repo,
+        caso_repo,
+        execucao_repo,
+        uow,
+        rodada_repo,
+    ) = (AsyncMock() for _ in range(8))
+    unidade_id, usuario_id, time_id, setor_id = (uuid4() for _ in range(4))
+    projeto = Projeto(unidade_id, time_id, "Clock", "9.5")
+    caso = CasoTeste(
+        unidade_id, projeto.id, "TC-1", "A", "Low", usuario_id, None, "New", exigir_backup=False
+    )
+    caso.atualizar_campos_do_responsavel(
+        StatusCasoTeste.IN_VALIDATION, caso.category, caso.difficulty
+    )
+    anterior = RodadaFormFactor(unidade_id, projeto.id, usuario_id, "SDF-002", datetime.now())
+    rodada_repo.obter_no_projeto.return_value = anterior
+    projeto_repo.obter_por_id.return_value = projeto
+    time_repo.obter_por_id.return_value = Time(unidade_id, setor_id, "QA", usuario_id)
+    caso_repo.obter_por_id.return_value = caso
+    execucao_repo.obter_por_rodada_e_caso.return_value = ExecucaoSdf(
+        unidade_id,
+        None,
+        caso.id,
+        "SDF-002",
+        datetime.now(),
+        projeto.one_ui,
+        origem="MANUAL",
+        rodada_id=anterior.id,
+    )
+    execucao_repo.obter_rodada_atual_do_caso.return_value = uuid4()
+    usuario = UsuarioAutenticado(
+        usuario_id,
+        unidade_id,
+        "GERENTE",
+        permissoes=frozenset({"form_factor.registrar"}),
+        setores_gerenciados=(setor_id,),
+    )
+    service = FormFactorServiceImpl(
+        projeto_repo,
+        time_repo,
+        resultado_repo,
+        modelo_repo,
+        caso_repo,
+        execucao_repo,
+        uow,
+        rodada_repo,
+    )
+
+    with pytest.raises(ConflictException):
+        await service.registrar_resultados_rodada(
+            usuario, projeto.id, anterior.id, caso.id, EnviarResultadosRodadaRequest(resultados={})
+        )
+
+    assert caso.status is StatusCasoTeste.IN_VALIDATION
+    resultado_repo.adicionar.assert_not_awaited()
+    execucao_repo.atualizar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
 
 
 async def test_dev_nao_registra_resultado_de_tc_alheio():
@@ -265,6 +334,7 @@ async def test_dev_atribuido_registra_resultado_parcial(vinculo):
         origem="MANUAL",
         rodada_id=rodada.id,
     )
+    execucao_repo.obter_rodada_atual_do_caso.return_value = rodada.id
     modelo_repo.listar_modelos_do_projeto.return_value = (
         ModeloDoProjeto(modelo_id, "S25"),
         ModeloDoProjeto(uuid4(), "S26"),

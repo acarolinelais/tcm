@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as XLSX from "@e965/xlsx";
 
 import { ApiError } from "@/shared/api/problem-details";
@@ -332,6 +332,53 @@ describe("base mock de projetos", () => {
     expect(historico.items.map((item) => item.rodada_id)).toContain(segunda.id);
     expect(historico.items.every((item) => item.origem === "MANUAL")).toBe(true);
     expect(mockFormFactorApi.listar(project.id, { tcId: "TC-ROUNDS" }).items).toHaveLength(0);
+  });
+
+  it("Resumo mostra só a rodada mais recente do TC e o histórico preserva as anteriores", () => {
+    const project = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: ["mock-model-s27-ultra", "mock-model-s26-ultra"] });
+    const testCase = mockCasosTesteApi.criar(project.id, { category: "A", difficulty: "Low", situation: "New", tc_id: "TC-RESUMO", responsavel_id: "mock-user-kp", backup_id: "mock-user-dev" });
+    mockCasosTesteApi.atualizar(testCase.id, { status: "InValidation" });
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-10-20T12:00:00Z"));
+      const primeira = mockFormFactorApi.criarRodada(project.id, { sdf_id: "SDF-002" });
+      mockFormFactorApi.registrarResultadosRodada(project.id, primeira.id, testCase.id, { resultados: { "mock-model-s27-ultra": "PASS" } });
+      vi.setSystemTime(new Date("2026-10-26T12:00:00Z"));
+      const segunda = mockFormFactorApi.criarRodada(project.id, { sdf_id: "SDF-003" });
+
+      expect(mockFormFactorApi.listar(project.id, { tcId: "TC-RESUMO" }).items[0]).toMatchObject({ sdf_id: "SDF-003", resultados: {}, data_reportada: null });
+      expect(mockFormFactorApi.listar(project.id, { tcId: "TC-RESUMO", modeloDispositivoId: "mock-model-s27-ultra", resultado: "PASS" }).total_count).toBe(0);
+
+      mockFormFactorApi.registrarResultadosRodada(project.id, segunda.id, testCase.id, { resultados: { "mock-model-s26-ultra": "PASS" } });
+      expect(mockFormFactorApi.listar(project.id, { tcId: "TC-RESUMO" }).items[0]).toMatchObject({ sdf_id: "SDF-003", resultados: { "mock-model-s26-ultra": "PASS" } });
+      expect(mockFormFactorApi.listarResultados(project.id, { tcId: "TC-RESUMO" }).items.map((item) => [item.sdf_id, item.resultados])).toEqual(expect.arrayContaining([
+        ["SDF-002", { "mock-model-s27-ultra": "PASS" }],
+        ["SDF-003", { "mock-model-s26-ultra": "PASS" }],
+      ]));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("só a rodada atual do TC recebe resultados e as anteriores ficam encerradas", () => {
+    const project = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: ["mock-model-s27-ultra", "mock-model-s26-ultra"] });
+    const testCase = mockCasosTesteApi.criar(project.id, { category: "A", difficulty: "Low", situation: "New", tc_id: "TC-ATUAL", responsavel_id: "mock-user-kp", backup_id: "mock-user-dev" });
+    mockCasosTesteApi.atualizar(testCase.id, { status: "InValidation" });
+    vi.useFakeTimers();
+    try {
+      const [anterior, , atual] = ["SDF-002", "SDF-003", "SDF-005"].map((sdf_id, dia) => {
+        vi.setSystemTime(new Date(Date.UTC(2026, 9, 20 + dia)));
+        return mockFormFactorApi.criarRodada(project.id, { sdf_id });
+      });
+
+      expect(mockFormFactorApi.listar(project.id, { tcId: "TC-ATUAL" }).items[0]).toMatchObject({ rodada_pendente_id: atual.id, sdf_id: "SDF-005" });
+      expect(() => mockFormFactorApi.registrarResultadosRodada(project.id, anterior.id, testCase.id, { resultados: { "mock-model-s27-ultra": "PASS" } })).toThrow("rodada mais recente");
+
+      mockFormFactorApi.registrarResultadosRodada(project.id, atual.id, testCase.id, { resultados: { "mock-model-s27-ultra": "PASS" } });
+      expect(mockFormFactorApi.listar(project.id, { tcId: "TC-ATUAL" }).items[0].rodada_pendente_id).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("segue o ciclo do DEV: revisão de PR antes da validação e FAIL leva a In Fixes", () => {

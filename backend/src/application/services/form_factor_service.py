@@ -383,6 +383,14 @@ class FormFactorServiceImpl:
             and caso.backup_id != usuario_atual.id
         ):
             raise ForbiddenException("Você só pode registrar resultados dos TCs atribuídos a você.")
+        # RN-13: só a rodada atual (a mais recente do TC) recebe resultados.
+        if (
+            await self._execucao_repo.obter_rodada_atual_do_caso(usuario_atual.unidade_id, caso.id)
+            != rodada.id
+        ):
+            raise ConflictException(
+                "Este Test Case está numa rodada mais recente. Registre os resultados nela."
+            )
 
         modelos = await self._projeto_modelo_repo.listar_modelos_do_projeto(
             usuario_atual.unidade_id, projeto.id

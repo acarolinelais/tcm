@@ -68,6 +68,32 @@
 
 > Validação executada (Fase 3): backend completo (482 testes) passou contra um banco PostgreSQL limpo; frontend completo (224 testes) e lint passaram. Com a API real em `127.0.0.1:8000`, passaram o ciclo E2E de duas rodadas (`e2e/form-factor-rodadas.spec.ts`) e os E2Es de Form Factor e de DEV. Na suíte E2E completa, 6 cenários do diálogo de criação de projeto falham por motivo anterior a esta spec (veja o Backlog).
 
+## Fase 4: correção do Resumo por rodada atual
+
+- [x] **T14. Resumo considera só a rodada mais recente do TC (backend)**
+  - Arquivos: `infrastructure/repositories/resultado_form_factor_repository.py` e `tests/integration/test_resultado_form_factor_repository.py`.
+  - Cobre: RN-12, CA-19, CA-20.
+  - Verificação: testes de integração provam que uma nova rodada esvazia as colunas e mostra o SDF da rodada, que o registro parcial não traz de volta os resultados anteriores, que o filtro por resultado ignora rodadas anteriores e que o histórico mantém tudo; um TC sem rodada continua com o último resultado por modelo.
+- [x] **T15. Aplicar a mesma regra no mock do frontend**
+  - Arquivos: `frontend/src/core/mock/database.ts` e `database.test.ts`.
+  - Cobre: RN-12, CA-19, CA-20.
+  - Verificação: teste do mock reproduz o CA-19 (rodada nova com colunas vazias e registro parcial) e o CA-20.
+
+> Validação executada (Fase 4): os testes novos falham sem a correção e passam com ela. Backend completo (501 testes) num PostgreSQL limpo com as variáveis da CI, ruff e import-linter; frontend completo (230 testes), lint e tsc. A simplify extraiu `_execucao_de_rodada_do_projeto` (filtros de rodada compartilhados pelo corte e pela rodada pendente), trocou o `or_` por `coalesce` e passou o setup de rodada dos testes para `_Cenario.rodada`/`registrar`.
+
+## Fase 5: só a rodada atual recebe resultados
+
+- [x] **T16. Rodada atual no Resumo e na API (backend)**
+  - Arquivos: `resultado_form_factor_repository.py`, `execucao_sdf_repository.py` (+ interface), `form_factor_service.py` e testes de integração/unidade.
+  - Cobre: RN-13, CA-21, CA-22.
+  - Verificação: com o TC em três rodadas sem resultado, o Resumo aponta a mais recente; após registrar nela, a linha fica sem rodada pendente; registrar numa rodada anterior dá `ConflictException` sem gravar.
+- [x] **T17. Mesma regra no mock do frontend**
+  - Arquivos: `frontend/src/core/mock/database.ts` e `database.test.ts`.
+  - Cobre: RN-13, CA-21, CA-22.
+  - Verificação: teste do mock reproduz o CA-21 e o CA-22.
+
+> Validação executada (Fase 5): reproduzido no banco local (Keyboard_0008 com execuções pendentes em SDF-002/003 depois de registrar na SDF-005). Os testes novos falham sem a correção e passam com ela. Backend completo (503 testes) num PostgreSQL limpo com as variáveis da CI, ruff e import-linter; frontend completo (231 testes), lint e tsc. A simplify concentrou a regra da rodada atual em `filtros_execucao_de_rodada_ativa` e `ordem_rodada_atual` (`execucao_sdf_repository.py`), usadas pelo corte, pelo Resumo e pelo registro, e tirou do mock a busca redundante da rodada.
+
 ## Backlog
 
 - **E2E do diálogo de criação de projeto quebrados (anterior à 022).** `projetos.spec.ts`, `projetos-importacao.spec.ts` (4) e `modelos-dispositivo.spec.ts` falham: a aba "Criar manualmente" não é encontrada e `getByLabel("Time")` resolve dois comboboxes (importação e manual). Esta spec não tocou o diálogo, então a correção fica fora do escopo: ajustar os seletores ou o diálogo numa task própria.
@@ -86,4 +112,10 @@
 
   Além disso, o nome padrão do projeto é derivado em dois lugares em `ProjetosPage.tsx`. Isso cabe numa task da 011 ou numa spec de correção.
 - **Teste de migração sensível ao estado do banco.** `test_caso_teste_repository.py::test_migration_preserva_progresso...` falha quando o banco de teste já tem dados criados pela API ou pelos E2Es (`ck_casos_teste_situation`). Ele passa em um banco limpo. Isolar o teste num schema descartável (`schema_alembic`).
+- **Resumo global (spec 021) ainda mistura rodadas.** `listar_form_factor_global` e `mockFormFactorApi.listarGlobal` pegam o resultado mais recente por modelo em todas as rodadas, sem o corte da RN-12. Decidir se a RN-12 vale para o Resumo global e, se valer, reaproveitar o corte (`_execucao_de_rodada_do_projeto`, com o projeto vindo de `CasoTesteModel.projeto_id`).
+- **Índice para o corte por rodada.** `execucoes_sdf` não tem índice começando por `caso_teste_id`, então as subconsultas do corte e da rodada pendente fazem scan. Irrelevante na escala atual; criar `(caso_teste_id, data_reportada)` por migration se o Resumo filtrado ficar lento.
+- **Lançamento manual avulso durante rodada pendente.** `criar_rodada_manual` cria execução sem `rodada_id` com `data_reportada=now()`, que passa pelo corte e aparece no Resumo ao lado do SDF da rodada pendente. A RN-12 só cita importações SDF; definir se esse caso deve aparecer.
+- **API ainda expõe rodadas encerradas como pendentes (RN-13).** `listar_casos` (`GET .../rodadas/{id}/test-cases`) e os históricos de projeto e global devolvem `resultados_registrados=false` para execuções de rodadas anteriores sem resultado, iguais a uma pendente de verdade. Nenhuma tela lê esse campo hoje; se uma tela de detalhe da rodada ou um badge "pendente" surgir, expor um campo calculado `encerrada` usando `ordem_rodada_atual`.
+- **Diálogo de resultado aberto durante a criação de uma rodada.** O diálogo do Resumo guarda o `rodada_pendente_id` ao abrir; se a gestão criar outra rodada nesse intervalo, salvar dá 409 (comportamento esperado pela RN-13). Conferir se a mensagem aparece e se o Resumo é recarregado.
+- **Setup repetido nos testes de registro do `FormFactorServiceImpl`.** Cada teste monta 8 `AsyncMock`s e o caso/usuário à mão; uma fábrica `(service, mocks)` com `obter_rodada_atual_do_caso` apontando para a rodada do teste reduziria ~40 linhas por teste (complementa o item da montagem repetida acima).
 - **Correção pós-fechamento.** A migration `e8f901a2b3c4` passou a usar `DROP CONSTRAINT IF EXISTS ck_execucoes_sdf_origem`. Bancos que aplicaram uma versão antiga de `a4b5c6d7e8f9` não têm essa constraint, e a API não subia (o login dava 500 pelo proxy do Vite).

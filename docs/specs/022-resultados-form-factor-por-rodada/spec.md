@@ -69,6 +69,17 @@ anteriores para consulta, mesmo quando uma nova rodada é registrada para o mesm
 - RN-11: Um DEV pode alterar diretamente para `Cancelled` o Status dos TCs atribuídos a ele. Admin da
   unidade, gerente e KP autorizados no escopo também podem cancelar diretamente qualquer TC do
   projeto. O cancelamento não apaga o TC, seus resultados ou seu histórico de rodadas.
+- RN-12: No Resumo do Form Factor, as colunas de modelo de um TC que participou de alguma rodada mostram
+  somente os resultados da rodada mais recente dele (e de importações SDF reportadas depois dela). Quando o
+  TC entra numa nova rodada, as colunas de modelo ficam vazias até que os resultados dessa rodada sejam
+  registrados. Os modelos que não forem preenchidos nessa rodada também continuam vazios: o Resumo não
+  mistura resultados de rodadas diferentes. Os filtros do Resumo por SDF ID, modelo e resultado seguem essa
+  mesma regra. O histórico (Results) continua mostrando todas as rodadas.
+- RN-13: A rodada atual de um TC é a rodada mais recente em que ele foi capturado. Só a rodada atual recebe
+  resultados. Quando o TC entra numa rodada nova, as rodadas anteriores em que ele ainda não tinha resultados
+  ficam encerradas sem resultado: continuam no histórico, mas não aparecem mais como pendentes no Resumo e não
+  aceitam lançamento. O Resumo mostra o SDF ID da rodada atual e oferece a ação de registrar só enquanto ela
+  estiver pendente.
 
 ## Critérios de aceite
 
@@ -122,6 +133,18 @@ anteriores para consulta, mesmo quando uma nova rodada é registrada para o mesm
   permanece consultável.
 - **CA-18 (falha):** Dado um DEV sem atribuição ao TC, quando tenta mudar seu Status para `Cancelled`,
   então a operação é recusada e o Status permanece inalterado.
+- **CA-19:** Dado um TC com `PASS` no SM-333 na rodada `SDF-002` que entra numa nova rodada `SDF-003`,
+  quando alguém consulta o Resumo, então a linha mostra `SDF-003` e as colunas de modelo vazias. Quando os
+  resultados da `SDF-003` são registrados só para o SM-123, então o Resumo mostra apenas o SM-123, e a aba
+  Results continua mostrando o `PASS` do SM-333 na `SDF-002`.
+- **CA-20 (falha):** Dado um TC cujo único `PASS` é de uma rodada anterior à rodada atual, quando alguém filtra
+  o Resumo por esse modelo com resultado `PASS`, então o TC não aparece no resultado do filtro.
+- **CA-21:** Dado um TC capturado nas rodadas `SDF-002`, `SDF-003` e `SDF-005` sem resultados, quando os
+  resultados são registrados pela ação da linha, então eles vão para a `SDF-005`. Depois disso, a linha mostra
+  `SDF-005` com esses resultados e não oferece mais a ação de registrar. As rodadas `SDF-002` e `SDF-003`
+  continuam no histórico sem resultado.
+- **CA-22 (falha):** Dado um TC que já está numa rodada mais recente, quando alguém tenta registrar resultados
+  para ele numa rodada anterior, então a API recusa com conflito e nada é gravado.
 
 ## Fora de escopo
 

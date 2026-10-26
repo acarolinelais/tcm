@@ -21,7 +21,7 @@ async def test_query_form_factor_monta_uma_linha_por_caso_com_resultado_por_mode
     session.execute.side_effect = [
         _result(scalar=1),
         _result(rows=[(caso_id, "Clock_001", responsavel_id, backup_id)]),
-        _result(rows=[(caso_id, rodada_id, None)]),
+        _result(rows=[(caso_id, rodada_id, None, False)]),
         _result(
             rows=[
                 (caso_id, s25, "Pass", "SDF-1", datetime(2026, 3, 20), importado_em),

@@ -3,6 +3,7 @@ from uuid import UUID
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.dialects.postgresql import distinct_on
+from sqlalchemy.orm import aliased
 
 from src.domain.common.paged_result import PagedResult
 from src.domain.entities.resultado_form_factor import ResultadoFormFactor
@@ -24,6 +25,10 @@ from src.infrastructure.data.models.resultado_form_factor_model import Resultado
 from src.infrastructure.data.models.rodada_form_factor_model import RodadaFormFactorModel
 from src.infrastructure.data.models.time_model import TimeModel
 from src.infrastructure.data.models.usuario_model import UsuarioModel
+from src.infrastructure.repositories.execucao_sdf_repository import (
+    filtros_execucao_de_rodada_ativa,
+    ordem_rodada_atual,
+)
 from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
 
 
@@ -612,6 +617,22 @@ class ResultadoFormFactorRepositoryImpl(
                 ),
             )
         )
+        # Corte do caso (RN-12): o Resumo ignora resultados anteriores à rodada mais recente dele.
+        execucao_rodada = aliased(ExecucaoSdfModel)
+        corte_rodada = (
+            select(func.max(execucao_rodada.data_reportada))
+            .join(RodadaFormFactorModel, RodadaFormFactorModel.id == execucao_rodada.rodada_id)
+            .where(
+                execucao_rodada.caso_teste_id == ExecucaoSdfModel.caso_teste_id,
+                *filtros_execucao_de_rodada_ativa(execucao_rodada, unidade_id),
+            )
+            .correlate(ExecucaoSdfModel)
+            .scalar_subquery()
+        )
+        # Caso sem rodada não tem corte: datetime.min deixa todos os resultados passarem.
+        resultados_validos = resultados_validos.where(
+            ExecucaoSdfModel.data_reportada >= func.coalesce(corte_rodada, datetime.min)
+        )
         if inicio is not None:
             resultados_validos = resultados_validos.where(ExecucaoSdfModel.data_reportada >= inicio)
         if fim is not None:
@@ -671,37 +692,31 @@ class ResultadoFormFactorRepositoryImpl(
         if not casos:
             return PagedResult([], page, page_size, total)
         casos_ids = [caso_id for caso_id, _, _, _ in casos]
-        # Por caso: (rodada pendente, SDF ID informado nela) da rodada mais recente.
+        # Por caso: (rodada, SDF ID informado nela) da rodada atual (RN-13), a mais recente do caso,
+        # enquanto ela ainda não tem resultados; rodadas anteriores sem resultado ficam encerradas.
         rodadas_pendentes = {
             caso_id: (rodada_id, sdf_id_rodada)
-            for caso_id, rodada_id, sdf_id_rodada in (
+            for caso_id, rodada_id, sdf_id_rodada, registrada in (
                 await self.session.execute(
                     select(
                         ExecucaoSdfModel.caso_teste_id,
                         ExecucaoSdfModel.rodada_id,
                         ExecucaoSdfModel.sdf_id,
+                        ExecucaoSdfModel.resultados_registrados,
                     )
                     .join(
                         RodadaFormFactorModel,
                         RodadaFormFactorModel.id == ExecucaoSdfModel.rodada_id,
                     )
                     .where(
-                        ExecucaoSdfModel.unidade_id == unidade_id,
                         ExecucaoSdfModel.caso_teste_id.in_(casos_ids),
-                        ExecucaoSdfModel.ativo.is_(True),
-                        ExecucaoSdfModel.resultados_registrados.is_(False),
-                        RodadaFormFactorModel.unidade_id == unidade_id,
-                        RodadaFormFactorModel.projeto_id == projeto_id,
-                        RodadaFormFactorModel.ativo.is_(True),
+                        *filtros_execucao_de_rodada_ativa(ExecucaoSdfModel, unidade_id),
                     )
                     .ext(distinct_on(ExecucaoSdfModel.caso_teste_id))
-                    .order_by(
-                        ExecucaoSdfModel.caso_teste_id,
-                        RodadaFormFactorModel.created_at.desc(),
-                        RodadaFormFactorModel.id,
-                    )
+                    .order_by(ExecucaoSdfModel.caso_teste_id, *ordem_rodada_atual(ExecucaoSdfModel))
                 )
             ).all()
+            if not registrada
         }
 
         # Resultado mais recente de cada par (caso, modelo); empate vence a importação mais recente,

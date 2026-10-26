@@ -13,3 +13,7 @@ class ExecucaoSdfRepository(RepositoryBase[ExecucaoSdf], Protocol):
     async def obter_por_rodada_e_caso(
         self, unidade_id: UUID, rodada_id: UUID, caso_teste_id: UUID
     ) -> ExecucaoSdf | None: ...
+
+    async def obter_rodada_atual_do_caso(
+        self, unidade_id: UUID, caso_teste_id: UUID
+    ) -> UUID | None: ...

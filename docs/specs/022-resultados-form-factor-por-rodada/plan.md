@@ -109,6 +109,19 @@ um perfil personalizado que receba `form_factor.importar` não ganha essa opera�
 - E2E cobrindo Admin/Manager/KP criando rodada e importando planilha, DEV lançando resultado do TC
   principal e do Backup, negação para TC alheio e consulta de duas rodadas do mesmo TC.
 
+**Correção do Resumo (RN-12):** cada TC tem um corte, que é a `data_reportada` da execução da sua rodada
+mais recente (a execução da rodada nasce com a data de criação da rodada). Em
+`listar_form_factor_por_projeto`, a subconsulta `resultados_validos` passa a ignorar execuções anteriores a
+esse corte. Assim, as células, a data, o SDF ID e os filtros por SDF/modelo/resultado usam a mesma base. TCs
+que nunca participaram de rodada não têm corte e mantêm o comportamento anterior (último resultado por
+modelo). O mock (`core/mock/database.ts`, `formFactor.listar`) aplica o mesmo corte.
+
+**Rodada atual (RN-13):** a rodada pendente do Resumo passa a ser a execução de rodada mais recente do TC
+(mesma chave do corte, `data_reportada`), e só conta como pendente se ainda não tiver resultados. Não há
+migration: as execuções antigas sem resultado continuam como estão e deixam de ser oferecidas. O service
+`registrar_resultados_rodada` consulta a rodada mais recente do caso (`ExecucaoSdfRepository`) e recusa com
+`ConflictException` o registro em outra rodada. O mock faz o mesmo em `listar` e `registrarResultadosRodada`.
+
 ## Critérios de aceite → testes
 
 | CA | Nível | Verificação |
@@ -119,6 +132,8 @@ um perfil personalizado que receba `form_factor.importar` não ganha essa opera�
 | CA-04, CA-11 | Funcional/integração | Resultados por TC/modelo são atômicos; campo vazio e TC sem resultados ficam no histórico; resultado inválido não grava parcial |
 | CA-05, CA-06 | Integração/E2E | Segunda rodada não apaga a primeira; TCs fora de `In Validation` continuam consultáveis no histórico |
 | CA-13 a CA-18 | Domínio/funcional/E2E | Fluxo de Status, transições automáticas após resultados, resultados parciais, retorno para validação e cancelamento autorizado |
+| CA-19, CA-20 | Integração/unidade (mock) | Nova rodada esvazia as colunas do Resumo; registro parcial não traz de volta resultados da rodada anterior; filtro por resultado ignora rodadas anteriores; histórico preservado |
+| CA-21, CA-22 | Integração/unidade/mock | Rodada pendente do Resumo é a mais recente do TC; registro em rodada anterior é recusado sem gravar |
 
 ## Riscos e decisões pendentes
 

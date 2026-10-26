@@ -954,6 +954,13 @@ export const mockModelosDispositivoApi = {
   },
 };
 
+/** Execução da rodada atual do TC (a mais recente), como `obter_rodada_atual_do_caso` na API. */
+function execucaoDaRodadaAtual(db: Database, casoTesteId: string) {
+  return db.execucoesFormFactor
+    .filter((execucao) => execucao.caso_teste_id === casoTesteId)
+    .sort((a, b) => b.data_reportada.localeCompare(a.data_reportada) || a.execucao_id.localeCompare(b.execucao_id))[0];
+}
+
 function semanaIso(value: string) {
   const date = new Date(value);
   date.setHours(0, 0, 0, 0);
@@ -1126,18 +1133,21 @@ export const mockFormFactorApi = {
       .filter((testCase) => testCase.projeto_id === projectId && testCase.ativo && testCase.status === "InValidation" && (!responsavelId || testCase.responsavel_id === responsavelId) && (!tcId || testCase.tc_id.toLocaleLowerCase().includes(tcId.toLocaleLowerCase())))
       .sort((a, b) => a.tc_id.localeCompare(b.tc_id))
       .flatMap<LinhaFormFactor>((testCase) => {
+        // Corte do caso (RN-12 da 022): o Resumo ignora resultados anteriores à rodada mais recente dele.
+        const execucaoAtual = execucaoDaRodadaAtual(db, testCase.id);
+        const corte = execucaoAtual?.data_reportada;
         // Ordem invertida antes do sort estável: na mesma data vence a importação mais recente, como na API.
         const results = [...db.formFactor].reverse()
-          .filter((result) => result.tc_id === testCase.tc_id && linkedModels.has(result.modelo_dispositivo_id) && (!week || semanaIso(result.data_reportada) === week))
+          .filter((result) => result.tc_id === testCase.tc_id && linkedModels.has(result.modelo_dispositivo_id) && (!corte || result.data_reportada >= corte) && (!week || semanaIso(result.data_reportada) === week))
           .sort((a, b) => b.data_reportada.localeCompare(a.data_reportada));
         if (week && !results.length) return [];
         if (sdfId && !results.some((result) => (result.sdf_id ?? "").toLocaleLowerCase().includes(sdfId.toLocaleLowerCase()))) return [];
         if (modeloDispositivoId && !results.some((result) => result.modelo_dispositivo_id === modeloDispositivoId && (!resultado || result.resultado.toLocaleLowerCase() === resultado.toLocaleLowerCase()))) return [];
         const resultados: Record<string, string> = {};
         results.forEach((result) => { resultados[result.modelo_dispositivo_id] ??= result.resultado; });
-        const rodadasPendentes = new Set(db.execucoesFormFactor.filter((execucao) => execucao.caso_teste_id === testCase.id && !execucao.resultados_registrados).map((execucao) => execucao.rodada_id));
-        const rodadaPendente = db.rodadasFormFactor.filter((rodada) => rodadasPendentes.has(rodada.id)).sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
-        return [{ caso_teste_id: testCase.id, tc_id: testCase.tc_id, responsavel_id: testCase.responsavel_id, backup_id: testCase.backup_id, rodada_pendente_id: rodadaPendente?.id ?? null, sdf_id: rodadaPendente?.sdf_id ?? results[0]?.sdf_id ?? null, data_reportada: results[0]?.data_reportada ?? null, resultados }];
+        // RN-13 da 022: só a rodada atual fica pendente; as anteriores sem resultado ficam encerradas.
+        const pendente = execucaoAtual && !execucaoAtual.resultados_registrados ? execucaoAtual : undefined;
+        return [{ caso_teste_id: testCase.id, tc_id: testCase.tc_id, responsavel_id: testCase.responsavel_id, backup_id: testCase.backup_id, rodada_pendente_id: pendente?.rodada_id ?? null, sdf_id: pendente?.sdf_id ?? results[0]?.sdf_id ?? null, data_reportada: results[0]?.data_reportada ?? null, resultados }];
       });
     const casosElegiveis = db.casosTeste
       .filter((testCase) => testCase.projeto_id === projectId && testCase.ativo && testCase.status === "InValidation")
@@ -1213,6 +1223,7 @@ export const mockFormFactorApi = {
     if (execucao.resultados_registrados) throw new Error("Os resultados deste Test Case já foram registrados na rodada.");
     const gestor = ["ADMIN_UNIDADE", "GERENTE", "KP"].includes(profile?.codigo ?? "");
     if (!gestor && testCase.responsavel_id !== user.id && testCase.backup_id !== user.id) throw new Error("Você só pode registrar resultados dos TCs atribuídos a você.");
+    if (execucaoDaRodadaAtual(db, testCase.id) !== execucao) throw new Error("Este Test Case está numa rodada mais recente. Registre os resultados nela.");
     const linked = new Set(db.projetoModelos.filter((item) => item.projeto_id === projectId && item.ativo !== false).map((item) => item.modelo_dispositivo_id));
     const entries = Object.entries(input.resultados);
     if (entries.some(([modelId, value]) => !linked.has(modelId) || !["PASS", "FAIL"].includes(value))) throw new Error("Modelo ou resultado inválido.");
