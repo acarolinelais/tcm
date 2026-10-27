@@ -93,63 +93,66 @@ export function DataTable<T extends object>({ columns, items, getKey = chavePorI
       className={cn("flex min-h-0 flex-1 flex-col rounded-[30px] px-[5px] pb-0", className)}
     >
       <Table.ScrollContainer className="thin-scroll flex min-h-0 flex-1 flex-col overflow-auto">
-        <Table.Content
-          aria-label={ariaLabel}
-          selectionMode={comSelecao ? "multiple" : "none"}
-          selectionBehavior="toggle"
-          selectedKeys={comSelecao ? new Set(selecionaveis.filter((id) => selection!.selectedKeys.has(id))) : undefined}
-          onSelectionChange={aoSelecionar}
-          disabledKeys={[...motivos.keys()]}
-          disabledBehavior="selection"
-          className="shrink-0"
-        >
-          <Table.Header className="sticky top-0 z-10 bg-surface-secondary">
-            {comSelecao ? (
-              <Table.Column className="w-10 px-0 ps-4 after:hidden">
-                <CaixaSelecao label={selection!.selectAllLabel} className="bg-white shadow-[0_1px_2px_rgba(0,0,0,0.12)]" />
-              </Table.Column>
-            ) : null}
-            {columns.map((coluna) => (
-              <Table.Column key={coluna.id} id={coluna.id} isRowHeader={coluna.isRowHeader} className={cn("h-11 px-2.5 py-0 text-[14px] font-medium leading-5 text-muted first:ps-5 after:h-[21px] last:after:hidden", coluna.className)}>
-                {coluna.header}
-              </Table.Column>
-            ))}
-          </Table.Header>
-          {/* O React Aria guarda as linhas em cache pela identidade dos itens; as células dependem também de estado
-              de fora da linha, declarado em `rowDependencies` (ou, na falta dele, as próprias colunas). */}
-          <Table.Body items={items} dependencies={[...(rowDependencies ?? [columns]), comSelecao, motivos.size, selection?.rowLabel]} className={cantosCorpo}>
-            {(item) => {
-              const chave = getKey(item);
-              const motivo = motivos.get(chave);
-              const idMotivo = `${prefixoId}-${chave}-motivo`;
-              return (
-                <Table.Row id={chave} className="h-10">
-                  {comSelecao ? (
-                    <Table.Cell className="w-10 px-0 ps-4">
-                      {motivo ? (
-                        <Tooltip delay={300} closeDelay={0}>
-                          <Tooltip.Trigger className="flex w-fit">
-                            <CaixaSelecao label={selection!.rowLabel} describedBy={idMotivo} />
-                          </Tooltip.Trigger>
-                          <Tooltip.Content className="text-[12px]">{motivo}</Tooltip.Content>
-                          <span id={idMotivo} hidden>{motivo}</span>
-                        </Tooltip>
-                      ) : <CaixaSelecao label={selection!.rowLabel} />}
-                    </Table.Cell>
-                  ) : null}
-                  {columns.map((coluna) => (
-                    <Table.Cell key={coluna.id} className={cn("whitespace-nowrap px-2.5 py-0 text-[14px] leading-5 text-[#454442] first:ps-5", coluna.className)}>
-                      {coluna.cell(item)}
-                    </Table.Cell>
-                  ))}
-                </Table.Row>
-              );
-            }}
-          </Table.Body>
-        </Table.Content>
-        {/* Corpo branco até o fim da moldura: com poucas linhas, ou no lugar delas quando há um estado. */}
-        <div className={cn("flex min-h-6 flex-1 flex-col rounded-b-[25px] bg-white", !items.length && "rounded-t-[25px]")}>
-          {state ? <div className="flex flex-1 items-center justify-center p-6 text-center text-[14px] text-muted">{state}</div> : null}
+        {/* Tabela e corpo branco com a mesma largura: a da tabela quando ela passa da moldura (scroll horizontal). */}
+        <div className="flex w-max min-w-full flex-1 flex-col">
+          <Table.Content
+            aria-label={ariaLabel}
+            selectionMode={comSelecao ? "multiple" : "none"}
+            selectionBehavior="toggle"
+            selectedKeys={comSelecao ? new Set(selecionaveis.filter((id) => selection!.selectedKeys.has(id))) : undefined}
+            onSelectionChange={aoSelecionar}
+            disabledKeys={[...motivos.keys()]}
+            disabledBehavior="selection"
+            className="shrink-0"
+          >
+            <Table.Header className="sticky top-0 z-10 bg-surface-secondary">
+              {comSelecao ? (
+                <Table.Column className="w-10 px-0 ps-4 after:hidden">
+                  <CaixaSelecao label={selection!.selectAllLabel} className="bg-white shadow-[0_1px_2px_rgba(0,0,0,0.12)]" />
+                </Table.Column>
+              ) : null}
+              {columns.map((coluna) => (
+                <Table.Column key={coluna.id} id={coluna.id} isRowHeader={coluna.isRowHeader} className={cn("h-11 px-2.5 py-0 text-[14px] font-medium leading-5 text-muted first:ps-5 after:h-[21px] last:after:hidden", coluna.className)}>
+                  {coluna.header}
+                </Table.Column>
+              ))}
+            </Table.Header>
+            {/* O React Aria guarda as linhas em cache pela identidade dos itens; as células dependem também de estado
+                de fora da linha, declarado em `rowDependencies` (ou, na falta dele, as próprias colunas). */}
+            <Table.Body items={items} dependencies={[...(rowDependencies ?? [columns]), comSelecao, motivos.size, selection?.rowLabel]} className={cantosCorpo}>
+              {(item) => {
+                const chave = getKey(item);
+                const motivo = motivos.get(chave);
+                const idMotivo = `${prefixoId}-${chave}-motivo`;
+                return (
+                  <Table.Row id={chave} className="h-10">
+                    {comSelecao ? (
+                      <Table.Cell className="w-10 px-0 ps-4">
+                        {motivo ? (
+                          <Tooltip delay={300} closeDelay={0}>
+                            <Tooltip.Trigger className="flex w-fit">
+                              <CaixaSelecao label={selection!.rowLabel} describedBy={idMotivo} />
+                            </Tooltip.Trigger>
+                            <Tooltip.Content className="text-[12px]">{motivo}</Tooltip.Content>
+                            <span id={idMotivo} hidden>{motivo}</span>
+                          </Tooltip>
+                        ) : <CaixaSelecao label={selection!.rowLabel} />}
+                      </Table.Cell>
+                    ) : null}
+                    {columns.map((coluna) => (
+                      <Table.Cell key={coluna.id} className={cn("whitespace-nowrap px-2.5 py-0 text-[14px] leading-5 text-[#454442] first:ps-5", coluna.className)}>
+                        {coluna.cell(item)}
+                      </Table.Cell>
+                    ))}
+                  </Table.Row>
+                );
+              }}
+            </Table.Body>
+          </Table.Content>
+          {/* Corpo branco até o fim da moldura: com poucas linhas, ou no lugar delas quando há um estado. */}
+          <div className={cn("flex min-h-6 flex-1 flex-col rounded-b-[25px] bg-white", !items.length && "rounded-t-[25px]")}>
+            {state ? <div className="flex flex-1 items-center justify-center p-6 text-center text-[14px] text-muted">{state}</div> : null}
+          </div>
         </div>
       </Table.ScrollContainer>
       {pagination ? <Table.Footer className="p-0">{pagination}</Table.Footer> : <div className="h-[5px]" />}
