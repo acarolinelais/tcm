@@ -1,6 +1,6 @@
 # 022. Redesign das telas de Projects e Teams no padrão HeroUI: Spec
 
-- **Status:** Aprovada
+- **Status:** Concluída (e2e com API real pendentes, ver backlog do `tasks.md`)
 - **Data:** 2026-10-26
 - **ADRs relacionados:** 0015, 0022, 0034, 0037
 - **Evolui:** specs 011, 012, 017, 018 e 020 (telas de Projects e Teams)
