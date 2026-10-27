@@ -153,14 +153,14 @@ def test_criar_caso_com_status_invalido_levanta_erro(status):
         )
 
 
-def test_transferir_para_backup_torna_backup_nulo():
+def test_transferir_para_backup_troca_responsavel_e_backup():
     caso = criar_caso()
-    backup_id = caso.backup_id
+    responsavel_id, backup_id = caso.responsavel_id, caso.backup_id
 
     caso.transferir_para_backup()
 
     assert caso.responsavel_id == backup_id
-    assert caso.backup_id is None
+    assert caso.backup_id == responsavel_id
 
 
 @pytest.mark.parametrize(
