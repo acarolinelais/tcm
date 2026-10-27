@@ -51,7 +51,7 @@ describe("ResultadosGeraisPage", () => {
     await waitFor(() => expect(useFormFactorResultadosGlobais).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 }), perfil, true));
 
     await user.click(screen.getByRole("button", { name: "Filter by TC ID" }));
-    await user.type(screen.getByRole("textbox", { name: "TC ID" }), "TC-8{Enter}");
+    await user.type(await screen.findByRole("searchbox", { name: "TC ID" }), "TC-8{Enter}");
 
     await waitFor(() => expect(useFormFactorResultadosGlobais).toHaveBeenLastCalledWith(
       expect.objectContaining({ tcId: "TC-8", page: 1 }), perfil, true,

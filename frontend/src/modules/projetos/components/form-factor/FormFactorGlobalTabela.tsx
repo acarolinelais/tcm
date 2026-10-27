@@ -1,16 +1,23 @@
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
+import { History } from "lucide-react";
+import type { TFunction } from "i18next";
 
 import { formatDate } from "@/core/i18n/format";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
-import { TableColumnFilter } from "@/shared/ui/table-column-filter";
+import { comOpcaoTodos } from "@/shared/lib/opcoes";
+import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
+import { DataTableFilter } from "@/shared/ui/data-table-filter";
+import { DataTablePagination } from "@/shared/ui/data-table-pagination";
+import { estadoDaTabela } from "@/shared/ui/data-table-state";
 import type { Projeto } from "../../model/projeto";
 import type { FormFactorGlobal, FiltrosFormFactorGlobal, FormFactorResultadosGlobais } from "../../model/projeto";
-import { FormFactorResultBadge } from "./FormFactorResultBadge";
+import { colunasPorModelo } from "./colunas-form-factor";
 
 type Filtro = keyof Pick<FiltrosFormFactorGlobal, "projetoId" | "responsavelId" | "tcId" | "sdfId" | "modeloDispositivoId" | "resultado" | "origem">;
+type DadosGlobais = FormFactorGlobal | FormFactorResultadosGlobais;
+type Linha = DadosGlobais["items"][number];
 
-interface Props<T> {
+interface Props<T extends DadosGlobais> {
   dados: T | undefined;
   carregando: boolean;
   erro: boolean;
@@ -25,103 +32,97 @@ interface Props<T> {
   onPageSizeChange: (size: number) => void;
 }
 
-function ProjetoCell({ projetoId, nome }: { projetoId: string; nome: string }) {
-  return <Link to={`/projetos/${projetoId}`} className="font-medium text-primary underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{nome}</Link>;
-}
+const SEM_LINHAS: Linha[] = [];
 
-function ResultadoCell({ valor, aplicavel }: { valor: string | undefined; aplicavel: boolean }) {
-  const { t } = useTranslation();
-  if (!aplicavel) return <span className="text-muted-foreground" aria-label={t("notApplicable")}>N/A</span>;
-  if (!valor) return <span className="text-muted-foreground" aria-label={t("noResult")}>—</span>;
-  return <FormFactorResultBadge value={valor} />;
-}
-
-function FiltrosCabecalho({ dados, projetos, filtros, onFiltroChange }: Pick<Props<FormFactorGlobal>, "dados" | "projetos" | "filtros" | "onFiltroChange">) {
-  const { t } = useTranslation();
+/** Colunas que o Resumo e o histórico compartilham: projeto, TC, SDF ID e responsável, com os filtros no cabeçalho. */
+function colunasComuns<T extends Linha>(t: TFunction, { dados, projetos, filtros, onFiltroChange }: Props<DadosGlobais>): DataTableColumn<T>[] {
   const responsaveis = dados?.responsaveis ?? [];
-  const modelos = dados?.modelos ?? [];
-  return <>
-    <TableHead className="w-14 px-4" aria-hidden="true" />
-    <TableHead><TableColumnFilter label={t("project")} value={filtros.projetoId ?? ""} onChange={(value) => onFiltroChange("projetoId", value)} options={[{ value: "", label: t("all") }, ...projetos.map((projeto) => ({ value: projeto.id, label: projeto.nome }))]} searchable /></TableHead>
-    <TableHead><TableColumnFilter label={t("tcId")} value={filtros.tcId ?? ""} onChange={(value) => onFiltroChange("tcId", value)} /></TableHead>
-    <TableHead><TableColumnFilter label={t("sdfId")} value={filtros.sdfId ?? ""} onChange={(value) => onFiltroChange("sdfId", value)} /></TableHead>
-    <TableHead><TableColumnFilter label={t("assignee")} value={filtros.responsavelId ?? ""} onChange={(value) => onFiltroChange("responsavelId", value)} options={[{ value: "", label: t("all") }, ...responsaveis.map((responsavel) => ({ value: responsavel.id, label: responsavel.identificador }))]} searchable /></TableHead>
-    {modelos.map((modelo) => <TableHead key={modelo.id}>
-      <div className="flex items-center gap-1">{modelo.nome}
-        <TableColumnFilter label="" accessibleLabel={t("filterResultForModel", { model: modelo.nome })} value={filtros.modeloDispositivoId === modelo.id ? filtros.resultado ?? "" : ""} onChange={(value) => { onFiltroChange("modeloDispositivoId", value ? modelo.id : ""); onFiltroChange("resultado", value); }} options={[{ value: "", label: t("all") }, { value: "PASS", label: "PASS" }, { value: "FAIL", label: "FAIL" }]} />
-      </div>
-    </TableHead>)}
-    <TableHead>{t("date")}</TableHead>
-  </>;
+  return [
+    {
+      id: "projeto",
+      header: <DataTableFilter label={t("project")} value={filtros.projetoId ?? ""} onChange={(value) => onFiltroChange("projetoId", value)} options={comOpcaoTodos(t("all"), projetos.map((projeto) => ({ value: projeto.id, label: projeto.nome })))} searchable />,
+      cell: (linha) => <Link to={`/projetos/${linha.projeto_id}`} className="text-accent underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{linha.projeto_nome}</Link>,
+    },
+    { id: "tcId", isRowHeader: true, header: <DataTableFilter label={t("tcId")} value={filtros.tcId ?? ""} onChange={(value) => onFiltroChange("tcId", value)} />, cell: (linha) => linha.tc_id },
+    { id: "sdfId", header: <DataTableFilter label={t("sdfId")} value={filtros.sdfId ?? ""} onChange={(value) => onFiltroChange("sdfId", value)} />, cell: (linha) => linha.sdf_id ?? "—" },
+    {
+      id: "assignee",
+      header: <DataTableFilter label={t("assignee")} value={filtros.responsavelId ?? ""} onChange={(value) => onFiltroChange("responsavelId", value)} options={comOpcaoTodos(t("all"), responsaveis.map((responsavel) => ({ value: responsavel.id, label: responsavel.identificador })))} searchable />,
+      cell: (linha) => responsaveis.find((item) => item.id === linha.responsavel_id)?.identificador ?? "—",
+    },
+  ];
 }
 
-function TableStates({ carregando, erro, temLinhas, temFiltros, onLimparFiltros, mensagemErro }: {
-  carregando: boolean; erro: boolean; temLinhas: boolean; temFiltros: boolean;
-  onLimparFiltros: () => void; mensagemErro: string;
-}) {
-  const { t } = useTranslation();
-  if (carregando) return <p role="status" className="p-5 text-sm text-muted-foreground">{t("loading")}</p>;
-  if (erro) return <p role="alert" className="p-5 text-sm text-destructive">{mensagemErro}</p>;
-  if (temLinhas) return null;
-  return <div className="flex min-h-40 flex-col items-center justify-center gap-2 text-center">
-    <p className="text-sm text-muted-foreground">{t(temFiltros ? "noGlobalResultsFiltered" : "noGlobalResults")}</p>
-    {temFiltros && <button type="button" className="rounded-md px-3 py-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={onLimparFiltros}>{t("clearFilters")}</button>}
-  </div>;
+/** Um modelo por coluna; o que não pertence ao projeto da linha aparece como N/A. */
+function colunasDosModelos<T extends Linha>(t: TFunction, { dados, filtros, onFiltroChange }: Props<DadosGlobais>): DataTableColumn<T>[] {
+  return colunasPorModelo<T>(
+    t,
+    dados?.modelos ?? [],
+    { modeloId: filtros.modeloDispositivoId ?? "", resultado: filtros.resultado ?? "" },
+    (modeloId, valor) => { onFiltroChange("modeloDispositivoId", valor ? modeloId : ""); onFiltroChange("resultado", valor); },
+    (linha, modeloId) => linha.modelos_ids.includes(modeloId),
+  );
 }
 
+function estadoGlobal(t: TFunction, props: Props<DadosGlobais>, vazio: boolean) {
+  return estadoDaTabela({
+    isLoading: props.carregando,
+    isError: props.erro,
+    isEmpty: vazio,
+    hasFilters: props.temFiltros,
+    onClearFilters: props.onLimparFiltros,
+    loadingLabel: t("loading"),
+    errorLabel: t("resultsLoadError"),
+    clearFiltersLabel: t("clearFilters"),
+    empty: { icon: <History aria-hidden="true" className="size-5" />, title: t("noGlobalResults"), hint: t("noGlobalResultsHint") },
+    filtered: { title: t("noResults"), hint: t("noGlobalResultsFiltered") },
+  });
+}
+
+/** Resumo: o resultado mais recente de cada Test Case, por modelo. */
 export function FormFactorGlobalTabela(props: Props<FormFactorGlobal>) {
   const { t } = useTranslation();
-  const rows = props.erro ? [] : props.dados?.items ?? [];
-  const modelos = props.dados?.modelos ?? [];
-  return <TableLayout>
-    <Table className="min-w-max" containerClassName={rows.length ? "thin-scroll min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
-      <TableHeader><TableRow>
-        <FiltrosCabecalho dados={props.dados} projetos={props.projetos} filtros={props.filtros} onFiltroChange={props.onFiltroChange} />
-      </TableRow></TableHeader>
-      {rows.length > 0 && <TableBody>{rows.map((row, index) => {
-        const aplicaveis = new Set(row.modelos_ids);
-        return <TableRow key={row.caso_teste_id} className="transition-colors hover:bg-secondary/30 motion-reduce:transition-none">
-          <TableCell className="w-14 px-4 text-right tabular-nums text-muted-foreground">{String((props.page - 1) * props.pageSize + index + 1).padStart(2, "0")}</TableCell>
-          <TableCell><ProjetoCell projetoId={row.projeto_id} nome={row.projeto_nome} /></TableCell>
-          <TableCell className="font-medium">{row.tc_id}</TableCell>
-          <TableCell className="text-muted-foreground">{row.sdf_id ?? "—"}</TableCell>
-          <TableCell className="text-muted-foreground">{props.dados?.responsaveis.find((item) => item.id === row.responsavel_id)?.identificador ?? "—"}</TableCell>
-          {modelos.map((modelo) => <TableCell key={modelo.id}><ResultadoCell valor={row.resultados[modelo.id]} aplicavel={aplicaveis.has(modelo.id)} /></TableCell>)}
-          <TableCell className="whitespace-nowrap text-muted-foreground">{row.data_reportada ? formatDate(row.data_reportada, { dateStyle: "short" }) : "—"}</TableCell>
-        </TableRow>;
-      })}</TableBody>}
-    </Table>
-    <TableStates carregando={props.carregando} erro={props.erro} temLinhas={rows.length > 0} temFiltros={props.temFiltros} onLimparFiltros={props.onLimparFiltros} mensagemErro={t("resultsLoadError")} />
-    <TablePagination page={props.page} pageSize={props.pageSize} totalCount={props.dados?.total_count ?? 0} onPageChange={props.onPageChange} onPageSizeChange={props.onPageSizeChange} />
-  </TableLayout>;
+  const linhas = props.erro ? SEM_LINHAS : props.dados?.items ?? SEM_LINHAS;
+  const primeiraDaPagina = (props.page - 1) * props.pageSize;
+  const colunas: DataTableColumn<Linha>[] = [
+    { id: "numero", header: "", className: "w-12 text-right tabular-nums text-muted after:hidden", cell: (linha) => String(primeiraDaPagina + linhas.indexOf(linha) + 1).padStart(2, "0") },
+    ...colunasComuns<Linha>(t, props),
+    ...colunasDosModelos<Linha>(t, props),
+    { id: "data", header: t("date"), cell: (linha) => linha.data_reportada ? formatDate(linha.data_reportada, { dateStyle: "short" }) : "—" },
+  ];
+  return <DataTable
+    aria-label={t("formFactorSummary")}
+    columns={colunas}
+    items={linhas}
+    getKey={(linha) => linha.caso_teste_id}
+    state={estadoGlobal(t, props, !linhas.length)}
+    pagination={<DataTablePagination page={props.page} pageSize={props.pageSize} totalCount={props.dados?.total_count ?? 0} onPageChange={props.onPageChange} onPageSizeChange={props.onPageSizeChange} />}
+    rowDependencies={[t, props.dados, primeiraDaPagina]}
+  />;
 }
 
+/** Histórico: uma linha por execução registrada, com a origem (SDF ou manual). */
 export function FormFactorGlobalResultadosTabela(props: Props<FormFactorResultadosGlobais>) {
   const { t } = useTranslation();
-  const rows = props.erro ? [] : props.dados?.items ?? [];
-  const modelos = props.dados?.modelos ?? [];
-  return <TableLayout>
-    <Table className="min-w-max" containerClassName={rows.length ? "thin-scroll min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
-      <TableHeader><TableRow>
-        <TableHead><TableColumnFilter label={t("project")} value={props.filtros.projetoId ?? ""} onChange={(value) => props.onFiltroChange("projetoId", value)} options={[{ value: "", label: t("all") }, ...props.projetos.map((projeto) => ({ value: projeto.id, label: projeto.nome }))]} searchable /></TableHead>
-        <TableHead><TableColumnFilter label={t("tcId")} value={props.filtros.tcId ?? ""} onChange={(value) => props.onFiltroChange("tcId", value)} /></TableHead>
-        <TableHead><TableColumnFilter label={t("sdfId")} value={props.filtros.sdfId ?? ""} onChange={(value) => props.onFiltroChange("sdfId", value)} /></TableHead>
-        <TableHead><TableColumnFilter label={t("assignee")} value={props.filtros.responsavelId ?? ""} onChange={(value) => props.onFiltroChange("responsavelId", value)} options={[{ value: "", label: t("all") }, ...(props.dados?.responsaveis ?? []).map((responsavel) => ({ value: responsavel.id, label: responsavel.identificador }))]} searchable /></TableHead>
-        <TableHead><TableColumnFilter label={t("origin")} value={props.filtros.origem ?? ""} onChange={(value) => props.onFiltroChange("origem", value)} options={[{ value: "", label: t("all") }, { value: "SDF", label: "SDF" }, { value: "MANUAL", label: t("manual") }]} /></TableHead>
-        {modelos.map((modelo) => <TableHead key={modelo.id}><div className="flex items-center gap-1">{modelo.nome}<TableColumnFilter label="" accessibleLabel={t("filterResultForModel", { model: modelo.nome })} value={props.filtros.modeloDispositivoId === modelo.id ? props.filtros.resultado ?? "" : ""} onChange={(value) => { props.onFiltroChange("modeloDispositivoId", value ? modelo.id : ""); props.onFiltroChange("resultado", value); }} options={[{ value: "", label: t("all") }, { value: "PASS", label: "PASS" }, { value: "FAIL", label: "FAIL" }]} /></div></TableHead>)}
-        <TableHead>{t("date")}</TableHead>
-      </TableRow></TableHeader>
-      {rows.length > 0 && <TableBody>{rows.map((row) => <TableRow key={row.execucao_id} className="transition-colors hover:bg-secondary/30 motion-reduce:transition-none">
-        <TableCell><ProjetoCell projetoId={row.projeto_id} nome={row.projeto_nome} /></TableCell>
-        <TableCell className="font-medium">{row.tc_id}</TableCell>
-        <TableCell className="text-muted-foreground">{row.sdf_id ?? "—"}</TableCell>
-        <TableCell className="text-muted-foreground">{props.dados?.responsaveis.find((item) => item.id === row.responsavel_id)?.identificador ?? "—"}</TableCell>
-        <TableCell>{row.origem === "MANUAL" ? t("manual") : "SDF"}</TableCell>
-        {modelos.map((modelo) => <TableCell key={modelo.id}><ResultadoCell valor={row.resultados[modelo.id]} aplicavel={row.modelos_ids.includes(modelo.id)} /></TableCell>)}
-        <TableCell className="whitespace-nowrap text-muted-foreground">{formatDate(row.data_reportada, { dateStyle: "short", timeStyle: "short" })}</TableCell>
-      </TableRow>)}</TableBody>}
-    </Table>
-    <TableStates carregando={props.carregando} erro={props.erro} temLinhas={rows.length > 0} temFiltros={props.temFiltros} onLimparFiltros={props.onLimparFiltros} mensagemErro={t("resultsLoadError")} />
-    <TablePagination page={props.page} pageSize={props.pageSize} totalCount={props.dados?.total_count ?? 0} onPageChange={props.onPageChange} onPageSizeChange={props.onPageSizeChange} />
-  </TableLayout>;
+  type Execucao = FormFactorResultadosGlobais["items"][number];
+  const execucoes: Execucao[] = props.erro ? [] : props.dados?.items ?? [];
+  const colunas: DataTableColumn<Execucao>[] = [
+    ...colunasComuns<Execucao>(t, props),
+    {
+      id: "origem",
+      header: <DataTableFilter label={t("origin")} value={props.filtros.origem ?? ""} onChange={(value) => props.onFiltroChange("origem", value)} options={comOpcaoTodos(t("all"), [{ value: "SDF", label: "SDF" }, { value: "MANUAL", label: t("manual") }])} />,
+      cell: (execucao) => execucao.origem === "MANUAL" ? t("manual") : "SDF",
+    },
+    ...colunasDosModelos<Execucao>(t, props),
+    { id: "data", header: t("date"), cell: (execucao) => formatDate(execucao.data_reportada, { dateStyle: "short", timeStyle: "short" }) },
+  ];
+  return <DataTable
+    aria-label={t("generalResultsAll")}
+    columns={colunas}
+    items={execucoes}
+    getKey={(execucao) => execucao.execucao_id}
+    state={estadoGlobal(t, props, !execucoes.length)}
+    pagination={<DataTablePagination page={props.page} pageSize={props.pageSize} totalCount={props.dados?.total_count ?? 0} onPageChange={props.onPageChange} onPageSizeChange={props.onPageSizeChange} />}
+    rowDependencies={[t, props.dados]}
+  />;
 }
