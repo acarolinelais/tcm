@@ -69,7 +69,7 @@ export function DataTable<T extends object>({ columns, items, getKey = chavePorI
               {(item) => (
                 <Table.Row id={getKey(item)} className="h-10">
                   {columns.map((coluna) => (
-                    <Table.Cell key={coluna.id} className={cn("whitespace-nowrap px-2.5 py-0 text-[14px] leading-5 text-[#454442] first:ps-5", coluna.isRowHeader && "font-medium text-[#27272A]", coluna.className)}>
+                    <Table.Cell key={coluna.id} className={cn("whitespace-nowrap px-2.5 py-0 text-[14px] leading-5 text-[#454442] first:ps-5", coluna.className)}>
                       {coluna.cell(item)}
                     </Table.Cell>
                   ))}

@@ -121,7 +121,7 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
   const membrosAtivos = (membros.data ?? []).filter((membro) => membro.ativo);
 
   return <PageCard>
-    <header className="mb-[30px] flex shrink-0 items-center justify-between gap-4"><PageTitle>{t("teams")}</PageTitle>{podeGerenciar && <Button variant="primary" onPress={() => setCriarAberto(true)}><Plus aria-hidden="true" absoluteStrokeWidth strokeWidth={1.5} className="size-4" />{t("newTeam")}</Button>}</header>
+    <header className="mb-5 flex shrink-0 items-start justify-between gap-4"><div className="min-w-0"><PageTitle className="text-accent">{t("teams")}</PageTitle><p className="mt-1.5 text-[14px] leading-5 text-muted">{t("teamsSubtitle")}</p></div>{podeGerenciar && <Button variant="primary" onPress={() => setCriarAberto(true)}><Plus aria-hidden="true" absoluteStrokeWidth strokeWidth={1.5} className="size-4" />{t("newTeam")}</Button>}</header>
     <DataTable
       aria-label={t("teams")}
       columns={colunas}
