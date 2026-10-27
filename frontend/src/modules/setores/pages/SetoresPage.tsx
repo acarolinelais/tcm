@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useOutletContext } from "react-router";
-import { Building2, Pencil, SearchX, UserRoundCheck, UserRoundX, UsersRound } from "lucide-react";
+import { Button as HeroButton } from "@heroui/react";
+import { Building2, Pencil, Plus, UserRoundCheck, UserRoundX, UsersRound } from "lucide-react";
 
 import type { PerfilAtual } from "@/core/auth/api";
 import { Button } from "@/shared/ui/button";
@@ -9,12 +10,18 @@ import { Dialog, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from "@
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { SELECT_EMPTY_VALUE, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyState, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
-import { TableColumnFilter } from "@/shared/ui/table-column-filter";
+import { comOpcaoTodos } from "@/shared/lib/opcoes";
+import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { toast } from "@/shared/lib/toast";
-import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
-import { Badge } from "@/shared/ui/badge";
-import { TableRowActions } from "@/shared/ui/table-row-actions";
+import { AlertConfirm } from "@/shared/ui/alert-confirm";
+import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
+import { DataTableFilter } from "@/shared/ui/data-table-filter";
+import { DataTablePagination } from "@/shared/ui/data-table-pagination";
+import { estadoDaTabela } from "@/shared/ui/data-table-state";
+import { PageCard, PageTitle } from "@/shared/ui/page-card";
+import { RowActions, type RowAction } from "@/shared/ui/row-action-button";
+import { rowActionIconProps } from "@/shared/ui/row-action-icon";
+import { TONS_ETIQUETA, TagChip } from "@/shared/ui/tag-chip";
 import { listarPerfis } from "@/modules/perfis/api/perfis.api";
 import { usuarioApi } from "@/modules/usuarios/api/usuario.api";
 import { setoresApi, type Setor } from "../api/setores.api";
@@ -36,7 +43,7 @@ export function SetoresPage() {
   const [gerenteParaRemover, setGerenteParaRemover] = useState<string | null>(null);
   const [setorParaInativar, setSetorParaInativar] = useState<Setor | null>(null);
   const setores = useQuery({ queryKey: ["setores", pagina, tamanho, filtros], queryFn: () => setoresApi.listar(pagina, tamanho, filtros.ativo, filtros.busca) });
-  const setoresVisiveis = setores.data?.items ?? [];
+  const setoresVisiveis = setores.isError ? [] : setores.data?.items ?? [];
   const gerentesPorSetor = useQueries({ queries: setoresVisiveis.map((setor) => ({ queryKey: ["setor-gerentes", setor.id], queryFn: () => setoresApi.gerentes(setor.id) })) });
   const perfis = useQuery({ queryKey: ["perfis"], queryFn: listarPerfis });
   const gerenteProfileId = perfis.data?.find((item) => item.codigo === "GERENTE")?.id;
@@ -48,37 +55,54 @@ export function SetoresPage() {
   const vincular = useMutation({ mutationFn: () => setoresApi.associar(setorAtual!.id, gerente), onSuccess: async () => { setGerente(""); await client.invalidateQueries({ queryKey: ["setor-gerentes", setorAtual?.id] }); toast.success(t("associateSuccess")); }, onError: (error) => { const detail = error instanceof ApiError ? error.problem.detail?.toLowerCase() : undefined; toast.error(detail?.includes("já associado") || detail?.includes("already associated") ? t("managerAlreadyAssociated") : t("associationError")); } });
   const desvincular = useMutation({ mutationFn: (id: string) => setoresApi.desassociar(setorAtual!.id, id), onSuccess: async () => { await client.invalidateQueries({ queryKey: ["setor-gerentes", setorAtual?.id] }); toast.success(t("associationRemoveSuccess")); }, onError: () => toast.error(t("associationError")) });
   if (perfil.perfil_codigo !== "ADMIN_UNIDADE") return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
-  return <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
-    <header className="mb-7 flex shrink-0 items-center justify-between"><h1 className="text-2xl font-medium text-foreground">{t("sectors")}</h1><Button onClick={() => { setNome(""); setGerente(""); setErroNome(""); setNovo(true); }}>{t("newSector")}</Button></header>
-    <TableLayout>
-    <Table containerClassName={`min-h-0 ${setores.data?.items.length ? "flex-1 overflow-auto" : "shrink-0 overflow-visible"}`}><TableHeader><TableRow><TableHead><TableColumnFilter label={t("sector")} value={filtros.busca ?? ""} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, busca: value || undefined })); }} placeholder={t("searchSector")} /></TableHead><TableHead>{t("managers")}</TableHead><TableHead><TableColumnFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => { setPagina(1); setFiltros((atual) => ({ ...atual, ativo: value === "" ? undefined : value === "true" })); }} options={[{ value: "", label: t("all") }, { value: "true", label: t("active") }, { value: "false", label: t("inactive") }]} /></TableHead><TableHead className="text-right">{t("actions")}</TableHead></TableRow></TableHeader>{Boolean(setores.data?.items.length) && <TableBody>
-      {setoresVisiveis.map((setor, index) => <TableRow key={setor.id}>
-        <TableCell className="font-medium text-foreground">{setor.nome}</TableCell>
-        <TableCell className="text-sm text-muted-foreground">{(gerentesPorSetor[index]?.data ?? []).filter((vinculo) => vinculo.ativo).map((vinculo) => nomes.get(vinculo.usuario_id) ?? vinculo.usuario_id).join(", ") || "—"}</TableCell>
-        <TableCell><Badge variant="secondary" className={setor.ativo ? "rounded-md bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700" : "rounded-md bg-secondary px-2.5 py-1 text-xs text-muted-foreground"}>{setor.ativo ? t("active") : t("inactive")}</Badge></TableCell>
-        <TableCell className="text-right"><TableRowActions label={setor.nome} actions={[
-          { label: t("editSector"), icon: Pencil, onSelect: () => { setSetorAtual(setor); setNome(setor.nome); } },
-          { label: t("manageManagers"), icon: UsersRound, onSelect: () => { setSetorAtual(setor); setNome(setor.nome); } },
-          { label: setor.ativo ? t("inactivate") : t("activate"), icon: setor.ativo ? UserRoundX : UserRoundCheck, destructive: setor.ativo, onSelect: () => setor.ativo ? setSetorParaInativar(setor) : alterar.mutate({ id: setor.id, ativo: true }) },
-        ]} /></TableCell>
-      </TableRow>)}
-    </TableBody>}</Table>{!setores.data?.items.length && <TableEmptyState>
-      {setores.isLoading ? <p role="status">{t("loadingSectors")}</p> : (() => {
-        const temFiltro = Boolean(filtros.busca) || filtros.ativo !== undefined;
-        return <div role="status" className="w-full max-w-md px-4 text-center">
-          <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
-            {temFiltro ? <SearchX aria-hidden="true" className="h-5 w-5" /> : <Building2 aria-hidden="true" className="h-5 w-5" />}
-          </div>
-          <h2 className="text-base font-semibold text-foreground">{temFiltro ? t("noResults") : t("noSector")}</h2>
-          <p className="mx-auto mt-1.5 max-w-xs text-sm leading-6 text-muted-foreground">
-            {temFiltro ? t("noSectorResults") : t("noSectorHint")}
-          </p>
-          {temFiltro && <Button variant="outline" size="sm" className="mt-5" onClick={() => { setPagina(1); setFiltros({}); }}>{t("clearFilters")}</Button>}
-        </div>;
-      })()}
-    </TableEmptyState>}
-    <TablePagination page={pagina} pageSize={tamanho} totalCount={setores.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(n) => { setTamanho(n); setPagina(1); }} />
-    </TableLayout>
+  const temFiltro = Boolean(filtros.busca) || filtros.ativo !== undefined;
+  const alterarFiltro = (novos: Partial<typeof filtros>) => { setPagina(1); setFiltros((atual) => ({ ...atual, ...novos })); };
+  const gerentesDoSetor = (setor: Setor) => (gerentesPorSetor[setoresVisiveis.indexOf(setor)]?.data ?? [])
+    .filter((vinculo) => vinculo.ativo).map((vinculo) => nomes.get(vinculo.usuario_id) ?? vinculo.usuario_id).join(", ") || "—";
+  const abrirSetor = (setor: Setor) => { setSetorAtual(setor); setNome(setor.nome); };
+  const acoesDoSetor = (setor: Setor): RowAction[] => [
+    { label: t("editSector"), icon: <Pencil {...rowActionIconProps} />, onPress: () => abrirSetor(setor) },
+    { label: t("manageManagers"), icon: <UsersRound {...rowActionIconProps} />, onPress: () => abrirSetor(setor) },
+    {
+      label: setor.ativo ? t("inactivate") : t("activate"),
+      icon: setor.ativo ? <UserRoundX {...rowActionIconProps} /> : <UserRoundCheck {...rowActionIconProps} />,
+      destructive: setor.ativo,
+      onPress: () => setor.ativo ? setSetorParaInativar(setor) : alterar.mutate({ id: setor.id, ativo: true }),
+    },
+  ];
+  const colunas: DataTableColumn<Setor>[] = [
+    { id: "nome", isRowHeader: true, header: <DataTableFilter label={t("sector")} value={filtros.busca ?? ""} onChange={(value) => alterarFiltro({ busca: value || undefined })} placeholder={t("searchSector")} />, cell: (setor) => setor.nome },
+    { id: "gerentes", header: t("managers"), cell: gerentesDoSetor },
+    { id: "status", header: <DataTableFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => alterarFiltro({ ativo: value === "" ? undefined : value === "true" })} options={comOpcaoTodos(t("all"), [{ value: "true", label: t("active") }, { value: "false", label: t("inactive") }])} />, cell: (setor) => <TagChip tom={setor.ativo ? TONS_ETIQUETA.ativo : TONS_ETIQUETA.neutro}>{setor.ativo ? t("active") : t("inactive")}</TagChip> },
+    { id: "acoes", header: t("actions"), className: "w-px whitespace-nowrap", cell: (setor) => <RowActions identificador={setor.nome} actions={acoesDoSetor(setor)} /> },
+  ];
+  const estado = estadoDaTabela({
+    isLoading: setores.isLoading,
+    isError: setores.isError,
+    isEmpty: !setoresVisiveis.length,
+    hasFilters: temFiltro,
+    onClearFilters: () => { setPagina(1); setFiltros({}); },
+    loadingLabel: t("loadingSectors"),
+    errorLabel: t("sectorsLoadError"),
+    clearFiltersLabel: t("clearFilters"),
+    empty: { icon: <Building2 aria-hidden="true" className="size-5" />, title: t("noSector"), hint: t("noSectorHint") },
+    filtered: { title: t("noResults"), hint: t("noSectorResults") },
+  });
+
+  return <PageCard>
+    <header className="mb-[30px] flex shrink-0 items-center justify-between gap-4">
+      <PageTitle>{t("sectors")}</PageTitle>
+      <HeroButton variant="primary" onPress={() => { setNome(""); setGerente(""); setErroNome(""); setNovo(true); }}><Plus aria-hidden="true" absoluteStrokeWidth strokeWidth={1.5} className="size-4" />{t("newSector")}</HeroButton>
+    </header>
+    <DataTable
+      aria-label={t("sectors")}
+      columns={colunas}
+      items={setoresVisiveis}
+      state={estado}
+      pagination={<DataTablePagination page={pagina} pageSize={tamanho} totalCount={setores.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(n) => { setTamanho(n); setPagina(1); }} />}
+      // Os gerentes chegam por consultas separadas, depois das linhas.
+      rowDependencies={[t, nomes, gerentesPorSetor.map((consulta) => consulta.dataUpdatedAt).join()]}
+    />
     <Dialog open={novo || Boolean(setorAtual)} onOpenChange={(open) => { if (!open) { setNovo(false); setSetorAtual(null); setNome(""); setErroNome(""); } }}>
       <DrawerContent>
         <DrawerHeader>
@@ -142,7 +166,7 @@ export function SetoresPage() {
         </form>}
       </DrawerContent>
     </Dialog>
-    <ConfirmDialog
+    <AlertConfirm
       open={Boolean(gerenteParaRemover)}
       onOpenChange={(open) => { if (!open && !desvincular.isPending) setGerenteParaRemover(null); }}
       title={t("removeManagerTitle")}
@@ -152,6 +176,6 @@ export function SetoresPage() {
       isPending={desvincular.isPending}
       onConfirm={() => { if (gerenteParaRemover) desvincular.mutate(gerenteParaRemover, { onSuccess: () => setGerenteParaRemover(null) }); }}
     />
-    <ConfirmDialog open={Boolean(setorParaInativar)} onOpenChange={(open) => { if (!open) setSetorParaInativar(null); }} title={`${t("inactivate")} ${t("sector").toLowerCase()}`} description={`${t("inactivate")} ${setorParaInativar?.nome ?? t("sector").toLowerCase()}? ${t("sectorUpdateError")}`} confirmLabel={`${t("inactivate")} ${t("sector").toLowerCase()}`} variant="destructive" isPending={alterar.isPending} onConfirm={() => { if (setorParaInativar) alterar.mutate({ id: setorParaInativar.id, ativo: false }, { onSuccess: () => setSetorParaInativar(null) }); }} />
-  </section>;
+    <AlertConfirm open={Boolean(setorParaInativar)} onOpenChange={(open) => { if (!open) setSetorParaInativar(null); }} title={`${t("inactivate")} ${t("sector").toLowerCase()}`} description={`${t("inactivate")} ${setorParaInativar?.nome ?? t("sector").toLowerCase()}? ${t("sectorUpdateError")}`} confirmLabel={`${t("inactivate")} ${t("sector").toLowerCase()}`} variant="destructive" isPending={alterar.isPending} onConfirm={() => { if (setorParaInativar) alterar.mutate({ id: setorParaInativar.id, ativo: false }, { onSuccess: () => setSetorParaInativar(null) }); }} />
+  </PageCard>;
 }
