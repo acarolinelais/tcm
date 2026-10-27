@@ -32,7 +32,7 @@ interface DataTableProps<T extends object> {
 }
 
 // Figma TCM 2070:1476: moldura #F3F5F7 (raio 30px), corpo branco (raio 25px, 5px de recuo), cabeçalho
-// Inter 500 14px `text-muted` com divisórias #E4E4E7, linhas de 40px com divisória #EFEFF0, texto 14px #454442.
+// Inter 500 14px `text-muted` com divisórias #E4E4E7, linhas de 44px (alvo de toque) com divisória #EFEFF0, texto 14px #454442.
 const tokensMoldura = {
   "--surface-secondary": "#F3F5F7",
   "--separator": "#E4E4E7",
@@ -67,9 +67,9 @@ export function DataTable<T extends object>({ columns, items, getKey = chavePorI
                 de fora da linha, declarado em `rowDependencies` (ou, na falta dele, as próprias colunas). */}
             <Table.Body items={items} dependencies={rowDependencies ?? [columns]} className={cantosCorpo}>
               {(item) => (
-                <Table.Row id={getKey(item)} className="h-10">
+                <Table.Row id={getKey(item)} className="h-11">
                   {columns.map((coluna) => (
-                    <Table.Cell key={coluna.id} className={cn("whitespace-nowrap px-2.5 py-0 text-[14px] leading-5 text-[#454442] first:ps-5", coluna.className)}>
+                    <Table.Cell key={coluna.id} className={cn("whitespace-nowrap px-2.5 py-0 text-[14px] leading-5 text-[#454442] first:ps-5", coluna.isRowHeader && "font-medium text-[#27272A]", coluna.className)}>
                       {coluna.cell(item)}
                     </Table.Cell>
                   ))}
