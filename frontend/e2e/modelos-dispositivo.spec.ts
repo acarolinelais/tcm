@@ -52,15 +52,13 @@ test("KP acessa Device models em Administration, cria, edita e inativa um modelo
   const linha = page.getByRole("row", { name: /S27 Ultra/ });
   await expect(linha.getByText("Flagship")).toBeVisible();
 
-  await page.getByRole("button", { name: "Ações para S27 Ultra" }).click();
-  await page.getByRole("menuitem", { name: "Editar" }).click();
+  await page.getByRole("button", { name: "Editar S27 Ultra" }).click();
   await page.getByRole("textbox", { name: "Descrição" }).fill("Flagship 2027");
   await page.getByRole("button", { name: "Salvar" }).click();
   await expect(linha.getByText("Flagship 2027")).toBeVisible();
 
-  await page.getByRole("button", { name: "Ações para S27 Ultra" }).click();
-  await page.getByRole("menuitem", { name: "Inativar" }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Inativar" }).click();
+  await page.getByRole("button", { name: "Inativar S27 Ultra" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Inativar" }).click();
   await expect(linha.getByText("Inativo")).toBeVisible();
 
   await page.goto("/projetos");

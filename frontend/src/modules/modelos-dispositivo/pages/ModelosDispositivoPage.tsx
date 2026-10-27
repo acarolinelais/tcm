@@ -1,18 +1,24 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
-import { Pencil, Plus, Power, PowerOff, SearchX, Smartphone } from "lucide-react";
+import { Button } from "@heroui/react";
+import { Pencil, Plus, Power, PowerOff, Smartphone } from "lucide-react";
 
 import type { PerfilAtual } from "@/core/auth/api";
 import { formatDate } from "@/core/i18n/format";
+import { comOpcaoTodos } from "@/shared/lib/opcoes";
+import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { toast } from "@/shared/lib/toast";
-import { Badge } from "@/shared/ui/badge";
-import { Button } from "@/shared/ui/button";
-import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
+import { AlertConfirm } from "@/shared/ui/alert-confirm";
+import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
+import { DataTableFilter } from "@/shared/ui/data-table-filter";
+import { DataTablePagination } from "@/shared/ui/data-table-pagination";
+import { estadoDaTabela } from "@/shared/ui/data-table-state";
 import { Dialog, DrawerContent, DrawerHeader, DrawerTitle } from "@/shared/ui/dialog";
-import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyState, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
-import { TableColumnFilter } from "@/shared/ui/table-column-filter";
-import { TableRowActions } from "@/shared/ui/table-row-actions";
+import { PageCard, PageTitle } from "@/shared/ui/page-card";
+import { RowActions, type RowAction } from "@/shared/ui/row-action-button";
+import { rowActionIconProps } from "@/shared/ui/row-action-icon";
+import { TONS_ETIQUETA, TagChip } from "@/shared/ui/tag-chip";
 
 import { ModeloDispositivoForm } from "../components/ModeloDispositivoForm";
 import { useDefinirAtivoModeloDispositivo, useModelosDispositivoList } from "../hooks/useModelosDispositivo";
@@ -44,7 +50,7 @@ export function ModelosDispositivoPage() {
 
   if (!podeGerenciar) return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
 
-  const itens = modelos.data?.items ?? [];
+  const itens = modelos.isError ? [] : modelos.data?.items ?? [];
   const temFiltro = Boolean(filtros.busca) || filtros.ativo !== undefined;
   const filtrar = (novo: ModeloDispositivoFiltros) => { setPagina(1); setFiltros((atual) => ({ ...atual, ...novo })); };
   const alterarAtivo = (modelo: ModeloDispositivo, ativo: boolean) => definirAtivo.mutate({ id: modelo.id, ativo }, {
@@ -52,56 +58,53 @@ export function ModelosDispositivoPage() {
     onError: () => toast.error(t("deviceModelSaveError")),
   });
 
-  return <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
-    <header className="mb-7 flex shrink-0 items-center justify-between gap-4">
-      <h1 className="text-2xl font-medium text-foreground">{t("deviceModels")}</h1>
-      <Button onClick={() => setEmEdicao(null)}><Plus aria-hidden="true" className="size-4" />{t("addDeviceModel")}</Button>
+  const acoesDoModelo = (modelo: ModeloDispositivo): RowAction[] => [
+    { label: t("edit"), icon: <Pencil {...rowActionIconProps} />, onPress: () => setEmEdicao(modelo) },
+    modelo.ativo
+      ? { label: t("inactivate"), icon: <PowerOff {...rowActionIconProps} />, destructive: true, onPress: () => setParaInativar(modelo) }
+      : { label: t("activate"), icon: <Power {...rowActionIconProps} />, disabled: definirAtivo.isPending, onPress: () => alterarAtivo(modelo, true) },
+  ];
+  const colunas: DataTableColumn<ModeloDispositivo>[] = [
+    { id: "nome", isRowHeader: true, header: <DataTableFilter label={t("deviceModelName")} value={filtros.busca ?? ""} placeholder={t("searchDeviceModel")} onChange={(value) => filtrar({ busca: value || undefined })} />, cell: (modelo) => modelo.nome },
+    { id: "descricao", header: t("description"), cell: (modelo) => modelo.descricao ?? "—" },
+    { id: "status", header: <DataTableFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => filtrar({ ativo: value === "" ? undefined : value === "true" })} options={comOpcaoTodos(t("all"), [{ value: "true", label: t("active") }, { value: "false", label: t("inactive") }])} />, cell: (modelo) => <TagChip tom={modelo.ativo ? TONS_ETIQUETA.ativo : TONS_ETIQUETA.neutro}>{modelo.ativo ? t("active") : t("inactive")}</TagChip> },
+    { id: "criadoEm", header: t("createdAt"), className: "tabular-nums", cell: (modelo) => formatarData(modelo.created_at) },
+    { id: "atualizadoEm", header: t("updatedAt"), className: "tabular-nums", cell: (modelo) => formatarData(modelo.updated_at) },
+    { id: "acoes", header: t("actions"), className: "w-px whitespace-nowrap", cell: (modelo) => <RowActions identificador={modelo.nome} actions={acoesDoModelo(modelo)} /> },
+  ];
+  const estado = estadoDaTabela({
+    isLoading: modelos.isLoading,
+    isError: modelos.isError,
+    isEmpty: !itens.length,
+    hasFilters: temFiltro,
+    onClearFilters: () => { setPagina(1); setFiltros({}); },
+    loadingLabel: t("loadingDeviceModels"),
+    errorLabel: t("deviceModelsLoadError"),
+    clearFiltersLabel: t("clearFilters"),
+    empty: { icon: <Smartphone aria-hidden="true" className="size-5" />, title: t("noDeviceModelsYet"), hint: t("noDeviceModelsHint") },
+    filtered: { title: t("noResults"), hint: t("noDeviceModelsResults") },
+  });
+
+  return <PageCard>
+    <header className="mb-[30px] flex shrink-0 items-center justify-between gap-4">
+      <PageTitle>{t("deviceModels")}</PageTitle>
+      <Button variant="primary" onPress={() => setEmEdicao(null)}><Plus aria-hidden="true" absoluteStrokeWidth strokeWidth={1.5} className="size-4" />{t("addDeviceModel")}</Button>
     </header>
-    <TableLayout>
-      <Table containerClassName={itens.length ? "thin-scroll min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
-        <TableHeader><TableRow>
-          <TableHead><TableColumnFilter label={t("deviceModelName")} value={filtros.busca ?? ""} placeholder={t("searchDeviceModel")} onChange={(value) => filtrar({ busca: value || undefined })} /></TableHead>
-          <TableHead>{t("description")}</TableHead>
-          <TableHead><TableColumnFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => filtrar({ ativo: value === "" ? undefined : value === "true" })} options={[{ value: "", label: t("all") }, { value: "true", label: t("active") }, { value: "false", label: t("inactive") }]} /></TableHead>
-          <TableHead>{t("createdAt")}</TableHead>
-          <TableHead>{t("updatedAt")}</TableHead>
-          <TableHead className="text-right">{t("actions")}</TableHead>
-        </TableRow></TableHeader>
-        {itens.length ? <TableBody>{itens.map((modelo) => <TableRow key={modelo.id}>
-          <TableCell className="font-medium text-foreground">{modelo.nome}</TableCell>
-          <TableCell className="text-muted-foreground">{modelo.descricao ?? "—"}</TableCell>
-          <TableCell><Badge variant="secondary" className={modelo.ativo ? "rounded-md bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700" : "rounded-md bg-secondary px-2.5 py-1 text-xs text-muted-foreground"}>{modelo.ativo ? t("active") : t("inactive")}</Badge></TableCell>
-          <TableCell className="text-muted-foreground tabular-nums">{formatarData(modelo.created_at)}</TableCell>
-          <TableCell className="text-muted-foreground tabular-nums">{formatarData(modelo.updated_at)}</TableCell>
-          <TableCell className="text-right"><TableRowActions label={modelo.nome} actions={[
-            { label: t("edit"), icon: Pencil, onSelect: () => setEmEdicao(modelo) },
-            modelo.ativo
-              ? { label: t("inactivate"), icon: PowerOff, destructive: true, onSelect: () => setParaInativar(modelo) }
-              : { label: t("activate"), icon: Power, disabled: definirAtivo.isPending, onSelect: () => alterarAtivo(modelo, true) },
-          ]} /></TableCell>
-        </TableRow>)}</TableBody> : null}
-      </Table>
-      {!itens.length && <TableEmptyState>
-        {modelos.isLoading ? <p role="status">{t("loadingDeviceModels")}</p>
-          : modelos.isError ? <p role="alert" className="text-destructive">{t("deviceModelsLoadError")}</p>
-          : <div role="status" className="w-full max-w-md px-4 text-center">
-            <div className="mx-auto mb-4 flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
-              {temFiltro ? <SearchX aria-hidden="true" className="size-5" /> : <Smartphone aria-hidden="true" className="size-5" />}
-            </div>
-            <h2 className="text-base font-semibold text-foreground">{temFiltro ? t("noResults") : t("noDeviceModelsYet")}</h2>
-            <p className="mx-auto mt-1.5 max-w-xs text-sm leading-6 text-muted-foreground">{temFiltro ? t("noDeviceModelsResults") : t("noDeviceModelsHint")}</p>
-            {temFiltro && <Button variant="outline" size="sm" className="mt-5" onClick={() => { setPagina(1); setFiltros({}); }}>{t("clearFilters")}</Button>}
-          </div>}
-      </TableEmptyState>}
-      <TablePagination page={pagina} pageSize={tamanho} totalCount={modelos.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(n) => { setTamanho(n); setPagina(1); }} />
-    </TableLayout>
+    <DataTable
+      aria-label={t("deviceModels")}
+      columns={colunas}
+      items={itens}
+      state={estado}
+      pagination={<DataTablePagination page={pagina} pageSize={tamanho} totalCount={modelos.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(n) => { setTamanho(n); setPagina(1); }} />}
+      rowDependencies={[t, definirAtivo.isPending]}
+    />
     <Dialog open={emEdicao !== undefined} onOpenChange={(open) => { if (!open) setEmEdicao(undefined); }}>
       <DrawerContent>
         <DrawerHeader><DrawerTitle>{emEdicao ? t("editDeviceModel") : t("addDeviceModel")}</DrawerTitle></DrawerHeader>
         {emEdicao !== undefined && <ModeloDispositivoForm key={emEdicao?.id ?? "novo"} modelo={emEdicao ?? undefined} onSalvo={() => { setEmEdicao(undefined); toast.success(t("deviceModelSaved")); }} />}
       </DrawerContent>
     </Dialog>
-    <ConfirmDialog
+    <AlertConfirm
       open={Boolean(paraInativar)}
       onOpenChange={(open) => { if (!open && !definirAtivo.isPending) setParaInativar(null); }}
       title={t("inactivateDeviceModelTitle")}
@@ -111,5 +114,5 @@ export function ModelosDispositivoPage() {
       isPending={definirAtivo.isPending}
       onConfirm={() => { if (paraInativar) alterarAtivo(paraInativar, false); }}
     />
-  </section>;
+  </PageCard>;
 }
