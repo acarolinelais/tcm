@@ -4,6 +4,7 @@ import { ChevronLeft, Eye, Pencil, Plus, Smartphone, Trash2 } from "lucide-react
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
+import { Button as HeroButton, Chip, Table as HeroTable } from "@heroui/react";
 
 import type { PerfilAtual } from "@/core/auth/api";
 import { formatDate, formatNumber } from "@/core/i18n/format";
@@ -11,12 +12,10 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Select, SelectContent, SelectItem, SelectValue, SELECT_EMPTY_VALUE, SelectTrigger } from "@/shared/ui/select";
-import { Badge } from "@/shared/ui/badge";
-import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyStatePanel, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
+import { DEFAULT_TABLE_PAGE_SIZE, TableLayout } from "@/shared/ui/table";
 import { MultiSelectCombobox } from "@/shared/ui/multi-select-combobox";
 import { Dialog, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from "@/shared/ui/dialog";
 import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
-import { TableRowActions } from "@/shared/ui/table-row-actions";
 import { TableColumnFilter } from "@/shared/ui/table-column-filter";
 import { toast } from "@/shared/lib/toast";
 import { ApiError } from "@/shared/api/problem-details";
@@ -78,6 +77,10 @@ export function ProjetosPage() {
       && (!filtrosProjeto.status || project.status === filtrosProjeto.status)
       && createdAt.toLocaleLowerCase().includes(filtrosProjeto.createdAt.toLocaleLowerCase());
   });
+  const totalProjetos = projetos.data?.total_count ?? 0;
+  const totalPaginas = Math.max(1, Math.ceil(totalProjetos / tamanhoPagina));
+  const primeiraPaginaVisivel = Math.max(1, Math.min(pagina - 1, totalPaginas - 2));
+  const paginasVisiveis = Array.from({ length: Math.min(3, totalPaginas) }, (_, index) => primeiraPaginaVisivel + index);
   const alterarFiltroProjeto = (campo: keyof typeof filtrosProjeto, valor: string) => {
     setPagina(1);
     setFiltrosProjeto((atual) => ({ ...atual, [campo]: valor }));
@@ -174,29 +177,36 @@ export function ProjetosPage() {
     {!criacaoAberta ? <>
       <header className="mb-7 flex shrink-0 items-center justify-between gap-4">
         <h1 className="text-2xl font-medium text-foreground">{t("myProjects")}</h1>
-        {podeGerenciar && <Button onClick={() => { limparFormulario(); setCriacaoAberta(true); }}><Plus aria-hidden="true" className="size-4" />{t("newProject")}</Button>}
+        {podeGerenciar && <HeroButton variant="primary" size="sm" className="rounded-full px-4" onPress={() => { limparFormulario(); setCriacaoAberta(true); }}><Plus aria-hidden="true" className="size-4" />{t("newProject")}</HeroButton>}
       </header>
-      <TableLayout className="overflow-auto">
-        {projetos.isLoading ? <div role="status" className="p-8 text-center text-sm text-muted-foreground">{t("loadingProjects")}</div> : projetos.isError ? <div role="alert" className="p-8 text-center text-sm text-destructive">{t("projectsLoadError")}</div> : <Table>
-          <colgroup><col style={{ width: "16%" }} /><col style={{ width: "12%" }} /><col style={{ width: "9%" }} /><col style={{ width: "13%" }} /><col style={{ width: "16%" }} /><col style={{ width: "12%" }} /><col style={{ width: "12%" }} /><col style={{ width: "10%" }} /></colgroup>
-          <TableHeader><TableRow>
-            <TableHead><TableColumnFilter label={t("project")} value={filtrosProjeto.nome} onChange={(value) => alterarFiltroProjeto("nome", value)} /></TableHead>
-            <TableHead><TableColumnFilter label={t("team")} value={filtrosProjeto.time} onChange={(value) => alterarFiltroProjeto("time", value)} /></TableHead>
-            <TableHead><TableColumnFilter label={t("app")} value={filtrosProjeto.app} onChange={(value) => alterarFiltroProjeto("app", value)} /></TableHead>
-            <TableHead><TableColumnFilter label={t("oneUi")} value={filtrosProjeto.oneUi} onChange={(value) => alterarFiltroProjeto("oneUi", value)} /></TableHead>
-            <TableHead><TableColumnFilter label={t("deviceModels")} value="" onChange={() => undefined} options={opcoesFiltroModelos} multiple selectedValues={modelosFiltrados} onSelectedValuesChange={(values) => { setPagina(1); setModelosFiltrados(values); }} /></TableHead>
-            <TableHead><TableColumnFilter label={t("status")} value={filtrosProjeto.status} onChange={(value) => alterarFiltroProjeto("status", value)} options={[{ value: "", label: t("all") }, ...statusProjeto.map((status) => ({ value: status, label: statusLabel(status) }))]} /></TableHead>
-            <TableHead><TableColumnFilter label={t("createdAt")} value={filtrosProjeto.createdAt} onChange={(value) => alterarFiltroProjeto("createdAt", value)} /></TableHead>
-            <TableHead className="text-right">{t("actions")}</TableHead>
-          </TableRow></TableHeader>
-          <TableBody>{projetosFiltrados.length ? projetosFiltrados.map((project) => <ProjectRow key={project.id} project={project} teamName={nomeTime[project.time_id]} canEdit={podeGerenciar} onView={() => navigate(`/projetos/${project.id}`)} onEdit={() => { setProjetoEditando(project); setEdicaoNome(project.nome); setEdicaoApp(project.app); setEdicaoOneUi(project.one_ui); setEdicaoTimeId(project.time_id); setEdicaoModelosIds(project.modelos_ids ?? []); }} onDelete={() => setProjetoExcluindo(project)} onStatusChange={(status) => statusMutation.mutate({ id: project.id, status })} statusLabel={statusLabel} />) : <>
-            <TableRow aria-hidden="true" className="border-0 hover:bg-transparent"><TableCell colSpan={8} className="h-3 p-0" /></TableRow>
-            <TableRow><TableCell colSpan={8} className="p-0"><TableEmptyStatePanel role="status" className="px-5 py-7 sm:px-8">
-              <div className="text-center"><h2 className="text-base font-semibold text-foreground">{projetos.data?.items.length ? t("noProjectResults", { defaultValue: "Nenhum projeto corresponde aos filtros." }) : t("noProjects")}</h2><p className="mx-auto mt-1 max-w-md text-sm leading-5 text-muted-foreground">{projetos.data?.items.length ? t("adjustFilters", { defaultValue: "Ajuste ou limpe os filtros para ver os resultados." }) : t("noProjectsHint")}</p></div>
-            </TableEmptyStatePanel></TableCell></TableRow>
-          </>}</TableBody>
-        </Table>}
-        <TablePagination page={pagina} pageSize={tamanhoPagina} totalCount={projetos.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
+      <TableLayout className="min-h-0 overflow-hidden rounded-[20px] bg-[#f2f3f5] p-1.5">
+        {projetos.isLoading ? <div role="status" className="flex min-h-64 flex-1 items-center justify-center rounded-2xl bg-white text-sm text-muted-foreground">{t("loadingProjects")}</div> : projetos.isError ? <div role="alert" className="flex min-h-64 flex-1 items-center justify-center rounded-2xl bg-white text-sm text-destructive">{t("projectsLoadError")}</div> : <HeroTable className="projects-table min-h-0 flex-1" variant="primary">
+          <HeroTable.ScrollContainer>
+            <HeroTable.Content aria-label={t("myProjects")} selectionMode="none">
+              <HeroTable.Header>
+                <HeroTable.Column id="project" textValue={t("project")}><TableColumnFilter label={t("project")} value={filtrosProjeto.nome} onChange={(value) => alterarFiltroProjeto("nome", value)} /></HeroTable.Column>
+                <HeroTable.Column id="team" textValue={t("team")}><TableColumnFilter label={t("team")} value={filtrosProjeto.time} onChange={(value) => alterarFiltroProjeto("time", value)} /></HeroTable.Column>
+                <HeroTable.Column id="app" textValue={t("app")}><TableColumnFilter label={t("app")} value={filtrosProjeto.app} onChange={(value) => alterarFiltroProjeto("app", value)} /></HeroTable.Column>
+                <HeroTable.Column id="one-ui" textValue={t("oneUi")}><TableColumnFilter label={t("oneUi")} value={filtrosProjeto.oneUi} onChange={(value) => alterarFiltroProjeto("oneUi", value)} /></HeroTable.Column>
+                <HeroTable.Column id="models" textValue={t("deviceModels")}><TableColumnFilter label={t("deviceModels")} value="" onChange={() => undefined} options={opcoesFiltroModelos} multiple selectedValues={modelosFiltrados} onSelectedValuesChange={(values) => { setPagina(1); setModelosFiltrados(values); }} /></HeroTable.Column>
+                <HeroTable.Column id="status" textValue={t("status")}><TableColumnFilter label={t("status")} value={filtrosProjeto.status} onChange={(value) => alterarFiltroProjeto("status", value)} options={[{ value: "", label: t("all") }, ...statusProjeto.map((status) => ({ value: status, label: statusLabel(status) }))]} /></HeroTable.Column>
+                <HeroTable.Column id="created" textValue={t("createdAt")}><TableColumnFilter label={t("createdAt")} value={filtrosProjeto.createdAt} onChange={(value) => alterarFiltroProjeto("createdAt", value)} /></HeroTable.Column>
+                <HeroTable.Column id="actions" textValue={t("actions")} className="text-right">{t("actions")}</HeroTable.Column>
+              </HeroTable.Header>
+              <HeroTable.Body>
+                {projetosFiltrados.length ? projetosFiltrados.map((project, index) => <ProjectRow key={project.id} project={project} rowNumber={(pagina - 1) * tamanhoPagina + index + 1} teamName={nomeTime[project.time_id]} canEdit={podeGerenciar} onView={() => navigate(`/projetos/${project.id}`)} onEdit={() => { setProjetoEditando(project); setEdicaoNome(project.nome); setEdicaoApp(project.app); setEdicaoOneUi(project.one_ui); setEdicaoTimeId(project.time_id); setEdicaoModelosIds(project.modelos_ids ?? []); }} onDelete={() => setProjetoExcluindo(project)} onStatusChange={(status) => statusMutation.mutate({ id: project.id, status })} statusLabel={statusLabel} />) : <HeroTable.Row id="empty-projects"><HeroTable.Cell colSpan={8} className="h-64 text-center align-middle"><div role="status"><p className="font-medium">{projetos.data?.items.length ? t("noProjectResults", { defaultValue: "Nenhum projeto corresponde aos filtros." }) : t("noProjects")}</p><p className="mt-1 text-muted-foreground">{projetos.data?.items.length ? t("adjustFilters", { defaultValue: "Ajuste ou limpe os filtros para ver os resultados." }) : t("noProjectsHint")}</p></div></HeroTable.Cell></HeroTable.Row>}
+              </HeroTable.Body>
+            </HeroTable.Content>
+          </HeroTable.ScrollContainer>
+          <HeroTable.Footer>
+            <span>{formatNumber(totalProjetos)} {t("projectsNav").toLocaleLowerCase()}</span>
+            <nav aria-label={t("pagination", { defaultValue: "Pagination" })} className="flex items-center gap-1">
+              <HeroButton variant="ghost" size="sm" isDisabled={pagina <= 1} onPress={() => setPagina(pagina - 1)}><ChevronLeft className="size-3.5" />{t("previousPage")}</HeroButton>
+              {paginasVisiveis.map((page) => <HeroButton key={page} variant={page === pagina ? "secondary" : "ghost"} size="sm" isIconOnly aria-current={page === pagina ? "page" : undefined} aria-label={t("pageOfTotal", { page, total: totalPaginas })} onPress={() => setPagina(page)}>{page}</HeroButton>)}
+              <HeroButton variant="ghost" size="sm" isDisabled={pagina >= totalPaginas} onPress={() => setPagina(pagina + 1)}>{t("nextPage")}<ChevronLeft className="size-3.5 rotate-180" /></HeroButton>
+            </nav>
+          </HeroTable.Footer>
+        </HeroTable>}
       </TableLayout>
     </> : <>
       <div className="absolute -top-11 left-0 z-10">
@@ -262,10 +272,26 @@ export function ProjetosPage() {
   </section>;
 }
 
-function ProjectRow({ project, teamName, canEdit, onView, onEdit, onDelete, onStatusChange, statusLabel }: { project: Projeto; teamName?: string; canEdit: boolean; onView: () => void; onEdit: () => void; onDelete: () => void; onStatusChange: (status: StatusProjeto) => void; statusLabel: (status: StatusProjeto) => string }) {
+function ProjectRow({ project, rowNumber, teamName, canEdit, onView, onEdit, onDelete, onStatusChange, statusLabel }: { project: Projeto; rowNumber: number; teamName?: string; canEdit: boolean; onView: () => void; onEdit: () => void; onDelete: () => void; onStatusChange: (status: StatusProjeto) => void; statusLabel: (status: StatusProjeto) => string }) {
   const { t } = useTranslation();
   const modelos = project.modelos_dispositivo ?? [];
-  return <TableRow><TableCell className="font-medium"><Link to={`/projetos/${project.id}`} className="text-left hover:text-primary">{project.nome}</Link></TableCell><TableCell className="text-muted-foreground">{teamName ?? "—"}</TableCell><TableCell className="text-muted-foreground">{project.app}</TableCell><TableCell className="text-muted-foreground">{project.one_ui}</TableCell><TableCell><ProjectDeviceCount projectId={project.id} models={modelos} label={t("deviceModels")} /></TableCell><TableCell>{canEdit ? <Select value={project.status} onValueChange={(value) => onStatusChange(value as StatusProjeto)}><SelectTrigger aria-label={t("projectStatusFor", { name: project.nome })} className="h-8 w-36 border-0 bg-transparent px-2 hover:bg-secondary"><SelectValue /></SelectTrigger><SelectContent>{statusProjeto.map((status) => <SelectItem key={status} value={status}>{statusLabel(status)}</SelectItem>)}</SelectContent></Select> : <Badge variant="secondary">{statusLabel(project.status)}</Badge>}</TableCell><TableCell className="text-muted-foreground">{project.created_at ? formatDate(project.created_at) : "—"}</TableCell><TableCell className="text-right"><TableRowActions label={project.nome} actions={[{ label: t("viewProject"), icon: Eye, onSelect: onView }, ...(canEdit ? [{ label: t("editProject"), icon: Pencil, onSelect: onEdit }, { label: t("deleteProject"), icon: Trash2, onSelect: onDelete, destructive: true }] : [])]} /></TableCell></TableRow>;
+  const statusColor = project.status === "Completed" ? "success" : project.status === "InProgress" ? "warning" : project.status === "Canceled" ? "danger" : project.status === "Created" ? "accent" : "default";
+  return <HeroTable.Row id={project.id}>
+    <HeroTable.Cell className="font-medium"><span className="mr-2 inline-block w-5 text-[10px] font-normal text-[#858991]">{String(rowNumber).padStart(2, "0")}</span><Link to={`/projetos/${project.id}`} className="text-left hover:text-primary">{project.nome}</Link></HeroTable.Cell>
+    <HeroTable.Cell className="text-[#666970]">{teamName ?? "—"}</HeroTable.Cell>
+    <HeroTable.Cell className="text-[#666970]">{project.app}</HeroTable.Cell>
+    <HeroTable.Cell className="text-[#666970]">{project.one_ui}</HeroTable.Cell>
+    <HeroTable.Cell><ProjectDeviceCount projectId={project.id} models={modelos} label={t("deviceModels")} /></HeroTable.Cell>
+    <HeroTable.Cell>{canEdit ? <Select value={project.status} onValueChange={(value) => onStatusChange(value as StatusProjeto)}><SelectTrigger aria-label={t("projectStatusFor", { name: project.nome })} className={`h-6 w-32 rounded-full border-0 px-2 text-[10px] ${project.status === "Completed" ? "bg-[#e3f6e9] text-[#278a4c]" : project.status === "InProgress" ? "bg-[#fff1dd] text-[#a36012]" : project.status === "Canceled" ? "bg-[#fde8e8] text-[#b64646]" : project.status === "Created" ? "bg-[#e6efff] text-[#3672f2]" : "bg-[#eff0f2] text-[#686b70]"}`}><SelectValue /></SelectTrigger><SelectContent>{statusProjeto.map((status) => <SelectItem key={status} value={status}>{statusLabel(status)}</SelectItem>)}</SelectContent></Select> : <Chip color={statusColor} variant="soft" size="sm" className="text-[10px]"><Chip.Label>{statusLabel(project.status)}</Chip.Label></Chip>}</HeroTable.Cell>
+    <HeroTable.Cell className="text-[#666970]">{project.created_at ? formatDate(project.created_at) : "—"}</HeroTable.Cell>
+    <HeroTable.Cell className="text-right"><div className="inline-flex items-center gap-1">
+      <HeroButton variant="tertiary" size="sm" isIconOnly aria-label={t("viewProject")} title={t("viewProject")} className="!size-6 !min-w-6 rounded-full bg-[#f0f0f0] p-1" onPress={onView}><Eye className="size-3" /></HeroButton>
+      {canEdit && <>
+        <HeroButton variant="tertiary" size="sm" isIconOnly aria-label={t("editProject")} title={t("editProject")} className="!size-6 !min-w-6 rounded-full bg-[#f0f0f0] p-1" onPress={onEdit}><Pencil className="size-3" /></HeroButton>
+        <HeroButton variant="tertiary" size="sm" isIconOnly aria-label={t("deleteProject")} title={t("deleteProject")} className="!size-6 !min-w-6 rounded-full bg-[#fff0f0] p-1 text-[#df6262]" onPress={onDelete}><Trash2 className="size-3" /></HeroButton>
+      </>}
+    </div></HeroTable.Cell>
+  </HeroTable.Row>;
 }
 
 function ProjectDeviceCount({ projectId, models, label }: { projectId: string; models: string[]; label: string }) {
