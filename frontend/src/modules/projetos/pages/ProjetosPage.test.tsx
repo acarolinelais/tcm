@@ -36,8 +36,11 @@ function planilhaFile() {
   return new File([XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as BlobPart], "casos.xlsx");
 }
 
-function renderPage() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+function novoQueryClient() {
+  return new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+}
+
+function renderPage(queryClient = novoQueryClient()) {
   function ContextOutlet() { return <Outlet context={perfil} />; }
   const router = createMemoryRouter([{ path: "/", element: <ContextOutlet />, children: [{ path: "projetos", element: <ProjetosPage /> }] }], { initialEntries: ["/projetos"] });
   return render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>);
@@ -85,7 +88,37 @@ describe("ProjetosPage", () => {
     expect(screen.getByText("Plataforma")).toBeInTheDocument();
     expect(screen.getByText("Clock")).toBeInTheDocument();
     expect(screen.getByText("9.5")).toBeInTheDocument();
-    expect(screen.getAllByText("Created")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: /Status for Clock 9.5/ })).toHaveTextContent("Created");
+  });
+
+  it("altera o status pela linha mesmo com o detalhe de um projeto no cache", async () => {
+    const projeto = { id: "project-1", nome: "Clock 9.5", app: "Clock", one_ui: "9.5", time_id: "team-1", status: "Created" as const, ativo: true, unidade_id: "unit-1", created_at: "2026-05-01T00:00:00Z", updated_at: "2026-05-01T00:00:00Z" };
+    vi.mocked(projetosApi.listar).mockResolvedValue({ items: [projeto], page: 1, page_size: 20, total_count: 1 });
+    vi.mocked(projetosApi.atualizarStatus).mockResolvedValue({ ...projeto, status: "InProgress" });
+    const queryClient = novoQueryClient();
+    // O detalhe também começa com "projetos" na queryKey e não tem `items`: o update otimista não pode tocar nele.
+    queryClient.setQueryData(["projetos", "detalhe", "project-1"], projeto);
+    const user = userEvent.setup();
+    renderPage(queryClient);
+
+    await user.click(await screen.findByRole("button", { name: /Status for Clock 9.5/ }));
+    await user.click(await screen.findByRole("option", { name: "In Progress" }));
+
+    await waitFor(() => expect(projetosApi.atualizarStatus).toHaveBeenCalledWith("project-1", "InProgress"));
+    expect(toastMock.error).not.toHaveBeenCalled();
+  });
+
+  it("avisa quando o servidor recusa a troca de status", async () => {
+    const projeto = { id: "project-1", nome: "Clock 9.5", app: "Clock", one_ui: "9.5", time_id: "team-1", status: "Created" as const, ativo: true, unidade_id: "unit-1", created_at: "2026-05-01T00:00:00Z", updated_at: "2026-05-01T00:00:00Z" };
+    vi.mocked(projetosApi.listar).mockResolvedValue({ items: [projeto], page: 1, page_size: 20, total_count: 1 });
+    vi.mocked(projetosApi.atualizarStatus).mockRejectedValue(new Error("403"));
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: /Status for Clock 9.5/ }));
+    await user.click(await screen.findByRole("option", { name: "In Progress" }));
+
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith("Could not update the project status."));
   });
 
   it("apresenta os erros de validação associados às linhas da planilha", async () => {

@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, Eye, Pencil, Plus, Smartphone, Trash2 } from "lucide-react";
-import { createPortal } from "react-dom";
+import { ChevronLeft, FolderKanban, Pencil, Plus, Smartphone, Trash2 } from "lucide-react";
 import { Link, useNavigate, useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
-import { Button as HeroButton, Chip, Table as HeroTable } from "@heroui/react";
+import { Button as HeroButton, Tooltip } from "@heroui/react";
 
 import type { PerfilAtual } from "@/core/auth/api";
 import { formatDate, formatNumber } from "@/core/i18n/format";
@@ -12,22 +11,34 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Select, SelectContent, SelectItem, SelectValue, SELECT_EMPTY_VALUE, SelectTrigger } from "@/shared/ui/select";
-import { DEFAULT_TABLE_PAGE_SIZE, TableLayout } from "@/shared/ui/table";
 import { MultiSelectCombobox } from "@/shared/ui/multi-select-combobox";
 import { Dialog, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from "@/shared/ui/dialog";
-import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
-import { TableColumnFilter } from "@/shared/ui/table-column-filter";
+import { AlertConfirm } from "@/shared/ui/alert-confirm";
+import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
+import { DataTableFilter } from "@/shared/ui/data-table-filter";
+import { DataTablePagination } from "@/shared/ui/data-table-pagination";
+import { estadoDaTabela } from "@/shared/ui/data-table-state";
+import { EyeIcon } from "@/shared/ui/figma-icons";
+import { InlineSelect } from "@/shared/ui/inline-select";
+import { RowActions, type RowAction } from "@/shared/ui/row-action-button";
+import { rowActionIconProps } from "@/shared/ui/row-action-icon";
+import { TagChip } from "@/shared/ui/tag-chip";
+import { comOpcaoTodos } from "@/shared/lib/opcoes";
+import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { toast } from "@/shared/lib/toast";
+import { formatarDiaIso } from "@/shared/lib/utils";
 import { ApiError } from "@/shared/api/problem-details";
 import { errosDaApi } from "../utils/formatar-erro-planilha";
 import { UploadPlanilha } from "../components/importacao/UploadPlanilha";
 import { useLeituraPlanilha } from "../hooks/useLeituraPlanilha";
+import { statusProjetoTons } from "../components/status/status-projeto-estilos";
 import { timesApi } from "@/modules/times/api/times.api";
 import { modelosDispositivoApi, projetosApi, type Projeto, type StatusProjeto } from "../api/projetos.api";
 
 type ModoCriacao = "manual" | "planilha";
 const statusProjeto: StatusProjeto[] = ["Created", "To Do", "InProgress", "Completed", "Canceled"];
 const timesVazios: Awaited<ReturnType<typeof timesApi.listar>>["items"] = [];
+const FILTROS_VAZIOS = { nome: "", time: "", app: "", oneUi: "", modelo: "", status: "", createdAt: "" };
 
 export function ProjetosPage() {
   const { t } = useTranslation();
@@ -37,9 +48,8 @@ export function ProjetosPage() {
   const podeConsultar = admin || perfil.permissoes.includes("projetos.consultar") || perfil.permissoes.includes("test_cases.consultar");
   const podeGerenciar = admin || perfil.permissoes.includes("projetos.gerenciar");
   const [pagina, setPagina] = useState(1);
-  const [tamanhoPagina] = useState(DEFAULT_TABLE_PAGE_SIZE);
-  const [filtrosProjeto, setFiltrosProjeto] = useState({ nome: "", time: "", app: "", oneUi: "", status: "", createdAt: "" });
-  const [modelosFiltrados, setModelosFiltrados] = useState<string[]>([]);
+  const [tamanhoPagina, setTamanhoPagina] = useState(DEFAULT_TABLE_PAGE_SIZE);
+  const [filtrosProjeto, setFiltrosProjeto] = useState(FILTROS_VAZIOS);
   const projetos = useQuery({ queryKey: ["projetos", pagina, tamanhoPagina], queryFn: () => projetosApi.listar(pagina, tamanhoPagina) });
   const times = useQuery({ queryKey: ["projetos-times"], queryFn: () => timesApi.listar(1, 100, { ativo: true }), enabled: podeGerenciar });
   const modelos = useQuery({ queryKey: ["modelos-dispositivo", "opcoes"], queryFn: () => modelosDispositivoApi.listarOpcoes(), enabled: podeGerenciar });
@@ -67,20 +77,17 @@ export function ProjetosPage() {
   const opcoesModelos = useMemo(() => (modelos.data?.items ?? []).map((model) => ({ value: model.id, label: model.nome, description: model.descricao })), [modelos.data?.items]);
   const opcoesFiltroModelos = useMemo(() => [...new Set((projetos.data?.items ?? []).flatMap((project) => project.modelos_dispositivo ?? []))].sort((a, b) => a.localeCompare(b)).map((nome) => ({ value: nome, label: nome })), [projetos.data?.items]);
   const nomeTime = useMemo(() => Object.fromEntries([...perfil.times, ...timesDisponiveis].map((time) => [time.id, time.nome])), [perfil.times, timesDisponiveis]);
-  const projetosFiltrados = (projetos.data?.items ?? []).filter((project) => {
-    const createdAt = project.created_at ? formatDate(project.created_at) : "";
+  const projetosFiltrados = (projetos.isError ? [] : projetos.data?.items ?? []).filter((project) => {
+    // Filtro de data pelo dia (AAAA-MM-DD) no fuso do navegador, nunca pelo texto formatado.
+    const criadoEm = project.created_at ? formatarDiaIso(new Date(project.created_at)) : "";
     return project.nome.toLocaleLowerCase().includes(filtrosProjeto.nome.toLocaleLowerCase())
       && (nomeTime[project.time_id] ?? project.time_id).toLocaleLowerCase().includes(filtrosProjeto.time.toLocaleLowerCase())
       && project.app.toLocaleLowerCase().includes(filtrosProjeto.app.toLocaleLowerCase())
       && project.one_ui.toLocaleLowerCase().includes(filtrosProjeto.oneUi.toLocaleLowerCase())
-      && (!modelosFiltrados.length || modelosFiltrados.some((nome) => (project.modelos_dispositivo ?? []).includes(nome)))
+      && (!filtrosProjeto.modelo || (project.modelos_dispositivo ?? []).includes(filtrosProjeto.modelo))
       && (!filtrosProjeto.status || project.status === filtrosProjeto.status)
-      && createdAt.toLocaleLowerCase().includes(filtrosProjeto.createdAt.toLocaleLowerCase());
+      && (!filtrosProjeto.createdAt || criadoEm === filtrosProjeto.createdAt);
   });
-  const totalProjetos = projetos.data?.total_count ?? 0;
-  const totalPaginas = Math.max(1, Math.ceil(totalProjetos / tamanhoPagina));
-  const primeiraPaginaVisivel = Math.max(1, Math.min(pagina - 1, totalPaginas - 2));
-  const paginasVisiveis = Array.from({ length: Math.min(3, totalPaginas) }, (_, index) => primeiraPaginaVisivel + index);
   const alterarFiltroProjeto = (campo: keyof typeof filtrosProjeto, valor: string) => {
     setPagina(1);
     setFiltrosProjeto((atual) => ({ ...atual, [campo]: valor }));
@@ -111,7 +118,8 @@ export function ProjetosPage() {
   });
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: StatusProjeto }) => projetosApi.atualizarStatus(id, status),
-    onMutate: ({ id, status }) => client.setQueriesData<Awaited<ReturnType<typeof projetosApi.listar>>>({ queryKey: ["projetos"] }, (old) => old && { ...old, items: old.items.map((item) => item.id === id ? { ...item, status } : item) }),
+    // Só a lista desta página: o prefixo ["projetos"] também casa com o detalhe do projeto, que não tem `items`.
+    onMutate: ({ id, status }) => client.setQueryData<Awaited<ReturnType<typeof projetosApi.listar>>>(["projetos", pagina, tamanhoPagina], (old) => old && { ...old, items: old.items.map((item) => item.id === id ? { ...item, status } : item) }),
     onError: () => toast.error(t("projectStatusError")),
     onSettled: () => client.invalidateQueries({ queryKey: ["projetos"] }),
   });
@@ -173,41 +181,67 @@ export function ProjetosPage() {
 
   if (!podeConsultar) return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
 
+  const opcoesStatus = statusProjeto.map((status) => ({ value: status, label: statusLabel(status) }));
+  const primeiraDaPagina = (pagina - 1) * tamanhoPagina;
+  // O filtro é local: o mesmo projeto muda de posição sem mudar de identidade, então o número depende da ordem.
+  const ordemDosProjetos = projetosFiltrados.map((project) => project.id).join();
+  const abrirEdicao = (project: Projeto) => {
+    setProjetoEditando(project); setEdicaoNome(project.nome); setEdicaoApp(project.app); setEdicaoOneUi(project.one_ui); setEdicaoTimeId(project.time_id); setEdicaoModelosIds(project.modelos_ids ?? []);
+  };
+  const acoesDoProjeto = (project: Projeto): RowAction[] => [
+    { label: t("viewProject"), icon: <EyeIcon />, onPress: () => navigate(`/projetos/${project.id}`) },
+    ...(podeGerenciar ? [
+      { label: t("editProject"), icon: <Pencil {...rowActionIconProps} />, onPress: () => abrirEdicao(project) },
+      { label: t("deleteProject"), icon: <Trash2 {...rowActionIconProps} />, onPress: () => setProjetoExcluindo(project), destructive: true },
+    ] : []),
+  ];
+  const colunas: DataTableColumn<Projeto>[] = [
+    { id: "numero", header: "", className: "w-12 text-right tabular-nums text-muted after:hidden", cell: (project) => String(primeiraDaPagina + projetosFiltrados.indexOf(project) + 1).padStart(2, "0") },
+    { id: "nome", isRowHeader: true, header: <DataTableFilter label={t("project")} value={filtrosProjeto.nome} onChange={(value) => alterarFiltroProjeto("nome", value)} />, cell: (project) => <Link to={`/projetos/${project.id}`} className="hover:text-accent focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{project.nome}</Link> },
+    { id: "time", header: <DataTableFilter label={t("team")} value={filtrosProjeto.time} onChange={(value) => alterarFiltroProjeto("time", value)} />, cell: (project) => nomeTime[project.time_id] ?? "—" },
+    { id: "app", header: <DataTableFilter label={t("app")} value={filtrosProjeto.app} onChange={(value) => alterarFiltroProjeto("app", value)} />, cell: (project) => project.app },
+    { id: "oneUi", header: <DataTableFilter label={t("oneUi")} value={filtrosProjeto.oneUi} onChange={(value) => alterarFiltroProjeto("oneUi", value)} />, cell: (project) => project.one_ui },
+    { id: "modelos", header: <DataTableFilter label={t("deviceModels")} value={filtrosProjeto.modelo} onChange={(value) => alterarFiltroProjeto("modelo", value)} options={comOpcaoTodos(t("all"), opcoesFiltroModelos)} searchable />, cell: (project) => <ContagemModelos modelos={project.modelos_dispositivo ?? []} rotulo={t("deviceModels")} /> },
+    {
+      id: "status",
+      header: <DataTableFilter label={t("status")} value={filtrosProjeto.status} onChange={(value) => alterarFiltroProjeto("status", value)} options={comOpcaoTodos(t("all"), opcoesStatus)} />,
+      cell: (project) => {
+        const etiqueta = <TagChip tom={statusProjetoTons[project.status]}>{statusLabel(project.status)}</TagChip>;
+        return podeGerenciar
+          ? <InlineSelect aria-label={t("projectStatusFor", { name: project.nome })} value={project.status} options={opcoesStatus} onChange={(value) => statusMutation.mutate({ id: project.id, status: value as StatusProjeto })}>{etiqueta}</InlineSelect>
+          : etiqueta;
+      },
+    },
+    { id: "criadoEm", header: <DataTableFilter label={t("createdAt")} value={filtrosProjeto.createdAt} onChange={(value) => alterarFiltroProjeto("createdAt", value)} type="date" />, cell: (project) => project.created_at ? formatDate(project.created_at) : "—" },
+    { id: "acoes", header: t("actions"), className: "w-px whitespace-nowrap", cell: (project) => <RowActions identificador={project.nome} actions={acoesDoProjeto(project)} /> },
+  ];
+  const estadoProjetos = estadoDaTabela({
+    isLoading: projetos.isLoading,
+    isError: projetos.isError,
+    isEmpty: !projetosFiltrados.length,
+    hasFilters: Object.values(filtrosProjeto).some(Boolean),
+    onClearFilters: () => { setPagina(1); setFiltrosProjeto(FILTROS_VAZIOS); },
+    loadingLabel: t("loadingProjects"),
+    errorLabel: t("projectsLoadError"),
+    clearFiltersLabel: t("clearFilters"),
+    empty: { icon: <FolderKanban aria-hidden="true" className="size-5" />, title: t("noProjects"), hint: t("noProjectsHint") },
+    filtered: { title: t("noResults"), hint: t("noProjectResults") },
+  });
+
   return <section className={criacaoAberta ? "relative flex h-full min-h-0 flex-col" : "flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10"}>
     {!criacaoAberta ? <>
       <header className="mb-7 flex shrink-0 items-center justify-between gap-4">
         <h1 className="text-2xl font-medium text-foreground">{t("myProjects")}</h1>
         {podeGerenciar && <HeroButton variant="primary" size="sm" className="rounded-full px-4" onPress={() => { limparFormulario(); setCriacaoAberta(true); }}><Plus aria-hidden="true" className="size-4" />{t("newProject")}</HeroButton>}
       </header>
-      <TableLayout className="min-h-0 overflow-hidden rounded-[20px] bg-[#f2f3f5] p-1.5">
-        {projetos.isLoading ? <div role="status" className="flex min-h-64 flex-1 items-center justify-center rounded-2xl bg-white text-sm text-muted-foreground">{t("loadingProjects")}</div> : projetos.isError ? <div role="alert" className="flex min-h-64 flex-1 items-center justify-center rounded-2xl bg-white text-sm text-destructive">{t("projectsLoadError")}</div> : <HeroTable className="projects-table min-h-0 flex-1" variant="primary">
-          <HeroTable.ScrollContainer>
-            <HeroTable.Content aria-label={t("myProjects")} selectionMode="none">
-              <HeroTable.Header>
-                <HeroTable.Column id="project" textValue={t("project")}><TableColumnFilter label={t("project")} value={filtrosProjeto.nome} onChange={(value) => alterarFiltroProjeto("nome", value)} /></HeroTable.Column>
-                <HeroTable.Column id="team" textValue={t("team")}><TableColumnFilter label={t("team")} value={filtrosProjeto.time} onChange={(value) => alterarFiltroProjeto("time", value)} /></HeroTable.Column>
-                <HeroTable.Column id="app" textValue={t("app")}><TableColumnFilter label={t("app")} value={filtrosProjeto.app} onChange={(value) => alterarFiltroProjeto("app", value)} /></HeroTable.Column>
-                <HeroTable.Column id="one-ui" textValue={t("oneUi")}><TableColumnFilter label={t("oneUi")} value={filtrosProjeto.oneUi} onChange={(value) => alterarFiltroProjeto("oneUi", value)} /></HeroTable.Column>
-                <HeroTable.Column id="models" textValue={t("deviceModels")}><TableColumnFilter label={t("deviceModels")} value="" onChange={() => undefined} options={opcoesFiltroModelos} multiple selectedValues={modelosFiltrados} onSelectedValuesChange={(values) => { setPagina(1); setModelosFiltrados(values); }} /></HeroTable.Column>
-                <HeroTable.Column id="status" textValue={t("status")}><TableColumnFilter label={t("status")} value={filtrosProjeto.status} onChange={(value) => alterarFiltroProjeto("status", value)} options={[{ value: "", label: t("all") }, ...statusProjeto.map((status) => ({ value: status, label: statusLabel(status) }))]} /></HeroTable.Column>
-                <HeroTable.Column id="created" textValue={t("createdAt")}><TableColumnFilter label={t("createdAt")} value={filtrosProjeto.createdAt} onChange={(value) => alterarFiltroProjeto("createdAt", value)} /></HeroTable.Column>
-                <HeroTable.Column id="actions" textValue={t("actions")} className="text-right">{t("actions")}</HeroTable.Column>
-              </HeroTable.Header>
-              <HeroTable.Body>
-                {projetosFiltrados.length ? projetosFiltrados.map((project, index) => <ProjectRow key={project.id} project={project} rowNumber={(pagina - 1) * tamanhoPagina + index + 1} teamName={nomeTime[project.time_id]} canEdit={podeGerenciar} onView={() => navigate(`/projetos/${project.id}`)} onEdit={() => { setProjetoEditando(project); setEdicaoNome(project.nome); setEdicaoApp(project.app); setEdicaoOneUi(project.one_ui); setEdicaoTimeId(project.time_id); setEdicaoModelosIds(project.modelos_ids ?? []); }} onDelete={() => setProjetoExcluindo(project)} onStatusChange={(status) => statusMutation.mutate({ id: project.id, status })} statusLabel={statusLabel} />) : <HeroTable.Row id="empty-projects"><HeroTable.Cell colSpan={8} className="h-64 text-center align-middle"><div role="status"><p className="font-medium">{projetos.data?.items.length ? t("noProjectResults", { defaultValue: "Nenhum projeto corresponde aos filtros." }) : t("noProjects")}</p><p className="mt-1 text-muted-foreground">{projetos.data?.items.length ? t("adjustFilters", { defaultValue: "Ajuste ou limpe os filtros para ver os resultados." }) : t("noProjectsHint")}</p></div></HeroTable.Cell></HeroTable.Row>}
-              </HeroTable.Body>
-            </HeroTable.Content>
-          </HeroTable.ScrollContainer>
-          <HeroTable.Footer>
-            <span>{formatNumber(totalProjetos)} {t("projectsNav").toLocaleLowerCase()}</span>
-            <nav aria-label={t("pagination", { defaultValue: "Pagination" })} className="flex items-center gap-1">
-              <HeroButton variant="ghost" size="sm" isDisabled={pagina <= 1} onPress={() => setPagina(pagina - 1)}><ChevronLeft className="size-3.5" />{t("previousPage")}</HeroButton>
-              {paginasVisiveis.map((page) => <HeroButton key={page} variant={page === pagina ? "secondary" : "ghost"} size="sm" isIconOnly aria-current={page === pagina ? "page" : undefined} aria-label={t("pageOfTotal", { page, total: totalPaginas })} onPress={() => setPagina(page)}>{page}</HeroButton>)}
-              <HeroButton variant="ghost" size="sm" isDisabled={pagina >= totalPaginas} onPress={() => setPagina(pagina + 1)}>{t("nextPage")}<ChevronLeft className="size-3.5 rotate-180" /></HeroButton>
-            </nav>
-          </HeroTable.Footer>
-        </HeroTable>}
-      </TableLayout>
+      <DataTable
+        aria-label={t("myProjects")}
+        columns={colunas}
+        items={projetosFiltrados}
+        state={estadoProjetos}
+        pagination={<DataTablePagination page={pagina} pageSize={tamanhoPagina} totalCount={projetos.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />}
+        rowDependencies={[t, nomeTime, podeGerenciar, primeiraDaPagina, ordemDosProjetos]}
+      />
     </> : <>
       <div className="absolute -top-11 left-0 z-10">
         <Button variant="ghost" className="h-auto gap-1 px-1 py-1 text-base font-normal text-foreground hover:text-foreground" onClick={() => { setCriacaoAberta(false); limparFormulario(); }}><ChevronLeft aria-hidden="true" className="size-4" />{t("projectsNav")}</Button>
@@ -268,78 +302,20 @@ export function ProjetosPage() {
         </form>
       </DrawerContent>
     </Dialog>
-    <ConfirmDialog open={Boolean(projetoExcluindo)} onOpenChange={(open) => { if (!open && !excluirProjeto.isPending) setProjetoExcluindo(null); }} title={t("deleteProjectTitle")} description={t("deleteProjectDescription", { name: projetoExcluindo?.nome ?? "" })} confirmLabel={t("deleteProject")} variant="destructive" isPending={excluirProjeto.isPending} onConfirm={() => excluirProjeto.mutate()} />
+    <AlertConfirm open={Boolean(projetoExcluindo)} onOpenChange={(open) => { if (!open && !excluirProjeto.isPending) setProjetoExcluindo(null); }} title={t("deleteProjectTitle")} description={t("deleteProjectDescription", { name: projetoExcluindo?.nome ?? "" })} confirmLabel={t("deleteProject")} variant="destructive" isPending={excluirProjeto.isPending} onConfirm={() => excluirProjeto.mutate()} />
   </section>;
 }
 
-function ProjectRow({ project, rowNumber, teamName, canEdit, onView, onEdit, onDelete, onStatusChange, statusLabel }: { project: Projeto; rowNumber: number; teamName?: string; canEdit: boolean; onView: () => void; onEdit: () => void; onDelete: () => void; onStatusChange: (status: StatusProjeto) => void; statusLabel: (status: StatusProjeto) => string }) {
-  const { t } = useTranslation();
-  const modelos = project.modelos_dispositivo ?? [];
-  const statusColor = project.status === "Completed" ? "success" : project.status === "InProgress" ? "warning" : project.status === "Canceled" ? "danger" : project.status === "Created" ? "accent" : "default";
-  return <HeroTable.Row id={project.id}>
-    <HeroTable.Cell className="font-medium"><span className="mr-2 inline-block w-5 text-[10px] font-normal text-[#858991]">{String(rowNumber).padStart(2, "0")}</span><Link to={`/projetos/${project.id}`} className="text-left hover:text-primary">{project.nome}</Link></HeroTable.Cell>
-    <HeroTable.Cell className="text-[#666970]">{teamName ?? "—"}</HeroTable.Cell>
-    <HeroTable.Cell className="text-[#666970]">{project.app}</HeroTable.Cell>
-    <HeroTable.Cell className="text-[#666970]">{project.one_ui}</HeroTable.Cell>
-    <HeroTable.Cell><ProjectDeviceCount projectId={project.id} models={modelos} label={t("deviceModels")} /></HeroTable.Cell>
-    <HeroTable.Cell>{canEdit ? <Select value={project.status} onValueChange={(value) => onStatusChange(value as StatusProjeto)}><SelectTrigger aria-label={t("projectStatusFor", { name: project.nome })} className={`h-6 w-32 rounded-full border-0 px-2 text-[10px] ${project.status === "Completed" ? "bg-[#e3f6e9] text-[#278a4c]" : project.status === "InProgress" ? "bg-[#fff1dd] text-[#a36012]" : project.status === "Canceled" ? "bg-[#fde8e8] text-[#b64646]" : project.status === "Created" ? "bg-[#e6efff] text-[#3672f2]" : "bg-[#eff0f2] text-[#686b70]"}`}><SelectValue /></SelectTrigger><SelectContent>{statusProjeto.map((status) => <SelectItem key={status} value={status}>{statusLabel(status)}</SelectItem>)}</SelectContent></Select> : <Chip color={statusColor} variant="soft" size="sm" className="text-[10px]"><Chip.Label>{statusLabel(project.status)}</Chip.Label></Chip>}</HeroTable.Cell>
-    <HeroTable.Cell className="text-[#666970]">{project.created_at ? formatDate(project.created_at) : "—"}</HeroTable.Cell>
-    <HeroTable.Cell className="text-right"><div className="inline-flex items-center gap-1">
-      <HeroButton variant="tertiary" size="sm" isIconOnly aria-label={t("viewProject")} className="!size-6 !min-w-6 rounded-full bg-[#f0f0f0] p-1" onPress={onView}><Eye className="size-3" /></HeroButton>
-      {canEdit && <>
-        <HeroButton variant="tertiary" size="sm" isIconOnly aria-label={t("editProject")} className="!size-6 !min-w-6 rounded-full bg-[#f0f0f0] p-1" onPress={onEdit}><Pencil className="size-3" /></HeroButton>
-        <HeroButton variant="tertiary" size="sm" isIconOnly aria-label={t("deleteProject")} className="!size-6 !min-w-6 rounded-full bg-[#fff0f0] p-1 text-[#df6262]" onPress={onDelete}><Trash2 className="size-3" /></HeroButton>
-      </>}
-    </div></HeroTable.Cell>
-  </HeroTable.Row>;
+/** Quantidade de modelos do projeto; os nomes aparecem no tooltip. */
+function ContagemModelos({ modelos, rotulo }: { modelos: string[]; rotulo: string }) {
+  return (
+    <Tooltip delay={300} closeDelay={0}>
+      <HeroButton variant="ghost" aria-label={`${rotulo}: ${modelos.length}`} className="h-7 min-h-0 gap-1.5 rounded-lg px-1.5 text-[14px] text-[#454442]">
+        <Smartphone aria-hidden="true" absoluteStrokeWidth strokeWidth={1} className="size-3.5" /><span className="tabular-nums">{modelos.length}</span>
+      </HeroButton>
+      {modelos.length > 0 && <Tooltip.Content className="max-w-64 text-[13px]">
+        {modelos.map((nome, indice) => <span key={`${nome}-${indice}`} className="block truncate">{nome}</span>)}
+      </Tooltip.Content>}
+    </Tooltip>
+  );
 }
-
-function ProjectDeviceCount({ projectId, models, label }: { projectId: string; models: string[]; label: string }) {
-  const [open, setOpen] = useState(false);
-  const [position, setPosition] = useState({ left: 0, top: 0 });
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
-  const closeTimeout = useRef<number | null>(null);
-  const tooltipId = `project-models-${projectId}`;
-
-  function showTooltip() {
-    if (closeTimeout.current !== null) window.clearTimeout(closeTimeout.current);
-    setOpen(true);
-  }
-
-  function hideTooltip() {
-    if (document.activeElement === triggerRef.current) return;
-    if (closeTimeout.current !== null) window.clearTimeout(closeTimeout.current);
-    closeTimeout.current = window.setTimeout(() => setOpen(false), 120);
-  }
-
-  useEffect(() => {
-    if (!open) return;
-    const positionTooltip = () => {
-      const bounds = triggerRef.current?.getBoundingClientRect();
-      if (!bounds) return;
-      const tooltipBounds = tooltipRef.current?.getBoundingClientRect();
-      const width = tooltipBounds?.width ?? Math.min(256, window.innerWidth - 16);
-      const height = tooltipBounds?.height ?? Math.min(models.length * 24 + 16, 192);
-      const left = Math.max(8, Math.min((bounds.left + bounds.right - width) / 2, window.innerWidth - width - 8));
-      const top = bounds.bottom + height + 8 <= window.innerHeight
-        ? bounds.bottom + 8
-        : Math.max(8, bounds.top - height - 8);
-      setPosition({ left, top });
-    };
-    positionTooltip();
-    window.addEventListener("resize", positionTooltip);
-    window.addEventListener("scroll", positionTooltip, true);
-    return () => {
-      window.removeEventListener("resize", positionTooltip);
-      window.removeEventListener("scroll", positionTooltip, true);
-      if (closeTimeout.current !== null) window.clearTimeout(closeTimeout.current);
-    };
-  }, [open, models.length]);
-
-  return <>
-    <button ref={triggerRef} type="button" aria-label={`${label}: ${models.length}`} aria-describedby={open && models.length > 0 ? tooltipId : undefined} onMouseEnter={showTooltip} onMouseLeave={hideTooltip} onFocus={showTooltip} onBlur={() => setOpen(false)} onClick={showTooltip} className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><Smartphone aria-hidden="true" className="size-4" /><span>{models.length}</span></button>
-    {open && models.length > 0 && createPortal(<div ref={tooltipRef} id={tooltipId} role="tooltip" onMouseEnter={showTooltip} onMouseLeave={hideTooltip} style={{ position: "fixed", left: position.left, top: position.top }} className="z-[80] max-h-48 w-max max-w-64 overflow-y-auto rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground shadow-lg">{models.map((name, index) => <span key={`${name}-${index}`} className="block truncate">{name}</span>)}</div>, document.body)}
-  </>;
-}
-

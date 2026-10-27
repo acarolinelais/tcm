@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "@heroui/styles";
 @import "@fontsource-variable/inter";
 
 /* HeroUI v3 em camadas, sem reimportar o Tailwind (ADR 0037). */
@@ -98,64 +97,6 @@ body {
   display: none;
   width: 0;
   height: 0;
-}
-
-/* Tabela de projetos: superfície, linhas e densidade próximas ao protótipo. */
-.projects-table .table__scroll-container {
-  min-height: 0;
-  flex: 1;
-  overflow: auto;
-  border-radius: 1.25rem;
-  background: white;
-}
-
-.projects-table .table__content {
-  width: 100%;
-  min-width: 760px;
-  border-collapse: separate;
-  border-spacing: 0;
-  color: #454442;
-  font-size: 0.75rem;
-}
-
-.projects-table .table__header {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: #f2f3f5;
-}
-
-.projects-table .table__column {
-  height: 2rem;
-  padding: 0 0.65rem;
-  color: #74777d;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  text-align: left;
-  white-space: nowrap;
-}
-
-.projects-table .table__row {
-  height: 2rem;
-  border-bottom: 1px solid #eceef1;
-  background: white;
-}
-
-.projects-table .table__cell {
-  height: 2rem;
-  padding: 0 0.65rem;
-  white-space: nowrap;
-}
-
-.projects-table .table__footer {
-  display: flex;
-  min-height: 2.5rem;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.25rem 0.75rem;
-  color: #858991;
-  font-size: 0.6875rem;
 }
 
 /* Área de soltar arquivo do Figma: traço tracejado com cantos arredondados, que border-dashed não reproduz.

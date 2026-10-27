@@ -41,7 +41,7 @@ não a tela isolada.
 - O `DataTable` ocupa a altura disponível. O cabeçalho é fixo e só o corpo rola, nunca a página inteira.
 - Cabeçalho: Inter 500 14px `text-muted`, **sem caixa alta**, com divisórias entre as colunas. A última coluna
   não tem divisória.
-- Linhas de 44px (alvo de toque), texto Inter 400 14px. A coluna identificadora (`isRowHeader`) fica em 500. O texto fica a cerca de 10px da divisória da coluna.
+- Linhas de 40px (Figma), texto Inter 400 14px. A coluna identificadora (`isRowHeader`) fica em 500. O texto fica a cerca de 10px da divisória da coluna.
 - Uma coluna é o identificador da linha (`isRowHeader`: nome, TC ID). Ela dá o nome acessível da linha.
 - Valor ausente aparece como `—`, nunca como célula vazia, `null` ou `undefined`.
 - Datas com `formatDate`. Números e contagens alinhados à direita, com `tabular-nums`.

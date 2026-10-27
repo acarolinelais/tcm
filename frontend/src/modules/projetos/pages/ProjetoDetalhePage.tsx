@@ -219,7 +219,8 @@ function ProjetoDetalhe() {
       header: <DataTableFilter label={t("endDate")} value={filtrosCaso.endDate} onChange={(value) => alterarFiltroCaso("endDate", value)} type="date" />,
       cell: (caso) => {
         const endDate = caso.status === "Done" ? caso.updated_at ?? caso.created_at : null;
-        return endDate ? formatDate(endDate) : "—";
+        // Figma: data por extenso curta ("Mar 23, 2026"), centralizada na coluna.
+        return <span className="block text-center">{endDate ? formatDate(endDate, { dateStyle: "medium" }) : "—"}</span>;
       },
     },
     {
