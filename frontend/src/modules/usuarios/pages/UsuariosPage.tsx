@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { useOutletContext } from "react-router";
+import { Button } from "@heroui/react";
+import { Plus } from "lucide-react";
 
-import { Button } from "@/shared/ui/button";
+import { PageCard, PageTitle } from "@/shared/ui/page-card";
 import { Dialog, DrawerContent, DrawerHeader, DrawerTitle } from "@/shared/ui/dialog";
 import { toast } from "@/shared/lib/toast";
 
 import { UsuarioForm } from "../components/UsuarioForm";
 import { UsuariosTable } from "../components/UsuariosTable";
-import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS } from "@/shared/ui/table";
+import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS } from "@/shared/lib/paginacao";
 import type { Usuario } from "../model/usuario";
 import type { PerfilAtual } from "@/core/auth/api";
 import type { UsuarioFiltros } from "../api/usuario.api";
@@ -80,17 +82,15 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
-      <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-medium leading-8 text-foreground">{t("users")}</h1>
-        </div>
+    <PageCard>
+      <header className="mb-[30px] flex shrink-0 items-center justify-between gap-4">
+        <PageTitle>{t("users")}</PageTitle>
         {podeGerenciar && (
-          <Button onClick={abrirCriar} className="h-10 rounded-lg px-5 text-sm">
-            {t("newUser")}
+          <Button variant="primary" onPress={abrirCriar}>
+            <Plus aria-hidden="true" absoluteStrokeWidth strokeWidth={1.5} className="size-4" />{t("newUser")}
           </Button>
         )}
-      </div>
+      </header>
       <UsuariosTable
         page={page}
         pageSize={pageSize}
@@ -127,6 +127,6 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
           />
         </DrawerContent>
       </Dialog>
-    </div>
+    </PageCard>
   );
 }
