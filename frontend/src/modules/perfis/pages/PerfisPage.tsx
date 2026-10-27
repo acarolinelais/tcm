@@ -1,20 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight, ShieldCheck } from "lucide-react";
+import { Button as HeroButton } from "@heroui/react";
+import { ChevronDown, ChevronRight, Pencil, Plus, ShieldCheck } from "lucide-react";
 import { useBlocker } from "react-router";
 
 import { usePerfilAtual } from "@/core/auth/usePerfilAtual";
 import { ApiError } from "@/shared/api/problem-details";
 import { Button } from "@/shared/ui/button";
-import { Badge } from "@/shared/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
-import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableEmptyState, TableHead, TableHeader, TableLayout, TablePagination, TableRow } from "@/shared/ui/table";
+import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
+import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
+import { DataTablePagination } from "@/shared/ui/data-table-pagination";
+import { estadoDaTabela } from "@/shared/ui/data-table-state";
+import { EyeIcon } from "@/shared/ui/figma-icons";
+import { PageCard, PageTitle } from "@/shared/ui/page-card";
+import { RowActions } from "@/shared/ui/row-action-button";
+import { rowActionIconProps } from "@/shared/ui/row-action-icon";
 import { PageSkeleton } from "@/shared/ui/skeleton";
 import { criarPerfil, listarPerfis, listarPermissoes, salvarPermissoes } from "../api/perfis.api";
 import type { Perfil, Permissao } from "../api/perfis.api";
-import { PerfilAcoesMenu } from "../components/PerfilAcoesMenu";
 import { useTranslation } from "react-i18next";
 
 type ModoEditor = "visualizar" | "editar";
@@ -219,60 +225,59 @@ export function PerfisPage() {
     : t("unsavedPermissionsHint");
   const labelSalvarEContinuar = criando ? t("createAndContinue") : t("saveAndContinue");
   const labelDescartar = acaoPendente?.tipo === "cancelar" ? t("discardDraft") : t("discardAndContinue");
+  const colunas: DataTableColumn<Perfil>[] = [
+    { id: "perfil", isRowHeader: true, header: t("profileColumn"), cell: (perfil) => perfil.codigo ? t(`catalog.profile.${perfil.codigo}`, { defaultValue: perfil.nome }) : perfil.nome },
+    // A tabela mede as colunas pelo conteúdo: a largura máxima faz a descrição quebrar linha em vez de empurrar as ações.
+    { id: "descricao", header: t("description"), className: "py-2.5", cell: (perfil) => <span className="block max-w-[20rem] whitespace-normal">{perfil.codigo ? t(`catalog.profile.description.${perfil.codigo}`, { defaultValue: perfil.descricao || "—" }) : perfil.descricao || "—"}</span> },
+    { id: "tipo", header: t("type"), cell: (perfil) => perfil.codigo ? t("protectedBySystem") : t("unitProfile") },
+    {
+      id: "permissoes",
+      header: t("permissions"),
+      className: "text-end",
+      cell: (perfil) => <span className="inline-flex items-center gap-1.5 tabular-nums">
+        <ShieldCheck aria-hidden="true" absoluteStrokeWidth strokeWidth={1} className="size-3.5" />
+        <span aria-hidden="true">{perfil.permissoes.length}</span>
+        <span className="sr-only">{t("permissionCount", { count: perfil.permissoes.length })}</span>
+      </span>,
+    },
+    {
+      id: "acoes",
+      header: t("actions"),
+      className: "w-px whitespace-nowrap",
+      cell: (perfil) => <RowActions identificador={perfil.nome} actions={[
+        { label: t("viewPermissions"), icon: <EyeIcon />, onPress: () => pedirAcao({ tipo: "perfil", perfil, modo: "visualizar" }) },
+        { label: t("editPermissions"), icon: <Pencil {...rowActionIconProps} />, onPress: () => pedirAcao({ tipo: "perfil", perfil, modo: "editar" }) },
+      ]} />,
+    },
+  ];
 
   return (
-    <section className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
-      <header className="mb-7 flex shrink-0 flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-medium leading-8 text-foreground">{t("profileTitle")}</h1>
-        </div>
-        {!criando && <Button onClick={() => pedirAcao({ tipo: "novo" })} className="h-10 rounded-lg px-5 text-sm">{t("newProfile")}</Button>}
+    <PageCard>
+      <header className="mb-[30px] flex shrink-0 items-center justify-between gap-4">
+        <PageTitle>{t("profileTitle")}</PageTitle>
+        {!criando && <HeroButton variant="primary" onPress={() => pedirAcao({ tipo: "novo" })}><Plus aria-hidden="true" absoluteStrokeWidth strokeWidth={1.5} className="size-4" />{t("newProfile")}</HeroButton>}
       </header>
 
       {!criando && modoEditor === null ? (
-        <TableLayout>
-          <Table containerClassName={perfisPaginados.length > 0 ? "min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("profileColumn")}</TableHead>
-                <TableHead>{t("description")}</TableHead>
-                <TableHead>{t("type")}</TableHead>
-                <TableHead>{t("permissions")}</TableHead>
-                <TableHead className="w-20 text-center">{t("actions")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            {perfisPaginados.length > 0 && <TableBody>
-              {perfisPaginados.map((perfil) => (
-                <TableRow key={perfil.id}>
-                  <TableCell className="font-medium">{perfil.codigo ? t(`catalog.profile.${perfil.codigo}`, { defaultValue: perfil.nome }) : perfil.nome}</TableCell>
-                  <TableCell className="text-muted-foreground">{perfil.codigo ? t(`catalog.profile.description.${perfil.codigo}`, { defaultValue: perfil.descricao || "—" }) : perfil.descricao || "—"}</TableCell>
-                  <TableCell>{perfil.codigo ? t("protectedBySystem") : t("unitProfile")}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="gap-1.5 rounded-md border border-[#DCE7FF] bg-[#F5F8FF] px-2.5 py-1 text-primary">
-                      <ShieldCheck aria-hidden="true" className="size-3.5" />
-                      <span aria-hidden="true">{perfil.permissoes.length}</span>
-                      <span className="sr-only">{t("permissionCount", { count: perfil.permissoes.length })}</span>
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <PerfilAcoesMenu
-                      perfil={perfil}
-                      onVisualizar={() => pedirAcao({ tipo: "perfil", perfil, modo: "visualizar" })}
-                      onEditar={() => pedirAcao({ tipo: "perfil", perfil, modo: "editar" })}
-                      podeEditar
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>}
-          </Table>
-          {(perfis.data ?? []).length === 0 && (
-            <TableEmptyState className="p-8 text-center">
-              <div role="status"><h2 className="font-semibold">{t("noProfiles")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("noProfilesHint")}</p></div>
-            </TableEmptyState>
-          )}
-          <TablePagination page={pagina} pageSize={itensPorPagina} totalCount={listaPerfis.length} onPageChange={setPagina} onPageSizeChange={(quantidade) => { setItensPorPagina(quantidade); setPagina(1); }} />
-        </TableLayout>
+        <DataTable
+          aria-label={t("profileTitle")}
+          columns={colunas}
+          items={perfisPaginados}
+          // A lista chega inteira antes da página abrir; aqui só resta o estado vazio.
+          state={estadoDaTabela({
+            isLoading: false,
+            isError: false,
+            isEmpty: !perfisPaginados.length,
+            hasFilters: false,
+            onClearFilters: () => setPagina(1),
+            loadingLabel: t("loading"),
+            errorLabel: t("profilesLoadError"),
+            clearFiltersLabel: t("clearFilters"),
+            empty: { icon: <ShieldCheck aria-hidden="true" className="size-5" />, title: t("noProfiles"), hint: t("noProfilesHint") },
+            filtered: { title: t("noProfiles"), hint: t("noProfilesHint") },
+          })}
+          pagination={<DataTablePagination page={pagina} pageSize={itensPorPagina} totalCount={listaPerfis.length} onPageChange={setPagina} onPageSizeChange={(quantidade) => { setItensPorPagina(quantidade); setPagina(1); }} />}
+        />
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           <Button type="button" variant="ghost" className="w-fit px-2" onClick={() => pedirAcao({ tipo: "lista" })}>← {t("profiles")}</Button>
@@ -398,7 +403,7 @@ export function PerfisPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </section>
+    </PageCard>
   );
 }
 

@@ -40,9 +40,9 @@ async function abrirGrupo(user: ReturnType<typeof userEvent.setup>, nome: string
   await user.click(screen.getByRole("button", { name: new RegExp(nome) }));
 }
 
+// Ações da linha são botões redondos sempre visíveis, com o nome "<ação> <perfil>".
 async function abrirPerfil(user: ReturnType<typeof userEvent.setup>, nome: string, acao = "View permissions") {
-  await user.click(screen.getByRole("button", { name: `Actions for ${nome}` }));
-  await user.click(screen.getByRole("menuitem", { name: acao }));
+  await user.click(screen.getByRole("button", { name: `${acao} ${nome}` }));
 }
 
 describe("PerfisPage", () => {
@@ -58,7 +58,7 @@ describe("PerfisPage", () => {
   it("agrupa permissões usando os metadados recebidos, inclusive módulos desconhecidos", async () => {
     renderPage();
 
-    expect(await screen.findByRole("table")).toBeInTheDocument();
+    expect(await screen.findByRole("grid")).toBeInTheDocument();
     const user = userEvent.setup();
     await abrirPerfil(user, "Operação");
     expect(await screen.findByRole("region", { name: "Permissions for Users" })).toBeInTheDocument();
@@ -74,7 +74,7 @@ describe("PerfisPage", () => {
   it("permite selecionar todas e comunica estado parcial do grupo", async () => {
     renderPage();
     const user = userEvent.setup();
-    await screen.findByRole("table");
+    await screen.findByRole("grid");
     await abrirPerfil(user, "Operação", "Edit permissions");
     const grupo = await screen.findByRole("region", { name: "Permissions for Users" });
     const selecionarModulo = within(grupo).getByLabelText(/Select all permissions for Users/);
@@ -88,7 +88,7 @@ describe("PerfisPage", () => {
   it("pede decisão antes de sair da edição e preserva o rascunho ao permanecer", async () => {
     renderPage();
     const user = userEvent.setup();
-    await screen.findByRole("table");
+    await screen.findByRole("grid");
     await abrirPerfil(user, "Operação", "Edit permissions");
     await abrirGrupo(user, "Users");
     await user.click(screen.getByLabelText("View users in the allowed scope"));
@@ -109,7 +109,7 @@ describe("PerfisPage", () => {
     api.salvarPermissoes.mockRejectedValue(new Error("Falha de rede"));
     renderPage();
     const user = userEvent.setup();
-    await screen.findByRole("table");
+    await screen.findByRole("grid");
     await abrirPerfil(user, "Operação", "Edit permissions");
     await abrirGrupo(user, "Users");
     await user.click(screen.getByLabelText("Create and edit users"));
@@ -133,7 +133,7 @@ describe("PerfisPage", () => {
     renderPage();
 
     const user = userEvent.setup();
-    await screen.findByRole("table");
+    await screen.findByRole("grid");
     await abrirPerfil(user, nome, "Edit permissions");
     expect(await screen.findByText("System profile")).toBeInTheDocument();
     await abrirGrupo(user, "Users");
@@ -151,7 +151,7 @@ describe("PerfisPage", () => {
     ]);
     renderPage();
 
-    const tabela = await screen.findByRole("table");
+    const tabela = await screen.findByRole("grid");
     expect(tabela).toHaveTextContent("Manages teams in assigned sectors.");
     expect(tabela).not.toHaveTextContent("Gerencia times dos setores associados.");
     expect(tabela).toHaveTextContent("Perfil criado pela unidade.");
@@ -161,7 +161,7 @@ describe("PerfisPage", () => {
     api.criarPerfil.mockRejectedValue(new ApiError({ type: "about:blank", title: "Conflito", status: 409 }));
     renderPage();
     const user = userEvent.setup();
-    await screen.findByRole("table");
+    await screen.findByRole("grid");
     await user.click(screen.getByRole("button", { name: "New profile" }));
     await user.type(screen.getByLabelText(/Profile name/), "Operação");
     await user.click(screen.getByRole("button", { name: "Create profile" }));
@@ -176,7 +176,7 @@ describe("PerfisPage", () => {
     api.criarPerfil.mockResolvedValue(novo);
     renderPage();
     const user = userEvent.setup();
-    await screen.findByRole("table");
+    await screen.findByRole("grid");
     await user.click(screen.getByRole("button", { name: "New profile" }));
     await user.type(screen.getByLabelText(/Profile name/), "Auditoria");
     await user.type(screen.getByLabelText(/Description/), "Consulta");
