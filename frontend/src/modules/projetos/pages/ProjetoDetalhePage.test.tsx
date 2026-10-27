@@ -193,7 +193,7 @@ describe("ProjetoDetalhePage", () => {
     expect(screen.queryByRole("button", { name: "Clock 9.5" })).not.toBeInTheDocument();
   });
 
-  it("permite ao responsável atualizar somente categoria, dificuldade e status do próprio caso", async () => {
+  it("permite ao responsável atualizar categoria, dificuldade, status e TC Situation só do próprio caso", async () => {
     const user = userEvent.setup();
     renderPage();
     const proprioCaso = await screen.findByRole("row", { name: /Clock_001/ });
@@ -210,9 +210,13 @@ describe("ProjetoDetalhePage", () => {
     await user.click(await screen.findByRole("option", { name: "In Progress" }));
     await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { status: "InProgress" }));
 
-    // TC Situation é só da gestão: o responsável vê o valor, sem controle de edição.
-    expect(within(proprioCaso).queryByRole("button", { name: /TC Situation Clock_001/ })).not.toBeInTheDocument();
-    expect(within(proprioCaso).getByText("New")).toBeInTheDocument();
+    await user.click(within(proprioCaso).getByRole("button", { name: /TC Situation Clock_001/ }));
+    await user.click(await screen.findByRole("option", { name: "New Step" }));
+    await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { situation: "New Step" }));
+
+    // No caso de outra pessoa o DEV só vê o valor, sem controle de edição.
+    const casoAlheio = screen.getByRole("row", { name: /Clock_002/ });
+    expect(within(casoAlheio).queryByRole("button", { name: /TC Situation Clock_002/ })).not.toBeInTheDocument();
 
     expect(within(proprioCaso).queryByRole("button", { name: "Edit Clock_001" })).not.toBeInTheDocument();
   });

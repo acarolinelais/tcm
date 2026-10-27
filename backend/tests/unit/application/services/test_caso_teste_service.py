@@ -324,13 +324,14 @@ async def test_atualizar_caso_proprio_permite_campos_do_responsavel(contexto):
             category=CategoriaCasoTeste.B,
             difficulty=DificuldadeCasoTeste.MEDIUM,
             status=StatusCasoTeste.IN_PROGRESS,
+            situation=SituacaoCasoTeste.NEW_STEP,
         ),
     )
 
     assert resposta.category is CategoriaCasoTeste.B
     assert resposta.difficulty is DificuldadeCasoTeste.MEDIUM
     assert resposta.status is StatusCasoTeste.IN_PROGRESS
-    assert resposta.situation is SituacaoCasoTeste.NEW
+    assert resposta.situation is SituacaoCasoTeste.NEW_STEP
     assert resposta.created_at == caso.created_at
     casos.atualizar.assert_awaited_once_with(caso)
     uow.commit.assert_awaited_once()
@@ -378,7 +379,7 @@ async def test_responsavel_nao_edita_atribuicao_nem_caso_de_outra_pessoa(context
         await service.atualizar(
             responsavel,
             caso.id,
-            AtualizarCasoTesteRequest(situation=SituacaoCasoTeste.NEW_STEP),
+            AtualizarCasoTesteRequest(backup_id=uuid4()),
         )
     assert caso.situation is SituacaoCasoTeste.NEW
     casos.atualizar.assert_not_awaited()

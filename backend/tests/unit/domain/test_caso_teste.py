@@ -51,6 +51,16 @@ def test_responsavel_atualiza_somente_seus_campos_permitidos():
     assert caso.backup_id == backup_id
 
 
+def test_responsavel_atualiza_tc_situation_quando_informada():
+    caso = criar_caso()
+
+    caso.atualizar_campos_do_responsavel(
+        caso.status, caso.category, caso.difficulty, SituacaoCasoTeste.WITHOUT_CHANGES
+    )
+
+    assert caso.situation == SituacaoCasoTeste.WITHOUT_CHANGES
+
+
 def test_gestao_atualiza_situation_e_status():
     caso = criar_caso()
 

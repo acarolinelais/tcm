@@ -197,7 +197,7 @@ function ProjetoDetalhe() {
     {
       id: "situation",
       header: <DataTableFilter label={t("tcSituation")} value={filtrosCaso.situation} onChange={(value) => alterarFiltroCaso("situation", value)} options={comTodos(opcoes.situacao)} />,
-      cell: (caso) => celulaEditavel(caso, "situation", t("tcSituation"), caso.situation, opcoes.situacao, <TagChip tom={TONS_ETIQUETA.neutro}>{t(ROTULO_SITUACAO[caso.situation])}</TagChip>, podeGerenciarCasos),
+      cell: (caso) => celulaEditavel(caso, "situation", t("tcSituation"), caso.situation, opcoes.situacao, <TagChip tom={TONS_ETIQUETA.neutro}>{t(ROTULO_SITUACAO[caso.situation])}</TagChip>, podeEditarProprio(caso)),
     },
     {
       id: "assignee",

@@ -39,8 +39,9 @@ transferência em lote saíram em 2026-10-27; ver "Mudanças depois da entrega".
 - RN-05: Status, situação e ativo/inativo aparecem como etiquetas arredondadas de fundo claro, com a cor
   de cada valor (ver "Referência visual"). O texto do valor sempre aparece junto da cor.
 - RN-06: Um campo que o usuário pode editar na linha mostra uma seta cinza ao lado da etiqueta. Quem não
-  pode editar vê só a etiqueta. Os campos editáveis por perfil continuam os de hoje: o responsável edita
-  Status, Difficulty e Category; gerente e KP também editam TC Situation, Assignee e Backup.
+  pode editar vê só a etiqueta. Os campos editáveis por perfil: o responsável edita Status, TC Situation,
+  Difficulty e Category; gerente e KP também editam Assignee e Backup. (TC Situation passou ao responsável
+  em 2026-10-27, spec 011 RN-16.)
 - RN-07: ~~A coluna de numeração da linha (01, 02...) sai da listagem de Test Cases.~~ Revogada em
   2026-10-27: a listagem de Test Cases numera as linhas como a de Form Factor (01, 02..., continuando na
   página seguinte).
@@ -89,8 +90,9 @@ transferência em lote saíram em 2026-10-27; ver "Mudanças depois da entrega".
 - **CA-01:** Dado um dev com Test Cases, quando abre o projeto, então a listagem segue a "Referência
   visual": moldura, cabeçalho sem caixa alta, etiquetas com as cores de cada status e a coluna de
   numeração (alterado em 2026-10-27, antes "sem coluna de numeração").
-- **CA-02:** Dado um dev responsável por um Test Case, quando vê a linha, então Status, Difficulty e
-  Category mostram a seta de editável, e TC Situation não mostra.
+- **CA-02:** Dado um dev responsável por um Test Case, quando vê a linha, então Status, TC Situation,
+  Difficulty e Category mostram a seta de editável. Num caso de outra pessoa, nenhum desses campos mostra.
+  (Atualizado em 2026-10-27.)
 - **CA-03:** (removido em 2026-10-27) Dado um dev com três Test Cases transferíveis, quando seleciona dois e confirma "Transferir ao
   backup (2)", então os dois saem da sua lista, o aviso informa "2 transferidos" e a seleção é limpa.
 - **CA-04:** (removido em 2026-10-27) Dado um Test Case sem backup, quando o dev vê a linha, então a caixa de seleção está

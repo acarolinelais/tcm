@@ -128,17 +128,17 @@ def _usar_service_real_com_caso(caso_do_membro: bool):
     return caso, uow
 
 
-async def test_responsavel_que_envia_situation_recebe_403(api_client):
+async def test_responsavel_altera_situation_mas_nao_o_backup(api_client):
     caso, _ = _usar_service_real_com_caso(caso_do_membro=True)
-    caso.atualizar_campos_do_responsavel(StatusCasoTeste.IN_REVIEW, caso.category, caso.difficulty)
+    backup_original = caso.backup_id
 
-    negado = await api_client.put(f"/api/test-cases/{caso.id}", json={"situation": "New Step"})
-    permitido = await api_client.put(f"/api/test-cases/{caso.id}", json={"status": "InValidation"})
+    permitido = await api_client.put(f"/api/test-cases/{caso.id}", json={"situation": "New Step"})
+    negado = await api_client.put(f"/api/test-cases/{caso.id}", json={"backup_id": str(uuid4())})
 
-    assert negado.status_code == 403
     assert permitido.status_code == 200
-    assert permitido.json()["status"] == "InValidation"
-    assert permitido.json()["situation"] == "New"
+    assert permitido.json()["situation"] == "New Step"
+    assert negado.status_code == 403
+    assert caso.backup_id == backup_original
 
 
 async def test_responsavel_que_pula_a_revisao_do_pr_recebe_409(api_client):

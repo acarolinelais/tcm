@@ -70,10 +70,13 @@ class CasoTeste(EntidadeTenant):
         status: StatusCasoTeste,
         category: CategoriaCasoTeste,
         difficulty: DificuldadeCasoTeste,
+        situation: SituacaoCasoTeste | None = None,
     ) -> None:
         self.status = StatusCasoTeste(status)
         self.category = CategoriaCasoTeste(category)
         self.difficulty = DificuldadeCasoTeste(difficulty)
+        if situation is not None:
+            self.situation = SituacaoCasoTeste(situation)
 
     def registrar_resultado_form_factor(
         self, resultados: dict[UUID, str], modelos_ids: set[UUID]

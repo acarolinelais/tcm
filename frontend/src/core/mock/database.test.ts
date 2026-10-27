@@ -241,7 +241,7 @@ describe("base mock de projetos", () => {
 
     entrar("daniel.oliveira@example.com");
     expect(mockCasosTesteApi.atualizar(testCase.id, { status: "InProgress", difficulty: "Medium" })).toMatchObject({ status: "InProgress", difficulty: "Medium" });
-    expect(() => mockCasosTesteApi.atualizar(testCase.id, { situation: "New Step" })).toThrow(/só pode editar/);
+    expect(mockCasosTesteApi.atualizar(testCase.id, { situation: "New Step" })).toMatchObject({ situation: "New Step" });
     expect(() => mockCasosTesteApi.atualizar(testCase.id, { responsavel_id: "mock-user-kp" })).toThrow(/só pode editar/);
     expect(mockCasosTesteApi.transferirParaBackup(testCase.id)).toMatchObject({ responsavel_id: "mock-user-kp", backup_id: null });
   });

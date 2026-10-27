@@ -881,8 +881,8 @@ export const mockCasosTesteApi = {
         writeDb(db);
         return testCase;
       }
-      const camposPermitidos = ["category", "difficulty", "status"];
-      if (Object.keys(input).some((field) => !camposPermitidos.includes(field))) throw new Error("Você só pode editar Status, Category e Difficulty.");
+      const camposPermitidos = ["category", "difficulty", "status", "situation"];
+      if (Object.keys(input).some((field) => !camposPermitidos.includes(field))) throw new Error("Você só pode editar Status, TC Situation, Category e Difficulty.");
       if (input.status) {
         if (!opcoesStatusResponsavel(testCase.status).includes(input.status)) throw new Error("A transição de Status solicitada não é permitida.");
       }
