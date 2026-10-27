@@ -22,7 +22,7 @@ MODULOS_PERMISSOES = (
     ModuloPermissoes("times", "Times", 4, ("consultar", "criar", "gerenciar")),
     ModuloPermissoes("projetos", "Projetos", 5, ("consultar", "gerenciar")),
     ModuloPermissoes("test_cases", "Test Cases", 6, ("consultar", "gerenciar")),
-    ModuloPermissoes("form_factor", "Form Factor", 7, ("consultar", "importar")),
+    ModuloPermissoes("form_factor", "Form Factor", 7, ("consultar", "importar", "registrar")),
     ModuloPermissoes("modelos_dispositivo", "Modelos de dispositivo", 8, ("gerenciar",)),
 )
 

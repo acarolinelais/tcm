@@ -9,7 +9,7 @@ import type { PerfilAtual } from "@/core/auth/api";
 vi.mock("../api/projetos.api", () => ({
   casosTesteApi: { listar: vi.fn(), transferirParaBackup: vi.fn() },
   projetosApi: { criar: vi.fn(), listar: vi.fn() },
-  formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), listarGlobal: vi.fn(), listarResultadosGlobais: vi.fn(), criarRodadaManual: vi.fn() }, modelosDispositivoApi: {},
+  formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), listarGlobal: vi.fn(), listarResultadosGlobais: vi.fn(), criarRodada: vi.fn(), registrarResultadosRodada: vi.fn() }, modelosDispositivoApi: {},
 }));
 
 function criarWrapper() {
@@ -61,7 +61,7 @@ describe("hooks de projetos", () => {
     const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
     client.setQueryData(["projetos", "p", "form-factor", { page: 1 }], { items: [] });
     vi.mocked(formFactorApi.listarResultados).mockResolvedValue({ modelos: [], items: [], total_count: 0, page: 1, page_size: 20 });
-    vi.mocked(formFactorApi.criarRodadaManual).mockResolvedValue({} as never);
+    vi.mocked(formFactorApi.criarRodada).mockResolvedValue({} as never);
     const perfil = { id: "kp", unidade_id: "u" } as PerfilAtual;
     const { result, rerender } = renderHook(({ tcId }) => useFormFactorResultados("p", { page: 1, pageSize: 20, tcId }, perfil), { initialProps: { tcId: "TC-1" }, wrapper });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -69,7 +69,7 @@ describe("hooks de projetos", () => {
     await waitFor(() => expect(formFactorApi.listarResultados).toHaveBeenLastCalledWith("p", { page: 1, pageSize: 20, tcId: "TC-2" }));
     const chamadasAntesDaCriacao = vi.mocked(formFactorApi.listarResultados).mock.calls.length;
     const criar = renderHook(() => useCriarRodadaFormFactor("p"), { wrapper });
-    await criar.result.current.mutateAsync({ caso_teste_id: "case-1", resultados: { "model-1": "PASS" } });
+    await criar.result.current.mutateAsync({ sdf_id: "SDF-1" });
     expect(client.getQueryCache().find({ queryKey: ["projetos", "p", "form-factor", { page: 1 }] })?.state.isInvalidated).toBe(true);
     await waitFor(() => expect(formFactorApi.listarResultados).toHaveBeenCalledTimes(chamadasAntesDaCriacao + 1));
   });

@@ -13,7 +13,7 @@ import { formatarDiaIso, semanaIso } from "@/shared/lib/utils";
 
 vi.mock("../api/projetos.api", () => ({
   projetosApi: { obter: vi.fn(), listar: vi.fn() }, casosTesteApi: { listar: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), transferirParaBackup: vi.fn() },
-  formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), criarRodadaManual: vi.fn(), importar: vi.fn() }, modelosDispositivoApi: {},
+  formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), criarRodada: vi.fn(), registrarResultadosRodada: vi.fn(), importar: vi.fn() }, modelosDispositivoApi: {},
 }));
 vi.mock("@/modules/times/api/times.api", () => ({ timesApi: { membros: vi.fn() } }));
 vi.mock("@/shared/lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -21,10 +21,10 @@ vi.mock("@/shared/lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn()
 const projeto = { id: "project-1", unidade_id: "unit-1", time_id: "team-1", nome: "Clock 9.5", app: "Clock", one_ui: "9.5", status: "Created" as const, ativo: true, created_at: null, updated_at: null };
 const casos = [
   { id: "case-1", unidade_id: "unit-1", projeto_id: "project-1", tc_id: "Clock_001", category: "A" as const, difficulty: "Low" as const, situation: "New" as const, status: "To-Do" as const, responsavel_id: "user-1", backup_id: "backup-1", ativo: true, created_at: null, updated_at: null },
-  { id: "case-2", unidade_id: "unit-1", projeto_id: "project-1", tc_id: "Clock_002", category: "B" as const, difficulty: "Medium" as const, situation: "New Step" as const, status: "Pass" as const, responsavel_id: "user-2", backup_id: null, ativo: true, created_at: null, updated_at: null },
+  { id: "case-2", unidade_id: "unit-1", projeto_id: "project-1", tc_id: "Clock_002", category: "B" as const, difficulty: "Medium" as const, situation: "New Step" as const, status: "Done" as const, responsavel_id: "user-2", backup_id: null, ativo: true, created_at: null, updated_at: null },
 ];
 // Literal de propósito: a ordem do progresso é requisito (spec 017).
-const ROTULOS_STATUS = ["To-Do", "In Progress", "In Review", "In Validation", "Pass", "Fail"];
+const ROTULOS_STATUS = ["To-Do", "In Progress", "In Review", "In Validation", "Done", "In Fixes", "Excluded"];
 const perfil: PerfilAtual = {
   id: "user-1", nome: "Dev", email: "dev@example.com", unidade_id: "unit-1", unidade_nome: "Unidade",
   perfil_codigo: null, perfil: "Desenvolvedor", permissoes: ["projetos.consultar", "test_cases.consultar"], times: [], setores_gerenciados: [],
@@ -56,12 +56,13 @@ describe("ProjetoDetalhePage", () => {
     ]);
   });
 
-  it("consulta os casos como principal ou backup sem conceder edição ao backup", async () => {
+  it("permite ao backup cancelar, sem liberar edição dos demais campos", async () => {
     const backup = { ...casos[1], backup_id: "user-1" };
     vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [casos[0], backup], page: 1, page_size: 20, total_count: 2 });
     renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO" });
     const row = await screen.findByRole("row", { name: /Clock_002/ });
-    expect(within(row).queryByRole("button", { name: /Status Clock_002/ })).not.toBeInTheDocument();
+    await userEvent.setup().click(within(row).getByRole("button", { name: /Status Clock_002/ }));
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["Done", "Excluded"]);
     expect(within(row).queryByRole("button", { name: /Transfer to backup/ })).not.toBeInTheDocument();
     expect(casosTesteApi.listar).toHaveBeenCalledWith("project-1", 1, DEFAULT_TABLE_PAGE_SIZE, { responsavelId: undefined, associadosAMim: true });
   });
@@ -216,9 +217,10 @@ describe("ProjetoDetalhePage", () => {
     expect(within(proprioCaso).queryByRole("button", { name: "Edit Clock_001" })).not.toBeInTheDocument();
   });
 
-  it("oferece In Validation entre In Review e Pass no select, no filtro e no badge, sem Data final", async () => {
+  it("oferece transições válidas e mostra Done sem Data final em outros estados", async () => {
     const validando = { ...casos[1], id: "case-3", tc_id: "Clock_003", status: "InValidation" as const, updated_at: "2026-10-20T12:00:00Z" };
-    vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [...casos, validando], page: 1, page_size: 20, total_count: 3 });
+    const emProgresso = { ...casos[0], status: "InProgress" as const };
+    vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [emProgresso, casos[1], validando], page: 1, page_size: 20, total_count: 3 });
     const user = userEvent.setup();
     renderPage();
 
@@ -229,9 +231,9 @@ describe("ProjetoDetalhePage", () => {
 
     const proprioCaso = screen.getByRole("row", { name: /Clock_001/ });
     await user.click(within(proprioCaso).getByRole("button", { name: /Status Clock_001/ }));
-    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(ROTULOS_STATUS);
-    await user.click(screen.getByRole("option", { name: "In Validation" }));
-    await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { status: "InValidation" }));
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["In Progress", "In Review", "Excluded"]);
+    await user.click(screen.getByRole("option", { name: "In Review" }));
+    await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { status: "InReview" }));
 
     await user.click(screen.getByRole("button", { name: "Filter by Status" }));
     expect((await screen.findAllByRole("option")).map((item) => item.textContent)).toEqual(["All", ...ROTULOS_STATUS]);
@@ -239,6 +241,21 @@ describe("ProjetoDetalhePage", () => {
     expect(screen.getByRole("row", { name: /Clock_003/ })).toBeInTheDocument();
     expect(screen.queryByRole("row", { name: /Clock_001/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("row", { name: /Clock_002/ })).not.toBeInTheDocument();
+  });
+
+  it("leva um TC em correção de volta para revisão, sem oferecer Done nem In Validation ao DEV", async () => {
+    const emCorrecao = { ...casos[0], status: "InFixes" as const };
+    vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [emCorrecao], page: 1, page_size: 20, total_count: 1 });
+    const user = userEvent.setup();
+    renderPage();
+
+    const linha = await screen.findByRole("row", { name: /Clock_001/ });
+    const status = within(linha).getByRole("button", { name: /Status Clock_001/ });
+    expect(status).toHaveTextContent("In Fixes");
+    await user.click(status);
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["In Fixes", "In Review", "Excluded"]);
+    await user.click(screen.getByRole("option", { name: "In Review" }));
+    await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { status: "InReview" }));
   });
 
   it("oferece In Validation no drawer de edição, na ordem do progresso", async () => {
@@ -358,6 +375,7 @@ describe("ProjetoDetalhePage", () => {
   it("apresenta resultados do Form Factor com filtros e importa relatório SDF", async () => {
     vi.mocked(formFactorApi.listar).mockResolvedValue({
       modelos: [{ id: "model-1", nome: "S27 Ultra" }],
+      casos_elegiveis: [{ caso_teste_id: "case-2", tc_id: "Clock_002", responsavel_id: "user-2", backup_id: "backup-1" }],
       items: [{ caso_teste_id: "case-1", tc_id: "Clock_001", responsavel_id: "user-1", sdf_id: "12837-93482", data_reportada: "2026-03-23T00:00:00Z", resultados: { "model-1": "PASS" } }],
       page: 1, page_size: 10, total_count: 1,
     });
@@ -368,6 +386,8 @@ describe("ProjetoDetalhePage", () => {
     await user.click(screen.getByRole("tab", { name: "Form Factor" }));
 
     expect(await screen.findByRole("columnheader", { name: "S27 Ultra" })).toBeInTheDocument();
+    expect(screen.queryByText("Eligible Test Cases")).not.toBeInTheDocument();
+    expect(screen.queryByText("Test Cases in round")).not.toBeInTheDocument();
     expect(screen.getByRole("row", { name: "Clock_001" })).toHaveTextContent(/Clock_001.*12837-93482.*daniel-id.*PASS/);
     expect(formFactorApi.listar).toHaveBeenCalledWith("project-1", expect.objectContaining({ page: 1, pageSize: DEFAULT_TABLE_PAGE_SIZE }));
 
@@ -397,6 +417,35 @@ describe("ProjetoDetalhePage", () => {
     await user.upload(fileInput!, new File(["report"], "sdf.xlsx"));
     await user.click(screen.getByRole("button", { name: /^import$/i }));
     await waitFor(() => expect(formFactorApi.importar).toHaveBeenCalledWith("project-1", expect.any(File)));
+  });
+
+  it("registra resultado pela linha do Resumo só com rodada pendente e vínculo com o TC", async () => {
+    const linha = (caso_teste_id: string, tc_id: string, extra: object) => ({ caso_teste_id, tc_id, responsavel_id: "user-2", backup_id: null, sdf_id: null, data_reportada: null, resultados: {}, rodada_pendente_id: null, ...extra });
+    vi.mocked(formFactorApi.listar).mockResolvedValue({
+      modelos: [{ id: "model-1", nome: "S27 Ultra" }],
+      items: [
+        linha("case-1", "Clock_001", { responsavel_id: "user-1", rodada_pendente_id: "round-1" }),
+        linha("case-3", "Clock_003", { backup_id: "user-1", rodada_pendente_id: "round-1" }),
+        linha("case-4", "Clock_004", { responsavel_id: "user-1" }),
+        linha("case-5", "Clock_005", { rodada_pendente_id: "round-1" }),
+      ],
+      page: 1, page_size: 20, total_count: 4,
+    });
+    vi.mocked(formFactorApi.registrarResultadosRodada).mockResolvedValue({ execucao_id: "e-1", caso_teste_id: "case-1", tc_id: "Clock_001", responsavel_id: "user-1", sdf_id: null, data_reportada: "2026-10-25T00:00:00Z", origem: "MANUAL", resultados: { "model-1": "FAIL" } });
+    const user = userEvent.setup();
+    renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO", permissoes: [...perfil.permissoes, "form_factor.consultar", "form_factor.registrar"] });
+    await user.click(await screen.findByRole("tab", { name: "Form Factor" }));
+
+    await screen.findByRole("row", { name: /Clock_001/ });
+    expect(screen.getByRole("button", { name: "Record result Clock_003" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Record result Clock_004" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Record result Clock_005" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Record result Clock_001" }));
+    await user.click(screen.getByRole("button", { name: /Result for S27 Ultra/ }));
+    await user.click(await screen.findByRole("option", { name: "FAIL" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(formFactorApi.registrarResultadosRodada).toHaveBeenCalledWith("project-1", "round-1", "case-1", { resultados: { "model-1": "FAIL" } }));
   });
 
   it("alterna para Results e lista execuções em linhas separadas", async () => {

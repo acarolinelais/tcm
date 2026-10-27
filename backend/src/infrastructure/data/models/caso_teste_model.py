@@ -36,7 +36,8 @@ class CasoTesteModel(Base):
             name="ck_casos_teste_situation",
         ),
         CheckConstraint(
-            "status IN ('To-Do', 'InProgress', 'InReview', 'InValidation', 'Pass', 'Fail')",
+            "status IN ('To-Do', 'InProgress', 'InReview', 'InValidation', 'Done', 'InFixes', "
+            "'Cancelled')",
             name="ck_casos_teste_status",
         ),
         CheckConstraint(

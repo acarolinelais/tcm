@@ -5,17 +5,17 @@ import { describe, expect, it, vi } from "vitest";
 import { FormFactorManualDialog } from "./FormFactorManualDialog";
 
 describe("FormFactorManualDialog", () => {
-  it("exige ao menos um resultado e envia somente os modelos escolhidos", async () => {
+  it("permite resultados vazios e envia somente os modelos escolhidos", async () => {
     const user = userEvent.setup();
     const onSalvar = vi.fn();
     render(<FormFactorManualDialog aberto onAbertoChange={vi.fn()} linha={{ caso_teste_id: "case-1", tc_id: "TC-001" }} modelos={[{ id: "m1", nome: "S25" }, { id: "m2", nome: "S26" }]} salvando={false} onSalvar={onSalvar} />);
 
     const save = screen.getByRole("button", { name: "Save" });
-    expect(save).toBeDisabled();
+    expect(save).toBeEnabled();
     await user.click(screen.getByRole("button", { name: /Result for S25/ }));
     await user.click(await screen.findByRole("option", { name: "PASS" }));
     expect(save).toBeEnabled();
     await user.click(save);
-    expect(onSalvar).toHaveBeenCalledWith({ caso_teste_id: "case-1", resultados: { m1: "PASS" } });
+    expect(onSalvar).toHaveBeenCalledWith({ resultados: { m1: "PASS" } });
   });
 });

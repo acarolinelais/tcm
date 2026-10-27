@@ -28,14 +28,15 @@ import { CasoTesteDrawer } from "../components/casos-teste/CasoTesteDrawer";
 import { estadoCasosTeste } from "../components/casos-teste/estado-casos-teste";
 import { FormFactorTabela } from "../components/form-factor/FormFactorTabela";
 import { FormFactorManualDialog } from "../components/form-factor/FormFactorManualDialog";
+import { FormFactorCriarRodadaDialog } from "../components/form-factor/FormFactorCriarRodadaDialog";
 import { FormFactorResultadosTabela } from "../components/form-factor/FormFactorResultadosTabela";
 import { ProjetoSwitcher } from "../components/ProjetoSwitcher";
 import { statusChipTons } from "../components/status/status-chip-estilos";
 import { ProjetosEntradaPage } from "./ProjetosEntradaPage";
-import { useCasosTeste, useCriarRodadaFormFactor, useFormFactor, useFormFactorResultados, useTransferirCasoTeste } from "../hooks/useProjetos";
+import { useCasosTeste, useCriarRodadaFormFactor, useFormFactor, useFormFactorResultados, useRegistrarResultadosRodadaFormFactor, useTransferirCasoTeste } from "../hooks/useProjetos";
 
 import { casosTesteApi, formFactorApi, projetosApi, type CasoTeste, type LinhaFormFactor } from "../api/projetos.api";
-import { CATEGORIAS_CASO_TESTE as categorias, DIFICULDADES_CASO_TESTE as dificuldades, ROTULO_DIFICULDADE, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, opcoesRotuladas } from "../model/projeto";
+import { CATEGORIAS_CASO_TESTE as categorias, DIFICULDADES_CASO_TESTE as dificuldades, ROTULO_DIFICULDADE, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, opcoesRotuladas, opcoesStatusResponsavel, type StatusCasoTeste } from "../model/projeto";
 
 type CampoInline = "category" | "difficulty" | "situation" | "status" | "responsavel_id" | "backup_id";
 type Aba = "cases" | "form-factor";
@@ -64,7 +65,8 @@ function ProjetoDetalhe() {
   const [filtrosResumo, setFiltrosResumo] = useState({ tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" });
   const [visaoFormFactor, setVisaoFormFactor] = useState<"summary" | "results">("summary");
   const [filtrosResultados, setFiltrosResultados] = useState({ tcId: "", sdfId: "", responsavelId: "", origem: "", modeloDispositivoId: "", resultado: "" });
-  const [linhaManual, setLinhaManual] = useState<Pick<LinhaFormFactor, "caso_teste_id" | "tc_id"> | null>(null);
+  const [linhaManual, setLinhaManual] = useState<LinhaFormFactor | null>(null);
+  const [abrirCriacaoRodada, setAbrirCriacaoRodada] = useState(false);
   const [semanaCasos, setSemanaCasos] = useState("");
   const [arquivoSdf, setArquivoSdf] = useState<File | null>(null);
   const inputSdf = useRef<HTMLInputElement>(null);
@@ -75,7 +77,11 @@ function ProjetoDetalhe() {
   const podeGerenciarCasos = admin || (["GERENTE", "KP"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("test_cases.gerenciar"));
   const podeConsultarCasos = admin || perfil.permissoes.includes("test_cases.consultar");
   const podeConsultarFormFactor = admin || perfil.permissoes.includes("form_factor.consultar");
-  const podeImportarSdf = admin || perfil.permissoes.includes("form_factor.importar");
+  const perfilGestao = admin || ["GERENTE", "KP"].includes(perfil.perfil_codigo ?? "");
+  const podeCriarRodada = perfilGestao && (admin || perfil.permissoes.includes("form_factor.registrar"));
+  const podeImportarSdf = perfilGestao && (admin || perfil.permissoes.includes("form_factor.importar"));
+  const podeRegistrarResultado = admin || (["GERENTE", "KP", "USUARIO_PADRAO"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("form_factor.registrar"));
+  const podeRegistrarLinha = (linha: LinhaFormFactor) => Boolean(linha.rodada_pendente_id) && (perfilGestao || linha.responsavel_id === perfil.id || linha.backup_id === perfil.id);
   const projeto = useQuery({ queryKey: ["projetos", "detalhe", projetoId, perfil.unidade_id, perfil.id], queryFn: () => projetosApi.obter(projetoId), enabled: podeConsultar && Boolean(projetoId) });
   const casos = useCasosTeste(projetoId, pagina, tamanhoPagina, { responsavelId: filtrosCaso.assignee || undefined, ...(dev ? { associadosAMim: true } : {}), ...(semanaCasos ? { semana: semanaCasos } : {}) }, perfil, Boolean(projeto.isSuccess && podeConsultarCasos && aba === "cases"));
   const associacao = useCasosTeste(projetoId, 1, 1, { associadosAMim: true }, perfil, dev && projeto.isSuccess && podeConsultarCasos);
@@ -83,6 +89,7 @@ function ProjetoDetalhe() {
   const resultados = useFormFactor(projetoId, { page: pagina, pageSize: tamanhoPagina, semana: semana || undefined, responsavelId: assigneeFormFactor || undefined, tcId: filtrosResumo.tcId || undefined, sdfId: filtrosResumo.sdfId || undefined, modeloDispositivoId: filtrosResumo.modeloDispositivoId || undefined, resultado: filtrosResumo.resultado || undefined }, perfil, projeto.isSuccess && podeConsultarFormFactor && aba === "form-factor" && visaoFormFactor === "summary");
   const historico = useFormFactorResultados(projetoId, { page: pagina, pageSize: tamanhoPagina, semana: semana || undefined, tcId: filtrosResultados.tcId || undefined, sdfId: filtrosResultados.sdfId || undefined, responsavelId: filtrosResultados.responsavelId || undefined, origem: filtrosResultados.origem ? filtrosResultados.origem as "SDF" | "MANUAL" : undefined, modeloDispositivoId: filtrosResultados.modeloDispositivoId || undefined, resultado: filtrosResultados.resultado || undefined }, perfil, projeto.isSuccess && podeConsultarFormFactor && aba === "form-factor" && visaoFormFactor === "results");
   const criarRodada = useCriarRodadaFormFactor(projetoId);
+  const registrarResultadoRodada = useRegistrarResultadosRodadaFormFactor(projetoId);
 
   const updateMemberCase = useMutation({
     mutationFn: ({ id, field, value }: { id: string; field: CampoInline; value: string }) => casosTesteApi.atualizar(id, { [field]: value } as Pick<CasoTeste, typeof field>),
@@ -131,7 +138,7 @@ function ProjetoDetalhe() {
   const mostrarAcoes = podeGerenciarCasos || Boolean(casos.data?.items.some((item) => item.responsavel_id === responsavelAtual));
   const temFiltrosCaso = Boolean(semanaCasos || Object.values(filtrosCaso).some(Boolean));
   const casosFiltrados = (casos.isError ? [] : casos.data?.items ?? []).filter((item) => {
-    const endDate = item.status === "Pass" ? item.updated_at ?? item.created_at : null;
+    const endDate = item.status === "Done" ? item.updated_at ?? item.created_at : null;
     const dataFinal = endDate ? formatarDiaIso(new Date(endDate)) : "";
     return item.tc_id.toLocaleLowerCase().includes(filtrosCaso.tcId.toLocaleLowerCase())
       && (!filtrosCaso.status || item.status === filtrosCaso.status)
@@ -161,6 +168,13 @@ function ProjetoDetalhe() {
 
   const membrosExceto = (usuarioId: string | null) => opcoesMembros.filter((opcao) => opcao.value !== usuarioId);
   const podeEditarProprio = (caso: CasoTeste) => podeGerenciarCasos || caso.responsavel_id === responsavelAtual;
+  /** Status que o usuário pode escolher (spec 023): a gestão edita livre, o responsável segue o ciclo e o Backup só exclui. */
+  const opcoesStatusDoCaso = (caso: CasoTeste) => {
+    if (podeGerenciarCasos) return opcoes.status;
+    const permitidos: StatusCasoTeste[] = caso.responsavel_id === responsavelAtual ? opcoesStatusResponsavel(caso.status)
+      : caso.backup_id === responsavelAtual ? [...new Set([caso.status, "Cancelled" as const])] : [];
+    return opcoesRotuladas(permitidos, ROTULO_STATUS, t);
+  };
   /** Célula com edição na linha quando o usuário pode editar; senão, só o valor. */
   const celulaEditavel = (caso: CasoTeste, campo: CampoInline, rotulo: string, valor: string, opcoes: InlineSelectOption[], exibicao: ReactNode, podeEditar: boolean) => podeEditar
     ? <InlineSelect aria-label={`${rotulo} ${caso.tc_id}`} value={valor} options={opcoes} onChange={(value) => updateMemberCase.mutate({ id: caso.id, field: campo, value })}>{exibicao}</InlineSelect>
@@ -175,7 +189,10 @@ function ProjetoDetalhe() {
     {
       id: "status",
       header: <DataTableFilter label={t("status")} value={filtrosCaso.status} onChange={(value) => alterarFiltroCaso("status", value)} options={comTodos(opcoes.status)} />,
-      cell: (caso) => celulaEditavel(caso, "status", t("status"), caso.status, opcoes.status, <TagChip tom={statusChipTons[caso.status]}>{t(ROTULO_STATUS[caso.status])}</TagChip>, podeEditarProprio(caso)),
+      cell: (caso) => {
+        const opcoesStatus = opcoesStatusDoCaso(caso);
+        return celulaEditavel(caso, "status", t("status"), caso.status, opcoesStatus, <TagChip tom={statusChipTons[caso.status]}>{t(ROTULO_STATUS[caso.status])}</TagChip>, opcoesStatus.length > 0);
+      },
     },
     {
       id: "situation",
@@ -201,7 +218,7 @@ function ProjetoDetalhe() {
       id: "endDate",
       header: <DataTableFilter label={t("endDate")} value={filtrosCaso.endDate} onChange={(value) => alterarFiltroCaso("endDate", value)} type="date" />,
       cell: (caso) => {
-        const endDate = caso.status === "Pass" ? caso.updated_at ?? caso.created_at : null;
+        const endDate = caso.status === "Done" ? caso.updated_at ?? caso.created_at : null;
         return endDate ? formatDate(endDate) : "—";
       },
     },
@@ -244,7 +261,7 @@ function ProjetoDetalhe() {
         tabs={[...(podeConsultarCasos ? [{ id: "cases", label: t("testCasesTab") }] : []), ...(podeConsultarFormFactor || podeImportarSdf ? [{ id: "form-factor", label: t("formFactor") }] : [])]}
         selectedKey={aba}
         onSelectionChange={(chave) => trocarAba(chave as Aba)}
-        actions={aba === "cases" ? podeGerenciarCasos && <HeroButton variant="primary" size="sm" onPress={() => abrirCaso(null)}><Plus aria-hidden="true" className="size-4" />{t("newTestCase")}</HeroButton> : podeImportarSdf && <><input ref={inputSdf} className="sr-only" type="file" accept=".xls,.xlsx" tabIndex={-1} aria-hidden="true" onChange={(event) => { setArquivoSdf(event.target.files?.[0] ?? null); event.target.value = ""; }} /><HeroButton size="sm" variant="outline" className="h-auto min-h-8 whitespace-normal text-left leading-tight" onPress={() => inputSdf.current?.click()}><UploadCloud aria-hidden="true" className="size-4 shrink-0" />{arquivoSdf?.name ?? t("importSdf")}</HeroButton>{arquivoSdf && <HeroButton size="sm" variant="primary" isDisabled={importReport.isPending} onPress={() => importReport.mutate()}>{importReport.isPending ? t("saving") : t("import")}</HeroButton>}</>}
+        actions={aba === "cases" ? podeGerenciarCasos && <HeroButton variant="primary" size="sm" onPress={() => abrirCaso(null)}><Plus aria-hidden="true" className="size-4" />{t("newTestCase")}</HeroButton> : <>{podeCriarRodada && <HeroButton variant="primary" size="sm" onPress={() => setAbrirCriacaoRodada(true)}><Plus aria-hidden="true" className="size-4" />{t("createTestRound")}</HeroButton>}{podeImportarSdf && <><input ref={inputSdf} className="sr-only" type="file" accept=".xls,.xlsx" tabIndex={-1} aria-hidden="true" onChange={(event) => { setArquivoSdf(event.target.files?.[0] ?? null); event.target.value = ""; }} /><HeroButton size="sm" variant="outline" className="h-auto min-h-8 whitespace-normal text-left leading-tight" onPress={() => inputSdf.current?.click()}><UploadCloud aria-hidden="true" className="size-4 shrink-0" />{arquivoSdf?.name ?? t("importSdf")}</HeroButton>{arquivoSdf && <HeroButton size="sm" variant="primary" isDisabled={importReport.isPending} onPress={() => importReport.mutate()}>{importReport.isPending ? t("saving") : t("import")}</HeroButton>}</>}</>}
       >
         {podeConsultarCasos && <PageTabPanel id="cases" className="flex min-h-0 flex-1 flex-col p-0">
           <DataTable
@@ -269,7 +286,7 @@ function ProjetoDetalhe() {
               <p className="text-[14px] text-muted">{t(visaoFormFactor === "summary" ? "formFactorSummaryHint" : "formFactorResultsHint")}</p>
             </div>
             <Tabs.Panel id="summary" className="flex min-h-0 flex-1 flex-col p-0">
-              <FormFactorTabela dados={resultados.data} carregando={resultados.isLoading} erro={resultados.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} assignee={assigneeFormFactor} onAssigneeChange={(valor) => { setAssigneeFormFactor(valor); setPagina(1); }} tcId={filtrosResumo.tcId} sdfId={filtrosResumo.sdfId} onFiltroTexto={(campo, valor) => { setFiltrosResumo((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} modeloDispositivoId={filtrosResumo.modeloDispositivoId} resultadoFiltro={filtrosResumo.resultado} onFiltroResultado={(modeloId, valor) => { setFiltrosResumo({ ...filtrosResumo, modeloDispositivoId: valor ? modeloId : "", resultado: valor }); setPagina(1); }} podeRegistrar={podeImportarSdf} onRegistrar={setLinhaManual} temFiltros={Boolean(semana || assigneeFormFactor || filtrosResumo.tcId || filtrosResumo.sdfId || filtrosResumo.resultado)} onLimparFiltros={() => { setSemana(""); setAssigneeFormFactor(""); setFiltrosResumo({ tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" }); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
+              <FormFactorTabela dados={resultados.data} carregando={resultados.isLoading} erro={resultados.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} assignee={assigneeFormFactor} onAssigneeChange={(valor) => { setAssigneeFormFactor(valor); setPagina(1); }} tcId={filtrosResumo.tcId} sdfId={filtrosResumo.sdfId} onFiltroTexto={(campo, valor) => { setFiltrosResumo((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} modeloDispositivoId={filtrosResumo.modeloDispositivoId} resultadoFiltro={filtrosResumo.resultado} onFiltroResultado={(modeloId, valor) => { setFiltrosResumo({ ...filtrosResumo, modeloDispositivoId: valor ? modeloId : "", resultado: valor }); setPagina(1); }} podeRegistrar={podeRegistrarResultado ? podeRegistrarLinha : undefined} onRegistrar={setLinhaManual} temFiltros={Boolean(semana || assigneeFormFactor || filtrosResumo.tcId || filtrosResumo.sdfId || filtrosResumo.resultado)} onLimparFiltros={() => { setSemana(""); setAssigneeFormFactor(""); setFiltrosResumo({ tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" }); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
             </Tabs.Panel>
             <Tabs.Panel id="results" className="flex min-h-0 flex-1 flex-col p-0">
               <FormFactorResultadosTabela dados={historico.data} carregando={historico.isLoading} erro={historico.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} filtros={filtrosResultados} onFiltroChange={(campo, valor) => { setFiltrosResultados((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} onFiltroResultado={(modeloId, valor) => { setFiltrosResultados((atual) => ({ ...atual, modeloDispositivoId: valor ? modeloId : "", resultado: valor })); setPagina(1); }} onLimparFiltros={() => { setFiltrosResultados({ tcId: "", sdfId: "", responsavelId: "", origem: "", modeloDispositivoId: "", resultado: "" }); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
@@ -280,13 +297,22 @@ function ProjetoDetalhe() {
     )}
 
     <CasoTesteDrawer key={aberturasDrawer} isOpen={drawerCasoAberto} onOpenChange={setDrawerCasoAberto} projetoId={projetoId} editar={editar} membrosAtivos={membrosAtivos} />
+    <FormFactorCriarRodadaDialog
+      aberto={abrirCriacaoRodada}
+      onAbertoChange={setAbrirCriacaoRodada}
+      salvando={criarRodada.isPending}
+      onCriar={(sdfId) => criarRodada.mutate({ sdf_id: sdfId }, {
+        onSuccess: () => { setAbrirCriacaoRodada(false); toast.success(t("testRoundCreated")); },
+        onError: (error) => toast.error(error instanceof Error ? error.message : t("roundCreateError")),
+      })}
+    />
     <FormFactorManualDialog
       aberto={Boolean(linhaManual)}
       onAbertoChange={(aberto) => { if (!aberto) setLinhaManual(null); }}
       linha={linhaManual}
       modelos={resultados.data?.modelos ?? []}
-      salvando={criarRodada.isPending}
-      onSalvar={(input) => criarRodada.mutate(input, {
+      salvando={registrarResultadoRodada.isPending}
+      onSalvar={(input) => linhaManual?.rodada_pendente_id && registrarResultadoRodada.mutate({ rodadaId: linhaManual.rodada_pendente_id, casoTesteId: linhaManual.caso_teste_id, input }, {
         onSuccess: () => { setLinhaManual(null); toast.success(t("manualResultSaved")); },
         onError: (error) => toast.error(error instanceof Error ? error.message : t("manualResultSaveError")),
       })}

@@ -5,24 +5,27 @@ import type { Setor, SetorGerente } from "@/modules/setores/api/setores.api";
 import type { Time, TimeMembro } from "@/modules/times/api/times.api";
 import type { Usuario, UsuarioFormValues } from "@/modules/usuarios/model/usuario";
 import type { UsuarioFiltros } from "@/modules/usuarios/api/usuario.api";
-import type {
-  AtualizarCasoTesteInput,
-  AtualizarProjetoInput,
-  CasoTeste,
-  CriarCasoTesteInput,
-  CriarProjetoInput,
-  FormFactorMatriz,
-  FormFactorExecucao,
-  FormFactorResultados,
-  FormFactorGlobal,
-  FormFactorExecucaoGlobal,
-  FormFactorResultadosGlobais,
-  FiltrosFormFactorGlobal,
-  FiltrosFormFactor,
-  CriarRodadaFormFactorInput,
-  LinhaFormFactor,
-  Projeto,
-  StatusProjeto,
+import {
+  opcoesStatusResponsavel,
+  type AtualizarCasoTesteInput,
+  type AtualizarProjetoInput,
+  type CasoTeste,
+  type CriarCasoTesteInput,
+  type CriarProjetoInput,
+  type FormFactorMatriz,
+  type FormFactorExecucao,
+  type FormFactorResultados,
+  type FormFactorGlobal,
+  type FormFactorExecucaoGlobal,
+  type FormFactorResultadosGlobais,
+  type FiltrosFormFactorGlobal,
+  type FiltrosFormFactor,
+  type CriarRodadaFormFactorInput,
+  type EnviarResultadosRodadaInput,
+  type RodadaFormFactor,
+  type LinhaFormFactor,
+  type Projeto,
+  type StatusProjeto,
 } from "@/modules/projetos/model/projeto";
 import type { ModeloDispositivo } from "@/modules/modelos-dispositivo/model/modelo-dispositivo";
 import { lerPlanilhaProjeto, PlanilhaProjetoError, type PessoasDaLinha, type PlanilhaProjeto } from "@/modules/projetos/utils/planilha-projeto";
@@ -48,6 +51,16 @@ interface ResultadoFormFactorMock {
   origem?: "SDF" | "MANUAL";
 }
 
+interface ExecucaoFormFactorMock {
+  execucao_id: string;
+  rodada_id: string;
+  projeto_id: string;
+  caso_teste_id: string;
+  sdf_id: string | null;
+  data_reportada: string;
+  resultados_registrados: boolean;
+}
+
 interface Database {
   schemaVersion?: number;
   unidade: { id: string; nome: string; ativo: boolean };
@@ -63,6 +76,8 @@ interface Database {
   projetoModelos: { projeto_id: string; modelo_dispositivo_id: string; ativo?: boolean }[];
   casosTeste: CasoTeste[];
   formFactor: ResultadoFormFactorMock[];
+  rodadasFormFactor: RodadaFormFactor[];
+  execucoesFormFactor: ExecucaoFormFactorMock[];
   importacoesSdf: { importacao_id: string; projeto_id: string; importado_em: string }[];
   idiomaPorUsuario: Record<string, PerfilAtual["idioma_preferido"]>;
   senhasAlteradas: string[];
@@ -84,6 +99,7 @@ const permissoes: Permissao[] = [
   ["test_cases.gerenciar", "Gerenciar Test Cases do time", "test_cases", "Test Cases", 6],
   ["form_factor.consultar", "Consultar Resumo e histórico Form Factor dos projetos no escopo permitido, incluindo Resultados Gerais para Administrador, Gerente e KP", "form_factor", "Form Factor", 7],
   ["form_factor.importar", "Importar resultados SDF", "form_factor", "Form Factor", 7],
+  ["form_factor.registrar", "Criar rodadas e lançar resultados Form Factor", "form_factor", "Form Factor", 7],
   ["modelos_dispositivo.gerenciar", "Cadastrar, editar, ativar e inativar modelos no catálogo da unidade", "modelos_dispositivo", "Device models", 8],
 ].map(([id, descricao, codigo, nome, ordem], index) => ({
   id: String(id), descricao: String(descricao), ordem: index + 1,
@@ -93,9 +109,9 @@ const permissoes: Permissao[] = [
 function createSeed(): Database {
   const allPermissions = permissoes.map((item) => item.id);
   const adminProfile: Perfil = { id: "mock-profile-admin", nome: "Administrador", descricao: "Acesso completo à unidade.", codigo: "ADMIN_UNIDADE", permissoes: allPermissions.filter((permission) => permission !== "modelos_dispositivo.gerenciar") };
-  const standardProfile: Perfil = { id: "mock-profile-standard", nome: "Developer", descricao: "Consulta projetos, TCs e Form Factor do time e atualiza somente os TCs atribuídos.", codigo: "USUARIO_PADRAO", permissoes: ["projetos.consultar", "test_cases.consultar", "form_factor.consultar", "times.consultar", "usuarios.perfil.consultar"] };
-  const managerProfile: Perfil = { id: "mock-profile-manager", nome: "Gerente", descricao: "Gerencia pessoas e times do setor.", codigo: "GERENTE", permissoes: ["usuarios.consultar", "usuarios.perfil.consultar", "usuarios.gerenciar", "setores.consultar", "times.consultar", "times.criar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar", "form_factor.consultar"] };
-  const kpProfile: Perfil = { id: "mock-profile-kp", nome: "KP", descricao: "Acompanha atividades dos times associados.", codigo: "KP", permissoes: ["usuarios.consultar", "setores.consultar", "times.consultar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar", "modelos_dispositivo.gerenciar", "form_factor.consultar"] };
+  const standardProfile: Perfil = { id: "mock-profile-standard", nome: "Developer", descricao: "Consulta projetos, TCs e Form Factor do time e atualiza somente os TCs atribuídos.", codigo: "USUARIO_PADRAO", permissoes: ["projetos.consultar", "test_cases.consultar", "form_factor.consultar", "form_factor.registrar", "times.consultar", "usuarios.perfil.consultar"] };
+  const managerProfile: Perfil = { id: "mock-profile-manager", nome: "Gerente", descricao: "Gerencia pessoas, rodadas e resultados nos times do escopo.", codigo: "GERENTE", permissoes: ["usuarios.consultar", "usuarios.perfil.consultar", "usuarios.gerenciar", "setores.consultar", "times.consultar", "times.criar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar", "form_factor.consultar", "form_factor.importar", "form_factor.registrar"] };
+  const kpProfile: Perfil = { id: "mock-profile-kp", nome: "KP", descricao: "Acompanha atividades, rodadas e resultados dos times associados.", codigo: "KP", permissoes: ["usuarios.consultar", "setores.consultar", "times.consultar", "times.gerenciar", "projetos.consultar", "projetos.gerenciar", "test_cases.consultar", "test_cases.gerenciar", "modelos_dispositivo.gerenciar", "form_factor.consultar", "form_factor.importar", "form_factor.registrar"] };
   const sectors: Setor[] = [
     { id: "mock-sector-engineering", unidade_id: UNIT_ID, nome: "Engenharia", ativo: true },
     { id: "mock-sector-operations", unidade_id: UNIT_ID, nome: "Operações", ativo: true },
@@ -110,7 +126,7 @@ function createSeed(): Database {
     { id: "mock-user-inactive", nome: "Rafael Lima", email: "rafael.lima@example.com", ativo: false, perfil_id: standardProfile.id, responsavel_id: MANAGER_ID, created_at: "2026-02-10T12:00:00Z" },
   ].map((user: Usuario) => ({ ...user, user_id: user.user_id ?? null }));
   return {
-    schemaVersion: 16,
+    schemaVersion: 18,
     unidade: { id: UNIT_ID, nome: "Manaus", ativo: true },
     usuarios: users,
     perfis: [adminProfile, standardProfile, managerProfile, kpProfile],
@@ -137,6 +153,8 @@ function createSeed(): Database {
     projetoModelos: [],
     casosTeste: [],
     formFactor: [],
+    rodadasFormFactor: [],
+    execucoesFormFactor: [],
     importacoesSdf: [],
     idiomaPorUsuario: {},
     senhasAlteradas: [],
@@ -264,6 +282,39 @@ function readDb(): Database {
     if ((db.schemaVersion ?? 1) < 16) {
       db.projetos.forEach((project) => { project.nome ||= `${project.app} ${project.one_ui}`; });
       db.schemaVersion = 16;
+      return writeDb(db);
+    }
+    if ((db.schemaVersion ?? 1) < 17) {
+      db.permissoes = permissoes;
+      db.rodadasFormFactor ??= [];
+      db.execucoesFormFactor ??= [];
+      db.casosTeste.forEach((testCase) => {
+        if ((testCase.status as string) === "Pass") testCase.status = "Done";
+        if ((testCase.status as string) === "Fail") testCase.status = "InReview";
+      });
+      db.perfis.forEach((profile) => {
+        if (profile.codigo === "USUARIO_PADRAO") {
+          profile.permissoes = [...new Set([...profile.permissoes, "form_factor.registrar"] )];
+        }
+        if (profile.codigo === "GERENTE" || profile.codigo === "KP") {
+          profile.permissoes = [...new Set([...profile.permissoes, "form_factor.importar", "form_factor.registrar"] )];
+        }
+        if (profile.codigo === "ADMIN_UNIDADE") {
+          profile.permissoes = [...new Set([...profile.permissoes, "form_factor.registrar"] )];
+        }
+      });
+      db.schemaVersion = 17;
+      return writeDb(db);
+    }
+    if ((db.schemaVersion ?? 1) < 18) {
+      // Spec 023: TC em revisão cuja execução mais recente teve FAIL passa a In Fixes.
+      db.casosTeste.forEach((testCase) => {
+        if (testCase.status !== "InReview") return;
+        const resultados = db.formFactor.filter((item) => item.caso_teste_id === testCase.id);
+        const ultima = resultados.reduce<ResultadoFormFactorMock | undefined>((maisRecente, item) => !maisRecente || item.data_reportada > maisRecente.data_reportada ? item : maisRecente, undefined);
+        if (ultima && resultados.some((item) => item.execucao_id === ultima.execucao_id && item.resultado.trim().toUpperCase() === "FAIL")) testCase.status = "InFixes";
+      });
+      db.schemaVersion = 18;
       return writeDb(db);
     }
     return db;
@@ -778,7 +829,7 @@ export const mockCasosTesteApi = {
     const casosDoProjeto = db.casosTeste.filter((item) => item.projeto_id === projectId && item.ativo
       && item.unidade_id === db.unidade.id
       && (!filtros.associadosAMim || item.responsavel_id === user.id || item.backup_id === user.id)
-      && (!filtros.semana || (item.status === "Pass" && Boolean(item.updated_at ?? item.created_at) && semanaIso((item.updated_at ?? item.created_at)!) === filtros.semana))
+      && (!filtros.semana || (item.status === "Done" && Boolean(item.updated_at ?? item.created_at) && semanaIso((item.updated_at ?? item.created_at)!) === filtros.semana))
       && (!filtros.responsavelId || item.responsavel_id === filtros.responsavelId));
     // Igual à API: os casos em que o usuário é o responsável principal vêm primeiro.
     const prioridade = (item: (typeof casosDoProjeto)[number]) => (item.responsavel_id === user.id ? 0 : 1);
@@ -820,11 +871,21 @@ export const mockCasosTesteApi = {
       if (!canManageMockProject(project, "test_cases.gerenciar")) throw new Error("O projeto está fora do seu escopo.");
       Object.assign(testCase, input);
     } else {
-      if (!profile?.permissoes.includes("test_cases.consultar") || testCase.responsavel_id !== user.id) {
-        throw new Error("Somente o responsável principal pode editar os próprios campos do Test Case.");
+      if (!profile?.permissoes.includes("test_cases.consultar") || (testCase.responsavel_id !== user.id && testCase.backup_id !== user.id)) {
+        throw new Error("Você só pode editar Test Cases atribuídos a você.");
+      }
+      if (testCase.responsavel_id !== user.id) {
+        if (Object.keys(input).length !== 1 || input.status !== "Cancelled") throw new Error("O Backup só pode cancelar o Test Case atribuído.");
+        Object.assign(testCase, input);
+        testCase.updated_at = new Date().toISOString();
+        writeDb(db);
+        return testCase;
       }
       const camposPermitidos = ["category", "difficulty", "status"];
       if (Object.keys(input).some((field) => !camposPermitidos.includes(field))) throw new Error("Você só pode editar Status, Category e Difficulty.");
+      if (input.status) {
+        if (!opcoesStatusResponsavel(testCase.status).includes(input.status)) throw new Error("A transição de Status solicitada não é permitida.");
+      }
       Object.assign(testCase, input);
     }
     testCase.updated_at = new Date().toISOString();
@@ -892,6 +953,13 @@ export const mockModelosDispositivoApi = {
     return this.atualizar(modelId, { ativo: active });
   },
 };
+
+/** Execução da rodada atual do TC (a mais recente), como `obter_rodada_atual_do_caso` na API. */
+function execucaoDaRodadaAtual(db: Database, casoTesteId: string) {
+  return db.execucoesFormFactor
+    .filter((execucao) => execucao.caso_teste_id === casoTesteId)
+    .sort((a, b) => b.data_reportada.localeCompare(a.data_reportada) || a.execucao_id.localeCompare(b.execucao_id))[0];
+}
 
 function semanaIso(value: string) {
   const date = new Date(value);
@@ -1055,28 +1123,37 @@ export const mockFormFactorApi = {
     getMockProject(db, projectId);
     const { page: pageNumber = 1, pageSize = 20, semana: week, responsavelId, tcId, sdfId, modeloDispositivoId, resultado } = filtros;
     const modelos = db.projetoModelos
-      .filter((link) => link.projeto_id === projectId)
+      .filter((link) => link.projeto_id === projectId && link.ativo !== false)
       .map((link) => db.modelosDispositivo.find((model) => model.id === link.modelo_dispositivo_id))
       .filter((model) => model !== undefined)
       .map(({ id: modelId, nome }) => ({ id: modelId, nome }))
       .sort((a, b) => a.nome.localeCompare(b.nome));
     const linkedModels = new Set(modelos.map((model) => model.id));
     const rows = db.casosTeste
-      .filter((testCase) => testCase.projeto_id === projectId && testCase.ativo && (!responsavelId || testCase.responsavel_id === responsavelId) && (!tcId || testCase.tc_id.toLocaleLowerCase().includes(tcId.toLocaleLowerCase())))
+      .filter((testCase) => testCase.projeto_id === projectId && testCase.ativo && testCase.status === "InValidation" && (!responsavelId || testCase.responsavel_id === responsavelId) && (!tcId || testCase.tc_id.toLocaleLowerCase().includes(tcId.toLocaleLowerCase())))
       .sort((a, b) => a.tc_id.localeCompare(b.tc_id))
       .flatMap<LinhaFormFactor>((testCase) => {
+        // Corte do caso (RN-12 da 022): o Resumo ignora resultados anteriores à rodada mais recente dele.
+        const execucaoAtual = execucaoDaRodadaAtual(db, testCase.id);
+        const corte = execucaoAtual?.data_reportada;
         // Ordem invertida antes do sort estável: na mesma data vence a importação mais recente, como na API.
         const results = [...db.formFactor].reverse()
-          .filter((result) => result.tc_id === testCase.tc_id && linkedModels.has(result.modelo_dispositivo_id) && (!week || semanaIso(result.data_reportada) === week))
+          .filter((result) => result.tc_id === testCase.tc_id && linkedModels.has(result.modelo_dispositivo_id) && (!corte || result.data_reportada >= corte) && (!week || semanaIso(result.data_reportada) === week))
           .sort((a, b) => b.data_reportada.localeCompare(a.data_reportada));
         if (week && !results.length) return [];
         if (sdfId && !results.some((result) => (result.sdf_id ?? "").toLocaleLowerCase().includes(sdfId.toLocaleLowerCase()))) return [];
         if (modeloDispositivoId && !results.some((result) => result.modelo_dispositivo_id === modeloDispositivoId && (!resultado || result.resultado.toLocaleLowerCase() === resultado.toLocaleLowerCase()))) return [];
         const resultados: Record<string, string> = {};
         results.forEach((result) => { resultados[result.modelo_dispositivo_id] ??= result.resultado; });
-        return [{ caso_teste_id: testCase.id, tc_id: testCase.tc_id, responsavel_id: testCase.responsavel_id, sdf_id: results[0]?.sdf_id ?? null, data_reportada: results[0]?.data_reportada ?? null, resultados }];
+        // RN-13 da 022: só a rodada atual fica pendente; as anteriores sem resultado ficam encerradas.
+        const pendente = execucaoAtual && !execucaoAtual.resultados_registrados ? execucaoAtual : undefined;
+        return [{ caso_teste_id: testCase.id, tc_id: testCase.tc_id, responsavel_id: testCase.responsavel_id, backup_id: testCase.backup_id, rodada_pendente_id: pendente?.rodada_id ?? null, sdf_id: pendente?.sdf_id ?? results[0]?.sdf_id ?? null, data_reportada: results[0]?.data_reportada ?? null, resultados }];
       });
-    return { ...page(rows, pageNumber, pageSize), modelos };
+    const casosElegiveis = db.casosTeste
+      .filter((testCase) => testCase.projeto_id === projectId && testCase.ativo && testCase.status === "InValidation")
+      .sort((a, b) => a.tc_id.localeCompare(b.tc_id))
+      .map((testCase) => ({ caso_teste_id: testCase.id, tc_id: testCase.tc_id, responsavel_id: testCase.responsavel_id, backup_id: testCase.backup_id }));
+    return { ...page(rows, pageNumber, pageSize), modelos, casos_elegiveis: casosElegiveis };
   },
   listarResultados(projectId: string, filtros: FiltrosFormFactor = {}): FormFactorResultados {
     requireMockPermission("form_factor.consultar");
@@ -1105,28 +1182,67 @@ export const mockFormFactorApi = {
       if (modeloDispositivoId && !values.some((item) => item.modelo_dispositivo_id === modeloDispositivoId && (!resultado || item.resultado.toLowerCase() === resultado.toLowerCase()))) return [];
       const resultados = Object.fromEntries(values.filter((item) => linked.has(item.modelo_dispositivo_id)).map((item) => [item.modelo_dispositivo_id, item.resultado]));
       if (!Object.keys(resultados).length) return [];
-      return [{ execucao_id, caso_teste_id: testCase.id, tc_id: testCase.tc_id, responsavel_id: testCase.responsavel_id, sdf_id: first.sdf_id, data_reportada, origem: first.origem ?? "SDF", resultados }];
-    }).sort((a, b) => b.data_reportada.localeCompare(a.data_reportada));
+      const rodadaExecucao = db.execucoesFormFactor.find((item) => item.execucao_id === execucao_id);
+      return [{ execucao_id, caso_teste_id: testCase.id, tc_id: testCase.tc_id, responsavel_id: testCase.responsavel_id, sdf_id: first.sdf_id, data_reportada, origem: first.origem ?? "SDF", resultados, rodada_id: rodadaExecucao?.rodada_id ?? null, resultados_registrados: rodadaExecucao?.resultados_registrados ?? true }];
+    });
+    db.execucoesFormFactor.forEach((execucao) => {
+      if (groups.has(execucao.execucao_id)) return;
+      const testCase = db.casosTeste.find((item) => item.id === execucao.caso_teste_id && item.projeto_id === projectId && item.ativo);
+      if (!testCase || (semana && semanaIso(execucao.data_reportada) !== semana)) return;
+      if (responsavelId && testCase.responsavel_id !== responsavelId) return;
+      if (tcId && !testCase.tc_id.toLocaleLowerCase().includes(tcId.toLocaleLowerCase())) return;
+      if (sdfId && !(execucao.sdf_id ?? "").toLocaleLowerCase().includes(sdfId.toLocaleLowerCase())) return;
+      if (origem && origem !== "MANUAL") return;
+      rows.push({ execucao_id: execucao.execucao_id, caso_teste_id: testCase.id, tc_id: testCase.tc_id, responsavel_id: testCase.responsavel_id, sdf_id: execucao.sdf_id, data_reportada: execucao.data_reportada, origem: "MANUAL", resultados: {}, rodada_id: execucao.rodada_id, resultados_registrados: execucao.resultados_registrados });
+    });
+    rows.sort((a, b) => b.data_reportada.localeCompare(a.data_reportada));
     return { ...page(rows, pageNumber, pageSize), modelos };
   },
-  criarRodadaManual(projectId: string, input: CriarRodadaFormFactorInput): FormFactorExecucao {
-    requireMockPermission("form_factor.importar");
-    const { db } = mockProfile();
+  criarRodada(projectId: string, input: CriarRodadaFormFactorInput): RodadaFormFactor {
+    const { db, profile } = mockProfile();
+    requireMockPermission("form_factor.registrar");
+    if (!["ADMIN_UNIDADE", "GERENTE", "KP"].includes(profile?.codigo ?? "")) throw new Error("Somente Admin, Gerente ou KP podem iniciar uma rodada.");
     getMockProject(db, projectId);
-    const testCase = db.casosTeste.find((item) => item.id === input.caso_teste_id && item.projeto_id === projectId && item.ativo);
-    if (!testCase) throw new Error("Test Case não encontrado no projeto.");
-    const linked = new Set(db.projetoModelos.filter((item) => item.projeto_id === projectId).map((item) => item.modelo_dispositivo_id));
-    const entries = Object.entries(input.resultados);
-    if (!entries.length || entries.some(([modelId, value]) => !linked.has(modelId) || !["PASS", "FAIL"].includes(value))) throw new Error("Selecione ao menos um modelo com resultado PASS ou FAIL.");
-    const execucao_id = id("mock-sdf-execution");
-    const data_reportada = new Date().toISOString();
-    entries.forEach(([modelo_dispositivo_id, resultado]) => db.formFactor.push({ execucao_id, caso_teste_id: testCase.id, tc_id: testCase.tc_id, responsavel_id: testCase.responsavel_id, sdf_id: null, modelo_dispositivo_id, resultado, data_reportada, origem: "MANUAL" }));
+    if (input.sdf_id != null && input.sdf_id.length > 50) throw new Error("SDF ID deve ter no máximo 50 caracteres.");
+    const testCases = db.casosTeste.filter((item) => item.projeto_id === projectId && item.ativo && item.status === "InValidation");
+    if (!testCases.length) throw new Error("Não há Test Cases em In Validation para iniciar uma rodada.");
+    const rodada: RodadaFormFactor = { id: id("mock-form-factor-round"), projeto_id: projectId, sdf_id: input.sdf_id ?? null, created_at: new Date().toISOString(), total_test_cases: testCases.length };
+    db.rodadasFormFactor.unshift(rodada);
+    testCases.forEach((testCase) => db.execucoesFormFactor.push({ execucao_id: id("mock-sdf-execution"), rodada_id: rodada.id, projeto_id: projectId, caso_teste_id: testCase.id, sdf_id: rodada.sdf_id, data_reportada: rodada.created_at, resultados_registrados: false }));
     writeDb(db);
-    return { execucao_id, caso_teste_id: testCase.id, tc_id: testCase.tc_id, responsavel_id: testCase.responsavel_id, sdf_id: null, data_reportada, origem: "MANUAL", resultados: Object.fromEntries(entries) };
+    return rodada;
+  },
+  registrarResultadosRodada(projectId: string, rodadaId: string, casoTesteId: string, input: EnviarResultadosRodadaInput): FormFactorExecucao {
+    requireMockPermission("form_factor.registrar");
+    const { db, user, profile } = mockProfile();
+    getMockProject(db, projectId);
+    const rodada = db.rodadasFormFactor.find((item) => item.id === rodadaId && item.projeto_id === projectId);
+    const execucao = db.execucoesFormFactor.find((item) => item.rodada_id === rodadaId && item.caso_teste_id === casoTesteId);
+    const testCase = db.casosTeste.find((item) => item.id === casoTesteId && item.projeto_id === projectId && item.ativo);
+    if (!rodada || !execucao || !testCase) throw new Error("Test Case não encontrado na rodada.");
+    if (execucao.resultados_registrados) throw new Error("Os resultados deste Test Case já foram registrados na rodada.");
+    const gestor = ["ADMIN_UNIDADE", "GERENTE", "KP"].includes(profile?.codigo ?? "");
+    if (!gestor && testCase.responsavel_id !== user.id && testCase.backup_id !== user.id) throw new Error("Você só pode registrar resultados dos TCs atribuídos a você.");
+    if (execucaoDaRodadaAtual(db, testCase.id) !== execucao) throw new Error("Este Test Case está numa rodada mais recente. Registre os resultados nela.");
+    const linked = new Set(db.projetoModelos.filter((item) => item.projeto_id === projectId && item.ativo !== false).map((item) => item.modelo_dispositivo_id));
+    const entries = Object.entries(input.resultados);
+    if (entries.some(([modelId, value]) => !linked.has(modelId) || !["PASS", "FAIL"].includes(value))) throw new Error("Modelo ou resultado inválido.");
+    entries.forEach(([modelo_dispositivo_id, resultado]) => db.formFactor.push({ execucao_id: execucao.execucao_id, caso_teste_id: testCase.id, tc_id: testCase.tc_id, responsavel_id: testCase.responsavel_id, sdf_id: rodada.sdf_id, modelo_dispositivo_id, resultado, data_reportada: execucao.data_reportada, origem: "MANUAL" }));
+    const values = Object.values(input.resultados);
+    // Como na API: só um TC em validação muda de Status; os resultados ficam no histórico.
+    if (testCase.status === "InValidation") {
+      if (values.includes("FAIL")) testCase.status = "InFixes";
+      else if (linked.size > 0 && [...linked].every((modelId) => input.resultados[modelId] === "PASS")) testCase.status = "Done";
+    }
+    testCase.updated_at = new Date().toISOString();
+    execucao.resultados_registrados = true;
+    writeDb(db);
+    return { execucao_id: execucao.execucao_id, caso_teste_id: testCase.id, tc_id: testCase.tc_id, responsavel_id: testCase.responsavel_id, sdf_id: rodada.sdf_id, data_reportada: execucao.data_reportada, origem: "MANUAL", resultados: input.resultados, rodada_id: rodada.id, resultados_registrados: true };
   },
   importar(projectId: string, file: File) {
+    const { db, profile } = mockProfile();
     requireMockPermission("form_factor.importar");
-    const { db } = mockProfile();
+    if (!["ADMIN_UNIDADE", "GERENTE", "KP"].includes(profile?.codigo ?? "")) throw new Error("Somente Admin, Gerente ou KP podem importar relatório SDF.");
     getMockProject(db, projectId);
     if (!file.size) throw new Error("O relatório está vazio.");
     const importId = id("mock-sdf-import");

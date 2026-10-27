@@ -311,10 +311,10 @@ async def test_casos_filtram_semana_antes_da_paginacao_e_respeitam_limites(conte
     dentro = []
     for indice, (status, data) in enumerate(
         [
-            ("Pass", inicio),
-            ("Pass", fim - timedelta(seconds=1)),
-            ("Pass", inicio - timedelta(seconds=1)),
-            ("Pass", fim),
+            ("Done", inicio),
+            ("Done", fim - timedelta(seconds=1)),
+            ("Done", inicio - timedelta(seconds=1)),
+            ("Done", fim),
             ("To-Do", inicio),
         ]
     ):
@@ -337,7 +337,7 @@ async def test_casos_filtram_semana_antes_da_paginacao_e_respeitam_limites(conte
         update(CasoTesteModel)
         .where(CasoTesteModel.id == colega.id)
         .values(
-            status="Pass",
+            status="Done",
             updated_at=inicio,
         )
     )

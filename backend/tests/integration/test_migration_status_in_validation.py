@@ -15,7 +15,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 ANTERIOR = "a2b3c4d5e6f7"
-REVISAO = "b3c4d5e6f708"
+REVISAO = "e8f901a2b3c4"
 
 
 def _inserir_caso(connection, projeto_id, responsavel_id, backup_id, tc_id: str, status: str):
@@ -78,12 +78,20 @@ def test_migration_aceita_in_validation_e_preserva_status_existentes(schema_alem
 
     with schema_engine.begin() as connection:
         assert {status: _status(connection, id) for status, id in antigos.items()} == {
-            status: status for status in antigos
+            "To-Do": "To-Do",
+            "InProgress": "InProgress",
+            "InReview": "InReview",
+            "Pass": "Done",
+            "Fail": "InReview",
         }
         validando = _inserir_caso(
             connection, projeto_id, responsavel_id, backup_id, "Clock_validando", "InValidation"
         )
         assert _status(connection, validando) == "InValidation"
+        cancelado = _inserir_caso(
+            connection, projeto_id, responsavel_id, backup_id, "Clock_cancelado", "Cancelled"
+        )
+        assert _status(connection, cancelado) == "Cancelled"
 
     with pytest.raises(IntegrityError, match="ck_casos_teste_status"):
         with schema_engine.begin() as connection:
@@ -96,3 +104,4 @@ def test_migration_aceita_in_validation_e_preserva_status_existentes(schema_alem
     with schema_engine.connect() as connection:
         assert _status(connection, validando) == "InReview"
         assert _status(connection, antigos["Pass"]) == "Pass"
+        assert _status(connection, cancelado) == "InReview"

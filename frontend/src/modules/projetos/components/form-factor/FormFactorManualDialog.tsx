@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Button, Label, ListBox, Modal, Select } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 
-import type { CriarRodadaFormFactorInput, LinhaFormFactor, ModeloFormFactor } from "../../model/projeto";
+import type { EnviarResultadosRodadaInput, LinhaFormFactor, ModeloFormFactor } from "../../model/projeto";
 
 type ResultadoManual = "PASS" | "FAIL";
 const NAO_DEFINIDO = "unselected";
@@ -13,7 +13,7 @@ export function FormFactorManualDialog({ aberto, onAbertoChange, linha, modelos,
   linha: Pick<LinhaFormFactor, "caso_teste_id" | "tc_id"> | null;
   modelos: ModeloFormFactor[];
   salvando: boolean;
-  onSalvar: (input: CriarRodadaFormFactorInput) => void;
+  onSalvar: (input: EnviarResultadosRodadaInput) => void;
 }) {
   const { t } = useTranslation();
   return <Modal isOpen={aberto} onOpenChange={onAbertoChange}>
@@ -27,27 +27,25 @@ export function FormFactorManualDialog({ aberto, onAbertoChange, linha, modelos,
             <p className="text-[14px] leading-relaxed text-muted">{t("manualResultsHint")}</p>
           </Modal.Header>
           {/* key pelo caso: cada abertura começa sem resultados escolhidos. */}
-          {linha && <FormularioResultados key={linha.caso_teste_id} linha={linha} modelos={modelos} salvando={salvando} onSalvar={onSalvar} onCancelar={() => onAbertoChange(false)} />}
+          {linha && <FormularioResultados key={linha.caso_teste_id} modelos={modelos} salvando={salvando} onSalvar={onSalvar} onCancelar={() => onAbertoChange(false)} />}
         </Modal.Dialog>
       </Modal.Container>
     </Modal.Backdrop>
   </Modal>;
 }
 
-function FormularioResultados({ linha, modelos, salvando, onSalvar, onCancelar }: {
-  linha: Pick<LinhaFormFactor, "caso_teste_id" | "tc_id">;
+function FormularioResultados({ modelos, salvando, onSalvar, onCancelar }: {
   modelos: ModeloFormFactor[];
   salvando: boolean;
-  onSalvar: (input: CriarRodadaFormFactorInput) => void;
+  onSalvar: (input: EnviarResultadosRodadaInput) => void;
   onCancelar: () => void;
 }) {
   const { t } = useTranslation();
   const [resultados, setResultados] = useState<Record<string, ResultadoManual>>({});
-  const selecionados = Object.keys(resultados).length;
   const salvar = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selecionados || salvando) return;
-    onSalvar({ caso_teste_id: linha.caso_teste_id, resultados });
+    if (salvando) return;
+    onSalvar({ resultados });
   };
   const escolher = (modeloId: string, proximo: string) => setResultados((atual) => {
     if (proximo === NAO_DEFINIDO) return Object.fromEntries(Object.entries(atual).filter(([id]) => id !== modeloId));
@@ -82,7 +80,7 @@ function FormularioResultados({ linha, modelos, salvando, onSalvar, onCancelar }
       </Modal.Body>
       <Modal.Footer className="mt-4 border-t border-separator pt-4">
         <Button variant="tertiary" onPress={onCancelar}>{t("cancel")}</Button>
-        <Button type="submit" variant="primary" isDisabled={!selecionados || salvando}>{salvando ? t("saving") : t("save")}</Button>
+        <Button type="submit" variant="primary" isDisabled={salvando}>{salvando ? t("saving") : t("save")}</Button>
       </Modal.Footer>
     </form>
   );

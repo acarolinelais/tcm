@@ -10,7 +10,7 @@ from src.application.validators.semana import intervalo_semana_iso
 from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
-from src.domain.entities.caso_teste import CasoTeste
+from src.domain.entities.caso_teste import CasoTeste, StatusCasoTeste
 from src.domain.entities.interfaces.caso_teste_repository import CasoTesteRepository
 from src.domain.entities.interfaces.projeto_repository import ProjetoRepository
 from src.domain.entities.interfaces.time_membro_repository import TimeMembroRepository
@@ -24,6 +24,13 @@ from src.domain.entities.time import Time
 class CasoTesteServiceImpl:
     CAMPOS_RESPONSAVEL = frozenset({"category", "difficulty", "status"})
     CAMPOS_GESTAO = CAMPOS_RESPONSAVEL | {"situation", "responsavel_id", "backup_id"}
+    # Ciclo do responsável (spec 023): Done e InFixes vêm só dos resultados da rodada.
+    TRANSICOES_RESPONSAVEL = {
+        StatusCasoTeste.TO_DO: frozenset({StatusCasoTeste.IN_PROGRESS}),
+        StatusCasoTeste.IN_PROGRESS: frozenset({StatusCasoTeste.IN_REVIEW}),
+        StatusCasoTeste.IN_REVIEW: frozenset({StatusCasoTeste.IN_VALIDATION}),
+        StatusCasoTeste.IN_FIXES: frozenset({StatusCasoTeste.IN_REVIEW}),
+    }
 
     def __init__(
         self,
@@ -131,11 +138,29 @@ class CasoTesteServiceImpl:
             if not usuario_atual.pode("test_cases.consultar"):
                 raise ForbiddenException("Você não tem permissão para editar Test Cases.")
             if caso.responsavel_id != usuario_atual.id:
-                raise ForbiddenException("Você só pode editar Test Cases atribuídos a você.")
+                if (
+                    caso.backup_id != usuario_atual.id
+                    or campos_enviados != {"status"}
+                    or request.status is not StatusCasoTeste.CANCELLED
+                ):
+                    raise ForbiddenException("Você só pode editar Test Cases atribuídos a você.")
+                caso.cancelar()
+                await self._caso_repo.atualizar(caso)
+                await self._uow.commit()
+                caso_atualizado = await self._caso_repo.obter_por_id(
+                    usuario_atual.unidade_id, caso_id
+                )
+                return to_response(caso_atualizado or caso)
             if campos_enviados - self.CAMPOS_RESPONSAVEL:
                 raise ForbiddenException(
                     "O responsável só pode editar Status, Category e Difficulty."
                 )
+            if "status" in campos_enviados and request.status is not None:
+                permitidos = self.TRANSICOES_RESPONSAVEL.get(caso.status, frozenset())
+                if request.status is StatusCasoTeste.CANCELLED:
+                    caso.cancelar()
+                elif request.status is not caso.status and request.status not in permitidos:
+                    raise ConflictException("A transição de Status solicitada não é permitida.")
             caso.atualizar_campos_do_responsavel(
                 request.status or caso.status,
                 request.category or caso.category,

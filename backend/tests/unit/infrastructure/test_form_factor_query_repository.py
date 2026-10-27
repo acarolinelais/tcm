@@ -15,12 +15,13 @@ def _result(scalar=None, rows=()):
 
 
 async def test_query_form_factor_monta_uma_linha_por_caso_com_resultado_por_modelo():
-    caso_id, responsavel_id, s25, s26 = (uuid4() for _ in range(4))
+    caso_id, responsavel_id, backup_id, rodada_id, s25, s26 = (uuid4() for _ in range(6))
     importado_em = datetime(2026, 3, 24)
     session = AsyncMock()
     session.execute.side_effect = [
         _result(scalar=1),
-        _result(rows=[(caso_id, "Clock_001", responsavel_id)]),
+        _result(rows=[(caso_id, "Clock_001", responsavel_id, backup_id)]),
+        _result(rows=[(caso_id, rodada_id, None, False)]),
         _result(
             rows=[
                 (caso_id, s25, "Pass", "SDF-1", datetime(2026, 3, 20), importado_em),
@@ -40,6 +41,7 @@ async def test_query_form_factor_monta_uma_linha_por_caso_com_resultado_por_mode
     assert (linha.tc_id, linha.responsavel_id) == ("Clock_001", responsavel_id)
     assert linha.resultados == {s25: "Pass", s26: "Fail"}
     assert (linha.sdf_id, linha.data_reportada) == ("SDF-2", datetime(2026, 3, 23))
+    assert (linha.backup_id, linha.rodada_pendente_id) == (backup_id, rodada_id)
 
 
 async def test_query_form_factor_sem_casos_nao_consulta_resultados():

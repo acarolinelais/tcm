@@ -17,7 +17,7 @@ type Linha = FormFactorMatriz["items"][number];
 const chaveDaLinha = (linha: Linha) => linha.caso_teste_id;
 const SEM_LINHAS: Linha[] = [];
 
-export function FormFactorTabela({ dados, carregando, erro, identificadoresMembros, opcoesAssignee, assignee, onAssigneeChange, tcId = "", sdfId = "", onFiltroTexto, modeloDispositivoId = "", resultadoFiltro = "", onFiltroResultado, podeRegistrar = false, onRegistrar, temFiltros, onLimparFiltros, page, pageSize, onPageChange, onPageSizeChange }: {
+export function FormFactorTabela({ dados, carregando, erro, identificadoresMembros, opcoesAssignee, assignee, onAssigneeChange, tcId = "", sdfId = "", onFiltroTexto, modeloDispositivoId = "", resultadoFiltro = "", onFiltroResultado, podeRegistrar, onRegistrar, temFiltros, onLimparFiltros, page, pageSize, onPageChange, onPageSizeChange }: {
   dados: FormFactorMatriz | undefined;
   carregando: boolean;
   erro: boolean;
@@ -27,7 +27,7 @@ export function FormFactorTabela({ dados, carregando, erro, identificadoresMembr
   onAssigneeChange: (valor: string) => void;
   tcId?: string; sdfId?: string; onFiltroTexto?: (campo: "tcId" | "sdfId", valor: string) => void;
   modeloDispositivoId?: string; resultadoFiltro?: string; onFiltroResultado?: (modeloId: string, resultado: string) => void;
-  podeRegistrar?: boolean;
+  podeRegistrar?: (linha: Linha) => boolean;
   onRegistrar?: (linha: Linha) => void;
   temFiltros: boolean;
   onLimparFiltros: () => void;
@@ -40,6 +40,8 @@ export function FormFactorTabela({ dados, carregando, erro, identificadoresMembr
   const modelos = dados?.modelos ?? [];
   const linhas = erro ? SEM_LINHAS : dados?.items ?? SEM_LINHAS;
   const primeiraDaPagina = (page - 1) * pageSize;
+  // A coluna só aparece quando alguma linha da página tem ação para este usuário.
+  const comAcoes = podeRegistrar ? linhas.some(podeRegistrar) : false;
 
   const colunas: DataTableColumn<Linha>[] = [
     { id: "numero", header: "", className: "w-12 text-right tabular-nums text-muted after:hidden", cell: (linha) => String(primeiraDaPagina + linhas.indexOf(linha) + 1).padStart(2, "0") },
@@ -48,11 +50,11 @@ export function FormFactorTabela({ dados, carregando, erro, identificadoresMembr
     { id: "assignee", header: <DataTableFilter label={t("assignee")} value={assignee} onChange={onAssigneeChange} options={comOpcaoTodos(t("all"), opcoesAssignee)} searchable />, cell: (linha) => identificadoresMembros[linha.responsavel_id] ?? "—" },
     ...colunasPorModelo<Linha>(t, modelos, { modeloId: modeloDispositivoId, resultado: resultadoFiltro }, (modeloId, valor) => onFiltroResultado?.(modeloId, valor)),
     { id: "data", header: t("date"), cell: (linha) => linha.data_reportada ? formatDate(linha.data_reportada) : "—" },
-    ...(podeRegistrar ? [{
+    ...(comAcoes ? [{
       id: "acoes",
       header: t("actions"),
       className: "w-px whitespace-nowrap",
-      cell: (linha: Linha) => <RowActions identificador={linha.tc_id} actions={[{ label: t("recordResult"), icon: <Plus {...rowActionIconProps} />, onPress: () => onRegistrar?.(linha) }]} />,
+      cell: (linha: Linha) => podeRegistrar?.(linha) && <RowActions identificador={linha.tc_id} actions={[{ label: t("recordResult"), icon: <Plus {...rowActionIconProps} />, onPress: () => onRegistrar?.(linha) }]} />,
     }] : []),
   ];
 

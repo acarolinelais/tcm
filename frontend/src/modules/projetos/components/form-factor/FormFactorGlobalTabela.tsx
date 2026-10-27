@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableLayout, Table
 import { TableColumnFilter } from "@/shared/ui/table-column-filter";
 import type { Projeto } from "../../model/projeto";
 import type { FormFactorGlobal, FiltrosFormFactorGlobal, FormFactorResultadosGlobais } from "../../model/projeto";
-import { StatusPill } from "../status/StatusBadge";
+import { FormFactorResultBadge } from "./FormFactorResultBadge";
 
 type Filtro = keyof Pick<FiltrosFormFactorGlobal, "projetoId" | "responsavelId" | "tcId" | "sdfId" | "modeloDispositivoId" | "resultado" | "origem">;
 
@@ -33,8 +33,7 @@ function ResultadoCell({ valor, aplicavel }: { valor: string | undefined; aplica
   const { t } = useTranslation();
   if (!aplicavel) return <span className="text-muted-foreground" aria-label={t("notApplicable")}>N/A</span>;
   if (!valor) return <span className="text-muted-foreground" aria-label={t("noResult")}>—</span>;
-  if (!/^(pass|fail)$/i.test(valor)) return <span>{valor}</span>;
-  return <StatusPill status={valor.toLowerCase() === "pass" ? "Pass" : "Fail"} label={valor.toUpperCase()} />;
+  return <FormFactorResultBadge value={valor} />;
 }
 
 function FiltrosCabecalho({ dados, projetos, filtros, onFiltroChange }: Pick<Props<FormFactorGlobal>, "dados" | "projetos" | "filtros" | "onFiltroChange">) {
