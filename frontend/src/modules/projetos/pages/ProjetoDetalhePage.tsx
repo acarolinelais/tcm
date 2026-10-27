@@ -95,6 +95,7 @@ function ProjetoDetalhe() {
   const criarRodada = useCriarRodadaFormFactor(projetoId);
   const registrarResultadoRodada = useRegistrarResultadosRodadaFormFactor(projetoId);
 
+  const [casoParaExcluir, setCasoParaExcluir] = useState<CasoTeste | null>(null);
   const updateMemberCase = useMutation({
     mutationFn: ({ id, field, value }: { id: string; field: CampoInline; value: string }) => casosTesteApi.atualizar(id, { [field]: value } as Pick<CasoTeste, typeof field>),
     // A célula muda na hora; se a API recusar, o cache volta ao que era.
@@ -182,8 +183,12 @@ function ProjetoDetalhe() {
     return opcoesRotuladas(permitidos, ROTULO_STATUS, t);
   };
   /** Célula com edição na linha quando o usuário pode editar; senão, só o valor. */
+  // Excluded tira o caso do fluxo e o DEV não consegue desfazer: pede confirmação antes de gravar.
+  const alterarCampo = (caso: CasoTeste, campo: CampoInline, value: string) => campo === "status" && value === "Cancelled"
+    ? setCasoParaExcluir(caso)
+    : updateMemberCase.mutate({ id: caso.id, field: campo, value });
   const celulaEditavel = (caso: CasoTeste, campo: CampoInline, rotulo: string, valor: string, opcoes: InlineSelectOption[], exibicao: ReactNode, podeEditar: boolean) => podeEditar
-    ? <InlineSelect aria-label={`${rotulo} ${caso.tc_id}`} value={valor} options={opcoes} onChange={(value) => updateMemberCase.mutate({ id: caso.id, field: campo, value })}>{exibicao}</InlineSelect>
+    ? <InlineSelect aria-label={`${rotulo} ${caso.tc_id}`} value={valor} options={opcoes} onChange={(value) => alterarCampo(caso, campo, value)}>{exibicao}</InlineSelect>
     : exibicao;
 
   const primeiraDaPagina = (pagina - 1) * tamanhoPagina;
@@ -310,6 +315,16 @@ function ProjetoDetalhe() {
       </PageTabs>
     )}
 
+    <AlertConfirm
+      open={Boolean(casoParaExcluir)}
+      onOpenChange={(open) => { if (!open && !updateMemberCase.isPending) setCasoParaExcluir(null); }}
+      title={t("excludeCaseTitle", { tc: casoParaExcluir?.tc_id ?? "" })}
+      description={podeGerenciarCasos ? t("excludeCaseDescription") : `${t("excludeCaseDescription")} ${t("excludeCaseOnlyManagement")}`}
+      confirmLabel={t("excludeCase")}
+      variant="destructive"
+      isPending={updateMemberCase.isPending}
+      onConfirm={() => { if (casoParaExcluir) updateMemberCase.mutate({ id: casoParaExcluir.id, field: "status", value: "Cancelled" }, { onSettled: () => setCasoParaExcluir(null) }); }}
+    />
     <AlertConfirm
       open={Boolean(casoParaTransferir)}
       onOpenChange={(open) => { if (!open && !transfer.isPending) setCasoParaTransferir(null); }}

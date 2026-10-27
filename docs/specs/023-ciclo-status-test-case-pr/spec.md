@@ -41,7 +41,8 @@ modelos, com o resultado final `Done` ou `In Fixes`. Um TC que não pode ser aut
 - RN-06: `Excluded` marca um TC que não pode ser automatizado. O DEV atribuído (principal ou Backup) e a gestão
   autorizada no escopo podem excluir um TC a partir de qualquer Status. A exclusão não apaga o TC, seus resultados
   nem seu histórico de rodadas. É o mesmo Status `Cancelled` da spec 022, agora exibido como `Excluded` (EN),
-  `Excluído` (PT) e `제외됨` (KO).
+  `Excluído` (PT) e `제외됨` (KO). Escolher `Excluded` na linha pede confirmação antes de gravar; para o DEV, a
+  confirmação avisa que só a gestão consegue desfazer (incluído em 2026-10-27).
 - RN-07: TCs que estão em `In Review` e cuja execução de rodada mais recente tem algum `FAIL` passam a
   `In Fixes`. Os demais TCs em `In Review` continuam em `In Review`.
 - RN-08: A visão Resumo do Form Factor mostra uma única tabela com os TCs em `In Validation`, no formato que
