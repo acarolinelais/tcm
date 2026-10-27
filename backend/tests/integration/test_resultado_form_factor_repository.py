@@ -411,10 +411,10 @@ async def test_form_factor_com_semana_e_responsavel_considera_so_resultados_filt
         cenario.unidade_id, cenario.projeto_id, 1, 20, inicio, fim
     )
     semana_da_ana = await cenario.repo().listar_form_factor_por_projeto(
-        cenario.unidade_id, cenario.projeto_id, 1, 20, inicio, fim, cenario.ana
+        cenario.unidade_id, cenario.projeto_id, 1, 20, inicio, fim, [cenario.ana]
     )
     sem_casos = await cenario.repo().listar_form_factor_por_projeto(
-        cenario.unidade_id, cenario.projeto_id, 1, 20, responsavel_id=uuid4()
+        cenario.unidade_id, cenario.projeto_id, 1, 20, responsavel_ids=[uuid4()]
     )
 
     assert [linha.tc_id for linha in semana.items] == ["TC-001", "TC-003"]

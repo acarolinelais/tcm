@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import datetime
 from uuid import UUID
 
@@ -573,7 +574,7 @@ class ResultadoFormFactorRepositoryImpl(
         page_size: int,
         inicio: datetime | None = None,
         fim: datetime | None = None,
-        responsavel_id: UUID | None = None,
+        responsavel_ids: Sequence[UUID] | None = None,
         tc_id: str | None = None,
         sdf_id: str | None = None,
         modelo_dispositivo_id: UUID | None = None,
@@ -644,8 +645,8 @@ class ResultadoFormFactorRepositoryImpl(
             CasoTesteModel.ativo.is_(True),
             CasoTesteModel.status == "InValidation",
         ]
-        if responsavel_id is not None:
-            filtros_caso.append(CasoTesteModel.responsavel_id == responsavel_id)
+        if responsavel_ids:
+            filtros_caso.append(CasoTesteModel.responsavel_id.in_(responsavel_ids))
         if tc_id:
             filtros_caso.append(CasoTesteModel.tc_id.ilike(f"%{tc_id.strip()}%"))
         if sdf_id or modelo_dispositivo_id is not None or resultado:
@@ -781,7 +782,7 @@ class ResultadoFormFactorRepositoryImpl(
         page_size: int,
         inicio: datetime | None = None,
         fim: datetime | None = None,
-        responsavel_id: UUID | None = None,
+        responsavel_ids: Sequence[UUID] | None = None,
         tc_id: str | None = None,
         sdf_id: str | None = None,
         modelo_dispositivo_id: UUID | None = None,
@@ -836,8 +837,8 @@ class ResultadoFormFactorRepositoryImpl(
             filtros.append(ExecucaoSdfModel.data_reportada >= inicio)
         if fim is not None:
             filtros.append(ExecucaoSdfModel.data_reportada < fim)
-        if responsavel_id is not None:
-            filtros.append(CasoTesteModel.responsavel_id == responsavel_id)
+        if responsavel_ids:
+            filtros.append(CasoTesteModel.responsavel_id.in_(responsavel_ids))
         if tc_id:
             filtros.append(CasoTesteModel.tc_id.ilike(f"%{tc_id.strip()}%"))
         if sdf_id:

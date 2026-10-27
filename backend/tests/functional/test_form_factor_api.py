@@ -127,7 +127,7 @@ async def test_consultar_form_factor_filtrando_por_responsavel(api_client):
 
     assert response.status_code == 200
     service.listar.assert_awaited_once_with(
-        usuario, projeto_id, 2, 25, "2026-W12", responsavel_id, None, None, None, None
+        usuario, projeto_id, 2, 25, "2026-W12", [responsavel_id], None, None, None, None
     )
     body = response.json()
     assert body["modelos"] == [{"id": str(modelo_id), "nome": "SAMSUNG S25"}]
@@ -176,7 +176,7 @@ async def test_consultar_historico_form_factor_com_filtros(api_client):
         1,
         20,
         "2026-W13",
-        responsavel_id,
+        [responsavel_id],
         "TC-001",
         None,
         modelo_id,

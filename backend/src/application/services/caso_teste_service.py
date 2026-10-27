@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from uuid import UUID
 
 from src.application.schemas.caso_teste import (
@@ -62,7 +63,7 @@ class CasoTesteServiceImpl:
         projeto_id: UUID,
         page: int,
         page_size: int,
-        responsavel_id: UUID | None = None,
+        responsavel_ids: Sequence[UUID] | None = None,
         associados_a_mim: bool = False,
         semana: str | None = None,
         fuso_horario: str = "UTC",
@@ -75,7 +76,7 @@ class CasoTesteServiceImpl:
             projeto_id,
             page,
             page_size,
-            responsavel_id,
+            responsavel_ids,
             priorizar_responsavel_id=usuario_atual.id,
             **({"associado_usuario_id": usuario_atual.id} if associados_a_mim else {}),
             **({"data_final_inicio": inicio, "data_final_fim": fim} if semana else {}),

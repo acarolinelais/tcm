@@ -309,10 +309,12 @@ describe("base mock de projetos", () => {
     const semana = mockFormFactorApi.listar(project.id, { page: 1, pageSize: 20, semana: "2026-W12" });
     expect(semana.items).toHaveLength(1);
     expect(semana.items[0]).toMatchObject({ sdf_id: "SDF-1", resultados: { "mock-model-s27-ultra": "Fail" } });
-    expect(mockFormFactorApi.listar(project.id, { page: 1, pageSize: 20, responsavelId: "mock-user-kp" }).items.map((row) => row.tc_id)).toEqual(["TC-002"]);
+    expect(mockFormFactorApi.listar(project.id, { page: 1, pageSize: 20, responsavelIds: ["mock-user-kp"] }).items.map((row) => row.tc_id)).toEqual(["TC-002"]);
+    // Seleção múltipla: entram os casos de qualquer um dos responsáveis escolhidos.
+    expect(mockFormFactorApi.listar(project.id, { page: 1, pageSize: 20, responsavelIds: ["mock-user-kp", "mock-user-dev"] }).total_count).toBe(mockFormFactorApi.listar(project.id, { page: 1, pageSize: 20 }).total_count);
     const semCasoNaSemana = mockFormFactorApi.listar(project.id, { page: 1, pageSize: 20, semana: "2026-W15" });
     expect(semCasoNaSemana.items.map((row) => row.tc_id)).toEqual(["TC-002"]);
-    expect(mockFormFactorApi.listar(project.id, { page: 1, pageSize: 20, responsavelId: "ninguem" }).total_count).toBe(0);
+    expect(mockFormFactorApi.listar(project.id, { page: 1, pageSize: 20, responsavelIds: ["ninguem"] }).total_count).toBe(0);
   });
 
   it("preserva rodadas Form Factor no histórico", () => {

@@ -185,7 +185,7 @@ async def test_casos_combinam_associacao_e_filtro_responsavel_por_and(contexto):
         projeto.id,
         1,
         20,
-        responsavel_id=c.colega_id,
+        responsavel_ids=[c.colega_id],
         associado_usuario_id=c.dev_id,
     )
     vazia = await c.casos.listar_por_projeto(
@@ -193,7 +193,7 @@ async def test_casos_combinam_associacao_e_filtro_responsavel_por_and(contexto):
         projeto.id,
         1,
         20,
-        responsavel_id=c.terceiro_id,
+        responsavel_ids=[c.terceiro_id],
         associado_usuario_id=c.dev_id,
     )
 

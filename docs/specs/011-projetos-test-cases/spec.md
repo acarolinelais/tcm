@@ -58,6 +58,7 @@ Permitir que gerente ou KP crie projetos vinculados a um time e cadastre Test Ca
   - com problemas na planilha, a criação fica bloqueada e a ação passa a ser "Conferir planilha": ela verifica também responsável e backup no time escolhido e mostra todos os problemas juntos, sem criar nada.
 - RN-23: Ao concluir a importação da planilha de Test Cases, o sistema exibe uma notificação de sucesso informando que a planilha foi importada, o nome do projeto criado e quantos Test Cases foram criados.
 - RN-24: A aba Test Cases oferece o mesmo seletor de semana no canto superior direito do cabeçalho do card. Ele considera a Data final já exibida para casos com Status `Pass` e o fuso horário do navegador; casos sem Data final não aparecem enquanto uma semana está selecionada. Limpar o filtro restaura a consulta sem restrição de semana. A seleção de semana é independente da aba Form Factor, combina com os demais filtros e retorna à primeira página.
+- RN-25: O filtro de Assignee da aba Test Cases aceita mais de uma pessoa: aparecem os casos de qualquer uma delas. Cada pessoa marcada se aplica na hora, sem fechar o filtro; o cabeçalho do filtro oferece "Limpar" para desmarcar todas, e Esc só fecha o filtro, mantendo a escolha. A API recebe o parâmetro `responsavel_id` repetido, um por pessoa (incluída em 2026-10-27).
 
 ## Critérios de aceite
 
@@ -129,3 +130,4 @@ Permitir que gerente ou KP crie projetos vinculados a um time e cadastre Test Ca
 - **CA-34:** Dado um projeto, quando uma pessoa autorizada altera o nome, App, One UI, time e modelos válidos, então os dados atualizados são persistidos e o nome não é recalculado quando App ou One UI mudar depois.
 - **CA-35 (falha):** Dado um projeto com Test Cases ativos, quando o time de destino não contém todos os responsáveis e backups ativos, então a edição é recusada sem alterar o projeto nem suas associações de modelos.
 - **CA-36 (falha):** Dado um modelo inativo, inexistente ou de outra unidade, quando é enviado na edição, então a operação é recusada sem alterar o projeto.
+- **CA-37:** Dado um projeto com casos de três pessoas, quando o Assignee filtra duas delas, então aparecem só os casos dessas duas e a paginação volta para a página 1; quando a pessoa usa "Limpar", então o filtro se desliga e todos os casos voltam (incluído em 2026-10-27).

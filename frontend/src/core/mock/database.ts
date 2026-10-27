@@ -822,7 +822,7 @@ function getMockCase(db: Database, caseId: string) {
 }
 
 export const mockCasosTesteApi = {
-  listar(projectId: string, pageNumber: number, pageSize: number, filtros: { responsavelId?: string; associadosAMim?: boolean; semana?: string } = {}) {
+  listar(projectId: string, pageNumber: number, pageSize: number, filtros: { responsavelIds?: string[]; associadosAMim?: boolean; semana?: string } = {}) {
     requireMockPermission("test_cases.consultar");
     const { db, user } = mockProfile();
     if (!getMockProject(db, projectId).ativo) throw new Error("Projeto não encontrado.");
@@ -830,7 +830,7 @@ export const mockCasosTesteApi = {
       && item.unidade_id === db.unidade.id
       && (!filtros.associadosAMim || item.responsavel_id === user.id || item.backup_id === user.id)
       && (!filtros.semana || (item.status === "Done" && Boolean(item.updated_at ?? item.created_at) && semanaIso((item.updated_at ?? item.created_at)!) === filtros.semana))
-      && (!filtros.responsavelId || item.responsavel_id === filtros.responsavelId));
+      && (!filtros.responsavelIds?.length || filtros.responsavelIds.includes(item.responsavel_id)));
     // Igual à API: os casos em que o usuário é o responsável principal vêm primeiro.
     const prioridade = (item: (typeof casosDoProjeto)[number]) => (item.responsavel_id === user.id ? 0 : 1);
     casosDoProjeto.sort((a, b) => prioridade(a) - prioridade(b) || a.tc_id.localeCompare(b.tc_id));
@@ -1121,7 +1121,7 @@ export const mockFormFactorApi = {
     requireMockPermission("form_factor.consultar");
     const { db } = mockProfile();
     getMockProject(db, projectId);
-    const { page: pageNumber = 1, pageSize = 20, semana: week, responsavelId, tcId, sdfId, modeloDispositivoId, resultado } = filtros;
+    const { page: pageNumber = 1, pageSize = 20, semana: week, responsavelIds = [], tcId, sdfId, modeloDispositivoId, resultado } = filtros;
     const modelos = db.projetoModelos
       .filter((link) => link.projeto_id === projectId && link.ativo !== false)
       .map((link) => db.modelosDispositivo.find((model) => model.id === link.modelo_dispositivo_id))
@@ -1130,7 +1130,7 @@ export const mockFormFactorApi = {
       .sort((a, b) => a.nome.localeCompare(b.nome));
     const linkedModels = new Set(modelos.map((model) => model.id));
     const rows = db.casosTeste
-      .filter((testCase) => testCase.projeto_id === projectId && testCase.ativo && testCase.status === "InValidation" && (!responsavelId || testCase.responsavel_id === responsavelId) && (!tcId || testCase.tc_id.toLocaleLowerCase().includes(tcId.toLocaleLowerCase())))
+      .filter((testCase) => testCase.projeto_id === projectId && testCase.ativo && testCase.status === "InValidation" && (!responsavelIds.length || responsavelIds.includes(testCase.responsavel_id)) && (!tcId || testCase.tc_id.toLocaleLowerCase().includes(tcId.toLocaleLowerCase())))
       .sort((a, b) => a.tc_id.localeCompare(b.tc_id))
       .flatMap<LinhaFormFactor>((testCase) => {
         // Corte do caso (RN-12 da 022): o Resumo ignora resultados anteriores à rodada mais recente dele.
@@ -1159,7 +1159,7 @@ export const mockFormFactorApi = {
     requireMockPermission("form_factor.consultar");
     const { db } = mockProfile();
     getMockProject(db, projectId);
-    const { page: pageNumber = 1, pageSize = 20, semana, responsavelId, tcId, sdfId, origem, modeloDispositivoId, resultado } = filtros;
+    const { page: pageNumber = 1, pageSize = 20, semana, responsavelIds = [], tcId, sdfId, origem, modeloDispositivoId, resultado } = filtros;
     const modelos = db.projetoModelos.filter((link) => link.projeto_id === projectId).map((link) => db.modelosDispositivo.find((item) => item.id === link.modelo_dispositivo_id)).filter((item) => item !== undefined).map(({ id: modelId, nome }) => ({ id: modelId, nome }));
     const linked = new Set(modelos.map((item) => item.id));
     const groups = new Map<string, ResultadoFormFactorMock[]>();
@@ -1175,7 +1175,7 @@ export const mockFormFactorApi = {
       if (!testCase || testCase.projeto_id !== projectId || !testCase.ativo) return [];
       const data_reportada = first.data_reportada;
       if (semana && semanaIso(data_reportada) !== semana) return [];
-      if (responsavelId && testCase.responsavel_id !== responsavelId) return [];
+      if (responsavelIds.length && !responsavelIds.includes(testCase.responsavel_id)) return [];
       if (tcId && !testCase.tc_id.toLocaleLowerCase().includes(tcId.toLocaleLowerCase())) return [];
       if (sdfId && !values.some((item) => (item.sdf_id ?? "").toLocaleLowerCase().includes(sdfId.toLocaleLowerCase()))) return [];
       if (origem && (first.origem ?? "SDF") !== origem) return [];
@@ -1189,7 +1189,7 @@ export const mockFormFactorApi = {
       if (groups.has(execucao.execucao_id)) return;
       const testCase = db.casosTeste.find((item) => item.id === execucao.caso_teste_id && item.projeto_id === projectId && item.ativo);
       if (!testCase || (semana && semanaIso(execucao.data_reportada) !== semana)) return;
-      if (responsavelId && testCase.responsavel_id !== responsavelId) return;
+      if (responsavelIds.length && !responsavelIds.includes(testCase.responsavel_id)) return;
       if (tcId && !testCase.tc_id.toLocaleLowerCase().includes(tcId.toLocaleLowerCase())) return;
       if (sdfId && !(execucao.sdf_id ?? "").toLocaleLowerCase().includes(sdfId.toLocaleLowerCase())) return;
       if (origem && origem !== "MANUAL") return;

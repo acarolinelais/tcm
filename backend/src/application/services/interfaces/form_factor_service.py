@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Protocol
 from uuid import UUID
 
@@ -53,7 +54,7 @@ class FormFactorService(Protocol):
         page: int,
         page_size: int,
         semana: str | None = None,
-        responsavel_id: UUID | None = None,
+        responsavel_ids: Sequence[UUID] | None = None,
         tc_id: str | None = None,
         sdf_id: str | None = None,
         modelo_dispositivo_id: UUID | None = None,
@@ -67,7 +68,7 @@ class FormFactorService(Protocol):
         page: int,
         page_size: int,
         semana: str | None = None,
-        responsavel_id: UUID | None = None,
+        responsavel_ids: Sequence[UUID] | None = None,
         tc_id: str | None = None,
         sdf_id: str | None = None,
         modelo_dispositivo_id: UUID | None = None,

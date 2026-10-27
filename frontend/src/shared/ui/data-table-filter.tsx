@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Button, Calendar, ListBox, Popover, SearchField } from "@heroui/react";
 import { parseDate } from "@internationalized/date";
-import { Filter } from "lucide-react";
+import { ChevronLeft, Filter } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { cn } from "@/shared/lib/utils";
@@ -139,6 +139,94 @@ export function DataTableFilter({ label, accessibleLabel, value, onChange, optio
               </div>
             </form>
           )}
+        </Popover.Dialog>
+      </Popover.Content>
+    </Popover>
+  );
+}
+
+interface DataTableMultiFilterProps {
+  label: string;
+  accessibleLabel?: string;
+  values: readonly string[];
+  onChange: (values: string[]) => void;
+  /** Sem "Todos": nada marcado é o filtro desligado, e o "Limpar" do cabeçalho volta a esse estado. */
+  options: DataTableFilterOption[];
+  searchable?: boolean;
+}
+
+/**
+ * Filtro de seleção múltipla no cabeçalho: cada opção marcada se aplica na hora e o popover segue aberto para marcar
+ * outras. O cabeçalho do popover traz "‹ Rótulo", que fecha, e "Limpar", que desmarca tudo.
+ */
+export function DataTableMultiFilter({ label, accessibleLabel, values, onChange, options, searchable = false }: DataTableMultiFilterProps) {
+  const { t } = useTranslation();
+  const [aberto, setAberto] = useState(false);
+  const [busca, setBusca] = useState("");
+  const nome = accessibleLabel ?? label;
+  const ativo = values.length > 0;
+  const opcoesVisiveis = options.filter((opcao) => !searchable || `${opcao.label} ${opcao.searchText ?? ""}`.toLocaleLowerCase().includes(busca.toLocaleLowerCase()));
+  const visiveis = new Set(opcoesVisiveis.map((opcao) => opcao.value));
+
+  return (
+    <Popover isOpen={aberto} onOpenChange={(proximo) => { if (proximo) setBusca(""); setAberto(proximo); }}>
+      <Button
+        variant="ghost"
+        aria-label={t("filterBy", { label: nome })}
+        className={cn(
+          "h-8 min-h-0 w-full justify-between gap-2 rounded-lg px-0 text-[14px] font-medium leading-5 hover:bg-transparent data-[focus-visible]:ring-2 data-[focus-visible]:ring-focus",
+          ativo ? "text-accent" : "text-muted hover:text-[#454442]",
+        )}
+      >
+        <span className="truncate">{label}</span>
+        {ativo
+          ? <Filter aria-hidden="true" absoluteStrokeWidth strokeWidth={1} className="size-3.5 shrink-0" />
+          : <ChevronDownIcon className={cn("shrink-0 transition-transform duration-200 motion-reduce:transition-none", aberto && "rotate-180")} />}
+      </Button>
+      <Popover.Content placement="bottom end" className="w-[min(16rem,calc(100vw-1rem))] rounded-2xl p-3">
+        <Popover.Dialog aria-label={t("filter", { label: nome })} className="grid gap-2 outline-none">
+          {/* No ListBox, Esc limparia a seleção inteira: aqui ele só fecha, e o filtro escolhido continua. */}
+          <div
+            className="contents"
+            onKeyDownCapture={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setAberto(false); } }}
+          >
+          <div className="flex items-center justify-between gap-2">
+            <Button variant="ghost" aria-label={t("closeFilter")} onPress={() => setAberto(false)} className="h-7 min-h-0 gap-1 rounded-lg px-1 text-[14px] font-medium text-[#454442]">
+              <ChevronLeft aria-hidden="true" absoluteStrokeWidth strokeWidth={1.5} className="size-4" />{label}
+            </Button>
+            <Button variant="ghost" isDisabled={!ativo} onPress={() => onChange([])} className="h-7 min-h-0 rounded-lg px-1.5 text-[14px] text-accent">
+              {t("clear")}
+            </Button>
+          </div>
+          {searchable && (
+            <SearchField aria-label={t("searchOptions")} value={busca} onChange={setBusca} autoFocus className="w-full min-w-0">
+              <SearchField.Group className="h-9 w-full min-w-0 rounded-xl bg-[#F3F5F7]">
+                <SearchField.SearchIcon />
+                <SearchField.Input className="text-[13px]" />
+              </SearchField.Group>
+            </SearchField>
+          )}
+          <ListBox
+            aria-label={t("filter", { label: nome })}
+            selectionMode="multiple"
+            selectedKeys={new Set(values)}
+            onSelectionChange={(chaves) => {
+              // A busca esconde opções, mas não as desmarca: as marcadas fora da lista visível continuam no filtro
+              // (o Set evita repetir as que a própria seleção já carrega).
+              const marcadas = chaves === "all" ? opcoesVisiveis.map((opcao) => opcao.value) : [...chaves].map(String);
+              onChange([...new Set([...values.filter((valor) => !visiveis.has(valor)), ...marcadas])]);
+            }}
+            autoFocus={searchable ? undefined : "first"}
+            className="max-h-56 overflow-y-auto"
+          >
+            {opcoesVisiveis.map((opcao) => (
+              <ListBox.Item key={opcao.value} id={opcao.value} textValue={opcao.label} className="text-[13px]">
+                {opcao.label}
+                <ListBox.ItemIndicator />
+              </ListBox.Item>
+            ))}
+          </ListBox>
+          </div>
         </Popover.Dialog>
       </Popover.Content>
     </Popover>

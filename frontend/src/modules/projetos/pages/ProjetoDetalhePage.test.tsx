@@ -140,9 +140,16 @@ describe("ProjetoDetalhePage", () => {
     expect(await screen.findByRole("option", { name: "daniel-id" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "outro-id" })).toBeInTheDocument();
     await user.click(screen.getByRole("option", { name: "outro-id" }));
-    await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("project-1", 1, DEFAULT_TABLE_PAGE_SIZE, { responsavelId: "user-2" }));
+    await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("project-1", 1, DEFAULT_TABLE_PAGE_SIZE, { responsavelIds: ["user-2"] }));
+    // Esc só fecha o filtro: a pessoa escolhida continua filtrando a tabela.
+    await user.keyboard("{Escape}");
     expect(screen.queryByRole("row", { name: /Clock_001/ })).not.toBeInTheDocument();
     expect(screen.getByRole("row", { name: /Clock_002/ })).toBeInTheDocument();
+
+    // Seleção múltipla: a segunda pessoa entra no mesmo filtro.
+    await user.click(screen.getByRole("button", { name: /Filter by Assignee/i }));
+    await user.click(await screen.findByRole("option", { name: "daniel-id" }));
+    await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("project-1", 1, DEFAULT_TABLE_PAGE_SIZE, { responsavelIds: ["user-2", "user-1"] }));
   });
 
   it("filtra os casos pela data final escolhida no calendário", async () => {
@@ -369,10 +376,11 @@ describe("ProjetoDetalhePage", () => {
     await user.click(within(await screen.findByRole("dialog", { name: "Week" })).getByRole("button", { name: "This week" }));
     await user.click(screen.getByRole("button", { name: /Filter by Assignee/i }));
     await user.click(await screen.findByRole("option", { name: "outro-id" }));
+    await user.keyboard("{Escape}");
 
     await user.click(await screen.findByRole("button", { name: "Clear filters" }));
 
-    await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("project-1", { page: 1, pageSize: DEFAULT_TABLE_PAGE_SIZE, semana: undefined, responsavelId: undefined }));
+    await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("project-1", { page: 1, pageSize: DEFAULT_TABLE_PAGE_SIZE, semana: undefined, responsavelIds: undefined }));
     expect(await screen.findByRole("heading", { name: "No test cases yet" })).toBeInTheDocument();
   });
 
@@ -398,7 +406,7 @@ describe("ProjetoDetalhePage", () => {
     await user.click(within(container.querySelector("header")!).getByRole("button", { name: "Week: Select a week" }));
     await user.click(within(await screen.findByRole("dialog", { name: "Week" })).getByRole("button", { name: "This week" }));
     expect(screen.queryByRole("columnheader", { name: "One UI Version" })).not.toBeInTheDocument();
-    await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("project-1", { page: 1, pageSize: DEFAULT_TABLE_PAGE_SIZE, semana: semanaIso(new Date()), responsavelId: undefined }));
+    await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("project-1", { page: 1, pageSize: DEFAULT_TABLE_PAGE_SIZE, semana: semanaIso(new Date()), responsavelIds: undefined }));
 
     const primeiroDoMes = new Date();
     primeiroDoMes.setDate(1);
@@ -414,7 +422,8 @@ describe("ProjetoDetalhePage", () => {
     // Assignee filtra no servidor e volta para a página 1.
     await user.click(screen.getByRole("button", { name: /Filter by Assignee/i }));
     await user.click(await screen.findByRole("option", { name: "outro-id" }));
-    await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("project-1", { page: 1, pageSize: DEFAULT_TABLE_PAGE_SIZE, semana: undefined, responsavelId: "user-2" }));
+    await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("project-1", { page: 1, pageSize: DEFAULT_TABLE_PAGE_SIZE, semana: undefined, responsavelIds: ["user-2"] }));
+    await user.keyboard("{Escape}");
 
     const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]');
     expect(fileInput).not.toBeNull();

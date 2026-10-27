@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Protocol
 from uuid import UUID
@@ -14,7 +15,7 @@ class CasoTesteRepository(RepositoryBase[CasoTeste], Protocol):
         projeto_id: UUID,
         page: int,
         page_size: int,
-        responsavel_id: UUID | None = None,
+        responsavel_ids: Sequence[UUID] | None = None,
         priorizar_responsavel_id: UUID | None = None,
         associado_usuario_id: UUID | None = None,
         data_final_inicio: datetime | None = None,

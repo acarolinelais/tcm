@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { DataTableFilter } from "./data-table-filter";
+import { DataTableFilter, DataTableMultiFilter } from "./data-table-filter";
 
 describe("DataTableFilter", () => {
   it("filtro de opções aplica a opção escolhida", async () => {
@@ -36,5 +36,49 @@ describe("DataTableFilter", () => {
     await userEvent.type(await screen.findByRole("searchbox"), "raq");
     expect(screen.queryByRole("option", { name: "caroline.silva" })).not.toBeInTheDocument();
     expect(screen.getByRole("option", { name: "raquel.batista" })).toBeInTheDocument();
+  });
+});
+
+describe("DataTableMultiFilter", () => {
+  const pessoas = [{ value: "1", label: "caroline.silva" }, { value: "2", label: "raquel.batista" }, { value: "3", label: "isabel.gama" }];
+
+  it("marca mais de uma pessoa e aplica cada escolha na hora", async () => {
+    const onChange = vi.fn();
+    const { rerender } = render(<DataTableMultiFilter label="Assignee" values={[]} onChange={onChange} options={pessoas} />);
+    await userEvent.click(screen.getByRole("button", { name: "Filter by Assignee" }));
+    await userEvent.click(await screen.findByRole("option", { name: "caroline.silva" }));
+    expect(onChange).toHaveBeenLastCalledWith(["1"]);
+
+    rerender(<DataTableMultiFilter label="Assignee" values={["1"]} onChange={onChange} options={pessoas} />);
+    await userEvent.click(screen.getByRole("option", { name: "raquel.batista" }));
+    expect(onChange).toHaveBeenLastCalledWith(["1", "2"]);
+  });
+
+  it("Clear desmarca tudo e fica desabilitado sem seleção", async () => {
+    const onChange = vi.fn();
+    render(<DataTableMultiFilter label="Assignee" values={["1", "2"]} onChange={onChange} options={pessoas} />);
+    await userEvent.click(screen.getByRole("button", { name: "Filter by Assignee" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Clear" }));
+    expect(onChange).toHaveBeenLastCalledWith([]);
+  });
+
+  it("a busca esconde opções sem desmarcar as que já estavam escolhidas", async () => {
+    const onChange = vi.fn();
+    render(<DataTableMultiFilter label="Assignee" values={["1"]} onChange={onChange} options={pessoas} searchable />);
+    await userEvent.click(screen.getByRole("button", { name: "Filter by Assignee" }));
+    await userEvent.type(await screen.findByRole("searchbox"), "raq");
+    expect(screen.queryByRole("option", { name: "caroline.silva" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("option", { name: "raquel.batista" }));
+    expect(onChange).toHaveBeenLastCalledWith(["1", "2"]);
+  });
+
+  it("Esc fecha o filtro sem limpar a seleção", async () => {
+    const onChange = vi.fn();
+    render(<DataTableMultiFilter label="Assignee" values={["1"]} onChange={onChange} options={pessoas} />);
+    await userEvent.click(screen.getByRole("button", { name: "Filter by Assignee" }));
+    await screen.findByRole("option", { name: "caroline.silva" });
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("option", { name: "caroline.silva" })).not.toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
   });
 });

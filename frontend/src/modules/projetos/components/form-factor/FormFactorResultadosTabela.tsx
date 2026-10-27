@@ -4,24 +4,27 @@ import { useTranslation } from "react-i18next";
 import { formatDate } from "@/core/i18n/format";
 import { comOpcaoTodos } from "@/shared/lib/opcoes";
 import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
-import { DataTableFilter, type DataTableFilterOption } from "@/shared/ui/data-table-filter";
+import { DataTableFilter, DataTableMultiFilter, type DataTableFilterOption } from "@/shared/ui/data-table-filter";
 import { DataTablePagination } from "@/shared/ui/data-table-pagination";
 import { estadoDaTabela } from "@/shared/ui/data-table-state";
 import type { FormFactorResultados } from "../../model/projeto";
 import { colunasPorModelo } from "./colunas-form-factor";
 
 type Execucao = FormFactorResultados["items"][number];
-type Filtros = { tcId: string; sdfId: string; responsavelId: string; origem: string; modeloDispositivoId: string; resultado: string };
+type Filtros = { tcId: string; sdfId: string; origem: string; modeloDispositivoId: string; resultado: string };
 const chaveDaExecucao = (execucao: Execucao) => execucao.execucao_id;
 const SEM_EXECUCOES: Execucao[] = [];
 
-export function FormFactorResultadosTabela({ dados, carregando, erro, identificadoresMembros, opcoesAssignee, filtros, onFiltroChange, onFiltroResultado, onLimparFiltros, page, pageSize, onPageChange, onPageSizeChange }: {
+export function FormFactorResultadosTabela({ dados, carregando, erro, identificadoresMembros, opcoesAssignee, filtros, responsaveis, onResponsaveisChange, onFiltroChange, onFiltroResultado, onLimparFiltros, page, pageSize, onPageChange, onPageSizeChange }: {
   dados?: FormFactorResultados;
   carregando: boolean;
   erro: boolean;
   identificadoresMembros: Record<string, string>;
   opcoesAssignee: DataTableFilterOption[];
   filtros: Filtros;
+  /** Responsáveis escolhidos no filtro (seleção múltipla); vazio desliga o filtro. */
+  responsaveis: string[];
+  onResponsaveisChange: (valores: string[]) => void;
   onFiltroChange: (campo: Exclude<keyof Filtros, "modeloDispositivoId" | "resultado">, valor: string) => void;
   /** O filtro de resultado vale para um modelo por vez: muda os dois campos de uma vez. */
   onFiltroResultado: (modeloId: string, resultado: string) => void;
@@ -34,7 +37,7 @@ export function FormFactorResultadosTabela({ dados, carregando, erro, identifica
   const colunas: DataTableColumn<Execucao>[] = [
     { id: "tcId", isRowHeader: true, header: <DataTableFilter label={t("tcId")} value={filtros.tcId} onChange={(v) => onFiltroChange("tcId", v)} />, cell: (execucao) => execucao.tc_id },
     { id: "sdfId", header: <DataTableFilter label={t("sdfId")} value={filtros.sdfId} onChange={(v) => onFiltroChange("sdfId", v)} />, cell: (execucao) => execucao.sdf_id ?? "—" },
-    { id: "assignee", header: <DataTableFilter label={t("assignee")} value={filtros.responsavelId} onChange={(v) => onFiltroChange("responsavelId", v)} options={comOpcaoTodos(t("all"), opcoesAssignee)} searchable />, cell: (execucao) => identificadoresMembros[execucao.responsavel_id] ?? "—" },
+    { id: "assignee", header: <DataTableMultiFilter label={t("assignee")} values={responsaveis} onChange={onResponsaveisChange} options={opcoesAssignee} searchable />, cell: (execucao) => identificadoresMembros[execucao.responsavel_id] ?? "—" },
     { id: "origem", header: <DataTableFilter label={t("origin")} value={filtros.origem} onChange={(v) => onFiltroChange("origem", v)} options={comOpcaoTodos(t("all"), [{ value: "SDF", label: "SDF" }, { value: "MANUAL", label: t("manual") }])} />, cell: (execucao) => execucao.origem === "SDF" ? "SDF" : t("manual") },
     ...colunasPorModelo<Execucao>(t, modelos, { modeloId: filtros.modeloDispositivoId, resultado: filtros.resultado }, onFiltroResultado),
     { id: "data", header: t("date"), cell: (execucao) => formatDate(execucao.data_reportada, { dateStyle: "short", timeStyle: "short" }) },
@@ -50,7 +53,7 @@ export function FormFactorResultadosTabela({ dados, carregando, erro, identifica
       isLoading: carregando,
       isError: erro,
       isEmpty: !items.length,
-      hasFilters: Object.values(filtros).some(Boolean),
+      hasFilters: responsaveis.length > 0 || Object.values(filtros).some(Boolean),
       onClearFilters: onLimparFiltros,
       loadingLabel: t("loading"),
       errorLabel: t("resultsLoadError"),

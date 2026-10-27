@@ -65,6 +65,8 @@ test("mostra a matriz por modelo, troca pelo resultado mais recente após import
 
   await page.getByRole("button", { name: /Filtrar por Responsável/ }).click();
   await page.getByRole("option", { name: "bia.id" }).click();
+  // O filtro aceita várias pessoas e fica aberto: Esc fecha mantendo a escolha.
+  await page.keyboard.press("Escape");
   await expect(page.getByRole("row", { name: /Clock_002/ })).toBeVisible();
   await expect(page.getByRole("row", { name: /Clock_001/ })).toHaveCount(0);
 });

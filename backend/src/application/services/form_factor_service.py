@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -162,7 +163,7 @@ class FormFactorServiceImpl:
         page: int,
         page_size: int,
         semana: str | None = None,
-        responsavel_id: UUID | None = None,
+        responsavel_ids: Sequence[UUID] | None = None,
         tc_id: str | None = None,
         sdf_id: str | None = None,
         modelo_dispositivo_id: UUID | None = None,
@@ -179,7 +180,7 @@ class FormFactorServiceImpl:
             page_size,
             inicio,
             fim,
-            responsavel_id,
+            responsavel_ids,
             tc_id,
             sdf_id,
             modelo_dispositivo_id,
@@ -200,7 +201,7 @@ class FormFactorServiceImpl:
         page: int,
         page_size: int,
         semana: str | None = None,
-        responsavel_id: UUID | None = None,
+        responsavel_ids: Sequence[UUID] | None = None,
         tc_id: str | None = None,
         sdf_id: str | None = None,
         modelo_dispositivo_id: UUID | None = None,
@@ -218,7 +219,7 @@ class FormFactorServiceImpl:
             page_size,
             inicio,
             fim,
-            responsavel_id,
+            responsavel_ids,
             tc_id,
             sdf_id,
             modelo_dispositivo_id,

@@ -23,7 +23,7 @@ Manter o Form Factor como visão geral do projeto e oferecer uma lista históric
 - RN-05: Os resultados inseridos manualmente aceitam somente PASS ou FAIL. Resultados importados do SDF continuam preservando os valores que o relatório fornecer.
 - RN-06: As rodadas exibem origem (manual ou importação SDF), data e identificador SDF quando disponível. A data de uma rodada manual é preenchida automaticamente no momento do registro.
 - RN-07: A consulta mantém filtros por semana/data e responsável. Resumo e Results também oferecem filtros para os dados próprios de suas colunas, inclusive TC, modelo/resultado e identificador SDF quando aplicável.
-- RN-08: O filtro de responsável permanece compacto, limita a altura e largura do menu e permite localizar um membro por texto.
+- RN-08: O filtro de responsável permanece compacto, limita a altura e largura do menu e permite localizar um membro por texto. Ele aceita mais de um responsável, no Resumo e em Results: cada escolha se aplica na hora, "Limpar" desmarca todos e Esc só fecha o menu, mantendo a escolha (seleção múltipla incluída em 2026-10-27).
 - RN-09: Tabelas Form Factor usam uma única área de rolagem vertical, mantêm o cabeçalho visível durante a rolagem e não deixam menus de filtro cortados pelo contêiner.
 - RN-10: A criação manual exige permissão de escrita de resultados Form Factor; a consulta segue a permissão existente `form_factor.consultar`.
 - RN-11: Filtros, paginação e acesso respeitam o escopo do projeto e o isolamento da unidade.
@@ -37,7 +37,7 @@ Manter o Form Factor como visão geral do projeto e oferecer uma lista históric
 - **CA-04:** Dado um usuário com permissão para registrar resultados, quando ele cria uma rodada manual para um TC e informa PASS/FAIL para modelos, então a rodada e todos os resultados são persistidos e aparecem em Results e no Resumo.
 - **CA-05:** Dado um resultado mais antigo e uma rodada manual mais recente para o mesmo TC/modelo, quando o Resumo é atualizado, então mostra o resultado da rodada manual e Results continua mostrando ambas.
 - **CA-06:** Dado Results ou Resumo com dados, quando o usuário filtra por TC, responsável, data/semana, modelo/resultado ou SDF ID conforme a visão, então somente os itens correspondentes são listados e a paginação reinicia na primeira página.
-- **CA-07:** Dado um filtro de responsável com muitos membros, quando o usuário abre o filtro, então o menu permanece dentro da tela, tem dimensões limitadas e permite buscar pelo identificador/nome.
+- **CA-07:** Dado um filtro de responsável com muitos membros, quando o usuário abre o filtro, então o menu permanece dentro da tela, tem dimensões limitadas e permite buscar pelo identificador/nome; quando marca dois responsáveis, então aparecem os itens de qualquer um deles, e a busca esconde opções sem desmarcar as já escolhidas.
 - **CA-08:** Dada uma tabela com muitas linhas, quando o usuário rola os resultados, então a rolagem vertical acontece em uma única região e o cabeçalho continua visível.
 - **CA-09 (falha):** Dado um usuário sem permissão de registrar resultados, quando tenta criar uma rodada manual pela API, então a operação é recusada e nenhum resultado é gravado.
 - **CA-10 (falha):** Dado um lançamento manual com resultado diferente de PASS/FAIL, sem TC válido, com modelo não associado ao projeto ou sem nenhum resultado, quando é enviado, então a API rejeita a rodada e não persiste dados parciais.

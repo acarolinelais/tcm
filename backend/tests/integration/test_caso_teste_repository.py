@@ -110,12 +110,12 @@ async def test_caso_persiste_com_responsaveis_e_tc_id_e_unico_no_projeto():
             assert pagina.items[0].situation == SituacaoCasoTeste.NEW_STEP
             assert pagina.items[0].status == StatusCasoTeste.TO_DO
             pagina_filtrada = await repository.listar_por_projeto(
-                unidade_id, projeto_id, 1, 10, responsavel_id
+                unidade_id, projeto_id, 1, 10, [responsavel_id]
             )
             assert pagina_filtrada.total_count == 1
             assert pagina_filtrada.items[0].responsavel_id == responsavel_id
             sem_resultados = await repository.listar_por_projeto(
-                unidade_id, projeto_id, 1, 10, uuid4()
+                unidade_id, projeto_id, 1, 10, [uuid4()]
             )
             assert sem_resultados.items == []
             assert sem_resultados.total_count == 0

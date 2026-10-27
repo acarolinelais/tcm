@@ -38,21 +38,21 @@ describe("hooks de projetos", () => {
   it("mantém filtro pessoal ao mudar responsável e paginação", async () => {
     vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [], total_count: 0, page: 1, page_size: 20 });
     const perfil = { id: "dev", unidade_id: "u" } as PerfilAtual;
-    const { result, rerender } = renderHook(({ page, responsavelId }) => useCasosTeste("p", page, 20, { associadosAMim: true, responsavelId }, perfil), { initialProps: { page: 1, responsavelId: "a" }, wrapper: criarWrapper() });
+    const { result, rerender } = renderHook(({ page, responsavelIds }) => useCasosTeste("p", page, 20, { associadosAMim: true, responsavelIds }, perfil), { initialProps: { page: 1, responsavelIds: ["a"] }, wrapper: criarWrapper() });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    rerender({ page: 2, responsavelId: "b" });
-    await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("p", 2, 20, { associadosAMim: true, responsavelId: "b" }));
+    rerender({ page: 2, responsavelIds: ["a", "b"] });
+    await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("p", 2, 20, { associadosAMim: true, responsavelIds: ["a", "b"] }));
   });
 
   it("refaz o Form Factor ao mudar o responsável e não consulta quando desabilitado", async () => {
     vi.mocked(formFactorApi.listar).mockResolvedValue({ modelos: [], items: [], total_count: 0, page: 1, page_size: 20 });
     const perfil = { id: "kp", unidade_id: "u" } as PerfilAtual;
-    const { result, rerender } = renderHook(({ responsavelId, enabled }) => useFormFactor("p", { page: 1, pageSize: 20, responsavelId }, perfil, enabled), { initialProps: { responsavelId: undefined as string | undefined, enabled: false }, wrapper: criarWrapper() });
+    const { result, rerender } = renderHook(({ responsavelIds, enabled }) => useFormFactor("p", { page: 1, pageSize: 20, responsavelIds }, perfil, enabled), { initialProps: { responsavelIds: undefined as string[] | undefined, enabled: false }, wrapper: criarWrapper() });
     expect(formFactorApi.listar).not.toHaveBeenCalled();
-    rerender({ responsavelId: undefined, enabled: true });
+    rerender({ responsavelIds: undefined, enabled: true });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    rerender({ responsavelId: "ana", enabled: true });
-    await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("p", { page: 1, pageSize: 20, responsavelId: "ana" }));
+    rerender({ responsavelIds: ["ana"], enabled: true });
+    await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("p", { page: 1, pageSize: 20, responsavelIds: ["ana"] }));
     expect(formFactorApi.listar).toHaveBeenCalledTimes(2);
   });
 

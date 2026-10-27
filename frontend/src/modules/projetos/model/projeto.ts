@@ -136,13 +136,15 @@ export interface FormFactorResultadosGlobais extends PagedResult<FormFactorExecu
 
 export interface FiltrosFormFactorGlobal extends FiltrosFormFactor {
   projetoId?: string;
+  responsavelId?: string;
 }
 
 export interface FiltrosFormFactor {
   page?: number;
   pageSize?: number;
   semana?: string;
-  responsavelId?: string;
+  /** Seleção múltipla: o caso entra se o responsável for qualquer um dos escolhidos. */
+  responsavelIds?: string[];
   tcId?: string;
   sdfId?: string;
   modeloDispositivoId?: string;

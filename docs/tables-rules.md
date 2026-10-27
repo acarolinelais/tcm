@@ -6,7 +6,7 @@ o `Table` do HeroUI (ADR 0037) pelas composições de `frontend/src/shared/ui`:
 | Arquivo | Papel |
 |---|---|
 | `data-table.tsx` | Moldura, cabeçalho, linhas, seleção e área de estado (`DataTable`) |
-| `data-table-filter.tsx` | Filtro no cabeçalho da coluna (`DataTableFilter`) |
+| `data-table-filter.tsx` | Filtro no cabeçalho da coluna (`DataTableFilter`; seleção múltipla em `DataTableMultiFilter`) |
 | `data-table-pagination.tsx` | Total, itens por página e páginas (`DataTablePagination`) |
 | `data-table-state.tsx` | Carregando, erro, vazio e vazio com filtro (`estadoDaTabela`) |
 | `row-action-button.tsx` · `row-action-icon.ts` | Ações da linha em botões redondos (`RowActions`) |
@@ -73,6 +73,10 @@ não a tela isolada.
 - O rótulo da coluna é o próprio gatilho do filtro, com a seta de 14px do Figma à direita. Filtro ativo troca
   a seta pelo funil e a cor para `text-accent`. Não crie outro indicador.
 - Toda lista de opções começa com "Todos": `comOpcaoTodos(t("all"), opcoes)` (`shared/lib/opcoes.ts`).
+- Para escolher mais de um valor (ex.: Assignee), use `DataTableMultiFilter`: sem "Todos" (nada marcado desliga o
+  filtro), cada opção marcada se aplica na hora e o menu segue aberto. O cabeçalho do menu tem "‹ Rótulo", que fecha,
+  e "Limpar", que desmarca tudo. Esc só fecha, sem perder a escolha. A busca esconde opções sem desmarcar as escolhidas.
+  No servidor, a lista vai como o mesmo parâmetro repetido (`?responsavel_id=a&responsavel_id=b`).
 - Coluna de data filtra pelo calendário do HeroUI. O valor é o dia em `AAAA-MM-DD`, comparado com a data da
   linha no fuso do navegador, nunca por texto na data formatada.
 - Filtro por semana usa o `WeekPickerHero` (`shared/ui/week-picker-hero.tsx`): botão do Figma e calendário com

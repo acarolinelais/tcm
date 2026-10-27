@@ -22,7 +22,7 @@ function renderTabela(props: Partial<Parameters<typeof FormFactorTabela>[0]> = {
     dados={matriz} carregando={false} erro={false}
     identificadoresMembros={{ ana: "ana.silva", bia: "bia.souza" }}
     opcoesAssignee={[{ value: "ana", label: "ana.silva" }, { value: "bia", label: "bia.souza" }]}
-    assignee="" temFiltros={false} page={1} pageSize={DEFAULT_TABLE_PAGE_SIZE}
+    assignee={[]} temFiltros={false} page={1} pageSize={DEFAULT_TABLE_PAGE_SIZE}
     {...handlers} {...props}
   />);
   return handlers;
@@ -59,12 +59,12 @@ describe("FormFactorTabela", () => {
     await user.click(screen.getByRole("button", { name: /Filter by Assignee/i }));
     await user.click(await screen.findByRole("option", { name: "bia.souza" }));
 
-    expect(onAssigneeChange).toHaveBeenCalledWith("bia");
+    expect(onAssigneeChange).toHaveBeenCalledWith(["bia"]);
   });
 
   it("sem casos para os filtros, oferece limpar os filtros", async () => {
     const user = userEvent.setup();
-    const { onLimparFiltros } = renderTabela({ dados: { ...matriz, items: [], total_count: 0 }, temFiltros: true, assignee: "bia" });
+    const { onLimparFiltros } = renderTabela({ dados: { ...matriz, items: [], total_count: 0 }, temFiltros: true, assignee: ["bia"] });
 
     expect(screen.getByRole("heading", { name: "No test cases match the filters." })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Clear filters" }));

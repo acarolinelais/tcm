@@ -10,7 +10,7 @@ describe("FormFactorResultadosTabela", () => {
       { execucao_id: "run-1", caso_teste_id: "case-1", tc_id: "TC-001", responsavel_id: "user-1", sdf_id: null, data_reportada: "2026-03-23T10:00:00Z", origem: "MANUAL", resultados: { m1: "FAIL" } },
       { execucao_id: "run-2", caso_teste_id: "case-1", tc_id: "TC-001", responsavel_id: "user-1", sdf_id: "SDF-1", data_reportada: "2026-03-24T10:00:00Z", origem: "SDF", resultados: { m1: "PASS", m2: "PASS" } },
       { execucao_id: "run-3", caso_teste_id: "case-1", tc_id: "TC-001", responsavel_id: "user-1", sdf_id: "SDF-2", data_reportada: "2026-03-25T10:00:00Z", origem: "SDF", resultados: { m1: "BLOCKED" } },
-    ], page: 1, page_size: 20, total_count: 3 }} carregando={false} erro={false} identificadoresMembros={{ "user-1": "ana" }} opcoesAssignee={[{ value: "user-1", label: "ana", searchText: "Ana Pereira" }]} filtros={{ tcId: "", sdfId: "", responsavelId: "", origem: "", modeloDispositivoId: "", resultado: "" }} onFiltroChange={vi.fn()} onFiltroResultado={vi.fn()} onLimparFiltros={vi.fn()} page={1} pageSize={20} onPageChange={vi.fn()} onPageSizeChange={vi.fn()} />);
+    ], page: 1, page_size: 20, total_count: 3 }} carregando={false} erro={false} identificadoresMembros={{ "user-1": "ana" }} opcoesAssignee={[{ value: "user-1", label: "ana", searchText: "Ana Pereira" }]} responsaveis={[]} onResponsaveisChange={vi.fn()} filtros={{ tcId: "", sdfId: "", origem: "", modeloDispositivoId: "", resultado: "" }} onFiltroChange={vi.fn()} onFiltroResultado={vi.fn()} onLimparFiltros={vi.fn()} page={1} pageSize={20} onPageChange={vi.fn()} onPageSizeChange={vi.fn()} />);
 
     expect(screen.getAllByRole("columnheader").map((item) => item.textContent)).toEqual(["TC ID", "SDF ID", "Assignee", "Origin", "S25", "S26", "Date"]);
     const rows = within(screen.getAllByRole("rowgroup")[1]).getAllByRole("row");
@@ -24,7 +24,7 @@ describe("FormFactorResultadosTabela", () => {
 
   it("sem execuções para os filtros, oferece limpar os filtros", async () => {
     const onLimparFiltros = vi.fn();
-    render(<FormFactorResultadosTabela dados={{ modelos: [], items: [], page: 1, page_size: 20, total_count: 0 }} carregando={false} erro={false} identificadoresMembros={{}} opcoesAssignee={[]} filtros={{ tcId: "TC-9", sdfId: "", responsavelId: "", origem: "", modeloDispositivoId: "", resultado: "" }} onFiltroChange={vi.fn()} onFiltroResultado={vi.fn()} onLimparFiltros={onLimparFiltros} page={1} pageSize={20} onPageChange={vi.fn()} onPageSizeChange={vi.fn()} />);
+    render(<FormFactorResultadosTabela dados={{ modelos: [], items: [], page: 1, page_size: 20, total_count: 0 }} carregando={false} erro={false} identificadoresMembros={{}} opcoesAssignee={[]} responsaveis={[]} onResponsaveisChange={vi.fn()} filtros={{ tcId: "TC-9", sdfId: "", origem: "", modeloDispositivoId: "", resultado: "" }} onFiltroChange={vi.fn()} onFiltroResultado={vi.fn()} onLimparFiltros={onLimparFiltros} page={1} pageSize={20} onPageChange={vi.fn()} onPageSizeChange={vi.fn()} />);
 
     expect(screen.getByRole("heading", { name: "No results found" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Clear filters" }));
@@ -32,7 +32,7 @@ describe("FormFactorResultadosTabela", () => {
   });
 
   it("mostra o erro no lugar da lista quando a consulta falha", () => {
-    render(<FormFactorResultadosTabela dados={undefined} carregando={false} erro identificadoresMembros={{}} opcoesAssignee={[]} filtros={{ tcId: "", sdfId: "", responsavelId: "", origem: "", modeloDispositivoId: "", resultado: "" }} onFiltroChange={vi.fn()} onFiltroResultado={vi.fn()} onLimparFiltros={vi.fn()} page={1} pageSize={20} onPageChange={vi.fn()} onPageSizeChange={vi.fn()} />);
+    render(<FormFactorResultadosTabela dados={undefined} carregando={false} erro identificadoresMembros={{}} opcoesAssignee={[]} responsaveis={[]} onResponsaveisChange={vi.fn()} filtros={{ tcId: "", sdfId: "", origem: "", modeloDispositivoId: "", resultado: "" }} onFiltroChange={vi.fn()} onFiltroResultado={vi.fn()} onLimparFiltros={vi.fn()} page={1} pageSize={20} onPageChange={vi.fn()} onPageSizeChange={vi.fn()} />);
 
     expect(screen.getByRole("alert")).toHaveTextContent("Could not load results.");
   });

@@ -32,7 +32,7 @@ async def test_query_form_factor_monta_uma_linha_por_caso_com_resultado_por_mode
     repo = ResultadoFormFactorRepositoryImpl(session)
 
     result = await repo.listar_form_factor_por_projeto(
-        uuid4(), uuid4(), 2, 10, datetime(2026, 3, 16), datetime(2026, 3, 23), responsavel_id
+        uuid4(), uuid4(), 2, 10, datetime(2026, 3, 16), datetime(2026, 3, 23), [responsavel_id]
     )
 
     assert result.total_count == 1

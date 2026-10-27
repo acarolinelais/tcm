@@ -2,9 +2,8 @@ import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { formatDate } from "@/core/i18n/format";
-import { comOpcaoTodos } from "@/shared/lib/opcoes";
 import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
-import { DataTableFilter } from "@/shared/ui/data-table-filter";
+import { DataTableFilter, DataTableMultiFilter } from "@/shared/ui/data-table-filter";
 import { DataTablePagination } from "@/shared/ui/data-table-pagination";
 import { RowActions } from "@/shared/ui/row-action-button";
 import { rowActionIconProps } from "@/shared/ui/row-action-icon";
@@ -23,8 +22,9 @@ export function FormFactorTabela({ dados, carregando, erro, identificadoresMembr
   erro: boolean;
   identificadoresMembros: Record<string, string>;
   opcoesAssignee: { value: string; label: string }[];
-  assignee: string;
-  onAssigneeChange: (valor: string) => void;
+  /** Responsáveis escolhidos no filtro (seleção múltipla); vazio desliga o filtro. */
+  assignee: string[];
+  onAssigneeChange: (valores: string[]) => void;
   tcId?: string; sdfId?: string; onFiltroTexto?: (campo: "tcId" | "sdfId", valor: string) => void;
   modeloDispositivoId?: string; resultadoFiltro?: string; onFiltroResultado?: (modeloId: string, resultado: string) => void;
   podeRegistrar?: (linha: Linha) => boolean;
@@ -47,7 +47,7 @@ export function FormFactorTabela({ dados, carregando, erro, identificadoresMembr
     { id: "numero", header: "", className: "w-12 text-right tabular-nums text-muted after:hidden", cell: (linha) => String(primeiraDaPagina + linhas.indexOf(linha) + 1).padStart(2, "0") },
     { id: "tcId", isRowHeader: true, header: <DataTableFilter label={t("tcId")} value={tcId} onChange={(valor) => onFiltroTexto?.("tcId", valor)} />, cell: (linha) => linha.tc_id },
     { id: "sdfId", header: <DataTableFilter label={t("sdfId")} value={sdfId} onChange={(valor) => onFiltroTexto?.("sdfId", valor)} />, cell: (linha) => linha.sdf_id ?? "—" },
-    { id: "assignee", header: <DataTableFilter label={t("assignee")} value={assignee} onChange={onAssigneeChange} options={comOpcaoTodos(t("all"), opcoesAssignee)} searchable />, cell: (linha) => identificadoresMembros[linha.responsavel_id] ?? "—" },
+    { id: "assignee", header: <DataTableMultiFilter label={t("assignee")} values={assignee} onChange={onAssigneeChange} options={opcoesAssignee} searchable />, cell: (linha) => identificadoresMembros[linha.responsavel_id] ?? "—" },
     ...colunasPorModelo<Linha>(t, modelos, { modeloId: modeloDispositivoId, resultado: resultadoFiltro }, (modeloId, valor) => onFiltroResultado?.(modeloId, valor)),
     { id: "data", header: t("date"), cell: (linha) => linha.data_reportada ? formatDate(linha.data_reportada) : "—" },
     ...(comAcoes ? [{

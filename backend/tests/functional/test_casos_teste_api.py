@@ -200,18 +200,19 @@ async def test_listar_test_cases_repassa_filtro_de_responsavel(api_client):
 
     usuario = UsuarioAutenticado(uuid4(), uuid4(), "USUARIO_PADRAO")
     projeto_id = uuid4()
-    responsavel_id = uuid4()
+    ana, bruno = uuid4(), uuid4()
     service = AsyncMock()
     service.listar.return_value = PagedResult([], 1, 20, 0)
     app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
     app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
 
+    # Seleção múltipla: o parâmetro se repete na URL e chega ao service como lista.
     response = await api_client.get(
-        f"/api/projetos/{projeto_id}/test-cases?responsavel_id={responsavel_id}"
+        f"/api/projetos/{projeto_id}/test-cases?responsavel_id={ana}&responsavel_id={bruno}"
     )
 
     assert response.status_code == 200
-    service.listar.assert_awaited_once_with(usuario, projeto_id, 1, 20, responsavel_id, False)
+    service.listar.assert_awaited_once_with(usuario, projeto_id, 1, 20, [ana, bruno], False)
 
 
 async def test_obter_test_case_retorna_200(api_client):
