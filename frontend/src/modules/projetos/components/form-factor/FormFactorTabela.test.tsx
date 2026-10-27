@@ -39,7 +39,7 @@ describe("FormFactorTabela", () => {
 
     const cabecalhos = screen.getAllByRole("columnheader").map((header) => header.textContent);
     expect(cabecalhos).toEqual(["", "TC ID", "SDF ID", "Assignee", "SAMSUNG S25", "SAMSUNG S26", "Date"]);
-    expect(screen.queryByRole("columnheader", { name: "One UI version" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "One UI Version" })).not.toBeInTheDocument();
 
     const [primeira, segunda, terceira] = linhasDoCorpo().map(celulas);
     expect(primeira.map((cell) => cell.textContent)).toEqual(["01", "TC-001", "SDF-10", "ana.silva", "PASS", "Fail", expect.stringMatching(/2026/)]);

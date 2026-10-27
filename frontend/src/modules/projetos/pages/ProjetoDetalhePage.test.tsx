@@ -393,7 +393,7 @@ describe("ProjetoDetalhePage", () => {
 
     await user.click(within(container.querySelector("header")!).getByRole("button", { name: "Week: Select a week" }));
     await user.click(within(await screen.findByRole("dialog", { name: "Week" })).getByRole("button", { name: "This week" }));
-    expect(screen.queryByRole("columnheader", { name: "One UI version" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "One UI Version" })).not.toBeInTheDocument();
     await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("project-1", { page: 1, pageSize: DEFAULT_TABLE_PAGE_SIZE, semana: semanaIso(new Date()), responsavelId: undefined }));
 
     const primeiroDoMes = new Date();
