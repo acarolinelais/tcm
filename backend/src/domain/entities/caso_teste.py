@@ -111,8 +111,9 @@ class CasoTeste(EntidadeTenant):
     def transferir_para_backup(self) -> None:
         if self.backup_id is None:
             raise ValueError("O Test Case não possui backup para receber a transferência.")
-        self.responsavel_id = self.backup_id
-        self.backup_id = None
+        # Troca de papéis (spec 011, RN-17): o caso nunca fica sem backup; quem transferiu
+        # passa a ser o backup.
+        self.responsavel_id, self.backup_id = self.backup_id, self.responsavel_id
 
     @classmethod
     def _validar_tc_id(cls, tc_id: str) -> str:

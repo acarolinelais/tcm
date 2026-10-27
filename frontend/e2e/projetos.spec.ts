@@ -31,7 +31,8 @@ test("cria projeto manualmente, atribui casos e transfere um caso ao backup", as
     { id: "member-2", time_id: teamId, usuario_id: "backup-1", usuario_nome: "Kaique Pereira", usuario_user_id: "KP-002", usuario_perfil: "KP", usuario_perfil_codigo: "KP", ativo: true },
   ] }));
   await page.route("**/api/test-cases/case-1/transferir-para-backup", async (route) => {
-    cases = [{ ...cases[0], responsavel_id: "backup-1", backup_id: null }];
+    // Troca de papéis: quem transferiu vira o backup.
+    cases = [{ ...cases[0], responsavel_id: "backup-1", backup_id: cases[0].responsavel_id }];
     await route.fulfill({ json: cases[0] });
   });
 
@@ -64,6 +65,7 @@ test("cria projeto manualmente, atribui casos e transfere um caso ao backup", as
   await expect(page.getByRole("row", { name: /Clock_001/ })).toContainText("A fazer");
   await expect(page.getByRole("button", { name: /Situação do TC Clock_001/ })).toContainText("Novo passo");
   await page.getByRole("button", { name: "Transferir ao backup Clock_001" }).click();
+  await page.getByRole("alertdialog", { name: "Transferir ao backup?" }).getByRole("button", { name: "Transferir ao backup" }).click();
   await expect(page.getByText("Test Case transferido para o backup.")).toBeVisible();
   await expect(page.getByRole("row", { name: /Clock_001/ })).toContainText("KP-002");
 });

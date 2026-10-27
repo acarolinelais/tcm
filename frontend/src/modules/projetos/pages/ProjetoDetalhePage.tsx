@@ -11,6 +11,7 @@ import { timesApi } from "@/modules/times/api/times.api";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { toast } from "@/shared/lib/toast";
 import { formatarDiaIso } from "@/shared/lib/utils";
+import { AlertConfirm } from "@/shared/ui/alert-confirm";
 import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
 import { DataTableFilter, DataTableMultiFilter } from "@/shared/ui/data-table-filter";
 import { DataTablePagination } from "@/shared/ui/data-table-pagination";
@@ -111,8 +112,10 @@ function ProjetoDetalhe() {
     onSettled: () => client.invalidateQueries({ queryKey: ["projetos", projetoId, "test-cases"] }),
   });
   const transfer = useTransferirCasoTeste(projetoId);
+  // A transferência troca os papéis (spec 011, RN-17): pede confirmação antes de enviar.
+  const [casoParaTransferir, setCasoParaTransferir] = useState<CasoTeste | null>(null);
   const transferir = (id: string) => transfer.mutate(id, {
-    onSuccess: () => toast.success(t("caseTransferred")),
+    onSuccess: () => { setCasoParaTransferir(null); toast.success(t("caseTransferred")); },
     onError: (error) => toast.error(error.message || t("caseTransferError")),
   });
   const importReport = useMutation({
@@ -238,7 +241,7 @@ function ProjetoDetalhe() {
       cell: (caso: CasoTeste) => {
         const acoes: RowAction[] = [
           ...(podeGerenciarCasos ? [{ label: t("edit"), icon: <Pencil {...rowActionIconProps} />, onPress: () => abrirCaso(caso) }] : []),
-          ...(caso.responsavel_id === responsavelAtual && caso.backup_id ? [{ label: t("transferToBackup"), icon: <TransferIcon />, disabled: transfer.isPending, onPress: () => transferir(caso.id) }] : []),
+          ...(caso.responsavel_id === responsavelAtual && caso.backup_id ? [{ label: t("transferToBackup"), icon: <TransferIcon />, disabled: transfer.isPending, onPress: () => setCasoParaTransferir(caso) }] : []),
         ];
         return acoes.length ? <RowActions identificador={caso.tc_id} actions={acoes} /> : null;
       },
@@ -307,6 +310,15 @@ function ProjetoDetalhe() {
       </PageTabs>
     )}
 
+    <AlertConfirm
+      open={Boolean(casoParaTransferir)}
+      onOpenChange={(open) => { if (!open && !transfer.isPending) setCasoParaTransferir(null); }}
+      title={t("transferCaseTitle")}
+      description={t("transferCaseDescription", { tc: casoParaTransferir?.tc_id ?? "", name: casoParaTransferir?.backup_id ? identificadoresMembros[casoParaTransferir.backup_id] ?? "—" : "—" })}
+      confirmLabel={t("transferToBackup")}
+      isPending={transfer.isPending}
+      onConfirm={() => { if (casoParaTransferir) transferir(casoParaTransferir.id); }}
+    />
     <CasoTesteDrawer key={aberturasDrawer} isOpen={drawerCasoAberto} onOpenChange={setDrawerCasoAberto} projetoId={projetoId} editar={editar} membrosAtivos={membrosAtivos} />
     <FormFactorCriarRodadaDialog
       aberto={abrirCriacaoRodada}
