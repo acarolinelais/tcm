@@ -27,14 +27,15 @@ export function FormFactorManualDialog({ aberto, onAbertoChange, linha, modelos,
             <p className="text-[14px] leading-relaxed text-muted">{t("manualResultsHint")}</p>
           </Modal.Header>
           {/* key pelo caso: cada abertura começa sem resultados escolhidos. */}
-          {linha && <FormularioResultados key={linha.caso_teste_id} modelos={modelos} salvando={salvando} onSalvar={onSalvar} onCancelar={() => onAbertoChange(false)} />}
+          {linha && <FormularioResultados key={linha.caso_teste_id} tcId={linha.tc_id} modelos={modelos} salvando={salvando} onSalvar={onSalvar} onCancelar={() => onAbertoChange(false)} />}
         </Modal.Dialog>
       </Modal.Container>
     </Modal.Backdrop>
   </Modal>;
 }
 
-function FormularioResultados({ modelos, salvando, onSalvar, onCancelar }: {
+function FormularioResultados({ tcId, modelos, salvando, onSalvar, onCancelar }: {
+  tcId: string;
   modelos: ModeloFormFactor[];
   salvando: boolean;
   onSalvar: (input: EnviarResultadosRodadaInput) => void;
@@ -42,9 +43,14 @@ function FormularioResultados({ modelos, salvando, onSalvar, onCancelar }: {
 }) {
   const { t } = useTranslation();
   const [resultados, setResultados] = useState<Record<string, ResultadoManual>>({});
+  const escolhidos = Object.values(resultados);
+  // Salvar é definitivo nesta rodada e o FAIL já muda o Status: a consequência aparece antes do clique.
+  const consequencia = escolhidos.includes("FAIL") ? t("manualResultOutcomeFail", { tc: tcId, status: t("statusInFixes") })
+    : escolhidos.length === modelos.length ? t("manualResultOutcomeDone", { tc: tcId, status: t("statusDone") })
+      : t("manualResultOutcomePartial", { tc: tcId, status: t("statusInValidation") });
   const salvar = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (salvando) return;
+    if (salvando || !escolhidos.length) return;
     onSalvar({ resultados });
   };
   const escolher = (modeloId: string, proximo: string) => setResultados((atual) => {
@@ -77,10 +83,13 @@ function FormularioResultados({ modelos, salvando, onSalvar, onCancelar }: {
             </Select.Popover>
           </Select>
         ))}
+        <div id="manual-result-outcome" role="status" className="mt-3 rounded-xl bg-[#F3F5F7] px-3 py-2.5 text-[13px] leading-5 text-[#454442]">
+          {escolhidos.length ? <><p>{consequencia}</p><p className="mt-1 text-muted">{t("manualResultFinal")}</p></> : <p className="text-muted">{t("manualResultRequired")}</p>}
+        </div>
       </Modal.Body>
       <Modal.Footer className="mt-4 border-t border-separator pt-4">
         <Button variant="tertiary" onPress={onCancelar}>{t("cancel")}</Button>
-        <Button type="submit" variant="primary" isDisabled={salvando}>{salvando ? t("saving") : t("save")}</Button>
+        <Button type="submit" variant="primary" isDisabled={salvando || !escolhidos.length} aria-describedby="manual-result-outcome">{salvando ? t("saving") : t("save")}</Button>
       </Modal.Footer>
     </form>
   );

@@ -60,11 +60,20 @@ describe("ProjetoDetalhePage", () => {
     const backup = { ...casos[1], backup_id: "user-1" };
     vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [casos[0], backup], page: 1, page_size: 20, total_count: 2 });
     renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO" });
+    const user = userEvent.setup();
     const row = await screen.findByRole("row", { name: /Clock_002/ });
-    await userEvent.setup().click(within(row).getByRole("button", { name: /Status Clock_002/ }));
+    await user.click(within(row).getByRole("button", { name: /Status Clock_002/ }));
     expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["Done", "Excluded"]);
     expect(within(row).queryByRole("button", { name: /Transfer to backup/ })).not.toBeInTheDocument();
     expect(casosTesteApi.listar).toHaveBeenCalledWith("project-1", 1, DEFAULT_TABLE_PAGE_SIZE, { responsavelId: undefined, associadosAMim: true });
+
+    // Excluded tira o caso do fluxo e o DEV não desfaz: só grava depois de confirmar.
+    await user.click(screen.getByRole("option", { name: "Excluded" }));
+    const confirmacao = await screen.findByRole("alertdialog", { name: "Exclude Clock_002?" });
+    expect(confirmacao).toHaveTextContent("Only an admin, manager or KP can undo this.");
+    expect(casosTesteApi.atualizar).not.toHaveBeenCalled();
+    await user.click(within(confirmacao).getByRole("button", { name: "Exclude" }));
+    await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-2", { status: "Cancelled" }));
   });
 
   it("filtra TCs por semana no cabeçalho e mantém as semanas das abas independentes", async () => {

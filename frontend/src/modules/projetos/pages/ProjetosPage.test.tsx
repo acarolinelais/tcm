@@ -108,6 +108,25 @@ describe("ProjetosPage", () => {
     expect(toastMock.error).not.toHaveBeenCalled();
   });
 
+  it("pede confirmação antes de marcar o projeto como cancelado", async () => {
+    const projeto = { id: "project-1", nome: "Clock 9.5", app: "Clock", one_ui: "9.5", time_id: "team-1", status: "Created" as const, ativo: true, unidade_id: "unit-1", created_at: "2026-05-01T00:00:00Z", updated_at: "2026-05-01T00:00:00Z" };
+    vi.mocked(projetosApi.listar).mockResolvedValue({ items: [projeto], page: 1, page_size: 20, total_count: 1 });
+    vi.mocked(projetosApi.atualizarStatus).mockResolvedValue({ ...projeto, status: "Canceled" });
+    const user = userEvent.setup();
+    renderPage();
+
+    // Cancelar a confirmação não grava nada.
+    await user.click(await screen.findByRole("button", { name: /Status for Clock 9.5/ }));
+    await user.click(await screen.findByRole("option", { name: "Canceled" }));
+    await user.click(within(await screen.findByRole("alertdialog", { name: "Mark Clock 9.5 as Canceled?" })).getByRole("button", { name: "Cancel" }));
+    expect(projetosApi.atualizarStatus).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: /Status for Clock 9.5/ }));
+    await user.click(await screen.findByRole("option", { name: "Canceled" }));
+    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Change status" }));
+    await waitFor(() => expect(projetosApi.atualizarStatus).toHaveBeenCalledWith("project-1", "Canceled"));
+  });
+
   it("avisa quando o servidor recusa a troca de status", async () => {
     const projeto = { id: "project-1", nome: "Clock 9.5", app: "Clock", one_ui: "9.5", time_id: "team-1", status: "Created" as const, ativo: true, unidade_id: "unit-1", created_at: "2026-05-01T00:00:00Z", updated_at: "2026-05-01T00:00:00Z" };
     vi.mocked(projetosApi.listar).mockResolvedValue({ items: [projeto], page: 1, page_size: 20, total_count: 1 });

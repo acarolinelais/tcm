@@ -44,6 +44,10 @@ anteriores para consulta, mesmo quando uma nova rodada é registrada para o mesm
   Os resultados de cada TC são salvos juntos para os modelos preenchidos; os campos de modelo vazios
   permanecem sem resultado. Essa entrada por TC permite que os DEV responsáveis preencham seus casos
   depois que a gestão cria a rodada. Nenhum resultado de outra rodada é substituído ou apagado.
+  No registro manual, salvar exige ao menos um modelo com resultado. Antes de salvar, o diálogo mostra a consequência
+  (FAIL leva o TC a `In Fixes`; PASS em todos os modelos, a `Done`; resultado parcial mantém `In Validation`) e avisa
+  que os resultados salvos não podem ser alterados na rodada. A importação do relatório SDF não muda (incluído em
+  2026-10-27).
 - RN-06: O histórico apresenta os resultados por TC, modelo, rodada e SDF ID. Um TC que participou de
   mais de uma rodada conserva os IDs de cada uma delas. Os resultados históricos continuam
   consultáveis quando o Status atual do TC deixa de ser `In Validation`.

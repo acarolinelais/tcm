@@ -116,6 +116,8 @@ export function ProjetosPage() {
       toast.error(error instanceof Error ? error.message : t("projectCreateError"));
     },
   });
+  // Canceled e Completed mudam o projeto para o time todo: pedem confirmação antes de gravar.
+  const [statusPendente, setStatusPendente] = useState<{ projeto: Projeto; status: StatusProjeto } | null>(null);
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: StatusProjeto }) => projetosApi.atualizarStatus(id, status),
     // Só a lista desta página: o prefixo ["projetos"] também casa com o detalhe do projeto, que não tem `items`.
@@ -182,6 +184,9 @@ export function ProjetosPage() {
   if (!podeConsultar) return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
 
   const opcoesStatus = statusProjeto.map((status) => ({ value: status, label: statusLabel(status) }));
+  const alterarStatus = (projeto: Projeto, status: StatusProjeto) => status === "Canceled" || status === "Completed"
+    ? setStatusPendente({ projeto, status })
+    : statusMutation.mutate({ id: projeto.id, status });
   const primeiraDaPagina = (pagina - 1) * tamanhoPagina;
   // O filtro é local: o mesmo projeto muda de posição sem mudar de identidade, então o número depende da ordem.
   const ordemDosProjetos = projetosFiltrados.map((project) => project.id).join();
@@ -208,7 +213,7 @@ export function ProjetosPage() {
       cell: (project) => {
         const etiqueta = <TagChip tom={statusProjetoTons[project.status]}>{statusLabel(project.status)}</TagChip>;
         return podeGerenciar
-          ? <InlineSelect aria-label={t("projectStatusFor", { name: project.nome })} value={project.status} options={opcoesStatus} onChange={(value) => statusMutation.mutate({ id: project.id, status: value as StatusProjeto })}>{etiqueta}</InlineSelect>
+          ? <InlineSelect aria-label={t("projectStatusFor", { name: project.nome })} value={project.status} options={opcoesStatus} onChange={(value) => alterarStatus(project, value as StatusProjeto)}>{etiqueta}</InlineSelect>
           : etiqueta;
       },
     },
@@ -302,6 +307,15 @@ export function ProjetosPage() {
         </form>
       </DrawerContent>
     </Dialog>
+    <AlertConfirm
+      open={Boolean(statusPendente)}
+      onOpenChange={(open) => { if (!open) setStatusPendente(null); }}
+      title={t("projectStatusConfirmTitle", { name: statusPendente?.projeto.nome ?? "", status: statusPendente ? statusLabel(statusPendente.status) : "" })}
+      description={t(statusPendente?.status === "Canceled" ? "projectStatusCanceledDescription" : "projectStatusCompletedDescription")}
+      confirmLabel={t("projectStatusConfirm")}
+      variant={statusPendente?.status === "Canceled" ? "destructive" : "default"}
+      onConfirm={() => { if (statusPendente) statusMutation.mutate({ id: statusPendente.projeto.id, status: statusPendente.status }); setStatusPendente(null); }}
+    />
     <AlertConfirm open={Boolean(projetoExcluindo)} onOpenChange={(open) => { if (!open && !excluirProjeto.isPending) setProjetoExcluindo(null); }} title={t("deleteProjectTitle")} description={t("deleteProjectDescription", { name: projetoExcluindo?.nome ?? "" })} confirmLabel={t("deleteProject")} variant="destructive" isPending={excluirProjeto.isPending} onConfirm={() => excluirProjeto.mutate()} />
   </section>;
 }
