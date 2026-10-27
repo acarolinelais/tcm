@@ -1,0 +1,1 @@
+export { perfisRoutes } from "./routes";
