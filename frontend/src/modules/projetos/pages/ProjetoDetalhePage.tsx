@@ -9,7 +9,6 @@ import type { PerfilAtual } from "@/core/auth/api";
 import { formatDate } from "@/core/i18n/format";
 import { timesApi } from "@/modules/times/api/times.api";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
-import { comOpcaoTodos } from "@/shared/lib/opcoes";
 import { toast } from "@/shared/lib/toast";
 import { formatarDiaIso } from "@/shared/lib/utils";
 import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
@@ -40,7 +39,10 @@ import { CATEGORIAS_CASO_TESTE as categorias, DIFICULDADES_CASO_TESTE as dificul
 
 type CampoInline = "category" | "difficulty" | "situation" | "status" | "responsavel_id" | "backup_id";
 type Aba = "cases" | "form-factor";
-const FILTROS_CASO_VAZIOS = { tcId: "", status: "", situation: "", assignee: [] as string[], difficulty: "", category: "", endDate: "", backup: "" };
+// Valor do filtro de Backup para os casos sem backup.
+const SEM_BACKUP = "__sem_backup__";
+// Colunas de valores fechados filtram por vários valores ao mesmo tempo; TC ID (texto) e End date (dia) filtram por um.
+const FILTROS_CASO_VAZIOS = { tcId: "", status: [] as string[], situation: [] as string[], assignee: [] as string[], difficulty: [] as string[], category: [] as string[], endDate: "", backup: [] as string[] };
 
 export function ProjetoDetalhePage() {
   const { projetoId = "" } = useParams();
@@ -128,7 +130,6 @@ function ProjetoDetalhe() {
     dificuldade: opcoesRotuladas(dificuldades, ROTULO_DIFICULDADE, t),
     categoria: categorias.map((valor) => ({ value: valor, label: valor })),
   }), [t]);
-  const comTodos = (lista: readonly { value: string; label: string }[]) => comOpcaoTodos(t("all"), lista);
   const identificadoresMembros = useMemo(() => Object.fromEntries((membros.data ?? []).map((member) => [member.usuario_id, member.usuario_user_id ?? "—"])), [membros.data]);
   const { membrosAtivos, opcoesAssignee, opcoesMembros } = useMemo(() => {
     const ativos = (membros.data ?? []).filter((member) => member.ativo);
@@ -143,13 +144,13 @@ function ProjetoDetalhe() {
     const endDate = item.status === "Done" ? item.updated_at ?? item.created_at : null;
     const dataFinal = endDate ? formatarDiaIso(new Date(endDate)) : "";
     return item.tc_id.toLocaleLowerCase().includes(filtrosCaso.tcId.toLocaleLowerCase())
-      && (!filtrosCaso.status || item.status === filtrosCaso.status)
-      && (!filtrosCaso.situation || item.situation === filtrosCaso.situation)
+      && (!filtrosCaso.status.length || filtrosCaso.status.includes(item.status))
+      && (!filtrosCaso.situation.length || filtrosCaso.situation.includes(item.situation))
       && (!filtrosCaso.assignee.length || filtrosCaso.assignee.includes(item.responsavel_id))
-      && (!filtrosCaso.difficulty || item.difficulty === filtrosCaso.difficulty)
-      && (!filtrosCaso.category || item.category === filtrosCaso.category)
+      && (!filtrosCaso.difficulty.length || filtrosCaso.difficulty.includes(item.difficulty))
+      && (!filtrosCaso.category.length || filtrosCaso.category.includes(item.category))
       && (!filtrosCaso.endDate || dataFinal === filtrosCaso.endDate)
-      && (item.backup_id ? identificadoresMembros[item.backup_id] ?? "—" : "—").toLocaleLowerCase().includes(filtrosCaso.backup.toLocaleLowerCase());
+      && (!filtrosCaso.backup.length || filtrosCaso.backup.includes(item.backup_id ?? SEM_BACKUP));
   });
   const alterarFiltroCaso = <K extends keyof typeof filtrosCaso>(campo: K, valor: (typeof filtrosCaso)[K]) => {
     setPagina(1);
@@ -190,7 +191,7 @@ function ProjetoDetalhe() {
     { id: "tcId", isRowHeader: true, header: <DataTableFilter label={t("tcId")} value={filtrosCaso.tcId} onChange={(value) => alterarFiltroCaso("tcId", value)} />, cell: (caso) => caso.tc_id },
     {
       id: "status",
-      header: <DataTableFilter label={t("status")} value={filtrosCaso.status} onChange={(value) => alterarFiltroCaso("status", value)} options={comTodos(opcoes.status)} />,
+      header: <DataTableMultiFilter label={t("status")} values={filtrosCaso.status} onChange={(values) => alterarFiltroCaso("status", values)} options={opcoes.status} />,
       cell: (caso) => {
         const opcoesStatus = opcoesStatusDoCaso(caso);
         return celulaEditavel(caso, "status", t("status"), caso.status, opcoesStatus, <TagChip tom={statusChipTons[caso.status]}>{t(ROTULO_STATUS[caso.status])}</TagChip>, opcoesStatus.length > 0);
@@ -198,7 +199,7 @@ function ProjetoDetalhe() {
     },
     {
       id: "situation",
-      header: <DataTableFilter label={t("tcSituation")} value={filtrosCaso.situation} onChange={(value) => alterarFiltroCaso("situation", value)} options={comTodos(opcoes.situacao)} />,
+      header: <DataTableMultiFilter label={t("tcSituation")} values={filtrosCaso.situation} onChange={(values) => alterarFiltroCaso("situation", values)} options={opcoes.situacao} />,
       cell: (caso) => celulaEditavel(caso, "situation", t("tcSituation"), caso.situation, opcoes.situacao, <TagChip tom={TONS_ETIQUETA.neutro}>{t(ROTULO_SITUACAO[caso.situation])}</TagChip>, podeEditarProprio(caso)),
     },
     {
@@ -208,12 +209,12 @@ function ProjetoDetalhe() {
     },
     {
       id: "difficulty",
-      header: <DataTableFilter label={t("difficulty")} value={filtrosCaso.difficulty} onChange={(value) => alterarFiltroCaso("difficulty", value)} options={comTodos(opcoes.dificuldade)} />,
+      header: <DataTableMultiFilter label={t("difficulty")} values={filtrosCaso.difficulty} onChange={(values) => alterarFiltroCaso("difficulty", values)} options={opcoes.dificuldade} />,
       cell: (caso) => celulaEditavel(caso, "difficulty", t("difficulty"), caso.difficulty, opcoes.dificuldade, <span>{t(ROTULO_DIFICULDADE[caso.difficulty])}</span>, podeEditarProprio(caso)),
     },
     {
       id: "category",
-      header: <DataTableFilter label={t("category")} value={filtrosCaso.category} onChange={(value) => alterarFiltroCaso("category", value)} options={comTodos(opcoes.categoria)} />,
+      header: <DataTableMultiFilter label={t("category")} values={filtrosCaso.category} onChange={(values) => alterarFiltroCaso("category", values)} options={opcoes.categoria} />,
       cell: (caso) => celulaEditavel(caso, "category", t("category"), caso.category, opcoes.categoria, <span>{caso.category}</span>, podeEditarProprio(caso)),
     },
     {
@@ -227,7 +228,7 @@ function ProjetoDetalhe() {
     },
     {
       id: "backup",
-      header: <DataTableFilter label={t("backup")} value={filtrosCaso.backup} onChange={(value) => alterarFiltroCaso("backup", value)} />,
+      header: <DataTableMultiFilter label={t("backup")} values={filtrosCaso.backup} onChange={(values) => alterarFiltroCaso("backup", values)} options={[...opcoesAssignee, { value: SEM_BACKUP, label: t("noBackup") }]} searchable />,
       cell: (caso) => celulaEditavel(caso, "backup_id", t("backup"), caso.backup_id ?? "", membrosExceto(caso.responsavel_id), <span>{caso.backup_id ? identificadoresMembros[caso.backup_id] ?? "—" : "—"}</span>, podeGerenciarCasos),
     },
     ...(mostrarAcoes ? [{

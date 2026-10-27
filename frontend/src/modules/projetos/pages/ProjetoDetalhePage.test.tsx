@@ -247,11 +247,20 @@ describe("ProjetoDetalhePage", () => {
     await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { status: "InReview" }));
 
     await user.click(screen.getByRole("button", { name: "Filter by Status" }));
-    expect((await screen.findAllByRole("option")).map((item) => item.textContent)).toEqual(["All", ...ROTULOS_STATUS]);
+    // Seleção múltipla: sem "All"; nada marcado é o filtro desligado.
+    expect((await screen.findAllByRole("option")).map((item) => item.textContent)).toEqual(ROTULOS_STATUS);
     await user.click(screen.getByRole("option", { name: "In Validation" }));
+    await user.keyboard("{Escape}");
     expect(screen.getByRole("row", { name: /Clock_003/ })).toBeInTheDocument();
     expect(screen.queryByRole("row", { name: /Clock_001/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("row", { name: /Clock_002/ })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Filter by Status" }));
+    await user.click(await screen.findByRole("option", { name: "Done" }));
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("row", { name: /Clock_002/ })).toBeInTheDocument();
+    expect(screen.getByRole("row", { name: /Clock_003/ })).toBeInTheDocument();
+    expect(screen.queryByRole("row", { name: /Clock_001/ })).not.toBeInTheDocument();
   });
 
   it("leva um TC em correção de volta para revisão, sem oferecer Done nem In Validation ao DEV", async () => {
