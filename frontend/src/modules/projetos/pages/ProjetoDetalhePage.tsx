@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button as HeroButton, Tabs } from "@heroui/react";
+import { Button as HeroButton, ToggleButton, ToggleButtonGroup } from "@heroui/react";
 import { Pencil, Plus, UploadCloud } from "lucide-react";
 import { useOutletContext, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -255,6 +255,24 @@ function ProjetoDetalhe() {
       <div className="min-w-0 flex-1">{projeto.data ? <ProjetoSwitcher projetoId={projetoId} nome={projeto.data.nome} /> : <PageTitle>{t("loadingProjects")}</PageTitle>}</div>
       {projeto.data && <WeekPickerHero label={t("week")} value={aba === "cases" ? semanaCasos : semana} onChange={(valor) => { if (aba === "cases") setSemanaCasos(valor); else setSemana(valor); setPagina(1); }} className="ml-auto" />}
     </header>
+    {/* Figma: o seletor de visão do Form Factor fica entre o título e as abas, com Results primeiro. */}
+    {projeto.data && aba === "form-factor" && (podeConsultarFormFactor || podeImportarSdf) && <div className="mb-5 flex shrink-0 flex-wrap items-center justify-between gap-3">
+      <ToggleButtonGroup
+        aria-label={t("formFactorViews")}
+        selectionMode="single"
+        disallowEmptySelection
+        selectedKeys={[visaoFormFactor]}
+        onSelectionChange={(chaves) => { const [chave] = chaves; if (chave) { setVisaoFormFactor(chave as "summary" | "results"); setPagina(1); } }}
+        className="w-fit gap-0 rounded-xl bg-[#F3F5F7] p-1"
+      >
+        {(["results", "summary"] as const).map((visao) => (
+          <ToggleButton key={visao} id={visao} className="h-8 min-w-24 rounded-lg border-0 bg-transparent px-5 text-[13px] font-medium text-[#454442] shadow-none data-[selected=true]:bg-white data-[selected=true]:text-accent data-[selected=true]:shadow-sm">
+            {t(visao === "results" ? "formFactorResults" : "formFactorSummary")}
+          </ToggleButton>
+        ))}
+      </ToggleButtonGroup>
+      <p className="text-[14px] text-muted">{t(visaoFormFactor === "summary" ? "formFactorSummaryHint" : "formFactorResultsHint")}</p>
+    </div>}
 
     {projeto.isLoading ? <p role="status" className="py-8 text-[14px] text-muted">{t("loadingProjects")}</p> : projeto.isError || !projeto.data ? <p role="alert" className="py-8 text-[14px] text-muted">{t("projectNotFound")}</p> : (
       <PageTabs
@@ -275,24 +293,13 @@ function ProjetoDetalhe() {
           />
         </PageTabPanel>}
         {(podeConsultarFormFactor || podeImportarSdf) && <PageTabPanel id="form-factor" className="flex min-h-0 flex-1 flex-col gap-4 p-0">
-          {/* Variante "primary" do HeroUI: o controle segmentado que já existia, agora com o teclado do React Aria. */}
-          <Tabs selectedKey={visaoFormFactor} onSelectionChange={(chave) => { setVisaoFormFactor(chave as "summary" | "results"); setPagina(1); }} className="flex min-h-0 flex-1 flex-col gap-4">
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
-              <Tabs.ListContainer className="w-fit">
-                <Tabs.List aria-label={t("formFactorViews")}>
-                  <Tabs.Tab id="summary" className="text-[14px]">{t("formFactorSummary")}<Tabs.Indicator /></Tabs.Tab>
-                  <Tabs.Tab id="results" className="text-[14px]">{t("formFactorResults")}<Tabs.Indicator /></Tabs.Tab>
-                </Tabs.List>
-              </Tabs.ListContainer>
-              <p className="text-[14px] text-muted">{t(visaoFormFactor === "summary" ? "formFactorSummaryHint" : "formFactorResultsHint")}</p>
-            </div>
-            <Tabs.Panel id="summary" className="flex min-h-0 flex-1 flex-col p-0">
-              <FormFactorTabela dados={resultados.data} carregando={resultados.isLoading} erro={resultados.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} assignee={assigneeFormFactor} onAssigneeChange={(valor) => { setAssigneeFormFactor(valor); setPagina(1); }} tcId={filtrosResumo.tcId} sdfId={filtrosResumo.sdfId} onFiltroTexto={(campo, valor) => { setFiltrosResumo((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} modeloDispositivoId={filtrosResumo.modeloDispositivoId} resultadoFiltro={filtrosResumo.resultado} onFiltroResultado={(modeloId, valor) => { setFiltrosResumo({ ...filtrosResumo, modeloDispositivoId: valor ? modeloId : "", resultado: valor }); setPagina(1); }} podeRegistrar={podeRegistrarResultado ? podeRegistrarLinha : undefined} onRegistrar={setLinhaManual} temFiltros={Boolean(semana || assigneeFormFactor || filtrosResumo.tcId || filtrosResumo.sdfId || filtrosResumo.resultado)} onLimparFiltros={() => { setSemana(""); setAssigneeFormFactor(""); setFiltrosResumo({ tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" }); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
-            </Tabs.Panel>
-            <Tabs.Panel id="results" className="flex min-h-0 flex-1 flex-col p-0">
-              <FormFactorResultadosTabela dados={historico.data} carregando={historico.isLoading} erro={historico.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} filtros={filtrosResultados} onFiltroChange={(campo, valor) => { setFiltrosResultados((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} onFiltroResultado={(modeloId, valor) => { setFiltrosResultados((atual) => ({ ...atual, modeloDispositivoId: valor ? modeloId : "", resultado: valor })); setPagina(1); }} onLimparFiltros={() => { setFiltrosResultados({ tcId: "", sdfId: "", responsavelId: "", origem: "", modeloDispositivoId: "", resultado: "" }); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
-            </Tabs.Panel>
-          </Tabs>
+          {visaoFormFactor === "summary"
+            ? <div className="flex min-h-0 flex-1 flex-col">
+                <FormFactorTabela dados={resultados.data} carregando={resultados.isLoading} erro={resultados.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} assignee={assigneeFormFactor} onAssigneeChange={(valor) => { setAssigneeFormFactor(valor); setPagina(1); }} tcId={filtrosResumo.tcId} sdfId={filtrosResumo.sdfId} onFiltroTexto={(campo, valor) => { setFiltrosResumo((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} modeloDispositivoId={filtrosResumo.modeloDispositivoId} resultadoFiltro={filtrosResumo.resultado} onFiltroResultado={(modeloId, valor) => { setFiltrosResumo({ ...filtrosResumo, modeloDispositivoId: valor ? modeloId : "", resultado: valor }); setPagina(1); }} podeRegistrar={podeRegistrarResultado ? podeRegistrarLinha : undefined} onRegistrar={setLinhaManual} temFiltros={Boolean(semana || assigneeFormFactor || filtrosResumo.tcId || filtrosResumo.sdfId || filtrosResumo.resultado)} onLimparFiltros={() => { setSemana(""); setAssigneeFormFactor(""); setFiltrosResumo({ tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" }); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
+              </div>
+            : <div className="flex min-h-0 flex-1 flex-col">
+                <FormFactorResultadosTabela dados={historico.data} carregando={historico.isLoading} erro={historico.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} filtros={filtrosResultados} onFiltroChange={(campo, valor) => { setFiltrosResultados((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} onFiltroResultado={(modeloId, valor) => { setFiltrosResultados((atual) => ({ ...atual, modeloDispositivoId: valor ? modeloId : "", resultado: valor })); setPagina(1); }} onLimparFiltros={() => { setFiltrosResultados({ tcId: "", sdfId: "", responsavelId: "", origem: "", modeloDispositivoId: "", resultado: "" }); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
+              </div>}
         </PageTabPanel>}
       </PageTabs>
     )}

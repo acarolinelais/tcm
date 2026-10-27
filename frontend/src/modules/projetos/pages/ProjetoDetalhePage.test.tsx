@@ -462,10 +462,13 @@ describe("ProjetoDetalhePage", () => {
     renderPage(admin);
     await screen.findByRole("heading", { name: "Clock 9.5" });
     await user.click(screen.getByRole("tab", { name: "Form Factor" }));
-    screen.getByRole("tab", { name: "Summary" }).focus();
-    await user.keyboard("{ArrowRight}");
+    // Figma: o seletor fica acima das abas, com Results antes de Summary; Summary continua sendo a visão inicial.
+    const visoes = screen.getByRole("radiogroup", { name: "Form Factor views" });
+    expect(within(visoes).getAllByRole("radio").map((visao) => visao.textContent)).toEqual(["Results", "Summary"]);
+    expect(within(visoes).getByRole("radio", { name: "Summary" })).toBeChecked();
+    await user.click(within(visoes).getByRole("radio", { name: "Results" }));
 
-    await waitFor(() => expect(screen.getByRole("tab", { name: "Results" })).toHaveFocus());
+    await waitFor(() => expect(within(visoes).getByRole("radio", { name: "Results" })).toBeChecked());
     expect(await screen.findByRole("columnheader", { name: "Origin" })).toBeInTheDocument();
     expect(screen.getAllByRole("row", { name: /Clock_001/ })).toHaveLength(2);
     expect(formFactorApi.listarResultados).toHaveBeenCalledWith("project-1", expect.objectContaining({ page: 1 }));

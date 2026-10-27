@@ -96,7 +96,7 @@ test("duas rodadas: DEV principal/Backup registram, Status segue os resultados e
   // O histórico mantém as duas rodadas do mesmo TC, com SDF ID e resultados de cada uma.
   await page.reload();
   await page.getByRole("tab", { name: "Form Factor" }).click();
-  await page.getByRole("tab", { name: "Results" }).click();
+  await page.getByRole("radio", { name: "Results" }).click();
   const linhasFail = page.getByRole("row", { name: /FF_FAIL/ });
   await expect(linhasFail).toHaveCount(2);
   // Células 4 e 5: resultados de S26 e S27.
