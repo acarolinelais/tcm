@@ -897,8 +897,8 @@ export const mockCasosTesteApi = {
     requireMockPermission("test_cases.consultar");
     const { testCase } = getMockCase(db, caseId);
     if (testCase.responsavel_id !== user.id || !testCase.backup_id) throw new Error("O Test Case não pode ser transferido para o backup.");
-    testCase.responsavel_id = testCase.backup_id;
-    testCase.backup_id = null;
+    // Troca de papéis (spec 011, RN-17): quem transferiu passa a ser o backup.
+    [testCase.responsavel_id, testCase.backup_id] = [testCase.backup_id, testCase.responsavel_id];
     testCase.updated_at = new Date().toISOString();
     writeDb(db);
     return testCase;

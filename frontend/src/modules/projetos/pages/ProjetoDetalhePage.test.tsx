@@ -45,7 +45,7 @@ describe("ProjetoDetalhePage", () => {
     vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: casos, page: 1, page_size: 10, total_count: 2 });
     vi.mocked(casosTesteApi.criar).mockResolvedValue({ ...casos[0], tc_id: "Clock_003" });
     vi.mocked(casosTesteApi.atualizar).mockResolvedValue(casos[0]);
-    vi.mocked(casosTesteApi.transferirParaBackup).mockResolvedValue({ ...casos[0], responsavel_id: "backup-1", backup_id: null });
+    vi.mocked(casosTesteApi.transferirParaBackup).mockResolvedValue({ ...casos[0], responsavel_id: "backup-1", backup_id: "user-1" });
     vi.mocked(formFactorApi.listar).mockResolvedValue({ modelos: [], items: [], page: 1, page_size: 10, total_count: 0 });
     vi.mocked(formFactorApi.listarResultados).mockResolvedValue({ modelos: [], items: [], page: 1, page_size: 20, total_count: 0 });
     vi.mocked(formFactorApi.importar).mockResolvedValue({ quantidade_execucoes: 1, quantidade_resultados: 4 } as never);
@@ -116,6 +116,18 @@ describe("ProjetoDetalhePage", () => {
     expect(screen.queryByText("Clock_002")).not.toBeInTheDocument();
   });
 
+  it("cancelar a confirmação mantém o Test Case com o mesmo responsável", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const proprioCaso = await screen.findByRole("row", { name: /Clock_001/ });
+
+    await user.click(within(proprioCaso).getByRole("button", { name: "Transfer to backup Clock_001" }));
+    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+    expect(casosTesteApi.transferirParaBackup).not.toHaveBeenCalled();
+  });
+
   it("restringe edição inline e transferência aos casos atribuídos ao usuário", async () => {
     const user = userEvent.setup();
     renderPage();
@@ -134,7 +146,12 @@ describe("ProjetoDetalhePage", () => {
     expect(within(casoAlheio).queryByRole("button", { name: /Transfer to backup/ })).not.toBeInTheDocument();
 
     await user.click(within(proprioCaso).getByRole("button", { name: "Transfer to backup Clock_001" }));
-    expect(vi.mocked(casosTesteApi.transferirParaBackup).mock.calls[0][0]).toBe("case-1");
+    // A transferência troca os papéis: só acontece depois de confirmar.
+    const confirmacao = await screen.findByRole("alertdialog", { name: "Transfer to backup?" });
+    expect(confirmacao).toHaveTextContent("kaique-id becomes the assignee of Clock_001, and you become the backup.");
+    expect(casosTesteApi.transferirParaBackup).not.toHaveBeenCalled();
+    await user.click(within(confirmacao).getByRole("button", { name: "Transfer to backup" }));
+    await waitFor(() => expect(vi.mocked(casosTesteApi.transferirParaBackup).mock.calls[0][0]).toBe("case-1"));
 
     await user.click(screen.getByRole("button", { name: /Filter by Assignee/i }));
     expect(await screen.findByRole("option", { name: "daniel-id" })).toBeInTheDocument();

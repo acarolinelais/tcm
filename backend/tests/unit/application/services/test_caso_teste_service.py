@@ -560,7 +560,7 @@ async def test_gestor_altera_situation_e_status(contexto):
     uow.commit.assert_awaited_once()
 
 
-async def test_responsavel_transfere_para_backup_e_backup_fica_vazio(contexto):
+async def test_responsavel_transfere_para_backup_e_vira_o_backup(contexto):
     service, casos, _, _, _, _, uow, admin, projeto, time = contexto
     backup_id = uuid4()
     responsavel = UsuarioAutenticado(
@@ -585,7 +585,7 @@ async def test_responsavel_transfere_para_backup_e_backup_fica_vazio(contexto):
     resposta = await service.transferir_para_backup(responsavel, caso.id)
 
     assert resposta.responsavel_id == backup_id
-    assert resposta.backup_id is None
+    assert resposta.backup_id == responsavel.id
     casos.atualizar.assert_awaited_once_with(caso)
     uow.commit.assert_awaited_once()
 
