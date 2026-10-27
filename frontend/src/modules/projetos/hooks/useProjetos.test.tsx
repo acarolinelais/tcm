@@ -9,7 +9,7 @@ import type { PerfilAtual } from "@/core/auth/api";
 vi.mock("../api/projetos.api", () => ({
   casosTesteApi: { listar: vi.fn(), transferirParaBackup: vi.fn() },
   projetosApi: { criar: vi.fn(), listar: vi.fn() },
-  formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), listarGlobal: vi.fn(), listarResultadosGlobais: vi.fn(), criarRodadaManual: vi.fn() }, modelosDispositivoApi: {},
+  formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), listarGlobal: vi.fn(), listarResultadosGlobais: vi.fn(), criarRodada: vi.fn(), registrarResultadosRodada: vi.fn() }, modelosDispositivoApi: {},
 }));
 
 function criarWrapper() {
@@ -38,21 +38,21 @@ describe("hooks de projetos", () => {
   it("mantém filtro pessoal ao mudar responsável e paginação", async () => {
     vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [], total_count: 0, page: 1, page_size: 20 });
     const perfil = { id: "dev", unidade_id: "u" } as PerfilAtual;
-    const { result, rerender } = renderHook(({ page, responsavelId }) => useCasosTeste("p", page, 20, { associadosAMim: true, responsavelId }, perfil), { initialProps: { page: 1, responsavelId: "a" }, wrapper: criarWrapper() });
+    const { result, rerender } = renderHook(({ page, responsavelIds }) => useCasosTeste("p", page, 20, { associadosAMim: true, responsavelIds }, perfil), { initialProps: { page: 1, responsavelIds: ["a"] }, wrapper: criarWrapper() });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    rerender({ page: 2, responsavelId: "b" });
-    await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("p", 2, 20, { associadosAMim: true, responsavelId: "b" }));
+    rerender({ page: 2, responsavelIds: ["a", "b"] });
+    await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("p", 2, 20, { associadosAMim: true, responsavelIds: ["a", "b"] }));
   });
 
   it("refaz o Form Factor ao mudar o responsável e não consulta quando desabilitado", async () => {
     vi.mocked(formFactorApi.listar).mockResolvedValue({ modelos: [], items: [], total_count: 0, page: 1, page_size: 20 });
     const perfil = { id: "kp", unidade_id: "u" } as PerfilAtual;
-    const { result, rerender } = renderHook(({ responsavelId, enabled }) => useFormFactor("p", { page: 1, pageSize: 20, responsavelId }, perfil, enabled), { initialProps: { responsavelId: undefined as string | undefined, enabled: false }, wrapper: criarWrapper() });
+    const { result, rerender } = renderHook(({ responsavelIds, enabled }) => useFormFactor("p", { page: 1, pageSize: 20, responsavelIds }, perfil, enabled), { initialProps: { responsavelIds: undefined as string[] | undefined, enabled: false }, wrapper: criarWrapper() });
     expect(formFactorApi.listar).not.toHaveBeenCalled();
-    rerender({ responsavelId: undefined, enabled: true });
+    rerender({ responsavelIds: undefined, enabled: true });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    rerender({ responsavelId: "ana", enabled: true });
-    await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("p", { page: 1, pageSize: 20, responsavelId: "ana" }));
+    rerender({ responsavelIds: ["ana"], enabled: true });
+    await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("p", { page: 1, pageSize: 20, responsavelIds: ["ana"] }));
     expect(formFactorApi.listar).toHaveBeenCalledTimes(2);
   });
 
@@ -61,7 +61,7 @@ describe("hooks de projetos", () => {
     const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
     client.setQueryData(["projetos", "p", "form-factor", { page: 1 }], { items: [] });
     vi.mocked(formFactorApi.listarResultados).mockResolvedValue({ modelos: [], items: [], total_count: 0, page: 1, page_size: 20 });
-    vi.mocked(formFactorApi.criarRodadaManual).mockResolvedValue({} as never);
+    vi.mocked(formFactorApi.criarRodada).mockResolvedValue({} as never);
     const perfil = { id: "kp", unidade_id: "u" } as PerfilAtual;
     const { result, rerender } = renderHook(({ tcId }) => useFormFactorResultados("p", { page: 1, pageSize: 20, tcId }, perfil), { initialProps: { tcId: "TC-1" }, wrapper });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -69,7 +69,7 @@ describe("hooks de projetos", () => {
     await waitFor(() => expect(formFactorApi.listarResultados).toHaveBeenLastCalledWith("p", { page: 1, pageSize: 20, tcId: "TC-2" }));
     const chamadasAntesDaCriacao = vi.mocked(formFactorApi.listarResultados).mock.calls.length;
     const criar = renderHook(() => useCriarRodadaFormFactor("p"), { wrapper });
-    await criar.result.current.mutateAsync({ caso_teste_id: "case-1", resultados: { "model-1": "PASS" } });
+    await criar.result.current.mutateAsync({ sdf_id: "SDF-1" });
     expect(client.getQueryCache().find({ queryKey: ["projetos", "p", "form-factor", { page: 1 }] })?.state.isInvalidated).toBe(true);
     await waitFor(() => expect(formFactorApi.listarResultados).toHaveBeenCalledTimes(chamadasAntesDaCriacao + 1));
   });

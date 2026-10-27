@@ -67,8 +67,7 @@ test("cadastra e edita usuário preservando o identificador informado", async ({
   await page.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByText("Usuário Ana cadastrado.")).toBeVisible();
 
-  await page.getByRole("button", { name: "Ações para Ana" }).click();
-  await page.getByRole("menuitem", { name: "Editar" }).click();
+  await page.getByRole("button", { name: "Editar Ana" }).click();
   await expect(page.getByLabel("ID do usuário")).toHaveValue("USR-002");
   await page.getByLabel("ID do usuário").fill("USR-003");
   await page.getByRole("button", { name: "Salvar" }).click();

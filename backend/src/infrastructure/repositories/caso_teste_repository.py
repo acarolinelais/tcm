@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import datetime
 from uuid import UUID
 
@@ -24,7 +25,7 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
         projeto_id: UUID,
         page: int,
         page_size: int,
-        responsavel_id: UUID | None = None,
+        responsavel_ids: Sequence[UUID] | None = None,
         priorizar_responsavel_id: UUID | None = None,
         associado_usuario_id: UUID | None = None,
         data_final_inicio: datetime | None = None,
@@ -34,14 +35,14 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             CasoTesteModel.unidade_id == unidade_id,
             CasoTesteModel.projeto_id == projeto_id,
         ]
-        if responsavel_id is not None:
-            filtros.append(CasoTesteModel.responsavel_id == responsavel_id)
+        if responsavel_ids:
+            filtros.append(CasoTesteModel.responsavel_id.in_(responsavel_ids))
         if data_final_inicio is not None and data_final_fim is not None:
             data_final = func.coalesce(CasoTesteModel.updated_at, CasoTesteModel.created_at)
             filtros.extend(
                 (
                     CasoTesteModel.ativo.is_(True),
-                    CasoTesteModel.status == StatusCasoTeste.PASS.value,
+                    CasoTesteModel.status.in_((StatusCasoTeste.DONE.value, "Pass")),
                     data_final >= data_final_inicio,
                     data_final < data_final_fim,
                 )
@@ -108,6 +109,27 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             )
         ).scalar_one_or_none()
         return self._to_entity(modelo) if modelo is not None else None
+
+    async def listar_em_validacao(
+        self, unidade_id: UUID, projeto_id: UUID
+    ) -> tuple[CasoTeste, ...]:
+        modelos = (
+            (
+                await self.session.execute(
+                    select(CasoTesteModel)
+                    .where(
+                        CasoTesteModel.unidade_id == unidade_id,
+                        CasoTesteModel.projeto_id == projeto_id,
+                        CasoTesteModel.ativo.is_(True),
+                        CasoTesteModel.status == StatusCasoTeste.IN_VALIDATION.value,
+                    )
+                    .order_by(CasoTesteModel.tc_id, CasoTesteModel.id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        return tuple(self._to_entity(modelo) for modelo in modelos)
 
     def _to_entity(self, model: CasoTesteModel) -> CasoTeste:
         caso = CasoTeste(

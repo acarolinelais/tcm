@@ -39,6 +39,9 @@ from src.infrastructure.repositories.projeto_repository import ProjetoRepository
 from src.infrastructure.repositories.resultado_form_factor_repository import (
     ResultadoFormFactorRepositoryImpl,
 )
+from src.infrastructure.repositories.rodada_form_factor_repository import (
+    RodadaFormFactorRepositoryImpl,
+)
 from src.infrastructure.repositories.setor_gerente_repository import SetorGerenteRepositoryImpl
 from src.infrastructure.repositories.setor_repository import SetorRepositoryImpl
 from src.infrastructure.repositories.time_membro_repository import TimeMembroRepositoryImpl
@@ -294,4 +297,5 @@ async def get_form_factor_service(
         CasoTesteRepositoryImpl(session),
         ExecucaoSdfRepositoryImpl(session),
         UnitOfWorkImpl(session),
+        RodadaFormFactorRepositoryImpl(session),
     )

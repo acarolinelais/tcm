@@ -38,8 +38,8 @@ test("entrada: somente backup abre diretamente os TCs pessoais", async ({ reques
   await expect(page.getByRole("row", { name: /Backup_001/ })).toContainText(dados.usuarios[1].user_id);
   await expect(page.getByRole("row", { name: /Backup_001/ })).toContainText(dados.usuarios[0].user_id);
   await expect(page.getByText("Colega_001")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /Status Backup_001/ })).toHaveCount(0);
-  const negado = await request.put(`${api}/api/test-cases/${backup.id}`, { data: { status: "Pass" }, headers: { Authorization: `Bearer ${dados.dev.access_token}` } });
+  await expect(page.getByRole("button", { name: /Status Backup_001/ })).toHaveCount(1);
+  const negado = await request.put(`${api}/api/test-cases/${backup.id}`, { data: { status: "InProgress" }, headers: { Authorization: `Bearer ${dados.dev.access_token}` } });
   expect(negado.status()).toBe(403);
   const transferencia = await request.patch(`${api}/api/test-cases/${backup.id}/transferir-para-backup`, { headers: { Authorization: `Bearer ${dados.dev.access_token}` } });
   expect(transferencia.status()).toBe(403);
@@ -64,29 +64,6 @@ test("múltiplos: troca pelo dropdown e recupera perda da associação", async (
   await expect(page.getByRole("row", { name: /Gallery_001/ })).toBeVisible();
 });
 
-test("lote: transfere os selecionados ao backup e eles saem da lista", async ({ request, page }) => {
-  const dados = await preparar(request, page);
-  const projeto = await dados.projeto("Lote");
-  await dados.caso(projeto.id, "Lote_001");
-  await dados.caso(projeto.id, "Lote_002");
-  await dados.caso(projeto.id, "Lote_003");
-  await page.goto(`/projetos/${projeto.id}`);
-  // O input do React Aria fica escondido; o usuário clica na caixa desenhada (o label) dentro da célula.
-  for (const tcId of ["Lote_001", "Lote_002"]) {
-    await page.getByRole("row", { name: tcId }).locator("label").click();
-    await expect(page.getByRole("checkbox", { name: `Select ${tcId}` })).toBeChecked();
-  }
-
-  await page.getByRole("button", { name: "Transfer to backup (2)" }).click();
-  const confirmacao = page.getByRole("alertdialog", { name: "Transfer 2 Test Cases to backup?" });
-  await confirmacao.getByRole("button", { name: "Transfer", exact: true }).click();
-
-  await expect(page.getByText("2 Test Cases transferred.")).toBeVisible();
-  await expect(page.getByRole("row", { name: /Lote_00[12]/ })).toHaveCount(0);
-  await expect(page.getByRole("row", { name: /Lote_003/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Transfer to backup \(/ })).toHaveCount(0);
-});
-
 test("entrada: falha mostra erro sem simular ausência", async ({ request, page }) => {
   await preparar(request, page);
   await page.route("**/api/projetos?*", (route) => route.fulfill({ status: 500, json: { title: "Falha", status: 500 } }));
@@ -100,7 +77,7 @@ test("filtra pela semana da data final no cabeçalho e restaura os TCs ao limpar
   const projeto = await dados.projeto("Semana");
   const concluido = await dados.caso(projeto.id, "Concluido_001");
   await dados.caso(projeto.id, "Pendente_001");
-  const atualizado = await request.put(`${api}/api/test-cases/${concluido.id}`, { data: { status: "Pass" }, headers: { Authorization: `Bearer ${dados.admin.access_token}` } });
+  const atualizado = await request.put(`${api}/api/test-cases/${concluido.id}`, { data: { status: "Done" }, headers: { Authorization: `Bearer ${dados.admin.access_token}` } });
   expect(atualizado.ok()).toBeTruthy();
   await page.goto("/projetos");
   await expect(page.getByRole("row", { name: /Pendente_001/ })).toBeVisible();

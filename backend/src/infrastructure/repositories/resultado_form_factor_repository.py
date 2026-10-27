@@ -1,8 +1,10 @@
+from collections.abc import Sequence
 from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.dialects.postgresql import distinct_on
+from sqlalchemy.orm import aliased
 
 from src.domain.common.paged_result import PagedResult
 from src.domain.entities.resultado_form_factor import ResultadoFormFactor
@@ -21,8 +23,13 @@ from src.infrastructure.data.models.modelo_dispositivo_model import ModeloDispos
 from src.infrastructure.data.models.projeto_model import ProjetoModel
 from src.infrastructure.data.models.projeto_modelo_model import ProjetoModeloModel
 from src.infrastructure.data.models.resultado_form_factor_model import ResultadoFormFactorModel
+from src.infrastructure.data.models.rodada_form_factor_model import RodadaFormFactorModel
 from src.infrastructure.data.models.time_model import TimeModel
 from src.infrastructure.data.models.usuario_model import UsuarioModel
+from src.infrastructure.repositories.execucao_sdf_repository import (
+    filtros_execucao_de_rodada_ativa,
+    ordem_rodada_atual,
+)
 from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
 
 
@@ -446,6 +453,8 @@ class ResultadoFormFactorRepositoryImpl(
                     ExecucaoSdfModel.sdf_id,
                     ExecucaoSdfModel.data_reportada,
                     ExecucaoSdfModel.origem,
+                    ExecucaoSdfModel.rodada_id,
+                    ExecucaoSdfModel.resultados_registrados,
                 )
                 .join(CasoTesteModel, CasoTesteModel.id == ExecucaoSdfModel.caso_teste_id)
                 .join(ProjetoModel, ProjetoModel.id == CasoTesteModel.projeto_id)
@@ -531,6 +540,8 @@ class ResultadoFormFactorRepositoryImpl(
                 data_reportada=row.data_reportada,
                 origem=row.origem,
                 resultados=resultados_por_execucao.get(row.id, {}),
+                rodada_id=row.rodada_id,
+                resultados_registrados=row.resultados_registrados,
             )
             for row in execucoes
         ]
@@ -563,7 +574,7 @@ class ResultadoFormFactorRepositoryImpl(
         page_size: int,
         inicio: datetime | None = None,
         fim: datetime | None = None,
-        responsavel_id: UUID | None = None,
+        responsavel_ids: Sequence[UUID] | None = None,
         tc_id: str | None = None,
         sdf_id: str | None = None,
         modelo_dispositivo_id: UUID | None = None,
@@ -607,6 +618,22 @@ class ResultadoFormFactorRepositoryImpl(
                 ),
             )
         )
+        # Corte do caso (RN-12): o Resumo ignora resultados anteriores à rodada mais recente dele.
+        execucao_rodada = aliased(ExecucaoSdfModel)
+        corte_rodada = (
+            select(func.max(execucao_rodada.data_reportada))
+            .join(RodadaFormFactorModel, RodadaFormFactorModel.id == execucao_rodada.rodada_id)
+            .where(
+                execucao_rodada.caso_teste_id == ExecucaoSdfModel.caso_teste_id,
+                *filtros_execucao_de_rodada_ativa(execucao_rodada, unidade_id),
+            )
+            .correlate(ExecucaoSdfModel)
+            .scalar_subquery()
+        )
+        # Caso sem rodada não tem corte: datetime.min deixa todos os resultados passarem.
+        resultados_validos = resultados_validos.where(
+            ExecucaoSdfModel.data_reportada >= func.coalesce(corte_rodada, datetime.min)
+        )
         if inicio is not None:
             resultados_validos = resultados_validos.where(ExecucaoSdfModel.data_reportada >= inicio)
         if fim is not None:
@@ -616,9 +643,10 @@ class ResultadoFormFactorRepositoryImpl(
             CasoTesteModel.unidade_id == unidade_id,
             CasoTesteModel.projeto_id == projeto_id,
             CasoTesteModel.ativo.is_(True),
+            CasoTesteModel.status == "InValidation",
         ]
-        if responsavel_id is not None:
-            filtros_caso.append(CasoTesteModel.responsavel_id == responsavel_id)
+        if responsavel_ids:
+            filtros_caso.append(CasoTesteModel.responsavel_id.in_(responsavel_ids))
         if tc_id:
             filtros_caso.append(CasoTesteModel.tc_id.ilike(f"%{tc_id.strip()}%"))
         if sdf_id or modelo_dispositivo_id is not None or resultado:
@@ -650,7 +678,12 @@ class ResultadoFormFactorRepositoryImpl(
         ).scalar_one()
         casos = (
             await self.session.execute(
-                select(CasoTesteModel.id, CasoTesteModel.tc_id, CasoTesteModel.responsavel_id)
+                select(
+                    CasoTesteModel.id,
+                    CasoTesteModel.tc_id,
+                    CasoTesteModel.responsavel_id,
+                    CasoTesteModel.backup_id,
+                )
                 .where(*filtros_caso)
                 .order_by(CasoTesteModel.tc_id, CasoTesteModel.id)
                 .offset((page - 1) * page_size)
@@ -659,6 +692,33 @@ class ResultadoFormFactorRepositoryImpl(
         ).all()
         if not casos:
             return PagedResult([], page, page_size, total)
+        casos_ids = [caso_id for caso_id, _, _, _ in casos]
+        # Por caso: (rodada, SDF ID informado nela) da rodada atual (RN-13), a mais recente do caso,
+        # enquanto ela ainda não tem resultados; rodadas anteriores sem resultado ficam encerradas.
+        rodadas_pendentes = {
+            caso_id: (rodada_id, sdf_id_rodada)
+            for caso_id, rodada_id, sdf_id_rodada, registrada in (
+                await self.session.execute(
+                    select(
+                        ExecucaoSdfModel.caso_teste_id,
+                        ExecucaoSdfModel.rodada_id,
+                        ExecucaoSdfModel.sdf_id,
+                        ExecucaoSdfModel.resultados_registrados,
+                    )
+                    .join(
+                        RodadaFormFactorModel,
+                        RodadaFormFactorModel.id == ExecucaoSdfModel.rodada_id,
+                    )
+                    .where(
+                        ExecucaoSdfModel.caso_teste_id.in_(casos_ids),
+                        *filtros_execucao_de_rodada_ativa(ExecucaoSdfModel, unidade_id),
+                    )
+                    .ext(distinct_on(ExecucaoSdfModel.caso_teste_id))
+                    .order_by(ExecucaoSdfModel.caso_teste_id, *ordem_rodada_atual(ExecucaoSdfModel))
+                )
+            ).all()
+            if not registrada
+        }
 
         # Resultado mais recente de cada par (caso, modelo); empate vence a importação mais recente,
         # e os ids fecham a ordem para a escolha não variar entre consultas.
@@ -671,7 +731,7 @@ class ResultadoFormFactorRepositoryImpl(
                 ExecucaoSdfModel.data_reportada,
                 func.coalesce(ImportacaoSdfModel.created_at, ExecucaoSdfModel.created_at),
             )
-            .where(ExecucaoSdfModel.caso_teste_id.in_([caso_id for caso_id, _, _ in casos]))
+            .where(ExecucaoSdfModel.caso_teste_id.in_(casos_ids))
             .ext(
                 distinct_on(
                     ExecucaoSdfModel.caso_teste_id, ResultadoFormFactorModel.modelo_dispositivo_id
@@ -696,16 +756,20 @@ class ResultadoFormFactorRepositoryImpl(
                 mais_recente[caso_id] = (chave, sdf_id)
 
         items = []
-        for caso_id, tc_id, responsavel_id_caso in casos:
+        for caso_id, tc_id, responsavel_id_caso, backup_id in casos:
             recente = mais_recente.get(caso_id)
+            rodada_id, sdf_id_rodada = rodadas_pendentes.get(caso_id, (None, None))
             items.append(
                 FormFactorLinha(
                     caso_teste_id=caso_id,
                     tc_id=tc_id,
                     responsavel_id=responsavel_id_caso,
-                    sdf_id=recente[1] if recente else None,
+                    # A rodada em andamento mostra o SDF ID informado ao criá-la.
+                    sdf_id=sdf_id_rodada or (recente[1] if recente else None),
                     data_reportada=recente[0][0] if recente else None,
                     resultados=resultados.get(caso_id, {}),
+                    backup_id=backup_id,
+                    rodada_pendente_id=rodada_id,
                 )
             )
         return PagedResult(items, page, page_size, total)
@@ -718,7 +782,7 @@ class ResultadoFormFactorRepositoryImpl(
         page_size: int,
         inicio: datetime | None = None,
         fim: datetime | None = None,
-        responsavel_id: UUID | None = None,
+        responsavel_ids: Sequence[UUID] | None = None,
         tc_id: str | None = None,
         sdf_id: str | None = None,
         modelo_dispositivo_id: UUID | None = None,
@@ -767,14 +831,14 @@ class ResultadoFormFactorRepositoryImpl(
             CasoTesteModel.projeto_id == projeto_id,
             CasoTesteModel.ativo.is_(True),
             or_(importacao_valida, manual_valida),
-            tem_resultado_no_projeto,
+            or_(ExecucaoSdfModel.rodada_id.is_not(None), tem_resultado_no_projeto),
         ]
         if inicio is not None:
             filtros.append(ExecucaoSdfModel.data_reportada >= inicio)
         if fim is not None:
             filtros.append(ExecucaoSdfModel.data_reportada < fim)
-        if responsavel_id is not None:
-            filtros.append(CasoTesteModel.responsavel_id == responsavel_id)
+        if responsavel_ids:
+            filtros.append(CasoTesteModel.responsavel_id.in_(responsavel_ids))
         if tc_id:
             filtros.append(CasoTesteModel.tc_id.ilike(f"%{tc_id.strip()}%"))
         if sdf_id:
@@ -815,6 +879,8 @@ class ResultadoFormFactorRepositoryImpl(
                     ExecucaoSdfModel.sdf_id,
                     ExecucaoSdfModel.data_reportada,
                     ExecucaoSdfModel.origem,
+                    ExecucaoSdfModel.rodada_id,
+                    ExecucaoSdfModel.resultados_registrados,
                 )
                 .select_from(ExecucaoSdfModel)
                 .join(CasoTesteModel, ExecucaoSdfModel.caso_teste_id == CasoTesteModel.id)
@@ -872,6 +938,8 @@ class ResultadoFormFactorRepositoryImpl(
                 data_reportada=execucao.data_reportada,
                 origem=execucao.origem,
                 resultados=resultados.get(execucao.id, {}),
+                rodada_id=execucao.rodada_id,
+                resultados_registrados=execucao.resultados_registrados,
             )
             for execucao in execucoes
         ]

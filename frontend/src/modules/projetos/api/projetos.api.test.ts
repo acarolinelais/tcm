@@ -55,8 +55,11 @@ describe("APIs de projetos", () => {
   it("consulta Test Cases e transfere o responsável para o backup", async () => {
     await casosTesteApi.listar("project-1", 3, 5);
     expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/test-cases?page=3&page_size=5", expect.any(Object));
-    await casosTesteApi.listar("project-1", 1, 10, { responsavelId: "user-2" });
+    await casosTesteApi.listar("project-1", 1, 10, { responsavelIds: ["user-2"] });
     expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/test-cases?page=1&page_size=10&responsavel_id=user-2", expect.any(Object));
+    // Vários responsáveis repetem o parâmetro, como o FastAPI lê uma lista.
+    await casosTesteApi.listar("project-1", 1, 10, { responsavelIds: ["user-2", "user-3"] });
+    expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/test-cases?page=1&page_size=10&responsavel_id=user-2&responsavel_id=user-3", expect.any(Object));
     await casosTesteApi.obter("case-1");
     expect(fetch).toHaveBeenLastCalledWith("/api/test-cases/case-1", expect.any(Object));
     await casosTesteApi.transferirParaBackup("case-1");
@@ -68,7 +71,7 @@ describe("APIs de projetos", () => {
     expect(fetch).toHaveBeenLastCalledWith("/api/modelos-dispositivo/opcoes?page=1&page_size=100", expect.any(Object));
   });
 
-  it("envia filtros do Form Factor, consulta Results e cria rodada manual", async () => {
+  it("envia filtros do Form Factor, consulta Results e opera rodadas", async () => {
     await formFactorApi.listarGlobal({ page: 2, pageSize: 10, semana: "2026-W13", projetoId: "project-1", responsavelId: "user-1", tcId: "TC-001" });
     expect(fetch).toHaveBeenLastCalledWith(
       "/api/form-factor/general?page=2&page_size=10&semana=2026-W13&projeto_id=project-1&responsavel_id=user-1&tc_id=TC-001",
@@ -83,7 +86,7 @@ describe("APIs de projetos", () => {
       page: 2,
       pageSize: 10,
       semana: "2026-W13",
-      responsavelId: "user-1",
+      responsavelIds: ["user-1"],
       tcId: "TC-001",
       sdfId: "SDF-1",
       modeloDispositivoId: "model-1",
@@ -98,12 +101,15 @@ describe("APIs de projetos", () => {
       "/api/projetos/project-1/form-factor/results?page=1&page_size=20&tc_id=TC-001",
       expect.any(Object),
     );
-    const manual = { caso_teste_id: "case-1", resultados: { "model-1": "PASS" as const } };
-    await formFactorApi.criarRodadaManual("project-1", manual);
+    const roundInput = { sdf_id: "SDF-1" };
+    await formFactorApi.criarRodada("project-1", roundInput);
     expect(fetch).toHaveBeenLastCalledWith(
-      "/api/projetos/project-1/form-factor/results",
-      expect.objectContaining({ method: "POST", body: JSON.stringify(manual) }),
+      "/api/projetos/project-1/form-factor/rodadas",
+      expect.objectContaining({ method: "POST", body: JSON.stringify(roundInput) }),
     );
+    const resultInput = { resultados: { "model-1": "PASS" as const } };
+    await formFactorApi.registrarResultadosRodada("project-1", "round-1", "case-1", resultInput);
+    expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/form-factor/rodadas/round-1/test-cases/case-1/resultados", expect.objectContaining({ method: "POST", body: JSON.stringify(resultInput) }));
     const report = new File(["resultado"], "sdf.xlsx");
     await formFactorApi.importar("project-1", report);
     const [url, init] = vi.mocked(fetch).mock.calls.at(-1)!;
@@ -127,7 +133,7 @@ describe("consultas pessoais", () => {
     expect(fetch).toHaveBeenCalledWith("/api/projetos?page=2&page_size=1&associados_a_mim=true", expect.any(Object));
   });
   it("combina associação com responsável sem substituir o filtro pessoal", async () => {
-    await casosTesteApi.listar("p", 1, 20, { associadosAMim: true, responsavelId: "colega" });
+    await casosTesteApi.listar("p", 1, 20, { associadosAMim: true, responsavelIds: ["colega"] });
     expect(fetch).toHaveBeenCalledWith("/api/projetos/p/test-cases?page=1&page_size=20&responsavel_id=colega&associados_a_mim=true", expect.any(Object));
   });
   it("propaga erro de consulta", async () => {

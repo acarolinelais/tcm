@@ -6,7 +6,7 @@ from uuid import uuid4
 import pytest
 from openpyxl import Workbook
 from src.application.services.importacao_sdf_service import ImportacaoSdfServiceImpl
-from src.domain.common.exceptions import ConflictException
+from src.domain.common.exceptions import ConflictException, ForbiddenException
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.caso_teste import (
     CasoTeste,
@@ -89,6 +89,24 @@ async def test_tc_desconhecido_nao_persiste_novo_lote(contexto):
 
     with pytest.raises(ConflictException, match="não pertence ao projeto"):
         await service.importar(usuario, projeto.id, relatorio("Unknown_001"))
+
+    importacoes.adicionar.assert_not_awaited()
+    execucoes.adicionar.assert_not_awaited()
+    resultados.adicionar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+async def test_dev_nao_importa_planilha_mesmo_com_permissao_concedida(contexto):
+    service, usuario, projeto, _, importacoes, execucoes, resultados, uow = contexto
+    dev = UsuarioAutenticado(
+        usuario.id,
+        usuario.unidade_id,
+        "USUARIO_PADRAO",
+        permissoes=frozenset({"form_factor.importar"}),
+    )
+
+    with pytest.raises(ForbiddenException):
+        await service.importar(dev, projeto.id, relatorio())
 
     importacoes.adicionar.assert_not_awaited()
     execucoes.adicionar.assert_not_awaited()

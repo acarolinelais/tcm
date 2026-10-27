@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, String, func
+from sqlalchemy import CheckConstraint, ForeignKey, Index, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.domain.entities.execucao_sdf import ExecucaoSdf
@@ -13,9 +13,11 @@ class ExecucaoSdfModel(Base):
 
     __table_args__ = (
         Index("ix_execucoes_sdf_unidade_importacao", "unidade_id", "importacao_sdf_id"),
+        UniqueConstraint("rodada_id", "caso_teste_id", name="uq_execucoes_sdf_rodada_caso"),
         CheckConstraint(
             "(origem = 'SDF' AND importacao_sdf_id IS NOT NULL AND sdf_id IS NOT NULL) OR "
-            "(origem = 'MANUAL' AND importacao_sdf_id IS NULL AND sdf_id IS NULL)",
+            "(origem = 'MANUAL' AND importacao_sdf_id IS NULL AND "
+            "((rodada_id IS NULL AND sdf_id IS NULL) OR rodada_id IS NOT NULL))",
             name="ck_execucoes_sdf_origem",
         ),
     )
@@ -24,6 +26,12 @@ class ExecucaoSdfModel(Base):
     unidade_id: Mapped[UUID] = mapped_column(ForeignKey("unidades.id"), nullable=False)
     importacao_sdf_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("importacoes_sdf.id"), nullable=True
+    )
+    rodada_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("rodadas_form_factor.id"), nullable=True
+    )
+    resultados_registrados: Mapped[bool] = mapped_column(
+        default=False, server_default="false", nullable=False
     )
     caso_teste_id: Mapped[UUID] = mapped_column(ForeignKey("casos_teste.id"), nullable=False)
     sdf_id: Mapped[str | None] = mapped_column(String(ExecucaoSdf.SDF_ID_MAX_LENGTH), nullable=True)

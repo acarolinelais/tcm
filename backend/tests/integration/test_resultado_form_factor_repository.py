@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from src.domain.entities.execucao_sdf import ExecucaoSdf
 from src.domain.entities.importacao_sdf import ImportacaoSdf
 from src.domain.entities.resultado_form_factor import ResultadoFormFactor
+from src.domain.entities.rodada_form_factor import RodadaFormFactor
 from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
 from src.infrastructure.data.models.execucao_sdf_model import ExecucaoSdfModel
 from src.infrastructure.data.models.importacao_sdf_model import ImportacaoSdfModel
@@ -25,6 +26,9 @@ from src.infrastructure.repositories.importacao_sdf_repository import Importacao
 from src.infrastructure.repositories.projeto_modelo_repository import ProjetoModeloRepositoryImpl
 from src.infrastructure.repositories.resultado_form_factor_repository import (
     ResultadoFormFactorRepositoryImpl,
+)
+from src.infrastructure.repositories.rodada_form_factor_repository import (
+    RodadaFormFactorRepositoryImpl,
 )
 
 pytestmark = pytest.mark.skipif(
@@ -97,7 +101,7 @@ async def test_importacoes_distintas_preservam_execucoes_e_resultados_anteriores
                     category="A",
                     difficulty="Low",
                     situation="New",
-                    status="To-Do",
+                    status="InValidation",
                     responsavel_id=usuario_id,
                     backup_id=None,
                 )
@@ -215,7 +219,9 @@ class _Cenario:
         await self.session.flush()
         return self
 
-    async def caso(self, tc_id, responsavel_id=None, ativo=True):
+    async def caso(
+        self, tc_id, responsavel_id=None, ativo=True, status="InValidation", backup_id=None
+    ):
         caso_id = uuid4()
         self.session.add(
             CasoTesteModel(
@@ -226,9 +232,9 @@ class _Cenario:
                 category="A",
                 difficulty="Low",
                 situation="New",
-                status="To-Do",
+                status=status,
                 responsavel_id=responsavel_id or self.ana,
-                backup_id=None,
+                backup_id=backup_id,
                 ativo=ativo,
             )
         )
@@ -255,6 +261,35 @@ class _Cenario:
             )
         await self.session.flush()
 
+    async def rodada(self, caso_id, sdf_id, data):
+        rodada = RodadaFormFactor(self.unidade_id, self.projeto_id, self.ana, sdf_id, data)
+        await RodadaFormFactorRepositoryImpl(self.session).adicionar(rodada)
+        execucao = ExecucaoSdf(
+            self.unidade_id,
+            None,
+            caso_id,
+            sdf_id,
+            data,
+            "9.5",
+            origem="MANUAL",
+            rodada_id=rodada.id,
+        )
+        await ExecucaoSdfRepositoryImpl(self.session).adicionar(execucao)
+        await self.session.flush()
+        return rodada, execucao
+
+    async def registrar(self, execucao, resultados):
+        for modelo_id, valor in resultados.items():
+            await self.repo().adicionar(
+                ResultadoFormFactor(self.unidade_id, execucao.id, modelo_id, valor)
+            )
+        await self.session.execute(
+            update(ExecucaoSdfModel)
+            .where(ExecucaoSdfModel.id == execucao.id)
+            .values(resultados_registrados=True)
+        )
+        await self.session.flush()
+
     def repo(self):
         return ResultadoFormFactorRepositoryImpl(self.session)
 
@@ -271,7 +306,7 @@ async def cenario():
 
 
 @pytest.mark.asyncio
-async def test_form_factor_lista_todos_os_casos_mesmo_sem_resultado(cenario):
+async def test_form_factor_lista_casos_em_validacao_mesmo_sem_resultado(cenario):
     await cenario.caso("TC-002", cenario.bia)
     await cenario.caso("TC-001")
     await cenario.caso("TC-003", ativo=False)
@@ -299,6 +334,18 @@ async def test_form_factor_lista_todos_os_casos_mesmo_sem_resultado(cenario):
         )
         == ()
     )
+
+
+@pytest.mark.asyncio
+async def test_form_factor_oculta_casos_fora_de_validacao(cenario):
+    await cenario.caso("TC-VALIDANDO")
+    await cenario.caso("TC-PENDENTE", status="To-Do")
+
+    pagina = await cenario.repo().listar_form_factor_por_projeto(
+        cenario.unidade_id, cenario.projeto_id, 1, 20
+    )
+
+    assert [linha.tc_id for linha in pagina.items] == ["TC-VALIDANDO"]
 
 
 @pytest.mark.asyncio
@@ -364,10 +411,10 @@ async def test_form_factor_com_semana_e_responsavel_considera_so_resultados_filt
         cenario.unidade_id, cenario.projeto_id, 1, 20, inicio, fim
     )
     semana_da_ana = await cenario.repo().listar_form_factor_por_projeto(
-        cenario.unidade_id, cenario.projeto_id, 1, 20, inicio, fim, cenario.ana
+        cenario.unidade_id, cenario.projeto_id, 1, 20, inicio, fim, [cenario.ana]
     )
     sem_casos = await cenario.repo().listar_form_factor_por_projeto(
-        cenario.unidade_id, cenario.projeto_id, 1, 20, responsavel_id=uuid4()
+        cenario.unidade_id, cenario.projeto_id, 1, 20, responsavel_ids=[uuid4()]
     )
 
     assert [linha.tc_id for linha in semana.items] == ["TC-001", "TC-003"]
@@ -496,11 +543,113 @@ async def test_listar_historico_inclui_execucoes_sdf_e_manuais_com_filtros(cenar
     assert filtrado.total_count == 1 and filtrado.items[0].origem == "MANUAL"
     assert sem_resultado.total_count == 0
 
+
+@pytest.mark.asyncio
+async def test_rodada_lista_tc_sem_resultado_e_historico_preserva_sdf_id(cenario):
+    caso_id = await cenario.caso("TC-RODADA", backup_id=cenario.bia)
+    sem_rodada = await cenario.caso("TC-SEM-RODADA")
+    agora = datetime(2026, 10, 25, tzinfo=UTC).replace(tzinfo=None)
+    rodada, execucao = await cenario.rodada(caso_id, "  SDF #1  ", agora)
+    rodadas = RodadaFormFactorRepositoryImpl(cenario.session)
+
+    historico = await cenario.repo().listar_execucoes_form_factor_por_projeto(
+        cenario.unidade_id, cenario.projeto_id, 1, 20
+    )
+    casos = await rodadas.listar_casos(cenario.unidade_id, cenario.projeto_id, rodada.id, 1, 20)
+
+    assert historico.total_count == 1
+    assert historico.items[0].rodada_id == rodada.id
+    assert historico.items[0].sdf_id == "  SDF #1  "
+    assert historico.items[0].resultados == {}
+    assert casos.total_count == 1
+    assert casos.items[0].caso_teste_id == caso_id
+    assert casos.items[0].resultados == {}
+
     resumo = await cenario.repo().listar_form_factor_por_projeto(
         cenario.unidade_id, cenario.projeto_id, 1, 20
     )
-    assert resumo.items[0].resultados == {cenario.s25: "PASS"}
-    assert resumo.items[0].sdf_id is None
+    assert resumo.items[0].resultados == {}
+    assert resumo.items[0].sdf_id == "  SDF #1  "
+    assert resumo.items[0].backup_id == cenario.bia
+    assert resumo.items[0].rodada_pendente_id == rodada.id
+    assert resumo.items[1].caso_teste_id == sem_rodada
+    assert resumo.items[1].rodada_pendente_id is None
+
+    await cenario.registrar(execucao, {})
+    registrado = await cenario.repo().listar_form_factor_por_projeto(
+        cenario.unidade_id, cenario.projeto_id, 1, 20
+    )
+    assert registrado.items[0].rodada_pendente_id is None
+    assert registrado.items[0].sdf_id is None
+
+
+@pytest.mark.asyncio
+async def test_resumo_mostra_so_a_rodada_mais_recente_e_historico_preserva_anteriores(cenario):
+    caso_id = await cenario.caso("TC-RODADAS")
+    _, anterior = await cenario.rodada(caso_id, "SDF-002", datetime(2026, 10, 20))
+    await cenario.registrar(anterior, {cenario.s26: "Pass"})
+    _, pendente = await cenario.rodada(caso_id, "SDF-003", datetime(2026, 10, 26))
+
+    resumo = await cenario.repo().listar_form_factor_por_projeto(
+        cenario.unidade_id, cenario.projeto_id, 1, 20
+    )
+    filtrado = await cenario.repo().listar_form_factor_por_projeto(
+        cenario.unidade_id,
+        cenario.projeto_id,
+        1,
+        20,
+        modelo_dispositivo_id=cenario.s26,
+        resultado="Pass",
+    )
+
+    assert resumo.items[0].sdf_id == "SDF-003"
+    assert resumo.items[0].resultados == {}
+    assert resumo.items[0].data_reportada is None
+    assert filtrado.total_count == 0
+
+    await cenario.registrar(pendente, {cenario.s25: "Pass"})
+    registrado = await cenario.repo().listar_form_factor_por_projeto(
+        cenario.unidade_id, cenario.projeto_id, 1, 20
+    )
+    historico = await cenario.repo().listar_execucoes_form_factor_por_projeto(
+        cenario.unidade_id, cenario.projeto_id, 1, 20
+    )
+
+    assert registrado.items[0].resultados == {cenario.s25: "Pass"}
+    assert registrado.items[0].sdf_id == "SDF-003"
+    assert {(item.sdf_id, tuple(item.resultados.items())) for item in historico.items} == {
+        ("SDF-002", ((cenario.s26, "Pass"),)),
+        ("SDF-003", ((cenario.s25, "Pass"),)),
+    }
+
+
+@pytest.mark.asyncio
+async def test_resumo_oferece_so_a_rodada_atual_e_encerra_as_anteriores_sem_resultado(cenario):
+    caso_id = await cenario.caso("TC-VARIAS-RODADAS")
+    for sdf_id, dia in (("SDF-002", 20), ("SDF-003", 22)):
+        await cenario.rodada(caso_id, sdf_id, datetime(2026, 10, dia))
+    atual, execucao = await cenario.rodada(caso_id, "SDF-005", datetime(2026, 10, 26))
+
+    pendente = await cenario.repo().listar_form_factor_por_projeto(
+        cenario.unidade_id, cenario.projeto_id, 1, 20
+    )
+    rodada_atual = await ExecucaoSdfRepositoryImpl(cenario.session).obter_rodada_atual_do_caso(
+        cenario.unidade_id, caso_id
+    )
+
+    assert (pendente.items[0].rodada_pendente_id, pendente.items[0].sdf_id) == (
+        atual.id,
+        "SDF-005",
+    )
+    assert rodada_atual == atual.id
+
+    await cenario.registrar(execucao, {cenario.s25: "Pass"})
+    registrado = await cenario.repo().listar_form_factor_por_projeto(
+        cenario.unidade_id, cenario.projeto_id, 1, 20
+    )
+
+    # As rodadas anteriores sem resultado ficam encerradas: nada mais fica pendente.
+    assert registrado.items[0].rodada_pendente_id is None
 
 
 @pytest.mark.asyncio

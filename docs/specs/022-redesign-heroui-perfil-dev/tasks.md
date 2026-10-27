@@ -118,6 +118,8 @@
     tocam essas telas
   - Cobre: CA-03, CA-07, CA-09, CA-10
   - Verificação: `cd frontend && npx playwright install chromium && npm run e2e` → verde.
+  - Situação (2026-10-27): os e2e simulados (`form-factor`, `projetos`) passam. `projetos-dev` e `times`
+    compilam, mas não rodaram: precisam de API e banco dedicados (ver backlog).
 - [x] **T17. Regras de tabela atualizadas**
   - Arquivos: `docs/tables-rules.md`, `.claude/skills/react-crud/SKILL.md` (se citar o padrão antigo)
   - Cobre: RN-02 a RN-08
@@ -151,3 +153,6 @@
   `onFiltroChange`; a página mantém `assigneeFormFactor` à parte de `filtrosResumo`. Igualar as duas para
   `filtros` + `onFiltroChange` encurta a chamada na `ProjetoDetalhePage`. Mexe só em props, sem mudar o
   comportamento.
+- **Rodar os e2e com API real** (T16, fechamento em 2026-10-27). `projetos-dev.spec.ts` (inclui o lote, CA-03)
+  e `times.spec.ts` (CA-09 a CA-11) criam dados pela API: rodar num banco dedicado com `SDF_E2E_ADMIN_PASSWORD`
+  definido (`cd frontend && npx playwright test e2e/projetos-dev.spec.ts e2e/times.spec.ts`) e marcar a T16.

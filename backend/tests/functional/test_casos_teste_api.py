@@ -11,6 +11,7 @@ from src.domain.entities.caso_teste import (
     CategoriaCasoTeste,
     DificuldadeCasoTeste,
     SituacaoCasoTeste,
+    StatusCasoTeste,
 )
 from src.domain.entities.projeto import Projeto
 from src.domain.entities.time import Time
@@ -127,26 +128,30 @@ def _usar_service_real_com_caso(caso_do_membro: bool):
     return caso, uow
 
 
-async def test_responsavel_que_envia_situation_recebe_403(api_client):
+async def test_responsavel_altera_situation_mas_nao_o_backup(api_client):
     caso, _ = _usar_service_real_com_caso(caso_do_membro=True)
+    backup_original = caso.backup_id
 
-    negado = await api_client.put(f"/api/test-cases/{caso.id}", json={"situation": "New Step"})
-    permitido = await api_client.put(f"/api/test-cases/{caso.id}", json={"status": "InReview"})
+    permitido = await api_client.put(f"/api/test-cases/{caso.id}", json={"situation": "New Step"})
+    negado = await api_client.put(f"/api/test-cases/{caso.id}", json={"backup_id": str(uuid4())})
 
-    assert negado.status_code == 403
     assert permitido.status_code == 200
-    assert permitido.json()["status"] == "InReview"
-    assert permitido.json()["situation"] == "New"
+    assert permitido.json()["situation"] == "New Step"
+    assert negado.status_code == 403
+    assert caso.backup_id == backup_original
 
 
-async def test_responsavel_atualiza_status_para_in_validation(api_client):
+async def test_responsavel_que_pula_a_revisao_do_pr_recebe_409(api_client):
     caso, uow = _usar_service_real_com_caso(caso_do_membro=True)
+    caso.atualizar_campos_do_responsavel(
+        StatusCasoTeste.IN_PROGRESS, caso.category, caso.difficulty
+    )
 
     response = await api_client.put(f"/api/test-cases/{caso.id}", json={"status": "InValidation"})
 
-    assert response.status_code == 200
-    assert response.json()["status"] == "InValidation"
-    uow.commit.assert_awaited_once()
+    assert response.status_code == 409
+    assert caso.status is StatusCasoTeste.IN_PROGRESS
+    uow.commit.assert_not_awaited()
 
 
 async def test_atualizar_status_invalido_retorna_422(api_client):
@@ -195,18 +200,19 @@ async def test_listar_test_cases_repassa_filtro_de_responsavel(api_client):
 
     usuario = UsuarioAutenticado(uuid4(), uuid4(), "USUARIO_PADRAO")
     projeto_id = uuid4()
-    responsavel_id = uuid4()
+    ana, bruno = uuid4(), uuid4()
     service = AsyncMock()
     service.listar.return_value = PagedResult([], 1, 20, 0)
     app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
     app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
 
+    # Seleção múltipla: o parâmetro se repete na URL e chega ao service como lista.
     response = await api_client.get(
-        f"/api/projetos/{projeto_id}/test-cases?responsavel_id={responsavel_id}"
+        f"/api/projetos/{projeto_id}/test-cases?responsavel_id={ana}&responsavel_id={bruno}"
     )
 
     assert response.status_code == 200
-    service.listar.assert_awaited_once_with(usuario, projeto_id, 1, 20, responsavel_id, False)
+    service.listar.assert_awaited_once_with(usuario, projeto_id, 1, 20, [ana, bruno], False)
 
 
 async def test_obter_test_case_retorna_200(api_client):

@@ -11,6 +11,7 @@ import {
   type FiltrosFormFactor,
   type FiltrosFormFactorGlobal,
   type CriarRodadaFormFactorInput,
+  type EnviarResultadosRodadaInput,
   type StatusProjeto,
 } from "../api/projetos.api";
 
@@ -68,7 +69,7 @@ export function useAtualizarStatusProjeto() {
 }
 
 export function useCasosTeste(projetoId: string, page: number, pageSize: number,
-  filtros?: { responsavelId?: string; associadosAMim?: boolean; semana?: string }, perfil?: PerfilAtual, enabled = true) {
+  filtros?: { responsavelIds?: string[]; associadosAMim?: boolean; semana?: string }, perfil?: PerfilAtual, enabled = true) {
   return useQuery({
     queryKey: ["projetos", projetoId, "test-cases", page, pageSize, filtros, perfil?.unidade_id, perfil?.id],
     queryFn: () => filtros ? casosTesteApi.listar(projetoId, page, pageSize, filtros) : casosTesteApi.listar(projetoId, page, pageSize),
@@ -139,11 +140,27 @@ export function useCriarRodadaFormFactor(projetoId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ["projetos", projetoId, "form-factor-manual"],
-    mutationFn: (input: CriarRodadaFormFactorInput) => formFactorApi.criarRodadaManual(projetoId, input),
+    mutationFn: (input: CriarRodadaFormFactorInput) => formFactorApi.criarRodada(projetoId, input),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "form-factor"] }),
         queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "form-factor-results"] }),
+      ]);
+    },
+  });
+}
+
+export function useRegistrarResultadosRodadaFormFactor(projetoId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["projetos", projetoId, "form-factor-rodada-results"],
+    mutationFn: ({ rodadaId, casoTesteId, input }: { rodadaId: string; casoTesteId: string; input: EnviarResultadosRodadaInput }) =>
+      formFactorApi.registrarResultadosRodada(projetoId, rodadaId, casoTesteId, input),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "form-factor"] }),
+        queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "form-factor-results"] }),
+        queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "test-cases"] }),
       ]);
     },
   });

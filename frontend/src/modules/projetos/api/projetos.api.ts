@@ -22,11 +22,13 @@ import type {
   FiltrosFormFactor,
   FiltrosFormFactorGlobal,
   CriarRodadaFormFactorInput,
+  EnviarResultadosRodadaInput,
   ImportacaoProjeto,
   ImportacaoSdf,
   OpcaoModeloDispositivo,
   Projeto,
   StatusProjeto,
+  RodadaFormFactor,
 } from "../model/projeto";
 
 export type {
@@ -45,6 +47,7 @@ export type {
   FiltrosFormFactor,
   FiltrosFormFactorGlobal,
   CriarRodadaFormFactorInput,
+  EnviarResultadosRodadaInput,
   ImportacaoProjeto,
   ImportacaoSdf,
   LinhaFormFactor,
@@ -52,6 +55,7 @@ export type {
   Projeto,
   SituacaoCasoTeste,
   StatusProjeto,
+  RodadaFormFactor,
 } from "../model/projeto";
 
 export const projetosApi = {
@@ -94,13 +98,13 @@ export const projetosApi = {
 };
 
 export const casosTesteApi = {
-  listar(projetoId: string, page = 1, pageSize = 20, filtros: { responsavelId?: string; associadosAMim?: boolean; semana?: string } = {}) {
+  listar(projetoId: string, page = 1, pageSize = 20, filtros: { responsavelIds?: string[]; associadosAMim?: boolean; semana?: string } = {}) {
     return useMock
       ? Promise.resolve(mockCasosTesteApi.listar(projetoId, page, pageSize, filtros))
       : httpGet<PagedResult<CasoTeste>>(`/api/projetos/${projetoId}/test-cases`, {
         page,
         page_size: pageSize,
-        ...(filtros.responsavelId ? { responsavel_id: filtros.responsavelId } : {}),
+        ...(filtros.responsavelIds?.length ? { responsavel_id: filtros.responsavelIds } : {}),
         ...(filtros.associadosAMim ? { associados_a_mim: "true" } : {}),
         ...(filtros.semana ? { semana: filtros.semana, fuso_horario: Intl.DateTimeFormat().resolvedOptions().timeZone } : {}),
       });
@@ -169,14 +173,14 @@ export const formFactorApi = {
       });
   },
   listar(projetoId: string, filtros: FiltrosFormFactor = {}) {
-    const { page = 1, pageSize = 20, semana, responsavelId, tcId, sdfId, modeloDispositivoId, resultado } = filtros;
+    const { page = 1, pageSize = 20, semana, responsavelIds, tcId, sdfId, modeloDispositivoId, resultado } = filtros;
     return useMock
       ? Promise.resolve(mockFormFactorApi.listar(projetoId, filtros))
       : httpGet<FormFactorMatriz>(`/api/projetos/${projetoId}/form-factor`, {
         page,
         page_size: pageSize,
         ...(semana ? { semana } : {}),
-        ...(responsavelId ? { responsavel_id: responsavelId } : {}),
+        ...(responsavelIds?.length ? { responsavel_id: responsavelIds } : {}),
         ...(tcId ? { tc_id: tcId } : {}),
         ...(sdfId ? { sdf_id: sdfId } : {}),
         ...(modeloDispositivoId ? { modelo_dispositivo_id: modeloDispositivoId } : {}),
@@ -184,14 +188,14 @@ export const formFactorApi = {
       });
   },
   listarResultados(projetoId: string, filtros: FiltrosFormFactor = {}) {
-    const { page = 1, pageSize = 20, semana, responsavelId, tcId, sdfId, modeloDispositivoId, resultado, origem } = filtros;
+    const { page = 1, pageSize = 20, semana, responsavelIds, tcId, sdfId, modeloDispositivoId, resultado, origem } = filtros;
     return useMock
       ? Promise.resolve(mockFormFactorApi.listarResultados(projetoId, filtros))
       : httpGet<FormFactorResultados>(`/api/projetos/${projetoId}/form-factor/results`, {
         page,
         page_size: pageSize,
         ...(semana ? { semana } : {}),
-        ...(responsavelId ? { responsavel_id: responsavelId } : {}),
+        ...(responsavelIds?.length ? { responsavel_id: responsavelIds } : {}),
         ...(tcId ? { tc_id: tcId } : {}),
         ...(sdfId ? { sdf_id: sdfId } : {}),
         ...(modeloDispositivoId ? { modelo_dispositivo_id: modeloDispositivoId } : {}),
@@ -199,10 +203,15 @@ export const formFactorApi = {
         ...(origem ? { origem } : {}),
       });
   },
-  criarRodadaManual(projetoId: string, input: CriarRodadaFormFactorInput) {
+  criarRodada(projetoId: string, input: CriarRodadaFormFactorInput) {
     return useMock
-      ? Promise.resolve(mockFormFactorApi.criarRodadaManual(projetoId, input))
-      : httpPost<FormFactorExecucao>(`/api/projetos/${projetoId}/form-factor/results`, input);
+      ? Promise.resolve(mockFormFactorApi.criarRodada(projetoId, input))
+      : httpPost<RodadaFormFactor>(`/api/projetos/${projetoId}/form-factor/rodadas`, input);
+  },
+  registrarResultadosRodada(projetoId: string, rodadaId: string, casoTesteId: string, input: EnviarResultadosRodadaInput) {
+    return useMock
+      ? Promise.resolve(mockFormFactorApi.registrarResultadosRodada(projetoId, rodadaId, casoTesteId, input))
+      : httpPost<FormFactorExecucao>(`/api/projetos/${projetoId}/form-factor/rodadas/${rodadaId}/test-cases/${casoTesteId}/resultados`, input);
   },
   importar(projetoId: string, arquivo: File) {
     if (useMock) return Promise.resolve(mockFormFactorApi.importar(projetoId, arquivo));

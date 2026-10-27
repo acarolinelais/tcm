@@ -8,6 +8,7 @@ from src.infrastructure.data.models.permissao_model import PerfilPermissaoModel,
 from src.infrastructure.data.models.projeto_model import ProjetoModel
 from src.infrastructure.data.models.projeto_modelo_model import ProjetoModeloModel
 from src.infrastructure.data.models.resultado_form_factor_model import ResultadoFormFactorModel
+from src.infrastructure.data.models.rodada_form_factor_model import RodadaFormFactorModel
 from src.infrastructure.data.models.setor_gerente_model import SetorGerenteModel
 
 __all__ = [
@@ -16,6 +17,7 @@ __all__ = [
     "ImportacaoSdfModel",
     "ExecucaoSdfModel",
     "ResultadoFormFactorModel",
+    "RodadaFormFactorModel",
     "PerfilModel",
     "PerfilPermissaoModel",
     "ProjetoModel",

@@ -11,6 +11,9 @@ class FormFactorLinha:
     sdf_id: str | None
     data_reportada: datetime | None
     resultados: dict[UUID, str]
+    backup_id: UUID | None = None
+    # Rodada mais recente em que o TC ainda aguarda resultados (spec 023, RN-09).
+    rodada_pendente_id: UUID | None = None
 
 
 @dataclass(frozen=True)
@@ -23,6 +26,8 @@ class FormFactorExecucaoLinha:
     data_reportada: datetime
     origem: str
     resultados: dict[UUID, str]
+    rodada_id: UUID | None = None
+    resultados_registrados: bool = True
 
 
 @dataclass(frozen=True)
@@ -63,3 +68,5 @@ class FormFactorExecucaoLinhaGlobal:
     data_reportada: datetime
     origem: str
     resultados: dict[UUID, str]
+    rodada_id: UUID | None = None
+    resultados_registrados: bool = True

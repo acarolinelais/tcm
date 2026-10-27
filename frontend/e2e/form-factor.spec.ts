@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { managerId, modelId, project, projectId, setupProjectSession } from "./projetos-fixtures";
+import { caseItem, managerId, modelId, project, projectId, setupProjectSession } from "./projetos-fixtures";
 
 const s26Id = "model-2";
 const modelos = [{ id: s26Id, nome: "S26 Ultra" }, { id: modelId, nome: "S27 Ultra" }];
@@ -65,6 +65,8 @@ test("mostra a matriz por modelo, troca pelo resultado mais recente após import
 
   await page.getByRole("button", { name: /Filtrar por Responsável/ }).click();
   await page.getByRole("option", { name: "bia.id" }).click();
+  // O filtro aceita várias pessoas e fica aberto: Esc fecha mantendo a escolha.
+  await page.keyboard.press("Escape");
   await expect(page.getByRole("row", { name: /Clock_002/ })).toBeVisible();
   await expect(page.getByRole("row", { name: /Clock_001/ })).toHaveCount(0);
 });
@@ -86,4 +88,47 @@ test("recusa relatório fora do escopo e mantém o resultado exibido", async ({ 
 
   await expect(page.getByText("O projeto está fora do escopo permitido.")).toBeVisible();
   await expect(page.getByRole("row", { name: /Clock_001/ })).toContainText("SDF-KEEP");
+});
+
+test("cria rodada com SDF ID e registra o resultado pela linha do Resumo", async ({ page }) => {
+  await setupProjectSession(page, { permissoes: ["projetos.consultar", "test_cases.consultar", "form_factor.consultar", "form_factor.registrar"] });
+  const elegivel = { ...caseItem, status: "InValidation" };
+  await page.route(`**/api/projetos/${projectId}/test-cases?*`, (route) => route.fulfill({ json: { items: [elegivel], page: 1, page_size: 10, total_count: 1 } }));
+  const roundId = "round-1";
+  const linhaResumo = { caso_teste_id: elegivel.id, tc_id: elegivel.tc_id, responsavel_id: elegivel.responsavel_id, backup_id: elegivel.backup_id, sdf_id: null, data_reportada: null, resultados: {} };
+  let rodadaPendente: string | null = null;
+  let emValidacao = true;
+  await rotasDoProjeto(page, () => {
+    const items = emValidacao ? [{ ...linhaResumo, rodada_pendente_id: rodadaPendente }] : [];
+    return { modelos: [modelos[0]], items, page: 1, page_size: 20, total_count: items.length };
+  });
+  await page.route(`**/api/projetos/${projectId}/form-factor/rodadas`, async (route) => {
+    expect(route.request().method()).toBe("POST");
+    expect(route.request().postDataJSON()).toEqual({ sdf_id: "SDF-ROUND-1" });
+    rodadaPendente = roundId;
+    await route.fulfill({ json: { id: roundId, projeto_id: projectId, sdf_id: "SDF-ROUND-1", created_at: "2026-10-25T10:00:00Z", total_test_cases: 1 } });
+  });
+  await page.route(`**/api/projetos/${projectId}/form-factor/rodadas/${roundId}/test-cases/${elegivel.id}/resultados`, async (route) => {
+    expect(route.request().postDataJSON()).toEqual({ resultados: { [s26Id]: "FAIL" } });
+    // FAIL leva o TC para In Fixes: ele sai do Resumo, que só lista In Validation.
+    emValidacao = false;
+    await route.fulfill({ json: { execucao_id: "execution-1", caso_teste_id: elegivel.id, tc_id: elegivel.tc_id, responsavel_id: elegivel.responsavel_id, sdf_id: "SDF-ROUND-1", data_reportada: "2026-10-25T10:00:00Z", origem: "MANUAL", resultados: { [s26Id]: "FAIL" }, rodada_id: roundId, resultados_registrados: true } });
+  });
+
+  await abrirFormFactor(page);
+  await expect(page.getByText("Test Cases elegíveis")).toHaveCount(0);
+  const linha = page.getByRole("row", { name: /Clock_001/ });
+  await expect(linha).toBeVisible();
+  await expect(linha.getByRole("button", { name: "Registrar resultado Clock_001" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Criar rodada de testes" }).click();
+  await page.getByRole("textbox", { name: "ID do SDF" }).fill("SDF-ROUND-1");
+  await page.getByRole("button", { name: "Criar rodada de testes" }).last().click();
+  const registrar = linha.getByRole("button", { name: "Registrar resultado Clock_001" });
+  await registrar.focus();
+  await registrar.press("Enter");
+  await page.getByRole("button", { name: /Resultado para S26 Ultra/ }).click();
+  await page.getByRole("option", { name: "FAIL" }).click();
+  await page.getByRole("button", { name: "Salvar" }).click();
+  await expect(page.getByText("Resultados registrados.")).toBeVisible();
+  await expect(page.getByRole("row", { name: /Clock_001/ })).toHaveCount(0);
 });

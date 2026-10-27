@@ -1,0 +1,74 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { PerfilAtual } from "@/core/auth/api";
+import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
+import { listarPerfis } from "@/modules/perfis/api/perfis.api";
+import { usuarioApi } from "@/modules/usuarios/api/usuario.api";
+
+import { setoresApi } from "../api/setores.api";
+import { SetoresPage } from "./SetoresPage";
+
+vi.mock("../api/setores.api", () => ({ setoresApi: { listar: vi.fn(), gerentes: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), associar: vi.fn(), desassociar: vi.fn() } }));
+vi.mock("@/modules/perfis/api/perfis.api", () => ({ listarPerfis: vi.fn() }));
+vi.mock("@/modules/usuarios/api/usuario.api", () => ({ usuarioApi: { listar: vi.fn() } }));
+vi.mock("@/shared/lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
+const admin: PerfilAtual = {
+  id: "admin", nome: "Admin", email: "admin@example.com", unidade_id: "unit-1", unidade_nome: "Unidade",
+  perfil_codigo: "ADMIN_UNIDADE", perfil: "Administrador", permissoes: [], times: [], setores_gerenciados: [],
+  time_atual_id: null, tem_multiplos_times: false, senha_alteracao_obrigatoria: false, idioma_preferido: "en",
+};
+const engenharia = { id: "setor-1", unidade_id: "unit-1", nome: "Engenharia", ativo: true };
+const suporte = { id: "setor-2", unidade_id: "unit-1", nome: "Suporte", ativo: false };
+
+function renderPage() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  function ContextOutlet() { return <Outlet context={admin} />; }
+  const router = createMemoryRouter([{ path: "/", element: <ContextOutlet />, children: [{ path: "admin/setores", element: <SetoresPage /> }] }], { initialEntries: ["/admin/setores"] });
+  return render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
+}
+
+describe("SetoresPage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(setoresApi.listar).mockResolvedValue({ items: [engenharia, suporte], page: 1, page_size: DEFAULT_TABLE_PAGE_SIZE, total_count: 2 } as never);
+    vi.mocked(setoresApi.gerentes).mockImplementation(async (id) => (id === "setor-1" ? [{ setor_id: "setor-1", usuario_id: "user-ivan", ativo: true }] : []) as never);
+    vi.mocked(listarPerfis).mockResolvedValue([{ id: "perfil-gerente", codigo: "GERENTE", nome: "Gerente" }] as never);
+    vi.mocked(usuarioApi.listar).mockResolvedValue({ items: [{ id: "user-ivan", nome: "Ivan Moreira", email: "ivan@example.com", ativo: true }], page: 1, page_size: 100, total_count: 1 } as never);
+  });
+
+  it("lista os setores com gerentes, status e ações, 20 por página", async () => {
+    renderPage();
+
+    const linha = await screen.findByRole("row", { name: /Engenharia/ });
+    await waitFor(() => expect(within(linha).getByText("Ivan Moreira")).toBeInTheDocument());
+    expect(within(linha).getByText("Active")).toBeInTheDocument();
+    expect(within(screen.getByRole("row", { name: /Suporte/ })).getByText("Inactive")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Deactivate Engenharia" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Activate Suporte" })).toBeInTheDocument();
+    expect(setoresApi.listar).toHaveBeenCalledWith(1, DEFAULT_TABLE_PAGE_SIZE, undefined, undefined);
+  });
+
+  it("pede confirmação antes de inativar um setor", async () => {
+    vi.mocked(setoresApi.atualizar).mockResolvedValue({ ...engenharia, ativo: false } as never);
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Deactivate Engenharia" }));
+    expect(setoresApi.atualizar).not.toHaveBeenCalled();
+    await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: /Deactivate/ }));
+
+    await waitFor(() => expect(setoresApi.atualizar).toHaveBeenCalledWith("setor-1", { nome: undefined, ativo: false }));
+  });
+
+  it("mostra o estado de erro quando a listagem falha", async () => {
+    vi.mocked(setoresApi.listar).mockRejectedValue(new Error("falhou"));
+    renderPage();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not load sectors. Try again.");
+  });
+});

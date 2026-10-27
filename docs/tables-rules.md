@@ -6,7 +6,7 @@ o `Table` do HeroUI (ADR 0037) pelas composições de `frontend/src/shared/ui`:
 | Arquivo | Papel |
 |---|---|
 | `data-table.tsx` | Moldura, cabeçalho, linhas, seleção e área de estado (`DataTable`) |
-| `data-table-filter.tsx` | Filtro no cabeçalho da coluna (`DataTableFilter`) |
+| `data-table-filter.tsx` | Filtro no cabeçalho da coluna (`DataTableFilter`; seleção múltipla em `DataTableMultiFilter`) |
 | `data-table-pagination.tsx` | Total, itens por página e páginas (`DataTablePagination`) |
 | `data-table-state.tsx` | Carregando, erro, vazio e vazio com filtro (`estadoDaTabela`) |
 | `row-action-button.tsx` · `row-action-icon.ts` | Ações da linha em botões redondos (`RowActions`) |
@@ -41,7 +41,7 @@ não a tela isolada.
 - O `DataTable` ocupa a altura disponível. O cabeçalho é fixo e só o corpo rola, nunca a página inteira.
 - Cabeçalho: Inter 500 14px `text-muted`, **sem caixa alta**, com divisórias entre as colunas. A última coluna
   não tem divisória.
-- Linhas de 40px, texto Inter 400 14px. O texto fica a cerca de 10px da divisória da coluna.
+- Linhas de 40px (Figma), texto Inter 400 14px, inclusive na coluna identificadora (`isRowHeader`). O texto fica a cerca de 10px da divisória da coluna.
 - Uma coluna é o identificador da linha (`isRowHeader`: nome, TC ID). Ela dá o nome acessível da linha.
 - Valor ausente aparece como `—`, nunca como célula vazia, `null` ou `undefined`.
 - Datas com `formatDate`. Números e contagens alinhados à direita, com `tabular-nums`.
@@ -73,6 +73,10 @@ não a tela isolada.
 - O rótulo da coluna é o próprio gatilho do filtro, com a seta de 14px do Figma à direita. Filtro ativo troca
   a seta pelo funil e a cor para `text-accent`. Não crie outro indicador.
 - Toda lista de opções começa com "Todos": `comOpcaoTodos(t("all"), opcoes)` (`shared/lib/opcoes.ts`).
+- Para escolher mais de um valor (ex.: Assignee), use `DataTableMultiFilter`: sem "Todos" (nada marcado desliga o
+  filtro), cada opção marcada se aplica na hora e o menu segue aberto. O cabeçalho do menu tem "‹ Rótulo", que fecha,
+  e "Limpar", que desmarca tudo. Esc só fecha, sem perder a escolha. A busca esconde opções sem desmarcar as escolhidas.
+  No servidor, a lista vai como o mesmo parâmetro repetido (`?responsavel_id=a&responsavel_id=b`).
 - Coluna de data filtra pelo calendário do HeroUI. O valor é o dia em `AAAA-MM-DD`, comparado com a data da
   linha no fuso do navegador, nunca por texto na data formatada.
 - Filtro por semana usa o `WeekPickerHero` (`shared/ui/week-picker-hero.tsx`): botão do Figma e calendário com
@@ -101,7 +105,7 @@ no lugar das linhas:
 
 - Ficam na última coluna, cujo cabeçalho usa `t("actions")`. São **botões redondos de ícone, lado a lado e
   sempre visíveis** (`RowActions`), para todos os perfis. Não use menu "…".
-- Cada botão é um círculo cinza de 19px com ícone de traço 1px (`figma-icons.tsx` ou lucide com
+- Cada botão é um círculo cinza (`#E4E4E7`) de 19px com ícone de traço 1,25px (`figma-icons.tsx` ou lucide com
   `rowActionIconProps`), dentro de um alvo de 24px. O tooltip mostra o rótulo.
 - O nome acessível é "<ação> <identificador>" (ex.: "Transferir ao backup Clock_000001"). O rótulo é um verbo.
 - Ações destrutivas ou de inativação usam `destructive: true`, ficam por último e aparecem em `danger`.

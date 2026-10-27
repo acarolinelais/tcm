@@ -10,7 +10,7 @@ from src.domain.entities.caso_teste import (
 )
 
 
-def criar_caso() -> CasoTeste:
+def criar_caso(status: StatusCasoTeste = StatusCasoTeste.TO_DO) -> CasoTeste:
     return CasoTeste(
         unidade_id=uuid4(),
         projeto_id=uuid4(),
@@ -20,6 +20,7 @@ def criar_caso() -> CasoTeste:
         responsavel_id=uuid4(),
         backup_id=uuid4(),
         situation=SituacaoCasoTeste.NEW,
+        status=status,
     )
 
 
@@ -50,6 +51,16 @@ def test_responsavel_atualiza_somente_seus_campos_permitidos():
     assert caso.backup_id == backup_id
 
 
+def test_responsavel_atualiza_tc_situation_quando_informada():
+    caso = criar_caso()
+
+    caso.atualizar_campos_do_responsavel(
+        caso.status, caso.category, caso.difficulty, SituacaoCasoTeste.WITHOUT_CHANGES
+    )
+
+    assert caso.situation == SituacaoCasoTeste.WITHOUT_CHANGES
+
+
 def test_gestao_atualiza_situation_e_status():
     caso = criar_caso()
 
@@ -66,15 +77,49 @@ def test_gestao_atualiza_situation_e_status():
     assert caso.status == StatusCasoTeste.IN_REVIEW
 
 
-def test_status_segue_a_ordem_do_progresso_com_in_validation_antes_de_pass():
+def test_status_inclui_conclusao_e_cancelamento():
     assert list(StatusCasoTeste) == [
         "To-Do",
         "InProgress",
         "InReview",
         "InValidation",
-        "Pass",
-        "Fail",
+        "Done",
+        "InFixes",
+        "Cancelled",
     ]
+
+
+def test_resultado_fail_move_tc_para_correcao_e_pass_completo_para_done():
+    caso = criar_caso(status=StatusCasoTeste.IN_VALIDATION)
+    modelos = {uuid4(), uuid4()}
+
+    caso.registrar_resultado_form_factor({next(iter(modelos)): "FAIL"}, modelos)
+    assert caso.status is StatusCasoTeste.IN_FIXES
+
+    caso.atualizar_campos_do_responsavel(
+        StatusCasoTeste.IN_VALIDATION, caso.category, caso.difficulty
+    )
+    caso.registrar_resultado_form_factor({modelo_id: "PASS" for modelo_id in modelos}, modelos)
+    assert caso.status is StatusCasoTeste.DONE
+
+
+def test_resultado_parcial_mantem_tc_em_validacao():
+    caso = criar_caso(status=StatusCasoTeste.IN_VALIDATION)
+    modelos = {uuid4(), uuid4()}
+
+    caso.registrar_resultado_form_factor({next(iter(modelos)): "PASS"}, modelos)
+
+    assert caso.status is StatusCasoTeste.IN_VALIDATION
+
+
+@pytest.mark.parametrize("status", [StatusCasoTeste.CANCELLED, StatusCasoTeste.DONE])
+def test_resultado_de_rodada_nao_traz_tc_fora_da_validacao_de_volta_ao_fluxo(status):
+    caso = criar_caso(status=status)
+    modelos = {uuid4()}
+
+    caso.registrar_resultado_form_factor({next(iter(modelos)): "FAIL"}, modelos)
+
+    assert caso.status is status
 
 
 @pytest.mark.parametrize("situation", ["To-Do", "Changed", ""])

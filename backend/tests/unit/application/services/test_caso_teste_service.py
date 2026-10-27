@@ -324,13 +324,14 @@ async def test_atualizar_caso_proprio_permite_campos_do_responsavel(contexto):
             category=CategoriaCasoTeste.B,
             difficulty=DificuldadeCasoTeste.MEDIUM,
             status=StatusCasoTeste.IN_PROGRESS,
+            situation=SituacaoCasoTeste.NEW_STEP,
         ),
     )
 
     assert resposta.category is CategoriaCasoTeste.B
     assert resposta.difficulty is DificuldadeCasoTeste.MEDIUM
     assert resposta.status is StatusCasoTeste.IN_PROGRESS
-    assert resposta.situation is SituacaoCasoTeste.NEW
+    assert resposta.situation is SituacaoCasoTeste.NEW_STEP
     assert resposta.created_at == caso.created_at
     casos.atualizar.assert_awaited_once_with(caso)
     uow.commit.assert_awaited_once()
@@ -378,11 +379,127 @@ async def test_responsavel_nao_edita_atribuicao_nem_caso_de_outra_pessoa(context
         await service.atualizar(
             responsavel,
             caso.id,
-            AtualizarCasoTesteRequest(situation=SituacaoCasoTeste.NEW_STEP),
+            AtualizarCasoTesteRequest(backup_id=uuid4()),
         )
     assert caso.situation is SituacaoCasoTeste.NEW
     casos.atualizar.assert_not_awaited()
     uow.commit.assert_not_awaited()
+
+
+def _dev_e_caso(admin, projeto, time, status, *, vinculo="responsavel"):
+    dev = UsuarioAutenticado(
+        uuid4(),
+        admin.unidade_id,
+        "USUARIO_PADRAO",
+        permissoes=frozenset({"test_cases.consultar"}),
+        time_ids=(time.id,),
+    )
+    principal = dev.id if vinculo == "responsavel" else uuid4()
+    backup = dev.id if vinculo == "backup" else uuid4()
+    caso = CasoTeste(
+        admin.unidade_id,
+        projeto.id,
+        "Clock_001",
+        CategoriaCasoTeste.A,
+        DificuldadeCasoTeste.LOW,
+        principal,
+        backup,
+        SituacaoCasoTeste.NEW,
+        status,
+    )
+    return dev, caso
+
+
+@pytest.mark.parametrize(
+    ("atual", "novo"),
+    [
+        ("To-Do", "InProgress"),
+        ("InProgress", "InReview"),
+        ("InReview", "InValidation"),
+        ("InFixes", "InReview"),
+        ("InValidation", "Cancelled"),
+        ("Done", "Cancelled"),
+    ],
+)
+async def test_responsavel_segue_o_ciclo_de_status(contexto, atual, novo):
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    dev, caso = _dev_e_caso(admin, projeto, time, atual)
+    casos.obter_por_id.return_value = caso
+
+    resposta = await service.atualizar(dev, caso.id, AtualizarCasoTesteRequest(status=novo))
+
+    assert resposta.status == novo
+    uow.commit.assert_awaited_once()
+
+
+@pytest.mark.parametrize(
+    ("atual", "novo"),
+    [
+        ("To-Do", "InReview"),
+        ("InProgress", "InValidation"),
+        ("InFixes", "InValidation"),
+        ("InValidation", "Done"),
+        ("InValidation", "InFixes"),
+        ("Cancelled", "InProgress"),
+    ],
+)
+async def test_responsavel_nao_pula_etapas_nem_define_resultado(contexto, atual, novo):
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    dev, caso = _dev_e_caso(admin, projeto, time, atual)
+    casos.obter_por_id.return_value = caso
+
+    with pytest.raises(ConflictException, match="transição"):
+        await service.atualizar(dev, caso.id, AtualizarCasoTesteRequest(status=novo))
+
+    assert caso.status == atual
+    uow.commit.assert_not_awaited()
+
+
+async def test_backup_e_dev_sem_vinculo_nao_mudam_status(contexto):
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    backup, caso = _dev_e_caso(admin, projeto, time, "InReview", vinculo="backup")
+    casos.obter_por_id.return_value = caso
+
+    with pytest.raises(ForbiddenException):
+        await service.atualizar(backup, caso.id, AtualizarCasoTesteRequest(status="InValidation"))
+    alheio, _ = _dev_e_caso(admin, projeto, time, "InReview", vinculo="nenhum")
+    with pytest.raises(ForbiddenException):
+        await service.atualizar(alheio, caso.id, AtualizarCasoTesteRequest(status="Cancelled"))
+    assert caso.status is StatusCasoTeste.IN_REVIEW
+    uow.commit.assert_not_awaited()
+
+
+async def test_backup_exclui_tc_atribuido(contexto):
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    backup, caso = _dev_e_caso(admin, projeto, time, "InReview", vinculo="backup")
+    casos.obter_por_id.return_value = caso
+
+    resposta = await service.atualizar(
+        backup, caso.id, AtualizarCasoTesteRequest(status="Cancelled")
+    )
+
+    assert resposta.status is StatusCasoTeste.CANCELLED
+    uow.commit.assert_awaited_once()
+
+
+async def test_kp_no_escopo_aprova_pr_movendo_para_validacao(contexto):
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    kp = UsuarioAutenticado(
+        uuid4(),
+        admin.unidade_id,
+        "KP",
+        permissoes=frozenset({"test_cases.consultar", "test_cases.gerenciar"}),
+        time_ids=(time.id,),
+    )
+    _, caso = _dev_e_caso(admin, projeto, time, "InReview")
+    casos.obter_por_id.return_value = caso
+
+    resposta = await service.atualizar(
+        kp, caso.id, AtualizarCasoTesteRequest(status="InValidation")
+    )
+
+    assert resposta.status is StatusCasoTeste.IN_VALIDATION
+    uow.commit.assert_awaited_once()
 
 
 async def test_gestor_pode_reatribuir_caso_a_membros_ativos(contexto):
@@ -433,12 +550,12 @@ async def test_gestor_altera_situation_e_status(contexto):
         admin,
         caso.id,
         AtualizarCasoTesteRequest(
-            situation=SituacaoCasoTeste.NEW_STEP, status=StatusCasoTeste.PASS
+            situation=SituacaoCasoTeste.NEW_STEP, status=StatusCasoTeste.DONE
         ),
     )
 
     assert resposta.situation is SituacaoCasoTeste.NEW_STEP
-    assert resposta.status is StatusCasoTeste.PASS
+    assert resposta.status is StatusCasoTeste.DONE
     membros.obter_por_time_e_usuario.assert_not_awaited()
     uow.commit.assert_awaited_once()
 

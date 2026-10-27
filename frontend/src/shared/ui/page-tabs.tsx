@@ -20,7 +20,9 @@ interface PageTabsProps {
 // Abas do Figma (TCM 2070:1476): ativa Inter 500 18px #2D72E4 com sublinhado de 1.5px; inativa Inter 400 `text-muted`;
 // linha de base #ECEFF2. A variante "secondary" do HeroUI só estiliza a lista quando ela é filha direta do Tabs; aqui
 // ela divide a barra com as ações, então o sublinhado e o fundo transparente vão nas classes.
-const classeAba = "h-auto w-auto rounded-none px-0.5 pb-2 pt-0 text-[18px] font-normal leading-[25px] text-muted data-[selected=true]:font-medium data-[selected=true]:text-[#2D72E4]";
+// O anel de foco do HeroUI fica por fora da aba e a área de rolagem da lista o corta (sobrava só uma linha vertical):
+// aqui ele é desenhado por dentro, inteiro.
+const classeAba = "h-auto w-auto rounded-none px-0.5 pb-2 pt-0 text-[18px] font-normal leading-[25px] text-muted data-[selected=true]:font-medium data-[selected=true]:text-[#2D72E4] data-[focus-visible=true]:rounded-md data-[focus-visible=true]:outline-none data-[focus-visible=true]:[box-shadow:inset_0_0_0_2px_var(--focus)]";
 const classeIndicador = "top-auto bottom-0 h-[1.5px] rounded-none bg-[#2D72E4] shadow-none";
 
 /** Abas de página (spec 022) sobre o `Tabs` do HeroUI, com espaço para as ações da aba na mesma barra. */

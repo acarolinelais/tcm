@@ -185,7 +185,7 @@ async def test_casos_combinam_associacao_e_filtro_responsavel_por_and(contexto):
         projeto.id,
         1,
         20,
-        responsavel_id=c.colega_id,
+        responsavel_ids=[c.colega_id],
         associado_usuario_id=c.dev_id,
     )
     vazia = await c.casos.listar_por_projeto(
@@ -193,7 +193,7 @@ async def test_casos_combinam_associacao_e_filtro_responsavel_por_and(contexto):
         projeto.id,
         1,
         20,
-        responsavel_id=c.terceiro_id,
+        responsavel_ids=[c.terceiro_id],
         associado_usuario_id=c.dev_id,
     )
 
@@ -311,10 +311,10 @@ async def test_casos_filtram_semana_antes_da_paginacao_e_respeitam_limites(conte
     dentro = []
     for indice, (status, data) in enumerate(
         [
-            ("Pass", inicio),
-            ("Pass", fim - timedelta(seconds=1)),
-            ("Pass", inicio - timedelta(seconds=1)),
-            ("Pass", fim),
+            ("Done", inicio),
+            ("Done", fim - timedelta(seconds=1)),
+            ("Done", inicio - timedelta(seconds=1)),
+            ("Done", fim),
             ("To-Do", inicio),
         ]
     ):
@@ -337,7 +337,7 @@ async def test_casos_filtram_semana_antes_da_paginacao_e_respeitam_limites(conte
         update(CasoTesteModel)
         .where(CasoTesteModel.id == colega.id)
         .values(
-            status="Pass",
+            status="Done",
             updated_at=inicio,
         )
     )

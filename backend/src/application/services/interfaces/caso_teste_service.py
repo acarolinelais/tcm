@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Protocol
 from uuid import UUID
 
@@ -21,7 +22,7 @@ class CasoTesteService(Protocol):
         projeto_id: UUID,
         page: int,
         page_size: int,
-        responsavel_id: UUID | None = None,
+        responsavel_ids: Sequence[UUID] | None = None,
         associados_a_mim: bool = False,
         semana: str | None = None,
         fuso_horario: str = "UTC",

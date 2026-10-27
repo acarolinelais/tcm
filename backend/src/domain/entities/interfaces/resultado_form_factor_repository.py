@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Protocol
 from uuid import UUID
@@ -69,7 +70,7 @@ class ResultadoFormFactorRepository(RepositoryBase[ResultadoFormFactor], Protoco
         page_size: int,
         inicio: datetime | None = None,
         fim: datetime | None = None,
-        responsavel_id: UUID | None = None,
+        responsavel_ids: Sequence[UUID] | None = None,
         tc_id: str | None = None,
         sdf_id: str | None = None,
         modelo_dispositivo_id: UUID | None = None,
@@ -84,7 +85,7 @@ class ResultadoFormFactorRepository(RepositoryBase[ResultadoFormFactor], Protoco
         page_size: int,
         inicio: datetime | None = None,
         fim: datetime | None = None,
-        responsavel_id: UUID | None = None,
+        responsavel_ids: Sequence[UUID] | None = None,
         tc_id: str | None = None,
         sdf_id: str | None = None,
         modelo_dispositivo_id: UUID | None = None,

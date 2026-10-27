@@ -38,9 +38,9 @@ function renderPage(perfil = kp) {
   return render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
 }
 
+// Ações da linha são botões redondos sempre visíveis, com o nome "<ação> <modelo>".
 async function acao(user: ReturnType<typeof userEvent.setup>, modelo: string, nome: string) {
-  await user.click(await screen.findByRole("button", { name: `Actions for ${modelo}` }));
-  await user.click(screen.getByRole("menuitem", { name: nome }));
+  await user.click(await screen.findByRole("button", { name: `${nome} ${modelo}` }));
 }
 
 describe("ModelosDispositivoPage", () => {
@@ -135,7 +135,7 @@ describe("ModelosDispositivoPage", () => {
 
     await acao(user, "S27 Ultra", "Deactivate");
     expect(modelosDispositivoApi.inativar).not.toHaveBeenCalled();
-    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Deactivate" }));
+    await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Deactivate" }));
     await waitFor(() => expect(modelosDispositivoApi.inativar).toHaveBeenCalledWith("model-1"));
 
     await acao(user, "Tab S11", "Activate");
@@ -149,7 +149,7 @@ describe("ModelosDispositivoPage", () => {
     vi.mocked(modelosDispositivoApi.listar).mockResolvedValue(pagina([]));
 
     await user.click(screen.getByRole("button", { name: "Filter by Status" }));
-    await user.click(screen.getByRole("menuitemradio", { name: "Inactive" }));
+    await user.click(await screen.findByRole("option", { name: "Inactive" }));
 
     await waitFor(() => expect(modelosDispositivoApi.listar).toHaveBeenLastCalledWith(1, DEFAULT_TABLE_PAGE_SIZE, { ativo: false }));
     expect(await screen.findByText("No models match the selected filters.")).toBeInTheDocument();

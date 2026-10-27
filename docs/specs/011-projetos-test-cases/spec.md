@@ -21,7 +21,7 @@ Permitir que gerente ou KP crie projetos vinculados a um time e cadastre Test Ca
 - Como **usuário com permissão para importar relatórios SDF**, quero importar a planilha exportada pelo SDF para consultar o resultado de cada Test Case em cada modelo na aba Form Factor.
 - Como **gerente ou KP**, quero atribuir cada Test Case a uma pessoa responsável e a uma pessoa de backup do time.
 - Como **gerente ou KP**, quero gerenciar todos os Test Cases dos times dentro do meu escopo.
-- Como **membro do time responsável principal por um Test Case**, quero editar o Status, Category e Difficulty desse caso e transferi-lo para meu backup.
+- Como **membro do time responsável principal por um Test Case**, quero editar o Status, TC Situation, Category e Difficulty desse caso e transferi-lo para meu backup.
 
 ## Regras de negócio
 
@@ -42,7 +42,7 @@ Permitir que gerente ou KP crie projetos vinculados a um time e cadastre Test Ca
 - RN-13: O TC ID não pode se repetir dentro do mesmo projeto. Se já estiver cadastrado, o sistema recusa o cadastro ou a importação duplicada e informa que o identificador já pertence ao projeto.
 - RN-14: As datas de criação e atualização são mantidas pelo sistema; uma edição atualiza a data de atualização.
 - RN-15: A autorização combina permissão do perfil com o escopo organizacional. Administrador da unidade tem todas as permissões e atua em qualquer time da unidade; gerente atua nos times dos setores que gerencia; KP atua nos times em que tem participação ativa. Esses três perfis podem gerenciar todos os campos e atribuições dos Test Cases dentro do respectivo escopo.
-- RN-16: O responsável principal pode editar somente o Status, Category e Difficulty dos Test Cases atribuídos a ele. Não pode editar esses campos nos casos de outras pessoas nem gerenciar os demais campos do caso.
+- RN-16: O responsável principal pode editar somente o Status, TC Situation, Category e Difficulty dos Test Cases atribuídos a ele (TC Situation incluída em 2026-10-27). Não pode editar esses campos nos casos de outras pessoas nem gerenciar os demais campos do caso.
 - RN-17: O responsável principal pode transferir seu Test Case para o backup associado ao caso. A transferência atualiza o responsável principal para o backup e deixa vazio o campo de backup.
 - RN-18: O projeto tem dois fluxos de importação independentes, com finalidades e dados distintos: a planilha de Test Cases cria e gerencia o trabalho do time; uma planilha exportada posteriormente pelo SDF registra os resultados dos Test Cases executados e alimenta a aba Form Factor. Importar resultados não altera os dados de gerenciamento dos Test Cases.
 - RN-19: A importação do relatório SDF é permitida a qualquer usuário cujo perfil tenha a permissão específica para importar relatórios no escopo do projeto. Não é restrita por padrão a gerente ou KP.
@@ -58,6 +58,7 @@ Permitir que gerente ou KP crie projetos vinculados a um time e cadastre Test Ca
   - com problemas na planilha, a criação fica bloqueada e a ação passa a ser "Conferir planilha": ela verifica também responsável e backup no time escolhido e mostra todos os problemas juntos, sem criar nada.
 - RN-23: Ao concluir a importação da planilha de Test Cases, o sistema exibe uma notificação de sucesso informando que a planilha foi importada, o nome do projeto criado e quantos Test Cases foram criados.
 - RN-24: A aba Test Cases oferece o mesmo seletor de semana no canto superior direito do cabeçalho do card. Ele considera a Data final já exibida para casos com Status `Pass` e o fuso horário do navegador; casos sem Data final não aparecem enquanto uma semana está selecionada. Limpar o filtro restaura a consulta sem restrição de semana. A seleção de semana é independente da aba Form Factor, combina com os demais filtros e retorna à primeira página.
+- RN-25: Os filtros de valores fechados da aba Test Cases (Status, TC Situation, Assignee, Difficulty, Category e Backup) aceitam mais de um valor: aparecem os casos que batem com qualquer um deles. No Backup, "Sem backup" seleciona os casos sem backup. TC ID (texto) e End date (dia) continuam com um valor. O filtro de Assignee é aplicado no servidor; os demais, na página carregada. Cada pessoa marcada se aplica na hora, sem fechar o filtro; o cabeçalho do filtro oferece "Limpar" para desmarcar todas, e Esc só fecha o filtro, mantendo a escolha. A API recebe o parâmetro `responsavel_id` repetido, um por pessoa (incluída em 2026-10-27).
 
 ## Critérios de aceite
 
@@ -78,7 +79,7 @@ Permitir que gerente ou KP crie projetos vinculados a um time e cadastre Test Ca
 - **CA-13 (falha):** Dado um TC ID já cadastrado no projeto, quando uma pessoa tenta cadastrá-lo manualmente ou por importação, então o sistema recusa o duplicado e informa que o identificador já existe naquele projeto.
 - **CA-14 (falha):** Dada uma planilha sem valor preenchido de App ou de One UI, ou com linhas inválidas nos demais campos, quando a pessoa tenta criar um projeto por importação, então o sistema informa os campos, linhas e motivos inválidos e não cria registros inválidos.
 - **CA-15:** Dado um administrador da unidade, gerente ou KP com escopo sobre o time do projeto, quando gerencia um Test Case, então pode editar seus campos e atribuições.
-- **CA-16:** Dado um membro como responsável principal, quando edita um Test Case atribuído a si, então pode alterar somente Status, Category e Difficulty; quando tenta editar outro campo, inclusive o TC Situation, ou caso atribuído a outra pessoa, a operação é recusada.
+- **CA-16:** Dado um membro como responsável principal, quando edita um Test Case atribuído a si, então pode alterar somente Status, TC Situation, Category e Difficulty; quando tenta editar outro campo, como Assignee ou Backup, ou caso atribuído a outra pessoa, a operação é recusada. (Atualizado em 2026-10-27: a TC Situation passou a ser editável pelo responsável.)
 - **CA-17:** Dado um membro como responsável principal e um backup atribuído ao mesmo caso, quando transfere o caso, então o backup passa a ser o responsável principal e o campo de backup fica vazio.
 - **CA-18 (falha):** Dado um usuário sem permissão ou fora do escopo do time, quando tenta consultar, criar, editar ou atribuir Test Cases do projeto, então a operação é recusada sem revelar dados fora do escopo.
 - **CA-19:** Dado um projeto com Test Cases, quando um usuário com permissão importa uma planilha de relatório SDF válida, então o sistema cruza os dados pelo TC ID e apresenta na aba Form Factor o SDF ID, os resultados reportados por modelo e a data disponível no relatório, sem alterar os dados de gerenciamento dos Test Cases.
@@ -129,3 +130,4 @@ Permitir que gerente ou KP crie projetos vinculados a um time e cadastre Test Ca
 - **CA-34:** Dado um projeto, quando uma pessoa autorizada altera o nome, App, One UI, time e modelos válidos, então os dados atualizados são persistidos e o nome não é recalculado quando App ou One UI mudar depois.
 - **CA-35 (falha):** Dado um projeto com Test Cases ativos, quando o time de destino não contém todos os responsáveis e backups ativos, então a edição é recusada sem alterar o projeto nem suas associações de modelos.
 - **CA-36 (falha):** Dado um modelo inativo, inexistente ou de outra unidade, quando é enviado na edição, então a operação é recusada sem alterar o projeto.
+- **CA-37:** Dado um projeto com casos de três pessoas, quando o Assignee filtra duas delas, então aparecem só os casos dessas duas e a paginação volta para a página 1; quando a pessoa usa "Limpar", então o filtro se desliga e todos os casos voltam (incluído em 2026-10-27).
