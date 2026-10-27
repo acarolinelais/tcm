@@ -12,7 +12,6 @@ import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { comOpcaoTodos } from "@/shared/lib/opcoes";
 import { toast } from "@/shared/lib/toast";
 import { formatarDiaIso } from "@/shared/lib/utils";
-import { AlertConfirm } from "@/shared/ui/alert-confirm";
 import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
 import { DataTableFilter } from "@/shared/ui/data-table-filter";
 import { DataTablePagination } from "@/shared/ui/data-table-pagination";
@@ -34,7 +33,6 @@ import { ProjetoSwitcher } from "./components/ProjetoSwitcher";
 import { statusChipTons } from "./components/status-chip-estilos";
 import { ProjetosEntradaPage } from "./ProjetosEntradaPage";
 import { useCasosTeste, useCriarRodadaFormFactor, useFormFactor, useFormFactorResultados, useTransferirCasoTeste } from "./hooks/useProjetos";
-import { useTransferirEmLote } from "./hooks/useTransferirEmLote";
 
 import { casosTesteApi, formFactorApi, projetosApi, type CasoTeste, type LinhaFormFactor } from "./api/projetos.api";
 import { CATEGORIAS_CASO_TESTE as categorias, DIFICULDADES_CASO_TESTE as dificuldades, ROTULO_DIFICULDADE, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, opcoesRotuladas } from "./model/projeto";
@@ -42,8 +40,6 @@ import { CATEGORIAS_CASO_TESTE as categorias, DIFICULDADES_CASO_TESTE as dificul
 type CampoInline = "category" | "difficulty" | "situation" | "status" | "responsavel_id" | "backup_id";
 type Aba = "cases" | "form-factor";
 const FILTROS_CASO_VAZIOS = { tcId: "", status: "", situation: "", assignee: "", difficulty: "", category: "", endDate: "", backup: "" };
-
-const SEM_SELECAO: ReadonlySet<string> = new Set();
 
 export function ProjetoDetalhePage() {
   const { projetoId = "" } = useParams();
@@ -71,15 +67,7 @@ function ProjetoDetalhe() {
   const [linhaManual, setLinhaManual] = useState<Pick<LinhaFormFactor, "caso_teste_id" | "tc_id"> | null>(null);
   const [semanaCasos, setSemanaCasos] = useState("");
   const [arquivoSdf, setArquivoSdf] = useState<File | null>(null);
-  const [selecao, setSelecao] = useState<{ contexto: string; chaves: ReadonlySet<string> }>({ contexto: "", chaves: SEM_SELECAO });
-  const [confirmarLote, setConfirmarLote] = useState(false);
   const inputSdf = useRef<HTMLInputElement>(null);
-
-  // A seleção vale para a página, os filtros, a semana e a aba em que foi feita (spec 022, RN-10): mudou um deles,
-  // ela deixa de valer, sem precisar de efeito para zerá-la.
-  const contextoSelecao = JSON.stringify([aba, pagina, tamanhoPagina, filtrosCaso, semanaCasos]);
-  const selecionados = selecao.contexto === contextoSelecao ? selecao.chaves : SEM_SELECAO;
-  const setSelecionados = (chaves: ReadonlySet<string>) => setSelecao({ contexto: contextoSelecao, chaves });
 
   const admin = perfil.perfil_codigo === "ADMIN_UNIDADE";
   const dev = perfil.perfil_codigo === "USUARIO_PADRAO";
@@ -95,7 +83,6 @@ function ProjetoDetalhe() {
   const resultados = useFormFactor(projetoId, { page: pagina, pageSize: tamanhoPagina, semana: semana || undefined, responsavelId: assigneeFormFactor || undefined, tcId: filtrosResumo.tcId || undefined, sdfId: filtrosResumo.sdfId || undefined, modeloDispositivoId: filtrosResumo.modeloDispositivoId || undefined, resultado: filtrosResumo.resultado || undefined }, perfil, projeto.isSuccess && podeConsultarFormFactor && aba === "form-factor" && visaoFormFactor === "summary");
   const historico = useFormFactorResultados(projetoId, { page: pagina, pageSize: tamanhoPagina, semana: semana || undefined, tcId: filtrosResultados.tcId || undefined, sdfId: filtrosResultados.sdfId || undefined, responsavelId: filtrosResultados.responsavelId || undefined, origem: filtrosResultados.origem ? filtrosResultados.origem as "SDF" | "MANUAL" : undefined, modeloDispositivoId: filtrosResultados.modeloDispositivoId || undefined, resultado: filtrosResultados.resultado || undefined }, perfil, projeto.isSuccess && podeConsultarFormFactor && aba === "form-factor" && visaoFormFactor === "results");
   const criarRodada = useCriarRodadaFormFactor(projetoId);
-  const transferirLote = useTransferirEmLote(projetoId);
 
   const updateMemberCase = useMutation({
     mutationFn: ({ id, field, value }: { id: string; field: CampoInline; value: string }) => casosTesteApi.atualizar(id, { [field]: value } as Pick<CasoTeste, typeof field>),
@@ -167,18 +154,6 @@ function ProjetoDetalhe() {
     setDrawerCasoAberto(true);
   }
 
-  function transferirSelecionados() {
-    const escolhidos = casosFiltrados.filter((caso) => selecionados.has(caso.id));
-    transferirLote.mutate(escolhidos, {
-      onSuccess: ({ transferidos, falhas }) => {
-        setConfirmarLote(false);
-        setSelecionados(SEM_SELECAO);
-        if (falhas.length) toast.error(t("bulkTransferPartial", { transferred: transferidos, failed: falhas.length, ids: falhas.map((falha) => falha.tcId).join(", ") }));
-        else toast.success(t("bulkTransferSuccess", { count: transferidos }));
-      },
-    });
-  }
-
   if (!podeConsultar || (!podeConsultarCasos && !podeConsultarFormFactor && !podeImportarSdf)) return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
   if (dev && !podeConsultarCasos) return <p role="alert">{t("permissionDenied")}</p>;
   if (projeto.isError) return <p role="alert" className="p-6 text-sm">{t("projectNotFound")}</p>;
@@ -191,7 +166,11 @@ function ProjetoDetalhe() {
     ? <InlineSelect aria-label={`${rotulo} ${caso.tc_id}`} value={valor} options={opcoes} onChange={(value) => updateMemberCase.mutate({ id: caso.id, field: campo, value })}>{exibicao}</InlineSelect>
     : exibicao;
 
+  const primeiraDaPagina = (pagina - 1) * tamanhoPagina;
+  // O filtro é local: o mesmo caso muda de posição sem mudar de identidade, então o número depende da ordem.
+  const ordemDosCasos = casosFiltrados.map((caso) => caso.id).join();
   const colunas: DataTableColumn<CasoTeste>[] = [
+    { id: "numero", header: "", className: "w-12 text-right tabular-nums text-muted after:hidden", cell: (caso) => String(primeiraDaPagina + casosFiltrados.indexOf(caso) + 1).padStart(2, "0") },
     { id: "tcId", isRowHeader: true, header: <DataTableFilter label={t("tcId")} value={filtrosCaso.tcId} onChange={(value) => alterarFiltroCaso("tcId", value)} />, cell: (caso) => caso.tc_id },
     {
       id: "status",
@@ -265,10 +244,7 @@ function ProjetoDetalhe() {
         tabs={[...(podeConsultarCasos ? [{ id: "cases", label: t("testCasesTab") }] : []), ...(podeConsultarFormFactor || podeImportarSdf ? [{ id: "form-factor", label: t("formFactor") }] : [])]}
         selectedKey={aba}
         onSelectionChange={(chave) => trocarAba(chave as Aba)}
-        actions={aba === "cases" ? (selecionados.size > 0 || podeGerenciarCasos) && <>
-          {selecionados.size > 0 && <HeroButton variant="outline" size="sm" onPress={() => setConfirmarLote(true)}><TransferIcon />{t("bulkTransfer", { count: selecionados.size })}</HeroButton>}
-          {podeGerenciarCasos && <HeroButton variant="primary" size="sm" onPress={() => abrirCaso(null)}><Plus aria-hidden="true" className="size-4" />{t("newTestCase")}</HeroButton>}
-        </> : podeImportarSdf && <><input ref={inputSdf} className="sr-only" type="file" accept=".xls,.xlsx" tabIndex={-1} aria-hidden="true" onChange={(event) => { setArquivoSdf(event.target.files?.[0] ?? null); event.target.value = ""; }} /><HeroButton size="sm" variant="outline" className="h-auto min-h-8 whitespace-normal text-left leading-tight" onPress={() => inputSdf.current?.click()}><UploadCloud aria-hidden="true" className="size-4 shrink-0" />{arquivoSdf?.name ?? t("importSdf")}</HeroButton>{arquivoSdf && <HeroButton size="sm" variant="primary" isDisabled={importReport.isPending} onPress={() => importReport.mutate()}>{importReport.isPending ? t("saving") : t("import")}</HeroButton>}</>}
+        actions={aba === "cases" ? podeGerenciarCasos && <HeroButton variant="primary" size="sm" onPress={() => abrirCaso(null)}><Plus aria-hidden="true" className="size-4" />{t("newTestCase")}</HeroButton> : podeImportarSdf && <><input ref={inputSdf} className="sr-only" type="file" accept=".xls,.xlsx" tabIndex={-1} aria-hidden="true" onChange={(event) => { setArquivoSdf(event.target.files?.[0] ?? null); event.target.value = ""; }} /><HeroButton size="sm" variant="outline" className="h-auto min-h-8 whitespace-normal text-left leading-tight" onPress={() => inputSdf.current?.click()}><UploadCloud aria-hidden="true" className="size-4 shrink-0" />{arquivoSdf?.name ?? t("importSdf")}</HeroButton>{arquivoSdf && <HeroButton size="sm" variant="primary" isDisabled={importReport.isPending} onPress={() => importReport.mutate()}>{importReport.isPending ? t("saving") : t("import")}</HeroButton>}</>}
       >
         {podeConsultarCasos && <PageTabPanel id="cases" className="flex min-h-0 flex-1 flex-col p-0">
           <DataTable
@@ -276,15 +252,8 @@ function ProjetoDetalhe() {
             columns={colunas}
             items={casosFiltrados}
             state={estadoCasos}
-            selection={{
-              selectedKeys: selecionados,
-              onChange: setSelecionados,
-              rowLabel: t("selectTestCase"),
-              selectAllLabel: t("selectAllTestCases"),
-              disabledReason: (caso) => caso.responsavel_id !== responsavelAtual ? t("selectionNotAssignee") : !caso.backup_id ? t("selectionNoBackup") : undefined,
-            }}
             pagination={<DataTablePagination page={pagina} pageSize={tamanhoPagina} totalCount={casos.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />}
-            rowDependencies={[t, opcoes, identificadoresMembros, opcoesMembros, podeGerenciarCasos, responsavelAtual, mostrarAcoes, transfer.isPending]}
+            rowDependencies={[t, opcoes, identificadoresMembros, opcoesMembros, podeGerenciarCasos, responsavelAtual, mostrarAcoes, transfer.isPending, primeiraDaPagina, ordemDosCasos]}
           />
         </PageTabPanel>}
         {(podeConsultarFormFactor || podeImportarSdf) && <PageTabPanel id="form-factor" className="flex min-h-0 flex-1 flex-col gap-4 p-0">
@@ -311,15 +280,6 @@ function ProjetoDetalhe() {
     )}
 
     <CasoTesteDrawer key={aberturasDrawer} isOpen={drawerCasoAberto} onOpenChange={setDrawerCasoAberto} projetoId={projetoId} editar={editar} membrosAtivos={membrosAtivos} />
-    <AlertConfirm
-      open={confirmarLote}
-      onOpenChange={setConfirmarLote}
-      title={t("bulkTransferTitle", { count: selecionados.size })}
-      description={t("bulkTransferDescription")}
-      confirmLabel={t("bulkTransferConfirm")}
-      isPending={transferirLote.isPending}
-      onConfirm={transferirSelecionados}
-    />
     <FormFactorManualDialog
       aberto={Boolean(linhaManual)}
       onAbertoChange={(aberto) => { if (!aberto) setLinhaManual(null); }}

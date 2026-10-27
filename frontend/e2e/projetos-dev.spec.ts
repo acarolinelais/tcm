@@ -64,29 +64,6 @@ test("múltiplos: troca pelo dropdown e recupera perda da associação", async (
   await expect(page.getByRole("row", { name: /Gallery_001/ })).toBeVisible();
 });
 
-test("lote: transfere os selecionados ao backup e eles saem da lista", async ({ request, page }) => {
-  const dados = await preparar(request, page);
-  const projeto = await dados.projeto("Lote");
-  await dados.caso(projeto.id, "Lote_001");
-  await dados.caso(projeto.id, "Lote_002");
-  await dados.caso(projeto.id, "Lote_003");
-  await page.goto(`/projetos/${projeto.id}`);
-  // O input do React Aria fica escondido; o usuário clica na caixa desenhada (o label) dentro da célula.
-  for (const tcId of ["Lote_001", "Lote_002"]) {
-    await page.getByRole("row", { name: tcId }).locator("label").click();
-    await expect(page.getByRole("checkbox", { name: `Select ${tcId}` })).toBeChecked();
-  }
-
-  await page.getByRole("button", { name: "Transfer to backup (2)" }).click();
-  const confirmacao = page.getByRole("alertdialog", { name: "Transfer 2 Test Cases to backup?" });
-  await confirmacao.getByRole("button", { name: "Transfer", exact: true }).click();
-
-  await expect(page.getByText("2 Test Cases transferred.")).toBeVisible();
-  await expect(page.getByRole("row", { name: /Lote_00[12]/ })).toHaveCount(0);
-  await expect(page.getByRole("row", { name: /Lote_003/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Transfer to backup \(/ })).toHaveCount(0);
-});
-
 test("entrada: falha mostra erro sem simular ausência", async ({ request, page }) => {
   await preparar(request, page);
   await page.route("**/api/projetos?*", (route) => route.fulfill({ status: 500, json: { title: "Falha", status: 500 } }));

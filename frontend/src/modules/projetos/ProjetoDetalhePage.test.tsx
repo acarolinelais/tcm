@@ -10,7 +10,6 @@ import { casosTesteApi, formFactorApi, projetosApi } from "./api/projetos.api";
 import { timesApi } from "@/modules/times/api/times.api";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/ui/table";
 import { formatarDiaIso, semanaIso } from "@/shared/lib/utils";
-import { toast } from "@/shared/lib/toast";
 
 vi.mock("./api/projetos.api", () => ({
   projetosApi: { obter: vi.fn(), listar: vi.fn() }, casosTesteApi: { listar: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), transferirParaBackup: vi.fn() },
@@ -424,7 +423,7 @@ describe("ProjetoDetalhePage", () => {
   });
 });
 
-describe("ProjetoDetalhePage: seleção e transferência em lote (spec 022)", () => {
+describe("ProjetoDetalhePage: etiquetas e numeração dos Test Cases", () => {
   const dev = { ...perfil, perfil_codigo: "USUARIO_PADRAO" };
   const meus = [
     { ...casos[0], id: "case-a", tc_id: "Clock_101" },
@@ -437,68 +436,30 @@ describe("ProjetoDetalhePage: seleção e transferência em lote (spec 022)", ()
     vi.mocked(projetosApi.obter).mockResolvedValue(projeto);
     vi.mocked(projetosApi.listar).mockResolvedValue({ items: [projeto], page: 1, page_size: 100, total_count: 1 });
     vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: meus, page: 1, page_size: 20, total_count: 3 });
-    vi.mocked(casosTesteApi.transferirParaBackup).mockResolvedValue(casos[0]);
     vi.mocked(timesApi.membros).mockResolvedValue([]);
   });
 
-  it("mostra as etiquetas de status sem a coluna de numeração", async () => {
+  it("mostra as etiquetas de status e numera as linhas, sem caixas de seleção", async () => {
     renderPage(dev);
     const linha = await screen.findByRole("row", { name: /Clock_101/ });
     // O Select do React Aria repete as opções num <select> nativo escondido; a etiqueta é o chip.
     const etiqueta = (linhaDoCaso: HTMLElement, texto: string) => within(linhaDoCaso).getAllByText(texto).find((elemento) => elemento.closest(".chip"));
     expect(etiqueta(linha, "To-Do")).toBeDefined();
     expect(etiqueta(screen.getByRole("row", { name: /Clock_102/ }), "In Review")).toBeDefined();
-    expect(within(linha).queryByText("01")).not.toBeInTheDocument();
-  });
-
-  it("transfere os selecionados após confirmar e limpa a seleção", async () => {
-    const user = userEvent.setup();
-    renderPage(dev);
-    await user.click(await screen.findByRole("checkbox", { name: "Select Clock_101" }));
-    await user.click(screen.getByRole("checkbox", { name: "Select Clock_102" }));
-    await user.click(screen.getByRole("button", { name: "Transfer to backup (2)" }));
-
-    const confirmacao = await screen.findByRole("alertdialog", { name: "Transfer 2 Test Cases to backup?" });
-    await user.click(within(confirmacao).getByRole("button", { name: "Transfer" }));
-
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("2 Test Cases transferred."));
-    expect(vi.mocked(casosTesteApi.transferirParaBackup).mock.calls.map(([id]) => id).sort()).toEqual(["case-a", "case-b"]);
+    expect(within(linha).getByText("01")).toBeInTheDocument();
+    expect(within(screen.getByRole("row", { name: /Clock_103/ })).getByText("03")).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Transfer to backup \(/ })).not.toBeInTheDocument();
   });
 
-  it("caso sem backup tem a caixa desabilitada com o motivo", async () => {
-    renderPage(dev);
-    const caixa = await screen.findByRole("checkbox", { name: "Select Clock_103" });
-    expect(caixa).toBeDisabled();
-    expect(caixa).toHaveAccessibleDescription("This Test Case has no backup to receive it.");
-  });
-
-  it("informa a falha parcial com o TC ID que não foi transferido", async () => {
-    vi.mocked(casosTesteApi.transferirParaBackup).mockImplementation(async (id) => {
-      if (id === "case-b") throw new Error("409");
-      return casos[0];
-    });
-    const user = userEvent.setup();
-    renderPage(dev);
-    await user.click(await screen.findByRole("checkbox", { name: "Select Clock_101" }));
-    await user.click(screen.getByRole("checkbox", { name: "Select Clock_102" }));
-    await user.click(screen.getByRole("button", { name: "Transfer to backup (2)" }));
-    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Transfer" }));
-
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("1 transferred, 1 failed: Clock_102."));
-    expect(toast.success).not.toHaveBeenCalled();
-  });
-
-  it("trocar de página limpa a seleção", async () => {
+  it("na página 2, a numeração continua a partir da página anterior", async () => {
     vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: meus, page: 1, page_size: 20, total_count: 45 });
     const user = userEvent.setup();
     renderPage(dev);
-    await user.click(await screen.findByRole("checkbox", { name: "Select Clock_101" }));
-    expect(screen.getByRole("button", { name: "Transfer to backup (1)" })).toBeInTheDocument();
+    await screen.findByRole("row", { name: /Clock_101/ });
 
     await user.click(screen.getByRole("button", { name: "Page 2" }));
 
-    await waitFor(() => expect(casosTesteApi.listar).toHaveBeenCalledWith("project-1", 2, DEFAULT_TABLE_PAGE_SIZE, expect.anything()));
-    expect(screen.queryByRole("button", { name: /Transfer to backup \(/ })).not.toBeInTheDocument();
+    await waitFor(() => expect(within(screen.getByRole("row", { name: /Clock_101/ })).getByText("21")).toBeInTheDocument());
   });
 });

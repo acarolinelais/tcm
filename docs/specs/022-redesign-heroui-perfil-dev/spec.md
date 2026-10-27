@@ -17,14 +17,12 @@ backup um por vez. As mesmas telas atendem gerente, KP e administrador, só com 
 ## Objetivo
 
 As quatro telas seguem o Figma em cores, fontes, pesos, ícones (cor e espessura do traço) e fundos da
-listagem, para todos os perfis. O padrão novo de listagem passa a ser o padrão do sistema, e o dev pode
-selecionar vários Test Cases e transferi-los ao backup de uma vez.
+listagem, para todos os perfis. O padrão novo de listagem passa a ser o padrão do sistema. (A seleção e a
+transferência em lote saíram em 2026-10-27; ver "Mudanças depois da entrega".)
 
 ## Histórias de usuário
 
 - Como **dev**, quero ver meus Test Cases no visual do Figma para reconhecer status e situação de relance.
-- Como **dev**, quero selecionar vários Test Cases e transferi-los ao backup de uma vez para não repetir a
-  mesma ação linha por linha.
 - Como **gerente, KP ou administrador**, quero as mesmas telas no padrão novo, com as ações do meu papel.
 
 ## Regras de negócio
@@ -43,15 +41,17 @@ selecionar vários Test Cases e transferi-los ao backup de uma vez.
 - RN-06: Um campo que o usuário pode editar na linha mostra uma seta cinza ao lado da etiqueta. Quem não
   pode editar vê só a etiqueta. Os campos editáveis por perfil continuam os de hoje: o responsável edita
   Status, Difficulty e Category; gerente e KP também editam TC Situation, Assignee e Backup.
-- RN-07: A coluna de numeração da linha (01, 02...) sai da listagem de Test Cases.
+- RN-07: ~~A coluna de numeração da linha (01, 02...) sai da listagem de Test Cases.~~ Revogada em
+  2026-10-27: a listagem de Test Cases numera as linhas como a de Form Factor (01, 02..., continuando na
+  página seguinte).
 - RN-08: As ações da linha aparecem como botões redondos de ícone, lado a lado, sempre visíveis, para
   todos os perfis. O menu "…" deixa de existir nessas telas. Cada botão tem um nome acessível com a ação
   e a linha (ex.: "Transferir ao backup Clock_000001"). Ações destrutivas ficam por último.
-- RN-09: A listagem de Test Cases tem uma caixa de seleção em cada linha e uma no cabeçalho, que marca ou
+- RN-09 (removida em 2026-10-27): A listagem de Test Cases tem uma caixa de seleção em cada linha e uma no cabeçalho, que marca ou
   desmarca todas as linhas selecionáveis da página. Uma linha é selecionável quando o usuário é o
   responsável pelo Test Case e ele tem backup. Nas demais, a caixa aparece desabilitada, com o motivo
   ao passar o mouse ou focar. Se nenhuma linha da página for selecionável, a coluna some.
-- RN-10: Com pelo menos uma linha selecionada, aparece a ação "Transferir ao backup (N)". Ela pede
+- RN-10 (removida em 2026-10-27): Com pelo menos uma linha selecionada, aparece a ação "Transferir ao backup (N)". Ela pede
   confirmação, informando quantos Test Cases serão transferidos. Confirmada, transfere cada um ao seu
   backup, como a transferência individual faz hoje. No fim, informa quantos foram transferidos e quantos
   falharam, com o TC ID dos que falharam. A seleção é limpa ao trocar de página, de filtro, de semana ou
@@ -78,7 +78,6 @@ selecionar vários Test Cases e transferi-los ao backup de uma vez.
 | Status (fundo / texto) | To Do `#EDFAFF`/`#5B8DD4` · In Progress `#FEF2DE`/`#855F2E` · In Review `#F0F4FF`/`#6A68BE` · In Validation `#F7EFF3`/`#C75DA8` · Done `#DCF7E8`/`#3C8355` |
 | Situação / Ativo | `#EDEFF1`/`#777777` / `#DCF7E8`/`#3C8355` |
 | Seta de campo editável | 7×4px, traço 1px `#D0D0D0` |
-| Caixa de seleção | 14px, raio 3px; da linha `#F3F5F7`; do cabeçalho branca com sombra |
 | Botão de ação | círculo 19px `#EFEFF0`, ícone de traço 1px `#454442` |
 | Paginação | total Inter 500 12px `#909092`; números e "Próxima" `#454442`; desabilitado `#909092`; página atual em círculo 26px `#EBEBEC` |
 | Botão de semana | branco, borda `#F2F2F2`, raio 10px, ícone de calendário, Inter 500 15px `#454442` |
@@ -88,17 +87,17 @@ selecionar vários Test Cases e transferi-los ao backup de uma vez.
 ## Critérios de aceite
 
 - **CA-01:** Dado um dev com Test Cases, quando abre o projeto, então a listagem segue a "Referência
-  visual": moldura, cabeçalho sem caixa alta, etiquetas com as cores de cada status e sem coluna de
-  numeração.
+  visual": moldura, cabeçalho sem caixa alta, etiquetas com as cores de cada status e a coluna de
+  numeração (alterado em 2026-10-27, antes "sem coluna de numeração").
 - **CA-02:** Dado um dev responsável por um Test Case, quando vê a linha, então Status, Difficulty e
   Category mostram a seta de editável, e TC Situation não mostra.
-- **CA-03:** Dado um dev com três Test Cases transferíveis, quando seleciona dois e confirma "Transferir ao
+- **CA-03:** (removido em 2026-10-27) Dado um dev com três Test Cases transferíveis, quando seleciona dois e confirma "Transferir ao
   backup (2)", então os dois saem da sua lista, o aviso informa "2 transferidos" e a seleção é limpa.
-- **CA-04:** Dado um Test Case sem backup, quando o dev vê a linha, então a caixa de seleção está
+- **CA-04:** (removido em 2026-10-27) Dado um Test Case sem backup, quando o dev vê a linha, então a caixa de seleção está
   desabilitada e informa que o Test Case não tem backup.
-- **CA-05 (falha):** Dado dois Test Cases selecionados, um deles já transferido por outra pessoa, quando o
+- **CA-05 (falha):** (removido em 2026-10-27) Dado dois Test Cases selecionados, um deles já transferido por outra pessoa, quando o
   dev confirma a transferência, então um é transferido e o aviso informa a falha com o TC ID do outro.
-- **CA-06:** Dado a caixa do cabeçalho marcada, quando o dev troca de página, então nenhuma linha fica
+- **CA-06:** (removido em 2026-10-27) Dado a caixa do cabeçalho marcada, quando o dev troca de página, então nenhuma linha fica
   selecionada.
 - **CA-07:** Dado um dev sem projetos associados, quando abre Projects, então vê o estado vazio do Figma.
 - **CA-08 (falha):** Dado que a busca de projetos falhou, quando o dev abre Projects, então vê a mensagem de
@@ -129,3 +128,11 @@ selecionar vários Test Cases e transferi-los ao backup de uma vez.
 - Escopo (aprovado em 2026-10-26): pelo ADR 0037, uma página migrada não mistura as duas bibliotecas.
   A aba Form Factor, os painéis de criar e editar Test Case e Team e as confirmações dessas telas também
   mudam para o padrão novo, com o comportamento atual.
+
+## Mudanças depois da entrega
+
+- **2026-10-27, numeração no lugar das caixas de seleção.** Por decisão de produto, a listagem de Test Cases
+  perdeu as caixas de seleção e a ação "Transferir ao backup (N)", e ganhou a coluna de numeração da
+  listagem de Form Factor. Ficam sem efeito a RN-09, a RN-10 e os CA-03 a CA-06; a RN-07 e o CA-01 mudam
+  para ter a numeração. A transferência individual pelo botão da linha continua. No código, saíram o
+  `useTransferirEmLote`, o suporte a seleção do `DataTable`, os textos da ação em lote e o e2e do lote.
