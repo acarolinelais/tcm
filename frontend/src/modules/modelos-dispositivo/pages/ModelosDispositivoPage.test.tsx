@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PerfilAtual } from "@/core/auth/api";
 import { formatDate } from "@/core/i18n/format";
 import { ApiError } from "@/shared/api/problem-details";
-import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/ui/table";
+import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 
 import { modelosDispositivoApi } from "../api/modelos-dispositivo.api";
 import type { ModeloDispositivo } from "../model/modelo-dispositivo";
@@ -125,6 +125,21 @@ describe("ModelosDispositivoPage", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(modelosDispositivoApi.atualizar).toHaveBeenCalledWith("model-1", { nome: "S27 Ultra", descricao: "" }));
+  });
+
+  it("fecha com Esc sem salvar e reabre com os dados salvos (spec 031)", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await acao(user, "S27 Ultra", "Edit");
+    await user.clear(screen.getByLabelText("Description"));
+    await user.type(screen.getByLabelText("Description"), "Rascunho");
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(modelosDispositivoApi.atualizar).not.toHaveBeenCalled();
+    await acao(user, "S27 Ultra", "Edit");
+    expect(screen.getByLabelText("Description")).toHaveValue("Flagship");
   });
 
   it("inativa com confirmação e reativa sem confirmação", async () => {
