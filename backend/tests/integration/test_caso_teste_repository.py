@@ -12,6 +12,7 @@ from src.domain.entities.caso_teste import (
     CasoTeste,
     CategoriaCasoTeste,
     DificuldadeCasoTeste,
+    NivelAutomacaoCasoTeste,
     SituacaoCasoTeste,
     StatusCasoTeste,
 )
@@ -109,6 +110,7 @@ async def test_caso_persiste_com_responsaveis_e_tc_id_e_unico_no_projeto():
             assert pagina.items[0].backup_id == backup_id
             assert pagina.items[0].situation == SituacaoCasoTeste.NEW_STEP
             assert pagina.items[0].status == StatusCasoTeste.TO_DO
+            assert pagina.items[0].automation_level is None
             pagina_filtrada = await repository.listar_por_projeto(
                 unidade_id, projeto_id, 1, 10, [responsavel_id]
             )
@@ -163,6 +165,27 @@ async def test_caso_persiste_com_responsaveis_e_tc_id_e_unico_no_projeto():
             validando = await repository.obter_por_id(unidade_id, caso.id)
             assert validando is not None
             assert validando.status == StatusCasoTeste.IN_VALIDATION
+
+            # Automation Level grava só o número e uma atualização sem nível mantém o que existe.
+            validando.atualizar_campos_do_responsavel(
+                validando.status,
+                validando.category,
+                validando.difficulty,
+                automation_level=NivelAutomacaoCasoTeste.PARCIALMENTE_AUTOMATIZAVEL,
+            )
+            await repository.atualizar(validando)
+            await session.flush()
+            com_nivel = await repository.obter_por_id(unidade_id, caso.id)
+            assert com_nivel is not None
+            assert com_nivel.automation_level is NivelAutomacaoCasoTeste.PARCIALMENTE_AUTOMATIZAVEL
+            com_nivel.atualizar_campos_do_responsavel(
+                StatusCasoTeste.IN_PROGRESS, com_nivel.category, com_nivel.difficulty
+            )
+            await repository.atualizar(com_nivel)
+            await session.flush()
+            mantido = await repository.obter_por_id(unidade_id, caso.id)
+            assert mantido is not None
+            assert mantido.automation_level is NivelAutomacaoCasoTeste.PARCIALMENTE_AUTOMATIZAVEL
 
             duplicado = CasoTeste(
                 unidade_id,

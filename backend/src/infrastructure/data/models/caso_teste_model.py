@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import CheckConstraint, ForeignKey, SmallInteger, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.domain.entities.caso_teste import CasoTeste
@@ -17,6 +17,7 @@ class CasoTesteModel(Base):
     tc_id: Mapped[str] = mapped_column(String(CasoTeste.TC_ID_MAX_LENGTH), nullable=False)
     category: Mapped[str] = mapped_column(String(1), nullable=False)
     difficulty: Mapped[str] = mapped_column(String(10), nullable=False)
+    automation_level: Mapped[int | None] = mapped_column(SmallInteger)
     situation: Mapped[str] = mapped_column(String(20), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     responsavel_id: Mapped[UUID] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
@@ -30,6 +31,10 @@ class CasoTesteModel(Base):
         CheckConstraint("category IN ('A', 'B', 'C')", name="ck_casos_teste_category"),
         CheckConstraint(
             "difficulty IN ('Low', 'Medium', 'High')", name="ck_casos_teste_difficulty"
+        ),
+        CheckConstraint(
+            "automation_level IS NULL OR automation_level IN (1, 2, 3)",
+            name="ck_casos_teste_automation_level",
         ),
         CheckConstraint(
             "situation IN ('New', 'New Step', 'Without Changes')",
