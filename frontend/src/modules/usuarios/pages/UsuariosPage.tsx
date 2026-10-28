@@ -4,10 +4,9 @@ import { Button } from "@heroui/react";
 import { Plus } from "lucide-react";
 
 import { PageCard, PageTitle } from "@/shared/ui/page-card";
-import { Dialog, DrawerContent, DrawerHeader, DrawerTitle } from "@/shared/ui/dialog";
 import { toast } from "@/shared/lib/toast";
 
-import { UsuarioForm } from "../components/UsuarioForm";
+import { UsuarioDrawer } from "../components/UsuarioDrawer";
 import { UsuariosTable } from "../components/UsuariosTable";
 import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS } from "@/shared/lib/paginacao";
 import type { Usuario } from "../model/usuario";
@@ -113,20 +112,15 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
         usuarioAtualId={perfil.id}
       />
 
-      <Dialog open={podeGerenciar && modalAberto} onOpenChange={setModalAberto}>
-        <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>{usuarioEmEdicao ? t("editUser") : t("newUser")}</DrawerTitle>
-          </DrawerHeader>
-          <UsuarioForm
-            usuario={usuarioEmEdicao}
-            onSalvo={aoSalvar}
-            podeGerenciar={podeGerenciar}
-            podeAtribuirPerfil={podeAtribuirPerfil}
-            podeAtribuirPerfilKP={podeAtribuirPerfilKP}
-          />
-        </DrawerContent>
-      </Dialog>
+      <UsuarioDrawer
+        isOpen={podeGerenciar && modalAberto}
+        usuario={usuarioEmEdicao}
+        onFechar={() => setModalAberto(false)}
+        onSalvo={aoSalvar}
+        podeGerenciar={podeGerenciar}
+        podeAtribuirPerfil={podeAtribuirPerfil}
+        podeAtribuirPerfilKP={podeAtribuirPerfilKP}
+      />
     </PageCard>
   );
 }

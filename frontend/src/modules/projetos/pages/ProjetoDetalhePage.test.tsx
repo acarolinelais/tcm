@@ -9,7 +9,7 @@ import { ProjetoDetalhePage } from "./ProjetoDetalhePage";
 import { casosTesteApi, formFactorApi, projetosApi, type CasoTeste } from "../api/projetos.api";
 import type { NivelAutomacaoCasoTeste } from "../model/projeto";
 import { timesApi } from "@/modules/times/api/times.api";
-import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/ui/table";
+import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { formatarDiaIso, semanaIso } from "@/shared/lib/utils";
 import { ApiError } from "@/shared/api/problem-details";
 import { toast } from "@/shared/lib/toast";

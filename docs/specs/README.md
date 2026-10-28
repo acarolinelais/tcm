@@ -14,10 +14,10 @@ Para criar: skill `spec`. Para implementar: skill `implement-task`. Templates em
 
 ## Padrão universal de tabelas
 
-Toda tabela nova ou existente deve usar os componentes compartilhados de `shared/ui/table.tsx` e
-seguir a mesma composição visual: `TableLayout` organiza cabeçalho, corpo/estado vazio e paginação
-com espaçamento uniforme; `TableEmptyState` usa painel cinza claro arredondado, separado do cabeçalho;
-`TablePagination` fica ao final, alinhada à direita e com 20 itens por página como padrão ([ADR 0034](../adr/0034-paginacao-padrao-vinte-itens.md)). O conteúdo
+Toda tabela nova ou existente usa o `DataTable` de `shared/ui/data-table.tsx` (sobre o `Table` do HeroUI,
+[ADR 0037](../adr/0037-heroui-como-base-de-ui.md)) e segue a mesma composição visual: o estado de
+carregando, erro ou vazio vem de `estadoDaTabela`, os filtros de coluna de `DataTableFilter`, e a
+`DataTablePagination` fica ao final, com 20 itens por página como padrão ([ADR 0034](../adr/0034-paginacao-padrao-vinte-itens.md)). O conteúdo
 das colunas e os filtros dependem do domínio, mas a estrutura, espaçamento, estados de carregamento/vazio
 e paginação são comuns a todas as tabelas. A coluna de ações não recebe filtro. Exceções visuais devem
 ser registradas em ADR antes de serem introduzidas.
@@ -56,6 +56,7 @@ ser registradas em ADR antes de serem introduzidas.
 | 028 | Detalhes do Test Case (Title, Precondition, Procedure e Expected Result no painel lateral) | Concluída (e2e simulados; validação manual no navegador pendente) |
 | 029 | Avatar do usuário logado na barra superior (HeroUI Avatar, iniciais) | Aprovada |
 | 030 | Links de PR do Test Case (histórico no painel de detalhes) e painel em todas as tabelas de projetos | Concluída (e2e simulados; validação manual no navegador pendente) |
+| 031 | Painéis laterais e listas de seleção no padrão HeroUI (Setores, Usuários, Modelos e Projetos) | Em andamento (9 e2e com API real pendentes) |
 
 > As duas specs 012 foram criadas em paralelo. Os diretórios e históricos foram preservados nesta integração; a harmonização da numeração está registrada no backlog da spec de perfil Dev.
 

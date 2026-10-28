@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { formatNumber } from "@/core/i18n/format";
-import { DEFAULT_TABLE_PAGE_SIZE, TablePagination } from "@/shared/ui/table";
+import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
+import { DataTablePagination } from "@/shared/ui/data-table-pagination";
 import { agruparErrosPlanilha, formatarErroPlanilha, type ErroPlanilhaExibivel } from "../../utils/formatar-erro-planilha";
 
 interface ErrosPlanilhaProps {
@@ -55,8 +56,8 @@ export function ErrosPlanilha({ erros, totalLinhas }: ErrosPlanilhaProps) {
             ))}
           </ul>
           {linhas.length > tamanho && (
-            <TablePagination
-              className="mt-3 border-destructive/20"
+            <DataTablePagination
+              className="mt-3 px-0"
               page={pagina}
               pageSize={tamanho}
               totalCount={linhas.length}

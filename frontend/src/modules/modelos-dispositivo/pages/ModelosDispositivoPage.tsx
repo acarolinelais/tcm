@@ -14,13 +14,12 @@ import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
 import { DataTableFilter } from "@/shared/ui/data-table-filter";
 import { DataTablePagination } from "@/shared/ui/data-table-pagination";
 import { estadoDaTabela } from "@/shared/ui/data-table-state";
-import { Dialog, DrawerContent, DrawerHeader, DrawerTitle } from "@/shared/ui/dialog";
 import { PageCard, PageTitle } from "@/shared/ui/page-card";
 import { RowActions, type RowAction } from "@/shared/ui/row-action-button";
 import { rowActionIconProps } from "@/shared/ui/row-action-icon";
 import { TONS_ETIQUETA, TagChip } from "@/shared/ui/tag-chip";
 
-import { ModeloDispositivoForm } from "../components/ModeloDispositivoForm";
+import { ModeloDispositivoDrawer } from "../components/ModeloDispositivoDrawer";
 import { useDefinirAtivoModeloDispositivo, useModelosDispositivoList } from "../hooks/useModelosDispositivo";
 import type { ModeloDispositivo, ModeloDispositivoFiltros } from "../model/modelo-dispositivo";
 
@@ -98,12 +97,7 @@ export function ModelosDispositivoPage() {
       pagination={<DataTablePagination page={pagina} pageSize={tamanho} totalCount={modelos.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(n) => { setTamanho(n); setPagina(1); }} />}
       rowDependencies={[t, definirAtivo.isPending]}
     />
-    <Dialog open={emEdicao !== undefined} onOpenChange={(open) => { if (!open) setEmEdicao(undefined); }}>
-      <DrawerContent>
-        <DrawerHeader><DrawerTitle>{emEdicao ? t("editDeviceModel") : t("addDeviceModel")}</DrawerTitle></DrawerHeader>
-        {emEdicao !== undefined && <ModeloDispositivoForm key={emEdicao?.id ?? "novo"} modelo={emEdicao ?? undefined} onSalvo={() => { setEmEdicao(undefined); toast.success(t("deviceModelSaved")); }} />}
-      </DrawerContent>
-    </Dialog>
+    <ModeloDispositivoDrawer modelo={emEdicao} onFechar={() => setEmEdicao(undefined)} onSalvo={() => { setEmEdicao(undefined); toast.success(t("deviceModelSaved")); }} />
     <AlertConfirm
       open={Boolean(paraInativar)}
       onOpenChange={(open) => { if (!open && !definirAtivo.isPending) setParaInativar(null); }}

@@ -63,7 +63,7 @@ test("KP acessa Device models em Administration, cria, edita e inativa um modelo
 
   await page.goto("/projetos");
   await page.getByRole("button", { name: "Novo projeto" }).click();
-  await page.getByRole("tab", { name: "Criar manualmente" }).click();
+  await page.getByRole("tab", { name: "Manual" }).click();
   await page.getByRole("button", { name: "Modelos de dispositivo" }).click();
   await expect(page.getByRole("option", { name: "Tab S11 Tablet" })).toBeVisible();
   await expect(page.getByRole("option", { name: /S27 Ultra/ })).toHaveCount(0);

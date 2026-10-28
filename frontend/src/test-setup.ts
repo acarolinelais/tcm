@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import "@/core/i18n";
 
-// O jsdom não implementa estas APIs, que os popups do Base UI (combobox, select) chamam.
+// O jsdom não implementa estas APIs, que alguns popups e listas chamam.
 HTMLElement.prototype.hasPointerCapture ??= () => false;
 HTMLElement.prototype.setPointerCapture ??= () => undefined;
 HTMLElement.prototype.releasePointerCapture ??= () => undefined;
