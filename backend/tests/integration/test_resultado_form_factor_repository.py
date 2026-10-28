@@ -17,6 +17,7 @@ from src.infrastructure.data.models.modelo_dispositivo_model import ModeloDispos
 from src.infrastructure.data.models.perfil_model import PerfilModel
 from src.infrastructure.data.models.projeto_model import ProjetoModel
 from src.infrastructure.data.models.projeto_modelo_model import ProjetoModeloModel
+from src.infrastructure.data.models.rodada_form_factor_model import RodadaFormFactorModel
 from src.infrastructure.data.models.setor_model import SetorModel
 from src.infrastructure.data.models.time_model import TimeModel
 from src.infrastructure.data.models.unidade_model import UnidadeModel
@@ -703,3 +704,45 @@ async def test_form_factor_global_resultados_preserva_rodadas_e_filtra_modelo(ce
     assert [linha.sdf_id for linha in pagina.items] == ["SDF-NOVO", "SDF-ANTIGO"]
     assert all(linha.projeto_nome == "Clock 9.5" for linha in pagina.items)
     assert filtrada.total_count == 1 and filtrada.items[0].resultados == {cenario.s25: "PASS"}
+
+
+@pytest.mark.asyncio
+async def test_existe_sdf_id_ignora_maiusculas_e_espacos(cenario):
+    caso_id = await cenario.caso("TC-SDF")
+    await cenario.rodada(caso_id, " SDF-001 ", datetime(2026, 10, 1))
+    rodadas = RodadaFormFactorRepositoryImpl(cenario.session)
+
+    assert await rodadas.existe_sdf_id_no_projeto(cenario.unidade_id, cenario.projeto_id, "sdf-001")
+    assert not await rodadas.existe_sdf_id_no_projeto(
+        cenario.unidade_id, cenario.projeto_id, "SDF-002"
+    )
+
+
+@pytest.mark.asyncio
+async def test_existe_sdf_id_nao_considera_outro_projeto_outra_unidade_nem_rodada_inativa(cenario):
+    caso_id = await cenario.caso("TC-SDF")
+    rodada, _ = await cenario.rodada(caso_id, "SDF-001", datetime(2026, 10, 1))
+    outro_projeto = uuid4()
+    cenario.session.add(
+        ProjetoModel(
+            id=outro_projeto,
+            unidade_id=cenario.unidade_id,
+            time_id=cenario.time_id,
+            nome="Clock 9.6",
+            app="Clock",
+            one_ui="9.6",
+        )
+    )
+    await cenario.session.flush()
+    rodadas = RodadaFormFactorRepositoryImpl(cenario.session)
+
+    assert not await rodadas.existe_sdf_id_no_projeto(cenario.unidade_id, outro_projeto, "SDF-001")
+    assert not await rodadas.existe_sdf_id_no_projeto(uuid4(), cenario.projeto_id, "SDF-001")
+    await cenario.session.execute(
+        update(RodadaFormFactorModel)
+        .where(RodadaFormFactorModel.id == rodada.id)
+        .values(ativo=False)
+    )
+    assert not await rodadas.existe_sdf_id_no_projeto(
+        cenario.unidade_id, cenario.projeto_id, "SDF-001"
+    )

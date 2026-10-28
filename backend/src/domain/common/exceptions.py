@@ -5,6 +5,11 @@ class NotFoundException(Exception):
 class ConflictException(Exception):
     """Levantada quando uma operação viola uma regra de unicidade ou de estado."""
 
+    def __init__(self, mensagem: str, campo: str | None = None) -> None:
+        super().__init__(mensagem)
+        # Campo do request que causou o conflito, para a tela mostrar o erro nele.
+        self.campo = campo
+
 
 class ForbiddenException(Exception):
     """Levantada quando a pessoa autenticada não tem permissão para a ação."""

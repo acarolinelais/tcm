@@ -10,6 +10,8 @@ import { casosTesteApi, formFactorApi, projetosApi } from "../api/projetos.api";
 import { timesApi } from "@/modules/times/api/times.api";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/ui/table";
 import { formatarDiaIso, semanaIso } from "@/shared/lib/utils";
+import { ApiError } from "@/shared/api/problem-details";
+import { toast } from "@/shared/lib/toast";
 
 vi.mock("../api/projetos.api", () => ({
   projetosApi: { obter: vi.fn(), listar: vi.fn() }, casosTesteApi: { listar: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), transferirParaBackup: vi.fn() },
@@ -30,6 +32,16 @@ const perfil: PerfilAtual = {
   perfil_codigo: null, perfil: "Desenvolvedor", permissoes: ["projetos.consultar", "test_cases.consultar"], times: [], setores_gerenciados: [],
   time_atual_id: "team-1", tem_multiplos_times: false, senha_alteracao_obrigatoria: false, idioma_preferido: "en",
 };
+
+/** Admin na aba Form Factor com o diálogo de criar rodada aberto. */
+async function abrirCriacaoRodada() {
+  const user = userEvent.setup();
+  renderPage({ ...perfil, id: "admin", perfil_codigo: "ADMIN_UNIDADE", perfil: "Administrador" });
+  await screen.findByRole("heading", { name: "Clock 9.5" });
+  await user.click(screen.getByRole("tab", { name: "Form Factor" }));
+  await user.click(screen.getByRole("button", { name: "Create test round" }));
+  return { user, dialog: await screen.findByRole("dialog") };
+}
 
 function renderPage(currentProfile = perfil, client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })) {
   function ContextOutlet() { return <Outlet context={currentProfile} />; }
@@ -417,6 +429,34 @@ describe("ProjetoDetalhePage", () => {
 
     await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("project-1", { page: 1, pageSize: DEFAULT_TABLE_PAGE_SIZE, semana: undefined, responsavelIds: undefined }));
     expect(await screen.findByRole("heading", { name: "No test cases yet" })).toBeInTheDocument();
+  });
+
+  it("mostra no campo o SDF ID que já tem rodada e mantém o diálogo aberto", async () => {
+    const mensagem = "Este SDF ID já tem uma rodada neste projeto.";
+    vi.mocked(formFactorApi.criarRodada).mockRejectedValueOnce(new ApiError({ type: "about:blank", title: "Conflito.", status: 409, detail: mensagem, errors: [{ campo: "sdf_id", mensagem }] }));
+    const { user, dialog } = await abrirCriacaoRodada();
+    await user.type(within(dialog).getByLabelText("SDF ID"), "SDF-001");
+    await user.click(within(dialog).getByRole("button", { name: "Create test round" }));
+
+    expect(await within(dialog).findByText("This SDF ID already has a round in this project. Use a different one.")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("SDF ID")).toHaveValue("SDF-001");
+    expect(toast.error).not.toHaveBeenCalled();
+    await user.clear(within(dialog).getByLabelText("SDF ID"));
+    await user.type(within(dialog).getByLabelText("SDF ID"), " sdf-001 ");
+    expect(within(dialog).getByText(/already has a round/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Create test round" }));
+    expect(formFactorApi.criarRodada).toHaveBeenCalledTimes(1);
+    await user.type(within(dialog).getByLabelText("SDF ID"), "2");
+    expect(within(dialog).queryByText(/already has a round/)).not.toBeInTheDocument();
+  });
+
+  it("mantém no toast os outros erros ao criar a rodada", async () => {
+    vi.mocked(formFactorApi.criarRodada).mockRejectedValueOnce(new ApiError({ type: "about:blank", title: "Conflito.", status: 409, detail: "Não há Test Cases em In Validation para iniciar uma rodada." }));
+    const { user, dialog } = await abrirCriacaoRodada();
+    await user.click(within(dialog).getByRole("button", { name: "Create test round" }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Não há Test Cases em In Validation para iniciar uma rodada."));
+    expect(within(dialog).queryByText(/already has a round/)).not.toBeInTheDocument();
   });
 
   it("apresenta resultados do Form Factor com filtros e importa relatório SDF", async () => {

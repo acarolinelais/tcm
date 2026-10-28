@@ -30,6 +30,10 @@ def _build_app() -> FastAPI:
     async def conflito():
         raise ConflictException("E-mail já cadastrado.")
 
+    @app.get("/conflito-com-campo")
+    async def conflito_com_campo():
+        raise ConflictException("SDF ID já usado.", campo="sdf_id")
+
     @app.get("/proibido")
     async def proibido():
         raise ForbiddenException("Sem permissão.")
@@ -75,6 +79,14 @@ async def test_conflito_retorna_409():
     resposta = await _get("/conflito")
 
     assert resposta.status_code == 409
+    assert "errors" not in resposta.json()
+
+
+async def test_conflito_com_campo_retorna_409_com_errors():
+    resposta = await _get("/conflito-com-campo")
+
+    assert resposta.status_code == 409
+    assert resposta.json()["errors"] == [{"campo": "sdf_id", "mensagem": "SDF ID já usado."}]
 
 
 async def test_forbidden_retorna_403():

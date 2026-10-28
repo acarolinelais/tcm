@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from src.domain.common.paged_result import PagedResult
 from src.domain.entities.rodada_form_factor import RodadaFormFactor
@@ -71,6 +71,14 @@ class FormFactorExecucaoResponse(BaseModel):
 
 class CriarRodadaFormFactorLoteRequest(BaseModel):
     sdf_id: str | None = Field(default=None, max_length=RodadaFormFactor.SDF_ID_MAX_LENGTH)
+
+    # "before": o limite de tamanho vale para o valor já sem espaços; vazio é "sem SDF ID".
+    @field_validator("sdf_id", mode="before")
+    @classmethod
+    def normalizar_sdf_id(cls, sdf_id: object) -> object:
+        if isinstance(sdf_id, str):
+            return sdf_id.strip() or None
+        return sdf_id
 
 
 class EnviarResultadosRodadaRequest(BaseModel):

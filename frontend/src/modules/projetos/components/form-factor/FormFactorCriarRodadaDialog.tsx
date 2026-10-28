@@ -1,14 +1,18 @@
 import { useState, type FormEvent } from "react";
-import { Button, Description, Input, Label, Modal, TextField } from "@heroui/react";
+import { Button, Modal } from "@heroui/react";
 import { useTranslation } from "react-i18next";
+
+import { TextInputField } from "@/shared/ui/form-field";
 
 const MAX_SDF_ID = 50;
 
-export function FormFactorCriarRodadaDialog({ aberto, onAbertoChange, salvando, onCriar }: {
+export function FormFactorCriarRodadaDialog({ aberto, onAbertoChange, salvando, onCriar, sdfIdRecusado }: {
   aberto: boolean;
   onAbertoChange: (aberto: boolean) => void;
   salvando: boolean;
   onCriar: (sdfId: string) => void;
+  /** SDF ID que a API recusou por já ter rodada no projeto; o erro some quando o valor muda. */
+  sdfIdRecusado?: string | null;
 }) {
   const { t } = useTranslation();
   return <Modal isOpen={aberto} onOpenChange={onAbertoChange}>
@@ -21,29 +25,28 @@ export function FormFactorCriarRodadaDialog({ aberto, onAbertoChange, salvando, 
             <p className="text-[14px] leading-relaxed text-muted">{t("createTestRoundHint")}</p>
           </Modal.Header>
           {/* Montado só com o modal aberto: cada abertura começa com o SDF ID vazio. */}
-          {aberto && <FormularioRodada salvando={salvando} onCriar={onCriar} onCancelar={() => onAbertoChange(false)} />}
+          {aberto && <FormularioRodada salvando={salvando} onCriar={onCriar} onCancelar={() => onAbertoChange(false)} sdfIdRecusado={sdfIdRecusado} />}
         </Modal.Dialog>
       </Modal.Container>
     </Modal.Backdrop>
   </Modal>;
 }
 
-function FormularioRodada({ salvando, onCriar, onCancelar }: { salvando: boolean; onCriar: (sdfId: string) => void; onCancelar: () => void }) {
+function FormularioRodada({ salvando, onCriar, onCancelar, sdfIdRecusado }: { salvando: boolean; onCriar: (sdfId: string) => void; onCancelar: () => void; sdfIdRecusado?: string | null }) {
   const { t } = useTranslation();
   const [sdfId, setSdfId] = useState("");
+  // Mesma comparação da API (spec 025, RN-02): "sdf-001 " continua repetindo "SDF-001".
+  const normalizar = (valor: string) => valor.trim().toLowerCase();
+  const repetido = sdfIdRecusado != null && normalizar(sdfId) === normalizar(sdfIdRecusado);
   const criar = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (sdfId.length <= MAX_SDF_ID && !salvando) onCriar(sdfId);
+    if (sdfId.length <= MAX_SDF_ID && !salvando && !repetido) onCriar(sdfId);
   };
 
   return (
     <form onSubmit={criar}>
       <Modal.Body>
-        <TextField value={sdfId} onChange={setSdfId} className="flex flex-col gap-2">
-          <Label className="text-[14px] font-medium text-[#454442]">{t("sdfId")}</Label>
-          <Input maxLength={MAX_SDF_ID} autoFocus className="h-10 text-[14px]" />
-          <Description className="text-[12px] text-muted">{t("sdfIdOptionalHint")}</Description>
-        </TextField>
+        <TextInputField label={t("sdfId")} value={sdfId} onChange={setSdfId} maxLength={MAX_SDF_ID} autoFocus error={repetido ? t("sdfIdAlreadyUsed") : undefined} description={t("sdfIdOptionalHint")} />
       </Modal.Body>
       <Modal.Footer className="mt-4 border-t border-separator pt-4">
         <Button variant="tertiary" onPress={onCancelar}>{t("cancel")}</Button>

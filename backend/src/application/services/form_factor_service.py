@@ -290,6 +290,12 @@ class FormFactorServiceImpl:
     ) -> RodadaFormFactorResponse:
         self._exigir_gestao_rodadas(usuario_atual)
         projeto = await self._obter_projeto_no_escopo(usuario_atual, projeto_id)
+        if self._rodada_repo is None:
+            raise RuntimeError("Repositório de rodadas não configurado.")
+        if request.sdf_id is not None and await self._rodada_repo.existe_sdf_id_no_projeto(
+            usuario_atual.unidade_id, projeto.id, request.sdf_id
+        ):
+            raise ConflictException("Este SDF ID já tem uma rodada neste projeto.", campo="sdf_id")
         casos = await self._caso_repo.listar_em_validacao(usuario_atual.unidade_id, projeto.id)
         if not casos:
             raise ConflictException("Não há Test Cases em In Validation para iniciar uma rodada.")
@@ -297,8 +303,6 @@ class FormFactorServiceImpl:
         rodada = RodadaFormFactor(
             usuario_atual.unidade_id, projeto.id, usuario_atual.id, request.sdf_id, agora
         )
-        if self._rodada_repo is None:
-            raise RuntimeError("Repositório de rodadas não configurado.")
         try:
             await self._rodada_repo.adicionar(rodada)
             for caso in casos:

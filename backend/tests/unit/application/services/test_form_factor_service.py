@@ -34,7 +34,7 @@ from src.domain.queries.form_factor_linha import (
 from src.domain.queries.modelo_do_projeto import ModeloDoProjeto
 
 
-async def test_criar_rodada_captura_todos_os_tcs_em_validacao():
+def _contexto_criar_rodada():
     (
         projeto_repo,
         time_repo,
@@ -73,6 +73,7 @@ async def test_criar_rodada_captura_todos_os_tcs_em_validacao():
     time.id = time_id
     time_repo.obter_por_id.return_value = time
     caso_repo.listar_em_validacao.return_value = casos
+    rodada_repo.existe_sdf_id_no_projeto.return_value = False
     service = FormFactorServiceImpl(
         projeto_repo,
         time_repo,
@@ -83,20 +84,55 @@ async def test_criar_rodada_captura_todos_os_tcs_em_validacao():
         uow,
         rodada_repo,
     )
+    return service, usuario, projeto, execucao_repo, rodada_repo, uow
+
+
+async def test_criar_rodada_captura_todos_os_tcs_em_validacao():
+    service, usuario, projeto, execucao_repo, rodada_repo, uow = _contexto_criar_rodada()
 
     response = await service.criar_rodada(
         usuario, projeto.id, CriarRodadaFormFactorLoteRequest(sdf_id="  SDF #1  ")
     )
 
     assert response.total_test_cases == 3
-    assert response.sdf_id == "  SDF #1  "
+    assert response.sdf_id == "SDF #1"
+    rodada_repo.existe_sdf_id_no_projeto.assert_awaited_once_with(
+        usuario.unidade_id, projeto.id, "SDF #1"
+    )
     assert execucao_repo.adicionar.await_count == 3
     assert all(
         call.args[0].rodada_id == response.id
-        and call.args[0].sdf_id == "  SDF #1  "
+        and call.args[0].sdf_id == "SDF #1"
         and not call.args[0].resultados_registrados
         for call in execucao_repo.adicionar.await_args_list
     )
+    uow.commit.assert_awaited_once()
+
+
+async def test_criar_rodada_com_sdf_id_repetido_recusa_sem_gravar():
+    service, usuario, projeto, execucao_repo, rodada_repo, uow = _contexto_criar_rodada()
+    rodada_repo.existe_sdf_id_no_projeto.return_value = True
+
+    with pytest.raises(ConflictException, match="SDF ID") as erro:
+        await service.criar_rodada(
+            usuario, projeto.id, CriarRodadaFormFactorLoteRequest(sdf_id="SDF-001")
+        )
+
+    assert erro.value.campo == "sdf_id"
+    rodada_repo.adicionar.assert_not_awaited()
+    execucao_repo.adicionar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+async def test_criar_rodada_sem_sdf_id_nao_verifica_repeticao():
+    service, usuario, projeto, _, rodada_repo, uow = _contexto_criar_rodada()
+
+    response = await service.criar_rodada(
+        usuario, projeto.id, CriarRodadaFormFactorLoteRequest(sdf_id="")
+    )
+
+    assert response.sdf_id is None
+    rodada_repo.existe_sdf_id_no_projeto.assert_not_awaited()
     uow.commit.assert_awaited_once()
 
 
