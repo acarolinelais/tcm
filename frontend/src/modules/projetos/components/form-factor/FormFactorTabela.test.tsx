@@ -17,7 +17,7 @@ const matriz: FormFactorMatriz = {
 };
 
 function renderTabela(props: Partial<Parameters<typeof FormFactorTabela>[0]> = {}) {
-  const handlers = { onAssigneeChange: vi.fn(), onLimparFiltros: vi.fn(), onPageChange: vi.fn(), onPageSizeChange: vi.fn() };
+  const handlers = { onAssigneeChange: vi.fn(), onLimparFiltros: vi.fn(), onPageChange: vi.fn(), onPageSizeChange: vi.fn(), onAbrirDetalhes: vi.fn() };
   render(<FormFactorTabela
     dados={matriz} carregando={false} erro={false}
     identificadoresMembros={{ ana: "ana.silva", bia: "bia.souza" }}
@@ -34,6 +34,17 @@ const celulas = (linha: HTMLElement) => Array.from(linha.querySelectorAll<HTMLEl
 const fundoDaEtiqueta = (celula: HTMLElement) => celula.querySelector<HTMLElement>(".chip")?.style.getPropertyValue("--chip-bg");
 
 describe("FormFactorTabela", () => {
+  it("o TC ID abre o painel do caso (spec 030), sem disparar o registro de resultado", async () => {
+    const user = userEvent.setup();
+    const onRegistrar = vi.fn();
+    const { onAbrirDetalhes } = renderTabela({ podeRegistrar: () => true, onRegistrar });
+
+    await user.click(screen.getByRole("button", { name: "TC-002" }));
+
+    expect(onAbrirDetalhes).toHaveBeenCalledWith({ id: "c2", tc_id: "TC-002" });
+    expect(onRegistrar).not.toHaveBeenCalled();
+  });
+
   it("mostra uma coluna por modelo, o resultado de cada caso e — onde não há resultado", () => {
     renderTabela();
 

@@ -18,6 +18,9 @@ from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
 from src.infrastructure.data.unit_of_work import UnitOfWorkImpl
 from src.infrastructure.repositories.caso_teste_repository import CasoTesteRepositoryImpl
 from src.infrastructure.repositories.execucao_sdf_repository import ExecucaoSdfRepositoryImpl
+from src.infrastructure.repositories.link_pull_request_repository import (
+    LinkPullRequestRepositoryImpl,
+)
 from src.infrastructure.repositories.projeto_modelo_repository import ProjetoModeloRepositoryImpl
 from src.infrastructure.repositories.projeto_repository import ProjetoRepositoryImpl
 from src.infrastructure.repositories.resultado_form_factor_repository import (
@@ -71,6 +74,7 @@ def _servicos(session):
         TimeRepositoryImpl(session),
         TimeMembroRepositoryImpl(session),
         UsuarioRepositoryImpl(session),
+        LinkPullRequestRepositoryImpl(session),
         UnitOfWorkImpl(session),
     )
     return form_factor, casos

@@ -9,19 +9,28 @@ from src.application.schemas.caso_teste import (
     to_detalhe_response,
     to_response,
 )
+from src.application.schemas.link_pull_request import (
+    AdicionarLinkPullRequestRequest,
+    LinkPullRequestResponse,
+    LinksPullRequestResponse,
+)
+from src.application.schemas.link_pull_request import to_response as link_to_response
 from src.application.validators.semana import intervalo_semana_iso
 from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.caso_teste import CasoTeste, StatusCasoTeste
 from src.domain.entities.interfaces.caso_teste_repository import CasoTesteRepository
+from src.domain.entities.interfaces.link_pull_request_repository import LinkPullRequestRepository
 from src.domain.entities.interfaces.projeto_repository import ProjetoRepository
 from src.domain.entities.interfaces.time_membro_repository import TimeMembroRepository
 from src.domain.entities.interfaces.time_repository import TimeRepository
 from src.domain.entities.interfaces.unit_of_work import UnitOfWork
 from src.domain.entities.interfaces.usuario_repository import UsuarioRepository
+from src.domain.entities.link_pull_request import LinkPullRequest
 from src.domain.entities.projeto import Projeto
 from src.domain.entities.time import Time
+from src.domain.queries.link_pull_request_com_autor import LinkPullRequestComAutor
 
 
 class CasoTesteServiceImpl:
@@ -44,6 +53,7 @@ class CasoTesteServiceImpl:
         time_repo: TimeRepository,
         membro_repo: TimeMembroRepository,
         usuario_repo: UsuarioRepository,
+        link_repo: LinkPullRequestRepository,
         uow: UnitOfWork,
     ) -> None:
         self._caso_repo = caso_repo
@@ -51,16 +61,13 @@ class CasoTesteServiceImpl:
         self._time_repo = time_repo
         self._membro_repo = membro_repo
         self._usuario_repo = usuario_repo
+        self._link_repo = link_repo
         self._uow = uow
 
     async def obter(
         self, usuario_atual: UsuarioAutenticado, caso_id: UUID
     ) -> CasoTesteDetalheResponse:
-        self._exigir_permissao(usuario_atual, "test_cases.consultar")
-        caso = await self._caso_repo.obter_por_id(usuario_atual.unidade_id, caso_id)
-        if caso is None:
-            raise NotFoundException("Test Case não encontrado.")
-        await self._obter_projeto_visivel(usuario_atual, caso.projeto_id)
+        caso, _ = await self._obter_caso_visivel(usuario_atual, caso_id)
         return to_detalhe_response(caso)
 
     async def listar(
@@ -131,11 +138,7 @@ class CasoTesteServiceImpl:
         caso_id: UUID,
         request: AtualizarCasoTesteRequest,
     ) -> CasoTesteResponse:
-        self._exigir_permissao(usuario_atual, "test_cases.consultar")
-        caso = await self._caso_repo.obter_por_id(usuario_atual.unidade_id, caso_id)
-        if caso is None:
-            raise NotFoundException("Test Case não encontrado.")
-        projeto, time = await self._obter_projeto_visivel(usuario_atual, caso.projeto_id)
+        caso, time = await self._obter_caso_visivel(usuario_atual, caso_id)
         campos_enviados = request.model_fields_set
         eh_gestor = self._pode_gerenciar(usuario_atual, time)
         if eh_gestor:
@@ -180,11 +183,7 @@ class CasoTesteServiceImpl:
     async def transferir_para_backup(
         self, usuario_atual: UsuarioAutenticado, caso_id: UUID
     ) -> CasoTesteResponse:
-        self._exigir_permissao(usuario_atual, "test_cases.consultar")
-        caso = await self._caso_repo.obter_por_id(usuario_atual.unidade_id, caso_id)
-        if caso is None:
-            raise NotFoundException("Test Case não encontrado.")
-        await self._obter_projeto_visivel(usuario_atual, caso.projeto_id)
+        caso, _ = await self._obter_caso_visivel(usuario_atual, caso_id)
         if caso.responsavel_id != usuario_atual.id:
             raise ForbiddenException("Somente o responsável principal pode transferir o Test Case.")
         try:
@@ -195,6 +194,54 @@ class CasoTesteServiceImpl:
         await self._uow.commit()
         caso_transferido = await self._caso_repo.obter_por_id(usuario_atual.unidade_id, caso_id)
         return to_response(caso_transferido or caso)
+
+    async def listar_pull_requests(
+        self, usuario_atual: UsuarioAutenticado, caso_id: UUID
+    ) -> LinksPullRequestResponse:
+        caso, time = await self._obter_caso_visivel(usuario_atual, caso_id)
+        links = await self._link_repo.listar_ativos_por_caso(usuario_atual.unidade_id, caso.id)
+        return LinksPullRequestResponse(
+            itens=[link_to_response(link) for link in links],
+            pode_remover=self._pode_gerenciar(usuario_atual, time),
+        )
+
+    async def adicionar_pull_request(
+        self,
+        usuario_atual: UsuarioAutenticado,
+        caso_id: UUID,
+        request: AdicionarLinkPullRequestRequest,
+    ) -> LinkPullRequestResponse:
+        caso, _ = await self._obter_caso_visivel(usuario_atual, caso_id)
+        if await self._link_repo.existe_ativo(usuario_atual.unidade_id, caso.id, request.url):
+            raise ConflictException("Este link de PR já está registrado neste Test Case.")
+        link = LinkPullRequest(usuario_atual.unidade_id, caso.id, request.url, usuario_atual.id)
+        await self._link_repo.adicionar(link)
+        await self._uow.commit()
+        criado = await self._link_repo.obter_por_id(usuario_atual.unidade_id, link.id)
+        return link_to_response(LinkPullRequestComAutor(criado or link, usuario_atual.nome))
+
+    async def remover_pull_request(
+        self, usuario_atual: UsuarioAutenticado, caso_id: UUID, link_id: UUID
+    ) -> None:
+        caso, time = await self._obter_caso_visivel(usuario_atual, caso_id)
+        # Spec 030, RN-04: o dev vê e adiciona, mas só a gestão remove.
+        self._exigir_gestao(usuario_atual, time)
+        link = await self._link_repo.obter_por_id(usuario_atual.unidade_id, link_id)
+        if link is None or not link.ativo or link.caso_teste_id != caso.id:
+            raise NotFoundException("Link de PR não encontrado.")
+        link.inativar()
+        await self._link_repo.atualizar(link)
+        await self._uow.commit()
+
+    async def _obter_caso_visivel(
+        self, usuario_atual: UsuarioAutenticado, caso_id: UUID
+    ) -> tuple[CasoTeste, Time]:
+        self._exigir_permissao(usuario_atual, "test_cases.consultar")
+        caso = await self._caso_repo.obter_por_id(usuario_atual.unidade_id, caso_id)
+        if caso is None:
+            raise NotFoundException("Test Case não encontrado.")
+        _, time = await self._obter_projeto_visivel(usuario_atual, caso.projeto_id)
+        return caso, time
 
     async def _atualizar_como_gestor(
         self,

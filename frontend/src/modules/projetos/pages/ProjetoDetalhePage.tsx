@@ -27,6 +27,7 @@ import { WeekPickerHero } from "@/shared/ui/week-picker-hero";
 
 import { CasoTesteDrawer } from "../components/casos-teste/CasoTesteDrawer";
 import { DetalhesCasoTesteDrawer } from "../components/casos-teste/DetalhesCasoTesteDrawer";
+import { TcIdBotao } from "../components/casos-teste/TcIdBotao";
 import { ExcluirCasoTesteDialog } from "../components/casos-teste/ExcluirCasoTesteDialog";
 import { JustificativaExclusaoDrawer } from "../components/casos-teste/JustificativaExclusaoDrawer";
 import { estadoCasosTeste } from "../components/casos-teste/estado-casos-teste";
@@ -40,7 +41,7 @@ import { ProjetosEntradaPage } from "./ProjetosEntradaPage";
 import { useCasosTeste, useCriarRodadaFormFactor, useFormFactor, useFormFactorResultados, useRegistrarResultadosRodadaFormFactor, useTransferirCasoTeste } from "../hooks/useProjetos";
 
 import { casosTesteApi, formFactorApi, projetosApi, type CasoTeste, type LinhaFormFactor } from "../api/projetos.api";
-import { CATEGORIAS_CASO_TESTE as categorias, DIFICULDADES_CASO_TESTE as dificuldades, NIVEIS_AUTOMACAO_CASO_TESTE as niveisAutomacao, ROTULO_AUTOMACAO, ROTULO_DIFICULDADE, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, opcoesRotuladas, type AtualizarCasoTesteInput, type StatusCasoTeste } from "../model/projeto";
+import { CATEGORIAS_CASO_TESTE as categorias, DIFICULDADES_CASO_TESTE as dificuldades, NIVEIS_AUTOMACAO_CASO_TESTE as niveisAutomacao, ROTULO_AUTOMACAO, ROTULO_DIFICULDADE, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, opcoesRotuladas, type AtualizarCasoTesteInput, type CasoTesteResumo, type StatusCasoTeste } from "../model/projeto";
 
 type CampoInline = "category" | "difficulty" | "automation_level" | "situation" | "status" | "responsavel_id" | "backup_id";
 /** As células editam em texto; o Automation Level viaja como número (1, 2 ou 3). */
@@ -69,7 +70,7 @@ function ProjetoDetalhe() {
   const [drawerCasoAberto, setDrawerCasoAberto] = useState(false);
   const [aberturasDrawer, setAberturasDrawer] = useState(0);
   const [editar, setEditar] = useState<CasoTeste | null>(null);
-  const [casoDetalhado, setCasoDetalhado] = useState<CasoTeste | null>(null);
+  const [casoDetalhado, setCasoDetalhado] = useState<CasoTesteResumo | null>(null);
   const [semana, setSemana] = useState("");
   const [assigneeFormFactor, setAssigneeFormFactor] = useState<string[]>([]);
   const [filtrosResumo, setFiltrosResumo] = useState({ tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" });
@@ -210,7 +211,7 @@ function ProjetoDetalhe() {
     { id: "numero", header: "", className: "w-12 text-right tabular-nums text-muted after:hidden", cell: (caso) => String(primeiraDaPagina + casosFiltrados.indexOf(caso) + 1).padStart(2, "0") },
     { id: "tcId", isRowHeader: true, header: <DataTableFilter label={t("tcId")} value={filtrosCaso.tcId} onChange={(value) => alterarFiltroCaso("tcId", value)} />,
       // Botão, não link: abre o painel de detalhes (spec 028) sem sair da página; o React Aria devolve o foco a ele ao fechar.
-      cell: (caso) => <button type="button" aria-haspopup="dialog" onClick={() => setCasoDetalhado(caso)} className="text-accent underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{caso.tc_id}</button> },
+      cell: (caso) => <TcIdBotao caso={caso} onAbrir={setCasoDetalhado} /> },
     {
       id: "status",
       header: <DataTableMultiFilter label={t("status")} values={filtrosCaso.status} onChange={(values) => alterarFiltroCaso("status", values)} options={opcoes.status} />,
@@ -334,10 +335,10 @@ function ProjetoDetalhe() {
         {(podeConsultarFormFactor || podeImportarSdf) && <PageTabPanel id="form-factor" className="flex min-h-0 flex-1 flex-col gap-4 p-0">
           {visaoFormFactor === "summary"
             ? <div className="flex min-h-0 flex-1 flex-col">
-                <FormFactorTabela dados={resultados.data} carregando={resultados.isLoading} erro={resultados.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} assignee={assigneeFormFactor} onAssigneeChange={(valor) => { setAssigneeFormFactor(valor); setPagina(1); }} tcId={filtrosResumo.tcId} sdfId={filtrosResumo.sdfId} onFiltroTexto={(campo, valor) => { setFiltrosResumo((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} modeloDispositivoId={filtrosResumo.modeloDispositivoId} resultadoFiltro={filtrosResumo.resultado} onFiltroResultado={(modeloId, valor) => { setFiltrosResumo({ ...filtrosResumo, modeloDispositivoId: valor ? modeloId : "", resultado: valor }); setPagina(1); }} podeRegistrar={podeRegistrarResultado ? podeRegistrarLinha : undefined} onRegistrar={setLinhaManual} temFiltros={Boolean(semana || assigneeFormFactor.length || filtrosResumo.tcId || filtrosResumo.sdfId || filtrosResumo.resultado)} onLimparFiltros={() => { setSemana(""); setAssigneeFormFactor([]); setFiltrosResumo({ tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" }); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
+                <FormFactorTabela dados={resultados.data} carregando={resultados.isLoading} erro={resultados.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} assignee={assigneeFormFactor} onAssigneeChange={(valor) => { setAssigneeFormFactor(valor); setPagina(1); }} tcId={filtrosResumo.tcId} sdfId={filtrosResumo.sdfId} onFiltroTexto={(campo, valor) => { setFiltrosResumo((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} modeloDispositivoId={filtrosResumo.modeloDispositivoId} resultadoFiltro={filtrosResumo.resultado} onFiltroResultado={(modeloId, valor) => { setFiltrosResumo({ ...filtrosResumo, modeloDispositivoId: valor ? modeloId : "", resultado: valor }); setPagina(1); }} podeRegistrar={podeRegistrarResultado ? podeRegistrarLinha : undefined} onRegistrar={setLinhaManual} onAbrirDetalhes={setCasoDetalhado} temFiltros={Boolean(semana || assigneeFormFactor.length || filtrosResumo.tcId || filtrosResumo.sdfId || filtrosResumo.resultado)} onLimparFiltros={() => { setSemana(""); setAssigneeFormFactor([]); setFiltrosResumo({ tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" }); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
               </div>
             : <div className="flex min-h-0 flex-1 flex-col">
-                <FormFactorResultadosTabela dados={historico.data} carregando={historico.isLoading} erro={historico.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} filtros={filtrosResultados} responsaveis={responsaveisResultados} onResponsaveisChange={(valores) => { setResponsaveisResultados(valores); setPagina(1); }} onFiltroChange={(campo, valor) => { setFiltrosResultados((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} onFiltroResultado={(modeloId, valor) => { setFiltrosResultados((atual) => ({ ...atual, modeloDispositivoId: valor ? modeloId : "", resultado: valor })); setPagina(1); }} onLimparFiltros={() => { setFiltrosResultados({ tcId: "", sdfId: "", origem: "", modeloDispositivoId: "", resultado: "" }); setResponsaveisResultados([]); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
+                <FormFactorResultadosTabela onAbrirDetalhes={setCasoDetalhado} dados={historico.data} carregando={historico.isLoading} erro={historico.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} filtros={filtrosResultados} responsaveis={responsaveisResultados} onResponsaveisChange={(valores) => { setResponsaveisResultados(valores); setPagina(1); }} onFiltroChange={(campo, valor) => { setFiltrosResultados((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} onFiltroResultado={(modeloId, valor) => { setFiltrosResultados((atual) => ({ ...atual, modeloDispositivoId: valor ? modeloId : "", resultado: valor })); setPagina(1); }} onLimparFiltros={() => { setFiltrosResultados({ tcId: "", sdfId: "", origem: "", modeloDispositivoId: "", resultado: "" }); setResponsaveisResultados([]); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
               </div>}
         </PageTabPanel>}
       </PageTabs>

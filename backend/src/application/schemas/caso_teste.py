@@ -125,8 +125,8 @@ def to_response(caso: CasoTeste) -> CasoTesteResponse:
         backup_id=caso.backup_id,
         justificativa_exclusao=caso.justificativa_exclusao,
         ativo=caso.ativo,
-        created_at=_timestamp_utc(caso.created_at),
-        updated_at=_timestamp_utc(caso.updated_at),
+        created_at=timestamp_utc(caso.created_at),
+        updated_at=timestamp_utc(caso.updated_at),
     )
 
 
@@ -140,7 +140,7 @@ def to_detalhe_response(caso: CasoTeste) -> CasoTesteDetalheResponse:
     )
 
 
-def _timestamp_utc(valor: datetime | None) -> datetime | None:
+def timestamp_utc(valor: datetime | None) -> datetime | None:
     if valor is None:
         return None
     return valor.replace(tzinfo=UTC) if valor.tzinfo is None else valor.astimezone(UTC)

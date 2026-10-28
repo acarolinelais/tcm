@@ -37,7 +37,8 @@ export function SideDrawer({ isOpen, onOpenChange, title, subtitle, children, fo
         {/* Content é o contêiner de tela inteira que encosta o painel à direita; a largura vai no Dialog. */}
         {/* Card: começa abaixo da barra de busca, termina antes do rodapé da tela e encosta na borda direita. */}
         <Drawer.Content placement="right" className={cn(card && "pb-10 pt-16")}>
-          <Drawer.Dialog className={cn("flex h-full w-[min(28rem,100vw)] flex-col p-0", card && "rounded-l-[24px] shadow-[-8px_0_40px_rgba(0,0,0,0.08)]")}>
+          {/* O card é mais largo: os passos do Procedure e os links de PR são textos longos (spec 030). */}
+          <Drawer.Dialog className={cn("flex h-full flex-col p-0", card ? "w-[min(36rem,100vw)] rounded-l-[24px] shadow-[-8px_0_40px_rgba(0,0,0,0.08)]" : "w-[min(28rem,100vw)]")}>
             <Drawer.CloseTrigger />
             <Drawer.Header className={cn("px-7 py-6 pr-16", !card && "border-b border-separator")}>
               <Drawer.Heading className={cn("leading-6 text-[#454442]", card ? "text-[22px] font-normal leading-7" : "text-[18px] font-medium")}>{title}</Drawer.Heading>

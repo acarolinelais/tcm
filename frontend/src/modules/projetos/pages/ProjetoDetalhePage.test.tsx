@@ -15,7 +15,7 @@ import { ApiError } from "@/shared/api/problem-details";
 import { toast } from "@/shared/lib/toast";
 
 vi.mock("../api/projetos.api", () => ({
-  projetosApi: { obter: vi.fn(), listar: vi.fn() }, casosTesteApi: { listar: vi.fn(), obter: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), transferirParaBackup: vi.fn() },
+  projetosApi: { obter: vi.fn(), listar: vi.fn() }, casosTesteApi: { listar: vi.fn(), obter: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), transferirParaBackup: vi.fn(), listarPullRequests: vi.fn() },
   formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), criarRodada: vi.fn(), registrarResultadosRodada: vi.fn(), importar: vi.fn() }, modelosDispositivoApi: {},
 }));
 vi.mock("@/modules/times/api/times.api", () => ({ timesApi: { membros: vi.fn() } }));
@@ -59,6 +59,7 @@ describe("ProjetoDetalhePage", () => {
     vi.mocked(casosTesteApi.criar).mockResolvedValue({ ...casos[0], tc_id: "Clock_003" });
     vi.mocked(casosTesteApi.atualizar).mockResolvedValue(casos[0]);
     vi.mocked(casosTesteApi.transferirParaBackup).mockResolvedValue({ ...casos[0], responsavel_id: "backup-1", backup_id: "user-1" });
+    vi.mocked(casosTesteApi.listarPullRequests).mockResolvedValue({ itens: [], pode_remover: false });
     vi.mocked(formFactorApi.listar).mockResolvedValue({ modelos: [], items: [], page: 1, page_size: 10, total_count: 0 });
     vi.mocked(formFactorApi.listarResultados).mockResolvedValue({ modelos: [], items: [], page: 1, page_size: 20, total_count: 0 });
     vi.mocked(formFactorApi.importar).mockResolvedValue({ quantidade_execucoes: 1, quantidade_resultados: 4 } as never);
@@ -135,6 +136,35 @@ describe("ProjetoDetalhePage", () => {
     expect(within(painel).getByRole("heading", { name: "Clock_001" })).toBeInTheDocument();
     expect(await within(painel).findByText("Check Writing style")).toBeInTheDocument();
     expect(casosTesteApi.obter).toHaveBeenCalledWith("case-1");
+  });
+
+  it.each([
+    ["Developer", { ...perfil, perfil_codigo: "USUARIO_PADRAO", permissoes: [...perfil.permissoes, "form_factor.consultar"] }],
+    ["gestão", { ...perfil, id: "admin", perfil_codigo: "ADMIN_UNIDADE", perfil: "Administrador" }],
+  ] as [string, PerfilAtual][])("abre os detalhes pelo TC ID das tabelas de Form Factor para o perfil %s (spec 030)", async (_, perfilAtual) => {
+    vi.mocked(formFactorApi.listar).mockResolvedValue({
+      modelos: [], casos_elegiveis: [], page: 1, page_size: 20, total_count: 1,
+      items: [{ caso_teste_id: "case-2", tc_id: "Clock_002", responsavel_id: "user-2", sdf_id: null, data_reportada: null, resultados: {} }],
+    });
+    vi.mocked(formFactorApi.listarResultados).mockResolvedValue({
+      modelos: [], page: 1, page_size: 20, total_count: 1,
+      items: [{ execucao_id: "run-1", caso_teste_id: "case-1", tc_id: "Clock_001", responsavel_id: "user-1", sdf_id: null, data_reportada: "2026-03-23T00:00:00Z", origem: "MANUAL", resultados: {} }],
+    });
+    vi.mocked(casosTesteApi.obter).mockImplementation(async (id) => ({ ...(id === "case-1" ? casos[0] : casos[1]), title: `Título ${id}`, precondition: null, procedure: null, expected_result: null }));
+    renderPage(perfilAtual);
+    const user = userEvent.setup();
+    await screen.findByRole("heading", { name: "Clock 9.5" });
+    await user.click(screen.getByRole("tab", { name: "Form Factor" }));
+
+    await user.click(within(await screen.findByRole("row", { name: /Clock_002/ })).getByRole("button", { name: "Clock_002" }));
+    const painel = await screen.findByRole("dialog");
+    expect(within(painel).getByRole("heading", { name: "Clock_002" })).toBeInTheDocument();
+    expect(await within(painel).findByText("Título case-2")).toBeInTheDocument();
+    expect(await within(painel).findByRole("heading", { name: "Pull Requests" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.getByRole("row", { name: /Clock_002/ })).toBeInTheDocument();
+    expect(casosTesteApi.atualizar).not.toHaveBeenCalled();
   });
 
   it("abre os detalhes pelo teclado e, ao fechar, devolve o foco ao TC ID sem recarregar a tabela", async () => {

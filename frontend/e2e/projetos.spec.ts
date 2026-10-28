@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import { caseItem, project, projectId, setupMembrosDoTime, setupProjectSession, setupTeamsAndModels } from "./projetos-fixtures";
 
@@ -97,4 +97,82 @@ test("edita o Automation Level na tabela e mantém o nível depois de recarregar
 
   await page.reload();
   await expect(linha).toContainText("2 – Automatizável até certo ponto");
+});
+
+/** Spec 030: rotas da tela do projeto com a aba Form Factor e os links de PR guardados em memória, como a API. */
+async function rotasDosLinksDePr(page: Page, podeRemover: boolean) {
+  const links: Record<string, string>[] = [];
+  await page.route(`**/api/projetos/${projectId}`, (route) => route.fulfill({ json: project }));
+  await page.route(`**/api/projetos/${projectId}/test-cases?*`, (route) => route.fulfill({ json: { items: [caseItem], page: 1, page_size: 20, total_count: 1 } }));
+  await page.route(`**/api/projetos/${projectId}/form-factor?*`, (route) => route.fulfill({ json: {
+    modelos: [], casos_elegiveis: [], page: 1, page_size: 20, total_count: 1,
+    items: [{ caso_teste_id: caseItem.id, tc_id: caseItem.tc_id, responsavel_id: caseItem.responsavel_id, sdf_id: null, data_reportada: null, resultados: {} }],
+  } }));
+  await page.route(`**/api/test-cases/${caseItem.id}`, (route) => route.fulfill({ json: { ...caseItem, title: "Check alarm", precondition: null, procedure: "1. Open Clock", expected_result: null } }));
+  await page.route(`**/api/test-cases/${caseItem.id}/pull-requests`, async (route) => {
+    if (route.request().method() === "POST") {
+      const { url } = route.request().postDataJSON() as { url: string };
+      const link = { id: `pr-${links.length + 1}`, caso_teste_id: caseItem.id, url, created_at: "2026-10-28T12:00:00Z", created_by: "user-1", created_by_nome: "Gerente Ana" };
+      links.unshift(link);
+      return route.fulfill({ status: 201, json: link });
+    }
+    return route.fulfill({ json: { itens: links, pode_remover: podeRemover } });
+  });
+  await page.route(`**/api/test-cases/${caseItem.id}/pull-requests/*/inativar`, async (route) => {
+    const id = route.request().url().split("/").at(-2);
+    links.splice(links.findIndex((link) => link.id === id), 1);
+    return route.fulfill({ status: 204 });
+  });
+  return links;
+}
+
+async function abrirPainelPeloFormFactor(page: Page) {
+  await page.goto(`/projetos/${projectId}`);
+  await page.getByRole("tab", { name: "Form Factor" }).click();
+  await page.getByRole("row", { name: /Clock_001/ }).getByRole("button", { name: "Clock_001", exact: true }).click();
+  const painel = page.getByRole("dialog");
+  await expect(painel.getByRole("heading", { name: "Clock_001" })).toBeVisible();
+  return painel;
+}
+
+test("pull request: a gestão abre o painel pelo Form Factor, adiciona um link do GitHub Enterprise e o remove", async ({ page }) => {
+  await setupProjectSession(page);
+  await setupMembrosDoTime(page);
+  const links = await rotasDosLinksDePr(page, true);
+  const painel = await abrirPainelPeloFormFactor(page);
+
+  await expect(painel.getByText("Nenhum PR registrado")).toBeVisible();
+  const campo = painel.getByRole("textbox", { name: "Link do PR" });
+  await campo.fill("https://github.com/org/repo/pull/1");
+  await painel.getByRole("button", { name: "Adicionar" }).click();
+  await expect(painel.getByText("Só são aceitos links do github.sec.samsung.net.")).toBeVisible();
+  expect(links).toHaveLength(0);
+
+  const url = "https://github.sec.samsung.net/org/repo/pull/12";
+  await campo.fill(url);
+  await painel.getByRole("button", { name: "Adicionar" }).click();
+  const link = painel.getByRole("link", { name: url });
+  await expect(link).toHaveAttribute("target", "_blank");
+  await expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  await expect(painel.getByText(/Adicionado por Gerente Ana/)).toBeVisible();
+
+  await painel.getByRole("button", { name: `Remover o link de PR ${url}` }).click();
+  const confirmacao = page.getByRole("alertdialog", { name: "Remover link de PR?" });
+  await expect(confirmacao).toContainText(url);
+  await confirmacao.getByRole("button", { name: "Remover" }).click();
+  await expect(painel.getByText("Nenhum PR registrado")).toBeVisible();
+  expect(links).toHaveLength(0);
+});
+
+test("pull request: o dev adiciona um link, mas não vê a opção de remover", async ({ page }) => {
+  await setupProjectSession(page, { perfil_codigo: "USUARIO_PADRAO", perfil: "Developer", permissoes: ["projetos.consultar", "test_cases.consultar", "form_factor.consultar"] });
+  await setupMembrosDoTime(page);
+  await rotasDosLinksDePr(page, false);
+  const painel = await abrirPainelPeloFormFactor(page);
+
+  const url = "https://github.sec.samsung.net/org/repo/pull/7";
+  await painel.getByRole("textbox", { name: "Link do PR" }).fill(url);
+  await painel.getByRole("button", { name: "Adicionar" }).click();
+  await expect(painel.getByRole("link", { name: url })).toBeVisible();
+  await expect(painel.getByRole("button", { name: /Remover o link de PR/ })).toHaveCount(0);
 });

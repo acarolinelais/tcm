@@ -8,15 +8,16 @@ import { DataTablePagination } from "@/shared/ui/data-table-pagination";
 import { RowActions } from "@/shared/ui/row-action-button";
 import { rowActionIconProps } from "@/shared/ui/row-action-icon";
 
-import type { FormFactorMatriz } from "../../model/projeto";
+import type { CasoTesteResumo, FormFactorMatriz } from "../../model/projeto";
 import { colunasPorModelo } from "./colunas-form-factor";
 import { estadoCasosTeste } from "../casos-teste/estado-casos-teste";
+import { TcIdBotao } from "../casos-teste/TcIdBotao";
 
 type Linha = FormFactorMatriz["items"][number];
 const chaveDaLinha = (linha: Linha) => linha.caso_teste_id;
 const SEM_LINHAS: Linha[] = [];
 
-export function FormFactorTabela({ dados, carregando, erro, identificadoresMembros, opcoesAssignee, assignee, onAssigneeChange, tcId = "", sdfId = "", onFiltroTexto, modeloDispositivoId = "", resultadoFiltro = "", onFiltroResultado, podeRegistrar, onRegistrar, temFiltros, onLimparFiltros, page, pageSize, onPageChange, onPageSizeChange }: {
+export function FormFactorTabela({ dados, carregando, erro, identificadoresMembros, opcoesAssignee, assignee, onAssigneeChange, tcId = "", sdfId = "", onFiltroTexto, modeloDispositivoId = "", resultadoFiltro = "", onFiltroResultado, podeRegistrar, onRegistrar, onAbrirDetalhes, temFiltros, onLimparFiltros, page, pageSize, onPageChange, onPageSizeChange }: {
   dados: FormFactorMatriz | undefined;
   carregando: boolean;
   erro: boolean;
@@ -29,6 +30,8 @@ export function FormFactorTabela({ dados, carregando, erro, identificadoresMembr
   modeloDispositivoId?: string; resultadoFiltro?: string; onFiltroResultado?: (modeloId: string, resultado: string) => void;
   podeRegistrar?: (linha: Linha) => boolean;
   onRegistrar?: (linha: Linha) => void;
+  /** Abre o painel de detalhes do caso pelo TC ID (spec 030). */
+  onAbrirDetalhes: (caso: CasoTesteResumo) => void;
   temFiltros: boolean;
   onLimparFiltros: () => void;
   page: number;
@@ -45,7 +48,7 @@ export function FormFactorTabela({ dados, carregando, erro, identificadoresMembr
 
   const colunas: DataTableColumn<Linha>[] = [
     { id: "numero", header: "", className: "w-12 text-right tabular-nums text-muted after:hidden", cell: (linha) => String(primeiraDaPagina + linhas.indexOf(linha) + 1).padStart(2, "0") },
-    { id: "tcId", isRowHeader: true, header: <DataTableFilter label={t("tcId")} value={tcId} onChange={(valor) => onFiltroTexto?.("tcId", valor)} />, cell: (linha) => linha.tc_id },
+    { id: "tcId", isRowHeader: true, header: <DataTableFilter label={t("tcId")} value={tcId} onChange={(valor) => onFiltroTexto?.("tcId", valor)} />, cell: (linha) => <TcIdBotao caso={{ id: linha.caso_teste_id, tc_id: linha.tc_id }} onAbrir={onAbrirDetalhes} /> },
     { id: "sdfId", header: <DataTableFilter label={t("sdfId")} value={sdfId} onChange={(valor) => onFiltroTexto?.("sdfId", valor)} />, cell: (linha) => linha.sdf_id ?? "—" },
     { id: "assignee", header: <DataTableMultiFilter label={t("assignee")} values={assignee} onChange={onAssigneeChange} options={opcoesAssignee} searchable />, cell: (linha) => identificadoresMembros[linha.responsavel_id] ?? "—" },
     ...colunasPorModelo<Linha>(t, modelos, { modeloId: modeloDispositivoId, resultado: resultadoFiltro }, (modeloId, valor) => onFiltroResultado?.(modeloId, valor)),

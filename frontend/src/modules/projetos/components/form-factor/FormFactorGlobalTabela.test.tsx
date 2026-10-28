@@ -1,5 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { FormFactorGlobalTabela } from "./FormFactorGlobalTabela";
@@ -7,7 +8,8 @@ import { FormFactorGlobalTabela } from "./FormFactorGlobalTabela";
 const filtros = { page: 1, pageSize: 20, projetoId: "", responsavelId: "", tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" };
 
 describe("FormFactorGlobalTabela", () => {
-  it("distingue modelo não associado de modelo aplicável sem resultado e mantém o link do projeto", () => {
+  it("distingue modelo não associado de modelo aplicável sem resultado e mantém o link do projeto", async () => {
+    const onAbrirDetalhes = vi.fn();
     render(<MemoryRouter><FormFactorGlobalTabela
       dados={{
         modelos: [{ id: "m1", nome: "SM-123" }, { id: "m2", nome: "SM-9292" }],
@@ -19,7 +21,7 @@ describe("FormFactorGlobalTabela", () => {
         page: 1, page_size: 20, total_count: 2,
       }}
       carregando={false} erro={false} projetos={[]} filtros={filtros}
-      onFiltroChange={vi.fn()} onLimparFiltros={vi.fn()} temFiltros={false}
+      onFiltroChange={vi.fn()} onAbrirDetalhes={onAbrirDetalhes} onLimparFiltros={vi.fn()} temFiltros={false}
       page={1} pageSize={20} onPageChange={vi.fn()} onPageSizeChange={vi.fn()}
     /></MemoryRouter>);
 
@@ -30,5 +32,9 @@ describe("FormFactorGlobalTabela", () => {
     expect(within(secondRow).getByLabelText("No result recorded")).toBeInTheDocument();
     expect(within(row).getByRole("link", { name: "Keyboard 9.8" })).toHaveAttribute("href", "/projetos/project-1");
     expect(screen.getByRole("button", { name: "Filter by Project" })).toBeInTheDocument();
+
+    // Spec 030: o TC ID abre o painel do caso; o nome do projeto continua navegando.
+    await userEvent.click(within(row).getByRole("button", { name: "TC-001" }));
+    expect(onAbrirDetalhes).toHaveBeenCalledWith({ id: "case-1", tc_id: "TC-001" });
   });
 });

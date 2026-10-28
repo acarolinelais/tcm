@@ -283,6 +283,67 @@ describe("base mock de projetos", () => {
     expect(mockCasosTesteApi.obter(criado.id)).toMatchObject({ title: null, precondition: null, procedure: null, expected_result: null });
   });
 
+  describe("links de PR (spec 030)", () => {
+    const URL_PR = "https://github.sec.samsung.net/org/repo/pull/12";
+
+    function criarCaso() {
+      const projeto = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: [] });
+      return mockCasosTesteApi.criar(projeto.id, { tc_id: "clock_000001", category: "A", difficulty: "Low", situation: "New", responsavel_id: "mock-user-dev", backup_id: "mock-user-kp" });
+    }
+
+    function statusDoErro(acao: () => unknown) {
+      try { acao(); } catch (erro) { return erro instanceof ApiError ? erro.problem.status : "outro"; }
+      return null;
+    }
+
+    it("o dev adiciona com ele como autor, vê a lista do mais recente ao mais antigo e não pode remover", () => {
+      const caso = criarCaso();
+      entrar("daniel.oliveira@example.com");
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-10-28T12:00:00Z"));
+      const primeiro = mockCasosTesteApi.adicionarPullRequest(caso.id, `  ${URL_PR}  `);
+      vi.setSystemTime(new Date("2026-10-28T13:00:00Z"));
+      const segundo = mockCasosTesteApi.adicionarPullRequest(caso.id, `${URL_PR}/files`);
+      vi.useRealTimers();
+
+      const lista = mockCasosTesteApi.listarPullRequests(caso.id);
+
+      expect(primeiro).toMatchObject({ url: URL_PR, created_by: "mock-user-dev", created_by_nome: "Daniel Oliveira" });
+      expect(lista.itens.map((link) => link.id)).toEqual([segundo.id, primeiro.id]);
+      expect(lista.pode_remover).toBe(false);
+      expect(statusDoErro(() => mockCasosTesteApi.removerPullRequest(caso.id, primeiro.id))).toBe(403);
+      expect(mockCasosTesteApi.listarPullRequests(caso.id).itens).toHaveLength(2);
+    });
+
+    it("recusa URL inválida, de outro domínio e repetida entre os ativos", () => {
+      const caso = criarCaso();
+      mockCasosTesteApi.adicionarPullRequest(caso.id, URL_PR);
+
+      expect(statusDoErro(() => mockCasosTesteApi.adicionarPullRequest(caso.id, "http://github.sec.samsung.net/x"))).toBe(422);
+      expect(statusDoErro(() => mockCasosTesteApi.adicionarPullRequest(caso.id, "https://github.com/org/repo/pull/1"))).toBe(422);
+      expect(statusDoErro(() => mockCasosTesteApi.adicionarPullRequest(caso.id, ` ${URL_PR} `))).toBe(409);
+      expect(mockCasosTesteApi.listarPullRequests(caso.id).itens).toHaveLength(1);
+    });
+
+    it("a gestão remove de forma lógica, a URL volta a ser aceita e um link já removido não é encontrado", () => {
+      const caso = criarCaso();
+      entrar("daniel.oliveira@example.com");
+      const link = mockCasosTesteApi.adicionarPullRequest(caso.id, URL_PR);
+      entrar("kaique.pereira@example.com");
+
+      expect(mockCasosTesteApi.listarPullRequests(caso.id).pode_remover).toBe(true);
+      mockCasosTesteApi.removerPullRequest(caso.id, link.id);
+
+      expect(mockCasosTesteApi.listarPullRequests(caso.id).itens).toEqual([]);
+      expect(statusDoErro(() => mockCasosTesteApi.removerPullRequest(caso.id, link.id))).toBe(404);
+      expect(mockCasosTesteApi.adicionarPullRequest(caso.id, URL_PR).id).not.toBe(link.id);
+    });
+
+    it("não lista links de um caso inexistente", () => {
+      expect(() => mockCasosTesteApi.listarPullRequests("nao-existe")).toThrow("Test Case não encontrado.");
+    });
+  });
+
   it("não encontra o detalhe de um caso inexistente", () => {
     expect(() => mockCasosTesteApi.obter("nao-existe")).toThrow("Test Case não encontrado.");
   });
@@ -337,8 +398,21 @@ describe("base mock de projetos", () => {
     mockProjetosApi.listar(1, 10);
     const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
 
-    expect(migrado.schemaVersion).toBe(19);
+    expect(migrado.schemaVersion).toBeGreaterThanOrEqual(19);
     expect(migrado.casosTeste[0]).toHaveProperty("automation_level", null);
+  });
+
+  it("schema 20 cria a coleção de links de PR sem mexer nos Test Cases", () => {
+    const database = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+    delete database.linksPullRequest;
+    database.schemaVersion = 19;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(database));
+
+    mockProjetosApi.listar(1, 10);
+    const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+
+    expect(migrado.schemaVersion).toBe(20);
+    expect(migrado.linksPullRequest).toEqual([]);
   });
 
   it("preserva lotes anteriores ao importar novos relatórios SDF", () => {
