@@ -28,7 +28,8 @@ o motivo no próprio campo, para a gestão corrigir antes de criar.
 - RN-03: O SDF ID continua opcional (spec 022). Rodadas sem SDF ID não entram na verificação e podem existir
   em qualquer quantidade.
 - RN-04: Ao encontrar a repetição, a rodada não é criada e nenhum TC muda. O diálogo continua aberto com o
-  valor digitado e mostra no campo SDF ID que esse SDF já tem uma rodada no projeto.
+  valor digitado e um aviso informa que esse SDF já tem uma rodada no projeto. *(Alterada em 2026-10-27: o
+  aviso passou do campo SDF ID para um toast.)*
 - RN-05: Rodadas antigas que já repetem um SDF ID continuam como estão. A regra vale para as rodadas criadas
   a partir de agora.
 
@@ -37,16 +38,16 @@ o motivo no próprio campo, para a gestão corrigir antes de criar.
 - **CA-01:** Dado um projeto com uma rodada `SDF-001`, quando a gestão cria uma rodada `SDF-002`, então a
   rodada é criada normalmente.
 - **CA-02 (falha):** Dado um projeto com uma rodada `SDF-001`, quando a gestão tenta criar outra rodada
-  `SDF-001`, então a criação é recusada, nenhuma rodada nova aparece e o campo SDF ID informa que esse SDF já
-  tem uma rodada no projeto.
+  `SDF-001`, então a criação é recusada, nenhuma rodada nova aparece e um toast informa que esse SDF já tem
+  uma rodada no projeto.
 - **CA-03 (falha):** Dado um projeto com uma rodada `SDF-001`, quando a gestão tenta criar uma rodada
   ` sdf-001 `, então a criação é recusada como no CA-02.
 - **CA-04:** Dado que o projeto A tem uma rodada `SDF-001`, quando a gestão cria uma rodada `SDF-001` no
   projeto B, então a rodada é criada.
 - **CA-05:** Dado um projeto com uma rodada sem SDF ID, quando a gestão cria outra rodada sem SDF ID, então a
   rodada é criada.
-- **CA-06 (falha):** Dado que o diálogo mostrou o erro de SDF ID repetido, quando a gestão troca o valor por
-  um SDF ID novo e cria, então o erro some e a rodada é criada.
+- **CA-06 (falha):** Dado que o toast avisou o SDF ID repetido, quando a gestão troca o valor no diálogo, que
+  continuou aberto, por um SDF ID novo e cria, então a rodada é criada.
 
 ## Fora de escopo
 

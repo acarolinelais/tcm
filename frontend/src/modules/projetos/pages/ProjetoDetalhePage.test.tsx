@@ -431,23 +431,15 @@ describe("ProjetoDetalhePage", () => {
     expect(await screen.findByRole("heading", { name: "No test cases yet" })).toBeInTheDocument();
   });
 
-  it("mostra no campo o SDF ID que já tem rodada e mantém o diálogo aberto", async () => {
+  it("avisa no toast que o SDF ID já tem rodada e mantém o diálogo aberto", async () => {
     const mensagem = "Este SDF ID já tem uma rodada neste projeto.";
     vi.mocked(formFactorApi.criarRodada).mockRejectedValueOnce(new ApiError({ type: "about:blank", title: "Conflito.", status: 409, detail: mensagem, errors: [{ campo: "sdf_id", mensagem }] }));
     const { user, dialog } = await abrirCriacaoRodada();
     await user.type(within(dialog).getByLabelText("SDF ID"), "SDF-001");
     await user.click(within(dialog).getByRole("button", { name: "Create test round" }));
 
-    expect(await within(dialog).findByText("This SDF ID already has a round in this project. Use a different one.")).toBeInTheDocument();
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("This SDF ID already has a round in this project. Use a different one."));
     expect(within(dialog).getByLabelText("SDF ID")).toHaveValue("SDF-001");
-    expect(toast.error).not.toHaveBeenCalled();
-    await user.clear(within(dialog).getByLabelText("SDF ID"));
-    await user.type(within(dialog).getByLabelText("SDF ID"), " sdf-001 ");
-    expect(within(dialog).getByText(/already has a round/)).toBeInTheDocument();
-    await user.click(within(dialog).getByRole("button", { name: "Create test round" }));
-    expect(formFactorApi.criarRodada).toHaveBeenCalledTimes(1);
-    await user.type(within(dialog).getByLabelText("SDF ID"), "2");
-    expect(within(dialog).queryByText(/already has a round/)).not.toBeInTheDocument();
   });
 
   it("mantém no toast os outros erros ao criar a rodada", async () => {
@@ -456,7 +448,6 @@ describe("ProjetoDetalhePage", () => {
     await user.click(within(dialog).getByRole("button", { name: "Create test round" }));
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Não há Test Cases em In Validation para iniciar uma rodada."));
-    expect(within(dialog).queryByText(/already has a round/)).not.toBeInTheDocument();
   });
 
   it("apresenta resultados do Form Factor com filtros e importa relatório SDF", async () => {

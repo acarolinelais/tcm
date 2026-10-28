@@ -61,11 +61,11 @@ Sem mudança de schema e sem migration.
 | CA | Nível | Teste |
 |---|---|---|
 | CA-01 | Unidade | `test_criar_rodada_captura_todos_os_tcs_em_validacao` (SDF ID novo, já sem espaços) |
-| CA-02 | Unidade + Funcional + Componente | `test_criar_rodada_com_sdf_id_repetido_recusa_sem_gravar`; `test_criar_rodada_com_sdf_id_repetido_retorna_409_com_campo`; `test_conflito_com_campo_retorna_409_com_errors`; `mostra no campo o SDF ID que já tem rodada e mantém o diálogo aberto` |
+| CA-02 | Unidade + Funcional + Componente | `test_criar_rodada_com_sdf_id_repetido_recusa_sem_gravar`; `test_criar_rodada_com_sdf_id_repetido_retorna_409_com_campo`; `test_conflito_com_campo_retorna_409_com_errors`; `avisa no toast que o SDF ID já tem rodada e mantém o diálogo aberto` |
 | CA-03 | Unidade (schema) + Integração | `test_request_rodada_remove_espacos_e_vazio_vira_none`; `test_existe_sdf_id_ignora_maiusculas_e_espacos` |
 | CA-04 | Integração | `test_existe_sdf_id_nao_considera_outro_projeto_outra_unidade_nem_rodada_inativa` |
 | CA-05 | Unidade | `test_criar_rodada_sem_sdf_id_nao_verifica_repeticao` |
-| CA-06 | Componente (Vitest) | `mostra no campo o SDF ID que já tem rodada e mantém o diálogo aberto` (editar limpa o erro); `mantém no toast os outros erros ao criar a rodada` |
+| CA-06 | Componente (Vitest) | `avisa no toast que o SDF ID já tem rodada e mantém o diálogo aberto`; `mantém no toast os outros erros ao criar a rodada` |
 | CA-02 a CA-05 (mock) | Vitest | `recusa SDF ID repetido no mesmo projeto, sem diferenciar maiúsculas e espaços` |
 
 ## Riscos e decisões pendentes

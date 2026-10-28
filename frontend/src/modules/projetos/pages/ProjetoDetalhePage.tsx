@@ -72,7 +72,6 @@ function ProjetoDetalhe() {
   const [responsaveisResultados, setResponsaveisResultados] = useState<string[]>([]);
   const [linhaManual, setLinhaManual] = useState<LinhaFormFactor | null>(null);
   const [abrirCriacaoRodada, setAbrirCriacaoRodada] = useState(false);
-  const [sdfIdRecusado, setSdfIdRecusado] = useState<string | null>(null);
   const [semanaCasos, setSemanaCasos] = useState("");
   const [arquivoSdf, setArquivoSdf] = useState<File | null>(null);
   const inputSdf = useRef<HTMLInputElement>(null);
@@ -338,15 +337,14 @@ function ProjetoDetalhe() {
     <CasoTesteDrawer key={aberturasDrawer} isOpen={drawerCasoAberto} onOpenChange={setDrawerCasoAberto} projetoId={projetoId} editar={editar} membrosAtivos={membrosAtivos} />
     <FormFactorCriarRodadaDialog
       aberto={abrirCriacaoRodada}
-      onAbertoChange={(aberto) => { setAbrirCriacaoRodada(aberto); setSdfIdRecusado(null); }}
+      onAbertoChange={setAbrirCriacaoRodada}
       salvando={criarRodada.isPending}
-      sdfIdRecusado={sdfIdRecusado}
       onCriar={(sdfId) => criarRodada.mutate({ sdf_id: sdfId }, {
         onSuccess: () => { setAbrirCriacaoRodada(false); toast.success(t("testRoundCreated")); },
-        // SDF ID repetido aparece no campo, com o modal aberto; os demais erros seguem no toast.
-        onError: (error) => error instanceof ApiError && error.problem.errors?.some((erro) => erro.campo === "sdf_id")
-          ? setSdfIdRecusado(sdfId)
-          : toast.error(error instanceof Error ? error.message : t("roundCreateError")),
+        // Erros no toast, com o modal aberto para corrigir; o SDF ID repetido usa a mensagem traduzida.
+        onError: (error) => toast.error(error instanceof ApiError && error.problem.errors?.some((erro) => erro.campo === "sdf_id")
+          ? t("sdfIdAlreadyUsed")
+          : error instanceof Error ? error.message : t("roundCreateError")),
       })}
     />
     <FormFactorManualDialog
