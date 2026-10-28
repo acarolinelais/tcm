@@ -27,6 +27,8 @@ const movimentoReduzido = () => window.matchMedia?.("(prefers-reduced-motion: re
 /** Ciclo de vida da leitura da planilha: progresso, troca, remoção e falhas (spec 016). */
 export function useLeituraPlanilha(mensagemFalhaLeitura: string) {
   const [estado, setEstado] = useState<EstadoLeitura>(inicial);
+  // Fica aqui, e não no componente da área de soltar, para sobreviver à troca entre importar e cadastrar à mão.
+  const [recusa, setRecusa] = useState<MotivoRecusa | null>(null);
   // Cada leitura tem uma geração: progresso e resultado de uma geração antiga são descartados (RN-15).
   const geracao = useRef(0);
   const leitura = useRef<LeituraEmAndamento | null>(null);
@@ -41,8 +43,9 @@ export function useLeituraPlanilha(mensagemFalhaLeitura: string) {
   useEffect(() => interromper, [interromper]);
 
   const selecionar = useCallback((file: File): MotivoRecusa | null => {
-    if (!/\.xlsx?$/i.test(file.name)) return "formato";
-    if (file.size > TAMANHO_MAXIMO_PLANILHA) return "tamanho";
+    const motivo: MotivoRecusa | null = !/\.xlsx?$/i.test(file.name) ? "formato" : file.size > TAMANHO_MAXIMO_PLANILHA ? "tamanho" : null;
+    setRecusa(motivo);
+    if (motivo) return motivo;
     interromper();
     const atual = geracao.current;
     const vigente = () => atual === geracao.current;
@@ -78,12 +81,12 @@ export function useLeituraPlanilha(mensagemFalhaLeitura: string) {
   }, [interromper, mensagemFalhaLeitura]);
 
   /** Remove o arquivo (ou limpa o formulário): cancela a leitura em andamento e volta ao início. */
-  const limpar = useCallback(() => { interromper(); setEstado(inicial); }, [interromper]);
+  const limpar = useCallback(() => { interromper(); setEstado(inicial); setRecusa(null); }, [interromper]);
   /** Problemas devolvidos pelo servidor ao conferir a planilha (spec 011, CA-26). */
   const definirErrosDoServidor = useCallback((erros: ErroPlanilhaExibivel[], totalLinhasComErro?: number) => {
     // Com problemas do servidor o card sai do estado concluído e a área reabre (RN-18).
     setEstado((anterior) => ({ ...anterior, erros, totalLinhasComErro, fase: erros.length ? "erro" : anterior.fase }));
   }, []);
 
-  return { ...estado, selecionar, limpar, definirErrosDoServidor };
+  return { ...estado, recusa, selecionar, limpar, definirErrosDoServidor };
 }

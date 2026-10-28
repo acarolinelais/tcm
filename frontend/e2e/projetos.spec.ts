@@ -38,7 +38,7 @@ test("cria projeto manualmente, atribui casos e transfere um caso ao backup", as
   await page.getByRole("tab", { name: "Manual", exact: true }).click();
   await page.getByLabel("App").fill("Clock");
   await page.getByLabel(/One UI/).fill("9.5");
-  await page.getByLabel("Time").click();
+  await page.getByRole("button", { name: /Time$/ }).click();
   await page.getByRole("option", { name: "Plataforma" }).click();
   await page.getByRole("button", { name: "Modelos de dispositivo" }).click();
   await page.getByRole("option", { name: "S27 Ultra" }).click();
@@ -54,7 +54,8 @@ test("cria projeto manualmente, atribui casos e transfere um caso ao backup", as
   await dialog.getByLabel("Responsável", { exact: true }).click();
   await page.getByRole("option", { name: "Gerente Ana" }).click();
   await dialog.getByLabel("Backup", { exact: true }).click();
-  await page.getByRole("option", { name: "Kaique Pereira" }).click();
+  // A lista do Responsável ainda pode estar saindo da tela: escolhe na lista do Backup.
+  await page.getByRole("listbox", { name: /Backup/ }).getByRole("option", { name: "Kaique Pereira" }).click();
   await dialog.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByRole("row", { name: /Clock_001/ })).toBeVisible();
   expect(createdBody).toMatchObject({ situation: "New Step" });

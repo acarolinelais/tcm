@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/ui/table";
+import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import type { PlanilhaProjeto } from "../../utils/planilha-projeto";
 import { PreviaPlanilha } from "./PreviaPlanilha";
 
@@ -22,27 +22,24 @@ function previa(total: number): PlanilhaProjeto {
 }
 
 const linhasDoCorpo = () => within(screen.getAllByRole("rowgroup")[1]).getAllByRole("row");
+// No React Aria a primeira célula é rowheader e as demais, gridcell: leia na ordem das colunas.
+const celulas = (linha: HTMLElement) => Array.from(linha.querySelectorAll<HTMLElement>("th, td"));
+const molduraDaPrevia = () => screen.getByRole("region", { name: "Test Case preview" }).lastElementChild;
 
 describe("PreviaPlanilha", () => {
-  it("mostra o total e pagina 1.000 casos com primeira, anterior, próxima e última página", async () => {
+  it("mostra o total e pagina 1.000 casos, 20 por página, com anterior e próxima", async () => {
     const user = userEvent.setup();
-    const totalPaginas = Math.ceil(1000 / DEFAULT_TABLE_PAGE_SIZE);
     render(<PreviaPlanilha previa={previa(1000)} />);
 
     expect(screen.getByText("1,000 Test Cases")).toBeInTheDocument();
+    expect(screen.getByText("1000 total")).toBeInTheDocument();
     expect(linhasDoCorpo()).toHaveLength(DEFAULT_TABLE_PAGE_SIZE);
-    expect(screen.getByText(`Page 1 of ${totalPaginas}`)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "First page" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Previous page" })).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: "Next page" }));
     expect(screen.getByText(`Clock_${String(DEFAULT_TABLE_PAGE_SIZE + 1).padStart(4, "0")}`)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Last page" }));
-    expect(screen.getByText(`Page ${totalPaginas} of ${totalPaginas}`)).toBeInTheDocument();
-    expect(screen.getByText("Clock_1000")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
+    expect(screen.queryByText("Clock_0001")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Previous page" }));
-    expect(screen.getByText(`Page ${totalPaginas - 1} of ${totalPaginas}`)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "First page" }));
     expect(screen.getByText("Clock_0001")).toBeInTheDocument();
   });
 
@@ -61,17 +58,16 @@ describe("PreviaPlanilha", () => {
 
     const colunas = screen.getAllByRole("columnheader").map((coluna) => coluna.textContent);
     expect(colunas.indexOf("Automation Level")).toBe(colunas.indexOf("Category") + 1);
-    const celulas = linhasDoCorpo().map((linha) => within(linha).getAllByRole("cell")[colunas.indexOf("Automation Level")].textContent);
-    expect(celulas).toEqual(["1 – Not automatable", "—", "3 – 100% automatable"]);
+    const niveis = linhasDoCorpo().map((linha) => celulas(linha)[colunas.indexOf("Automation Level")].textContent);
+    expect(niveis).toEqual(["1 – Not automatable", "—", "3 – 100% automatable"]);
   });
 
   it("mantém a altura fixa só quando há mais de uma página", () => {
     const { rerender } = render(<PreviaPlanilha previa={previa(DEFAULT_TABLE_PAGE_SIZE + 1)} />);
-    const rolagem = () => screen.getByRole("table").closest(".thin-scroll");
-    expect(rolagem()).toHaveClass("h-96");
+    expect(molduraDaPrevia()).toHaveClass("h-[30rem]");
 
     rerender(<PreviaPlanilha previa={previa(3)} />);
-    expect(rolagem()).toHaveClass("max-h-96");
-    expect(rolagem()).not.toHaveClass("h-96");
+    expect(molduraDaPrevia()).toHaveClass("max-h-[30rem]");
+    expect(molduraDaPrevia()).not.toHaveClass("h-[30rem]");
   });
 });

@@ -5,7 +5,7 @@ import { Check, CircleAlert, X } from "lucide-react";
 import { formatNumber } from "@/core/i18n/format";
 import { toast } from "@/shared/lib/toast";
 import { usePresenca } from "@/shared/lib/use-presenca";
-import { Button } from "@/shared/ui/button";
+import { Button } from "@heroui/react";
 
 import type { MotivoRecusa, useLeituraPlanilha } from "../../hooks/useLeituraPlanilha";
 import { ErrosPlanilha } from "./ErrosPlanilha";
@@ -42,7 +42,6 @@ export function UploadPlanilha({ leitura, onBaixarModelo }: { leitura: Leitura; 
   const input = useRef<HTMLInputElement>(null);
   const area = useRef<HTMLButtonElement>(null);
   const [arrastando, setArrastando] = useState(false);
-  const [recusa, setRecusa] = useState<MotivoRecusa | null>(null);
   const [focarArea, setFocarArea] = useState(false);
   // Com a leitura concluída a área recolhe; na leitura e no erro ela fica aberta (spec 016, RN-08 e RN-18).
   const areaAberta = leitura.fase !== "concluida";
@@ -64,13 +63,11 @@ export function UploadPlanilha({ leitura, onBaixarModelo }: { leitura: Leitura; 
   function selecionar(file?: File) {
     if (!file) return;
     const motivo = leitura.selecionar(file);
-    setRecusa(motivo);
     if (motivo) toast.error(t(MENSAGEM_RECUSA[motivo]));
   }
 
   function remover() {
     leitura.limpar();
-    setRecusa(null);
     setFocarArea(true);
     toast.success(t("spreadsheetRemoved"));
   }
@@ -106,7 +103,7 @@ export function UploadPlanilha({ leitura, onBaixarModelo }: { leitura: Leitura; 
           </span>
         </button>
         <div className="mt-2.5 flex justify-between gap-4 px-2 text-sm leading-5 text-[#777777]"><p>{t("spreadsheetFormats")}</p><p className="shrink-0">{t("spreadsheetMaxSize")}</p></div>
-        {recusa && <p className="mt-1.5 px-2 text-sm text-destructive">{t(MENSAGEM_RECUSA[recusa])}</p>}
+        {leitura.recusa && <p className="mt-1.5 px-2 text-sm text-destructive">{t(MENSAGEM_RECUSA[leitura.recusa])}</p>}
       </div>
     </div>
     <input ref={input} className="sr-only" type="file" accept={EXTENSOES_ACEITAS} tabIndex={-1} aria-hidden="true" onChange={(event) => { selecionar(event.target.files?.[0]); event.target.value = ""; }} />
@@ -117,7 +114,7 @@ export function UploadPlanilha({ leitura, onBaixarModelo }: { leitura: Leitura; 
         <p className="flex items-center gap-2 text-base font-medium leading-6 text-[#454442]"><ExcelIcon aria-hidden="true" className="size-6 shrink-0" />{t("spreadsheetTemplateTitle")}</p>
         <p className="mt-1.5 max-w-[28rem] text-sm leading-5 text-[#777777]">{t("spreadsheetTemplateDescription")}</p>
       </div>
-      <Button type="button" variant="outline" onClick={onBaixarModelo} className="h-9 rounded-[10px] border-[#DDDDDD] bg-white px-4 text-sm font-medium text-[#454442]">{t("downloadTemplate")}</Button>
+      <Button variant="outline" onPress={onBaixarModelo} className="h-9 rounded-[10px] bg-white px-4 text-sm font-medium text-[#454442]">{t("downloadTemplate")}</Button>
     </div>}
 
     {cardArquivo.montado && exibida.arquivo && <CardArquivo arquivo={exibida.arquivo} leitura={exibida} saindo={cardArquivo.saindo} onRemover={remover} />}
@@ -136,7 +133,7 @@ function CardArquivo({ arquivo, leitura, saindo, onRemover }: { arquivo: File; l
   const erro = fase === "erro";
 
   return <div data-saindo={saindo || undefined} className={`upload-surgir relative ${CARD}`}>
-    <Button type="button" variant="ghost" size="icon" aria-label={t("removeFile")} onClick={onRemover} className="absolute right-3 top-3 size-8 text-[#777777]"><X aria-hidden="true" className="size-4" /></Button>
+    <Button isIconOnly variant="ghost" size="sm" aria-label={t("removeFile")} onPress={onRemover} className="absolute right-3 top-3 size-8 text-[#777777]"><X aria-hidden="true" className="size-4" /></Button>
     <div className="flex items-center gap-4 pr-8">
       <span className="flex size-11 shrink-0 items-center justify-center rounded-[10px] border border-[#E5E7EB] bg-white"><ExcelIcon aria-hidden="true" className="size-6" /></span>
       <div className="min-w-0">

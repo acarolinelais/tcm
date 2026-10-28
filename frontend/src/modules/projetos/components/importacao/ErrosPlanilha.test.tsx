@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import i18n from "@/core/i18n";
-import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/ui/table";
+import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import type { ErroPlanilhaExibivel } from "../../utils/formatar-erro-planilha";
 import { ErrosPlanilha } from "./ErrosPlanilha";
 
@@ -52,7 +52,8 @@ describe("ErrosPlanilha", () => {
     const user = userEvent.setup();
     const total = DEFAULT_TABLE_PAGE_SIZE + 5;
     const { rerender } = render(<ErrosPlanilha totalLinhas={total} erros={Array.from({ length: total }, (_, index) => linhaInvalida(index + 2)).flat()} />);
-    await user.click(screen.getByRole("button", { name: "Last page" }));
+    await user.click(screen.getByRole("button", { name: "Next page" }));
+    expect(screen.getByRole("heading", { name: `Row ${DEFAULT_TABLE_PAGE_SIZE + 2}` })).toBeInTheDocument();
 
     rerender(<ErrosPlanilha totalLinhas={total} erros={linhaInvalida(7)} />);
 

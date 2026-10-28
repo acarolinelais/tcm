@@ -15,7 +15,7 @@ import { ApiError } from "@/shared/api/problem-details";
 const toastMock = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 
 vi.mock("../api/projetos.api", () => ({
-  projetosApi: { listar: vi.fn(), criar: vi.fn(), importar: vi.fn(), atualizarStatus: vi.fn() },
+  projetosApi: { listar: vi.fn(), criar: vi.fn(), importar: vi.fn(), atualizarStatus: vi.fn(), atualizar: vi.fn() },
   modelosDispositivoApi: { listarOpcoes: vi.fn() },
   casosTesteApi: {}, formFactorApi: {},
 }));
@@ -268,5 +268,87 @@ describe("ProjetosPage", () => {
     await expect(lerPlanilhaProjeto(arquivo)).resolves.toMatchObject({ app: "Clock", one_ui: "9.5", totalLinhas: 1 });
     clickSpy.mockRestore();
     vi.unstubAllGlobals();
+  });
+
+  it("no cadastro, só o modo escolhido fica na tela: um campo Team por vez (spec 031)", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: /New project/i }));
+    await user.click(screen.getByRole("tab", { name: "Manual" }));
+
+    expect(screen.getAllByText("Team")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: /Team/ })).toHaveTextContent("Select a team");
+    expect(document.getElementById("project-import-panel")).toBeNull();
+  });
+
+  describe("painel de editar projeto (spec 031)", () => {
+    const clock = { id: "project-1", unidade_id: "unit-1", time_id: "team-1", nome: "Clock 9.5", app: "Clock", one_ui: "9.5", status: "Created", ativo: true, modelos_ids: ["model-1"], modelos_dispositivo: ["S27 Ultra"], created_at: null, updated_at: null };
+
+    beforeEach(() => {
+      vi.mocked(projetosApi.listar).mockResolvedValue({ items: [clock], page: 1, page_size: 20, total_count: 1 } as never);
+      vi.mocked(timesApi.listar).mockResolvedValue({ items: [{ id: "team-1", nome: "Plataforma", ativo: true }, { id: "team-2", nome: "Suporte", ativo: true }], page: 1, page_size: 100, total_count: 2 } as never);
+      vi.mocked(modelosDispositivoApi.listarOpcoes).mockResolvedValue({ items: [{ id: "model-1", nome: "S27 Ultra", descricao: "Flagship" }, { id: "model-2", nome: "Tab S11", descricao: null }], page: 1, page_size: 100, total_count: 2 });
+    });
+
+    async function abrirEdicao(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(await screen.findByRole("button", { name: "Edit project Clock 9.5" }));
+      const painel = await screen.findByRole("dialog");
+      expect(within(painel).getByRole("heading", { name: "Edit project · Clock 9.5" })).toBeInTheDocument();
+      return painel;
+    }
+
+    async function trocarTimeEModelos(user: ReturnType<typeof userEvent.setup>, painel: HTMLElement) {
+      await user.click(within(painel).getByRole("button", { name: /Team/ }));
+      await user.click(await screen.findByRole("option", { name: "Suporte" }));
+      await user.click(within(painel).getByRole("button", { name: "Remove S27 Ultra" }));
+      await user.click(within(painel).getByRole("button", { name: "Device models" }));
+      await user.click(await screen.findByRole("option", { name: "Tab S11" }));
+      await user.keyboard("{Escape}");
+    }
+
+    it("troca o time e os modelos, salva e fecha", async () => {
+      vi.mocked(projetosApi.atualizar).mockResolvedValue({ ...clock, time_id: "team-2" } as never);
+      const user = userEvent.setup();
+      renderPage();
+
+      const painel = await abrirEdicao(user);
+      await trocarTimeEModelos(user, painel);
+      await user.click(within(painel).getByRole("button", { name: "Save" }));
+
+      await waitFor(() => expect(projetosApi.atualizar).toHaveBeenCalledWith("project-1", { nome: "Clock 9.5", app: "Clock", one_ui: "9.5", time_id: "team-2", modelos_ids: ["model-2"] }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      expect(toastMock.success).toHaveBeenCalledWith("Project updated.");
+    });
+
+    it("falha: a API recusa a troca de time e o painel continua aberto com os valores escolhidos", async () => {
+      vi.mocked(projetosApi.atualizar).mockRejectedValue(new Error("Há responsáveis fora do time de destino."));
+      const user = userEvent.setup();
+      renderPage();
+
+      const painel = await abrirEdicao(user);
+      await trocarTimeEModelos(user, painel);
+      await user.click(within(painel).getByRole("button", { name: "Save" }));
+
+      await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith("Could not update the project."));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(within(painel).getByRole("button", { name: /Team/ })).toHaveTextContent("Suporte");
+    });
+
+    it("fecha com Esc sem salvar e reabre com os dados salvos", async () => {
+      const user = userEvent.setup();
+      renderPage();
+
+      const painel = await abrirEdicao(user);
+      const nome = within(painel).getByRole("textbox", { name: "Project name" });
+      await user.clear(nome);
+      await user.type(nome, "Rascunho");
+      await user.keyboard("{Escape}");
+
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      expect(projetosApi.atualizar).not.toHaveBeenCalled();
+      const reaberto = await abrirEdicao(user);
+      expect(within(reaberto).getByRole("textbox", { name: "Project name" })).toHaveValue("Clock 9.5");
+    });
   });
 });

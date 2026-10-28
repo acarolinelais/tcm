@@ -3,6 +3,9 @@ import * as XLSX from "@e965/xlsx";
 
 import { caseItem, project, projectId, setupMembrosDoTime, setupProjectSession, setupTeamsAndModels } from "./projetos-fixtures";
 
+/** O painel de problemas da planilha; o toast também é um `alert`, mas sem esse título. */
+const alertaDaPlanilha = (page: Page) => page.getByRole("alert").filter({ has: page.getByRole("heading", { name: "Revise os erros da planilha abaixo." }) });
+
 const cabecalho = ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI", "Assignees", "Backup"];
 
 function planilha(linhas: unknown[][], colunas: string[] = cabecalho) {
@@ -32,12 +35,13 @@ test("pagina a prévia e informa quantos Test Cases foram criados", async ({ pag
   await page.locator('input[type="file"]').setInputFiles(planilha(casos(45)));
   const previa = page.getByRole("region", { name: "Prévia dos Test Cases" });
   await expect(previa).toContainText("45 Test Cases");
-  await expect(previa).toContainText("Página 1 de 3");
+  await expect(previa).toContainText("45 no total");
   await expect(previa).not.toContainText("Clock_021");
-  await previa.getByRole("button", { name: "Última página" }).click();
+  await previa.getByRole("button", { name: "Próxima página" }).click();
+  await previa.getByRole("button", { name: "Próxima página" }).click();
   await expect(previa).toContainText("Clock_045");
-  await expect(previa).toContainText("Página 3 de 3");
-  await page.getByLabel("Time").click();
+  await expect(previa.getByRole("button", { name: "Próxima página" })).toBeDisabled();
+  await page.getByRole("button", { name: /Time$/ }).click();
   await page.getByRole("option", { name: "Plataforma" }).click();
   await page.getByRole("button", { name: "Criar projeto" }).click();
 
@@ -68,7 +72,7 @@ test("mostra os problemas da planilha agrupados por linha e confere as pessoas n
     ["", "Clock_001", "Low", "", "New", "", "Gerente Ana", "Kaique Pereira"],
   ]));
 
-  const alerta = page.getByRole("alert");
+  const alerta = alertaDaPlanilha(page);
   await expect(alerta).toContainText("2 de 2 linhas precisam de ajuste. Nada foi criado.");
   await expect(alerta).toContainText('Coluna TC Situation: "To-Do" não é válido. Use New, New Step ou Without Changes.');
   await expect(alerta.getByRole("heading", { name: "Linha 3" })).toBeVisible();
@@ -78,7 +82,7 @@ test("mostra os problemas da planilha agrupados por linha e confere as pessoas n
   await expect(page.getByRole("button", { name: "Conferir planilha" })).toBeDisabled();
   expect(submitted).toBe(false);
 
-  await page.getByLabel("Time").click();
+  await page.getByRole("button", { name: /Time$/ }).click();
   await page.getByRole("option", { name: "Plataforma" }).click();
   await page.getByRole("button", { name: "Conferir planilha" }).click();
   await expect(alerta).toContainText('Coluna Backup: "Kaique Pereira" não é membro ativo do time selecionado.');
@@ -100,7 +104,7 @@ test("mostra os problemas de pessoas devolvidos pela API e não cria o projeto",
   await page.locator('input[type="file"]').setInputFiles(planilha(casos(2)));
   // Espera a leitura terminar: a prévia muda o layout e fecharia a lista de times aberta.
   await expect(page.getByRole("region", { name: "Prévia dos Test Cases" })).toContainText("Clock_002");
-  await page.getByLabel("Time").click();
+  await page.getByRole("button", { name: /Time$/ }).click();
   await page.getByRole("option", { name: "Plataforma" }).click();
   await page.getByRole("button", { name: "Criar projeto" }).click();
 
@@ -127,11 +131,11 @@ test("envia identificadores de usuário e bloqueia importação ambígua", async
   ]));
   const previa = page.getByRole("region", { name: "Prévia dos Test Cases" });
   await expect(previa).toContainText("USR-001");
-  await page.getByLabel("Time").click();
+  await page.getByRole("button", { name: /Time$/ }).click();
   await page.getByRole("option", { name: "Plataforma" }).click();
   await page.getByRole("button", { name: "Criar projeto" }).click();
 
-  const alerta = page.getByRole("alert");
+  const alerta = alertaDaPlanilha(page);
   await expect(alerta).toContainText("USR-001");
   await expect(page.getByRole("heading", { name: "Meus projetos" })).toHaveCount(0);
 });
@@ -219,7 +223,7 @@ test("importa a planilha no modelo atual e mostra o Automation Level de cada cas
   await expect(linhas.filter({ hasText: "Clock_001" })).toContainText("1 – Não automatizável");
   await expect(linhas.filter({ hasText: "Clock_002" })).toContainText("—");
   await expect(linhas.filter({ hasText: "Clock_003" })).toContainText("3 – 100% automatizável");
-  await page.getByRole("combobox", { name: "Time" }).click();
+  await page.getByRole("button", { name: /Time$/ }).click();
   await page.getByRole("option", { name: "Plataforma" }).click();
   await page.getByRole("button", { name: "Criar projeto" }).click();
 
@@ -233,7 +237,7 @@ test("recusa um Automation Level inválido na planilha, apontando a linha e a co
   await abrirNovoProjeto(page);
   await escolher(page, planilha([casoModelo("Clock_001", 2), casoModelo("Clock_002", 4)], cabecalhoModelo));
 
-  const alerta = page.getByRole("alert");
+  const alerta = alertaDaPlanilha(page);
   await expect(alerta).toContainText("1 de 2 linhas precisa de ajuste. Nada foi criado.");
   await expect(alerta.getByRole("heading", { name: "Linha 3" })).toBeVisible();
   await expect(alerta).toContainText('Coluna Automation Level: "4" não é válido. Use 1, 2 ou 3.');
@@ -254,7 +258,7 @@ test("detalhes: importa a planilha com os textos e lê o procedimento no painel 
   await abrirNovoProjeto(page);
   await escolher(page, planilha([linha], cabecalhoModelo));
   await expect(previaDe(page)).toContainText("1 Test Case");
-  await page.getByRole("combobox", { name: "Time" }).click();
+  await page.getByRole("button", { name: /Time$/ }).click();
   await page.getByRole("option", { name: "Plataforma" }).click();
   await page.getByRole("button", { name: "Criar projeto" }).click();
   await expect(page.getByText(/Planilha importada com sucesso/)).toBeVisible();
@@ -284,7 +288,7 @@ test("detalhes: recusa um Title acima de 500 caracteres, apontando a linha e a c
   await abrirNovoProjeto(page);
   await escolher(page, planilha([longo], cabecalhoModelo));
 
-  const alerta = page.getByRole("alert");
+  const alerta = alertaDaPlanilha(page);
   await expect(alerta.getByRole("heading", { name: "Linha 2" })).toBeVisible();
   await expect(alerta).toContainText("Coluna Title(English): o texto passa de 500 caracteres. Encurte o texto.");
   expect(enviou).toBe(false);

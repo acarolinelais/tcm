@@ -2,9 +2,13 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { formatNumber } from "@/core/i18n/format";
-import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableHead, TableHeader, TablePagination, TableRow } from "@/shared/ui/table";
+import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
+import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
+import { DataTablePagination } from "@/shared/ui/data-table-pagination";
 import { ROTULO_AUTOMACAO, ROTULO_SITUACAO } from "../../model/projeto";
 import type { PlanilhaProjeto } from "../../utils/planilha-projeto";
+
+type Caso = PlanilhaProjeto["casos"][number];
 
 /** Prévia paginada no cliente: a planilha já foi lida inteira no navegador. */
 export function PreviaPlanilha({ previa }: { previa: PlanilhaProjeto }) {
@@ -13,53 +17,36 @@ export function PreviaPlanilha({ previa }: { previa: PlanilhaProjeto }) {
   const [pagina, setPagina] = useState(1);
   const [tamanho, setTamanho] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const casosDaPagina = previa.casos.slice((pagina - 1) * tamanho, pagina * tamanho);
+  const colunas: DataTableColumn<Caso>[] = [
+    { id: "tcId", isRowHeader: true, header: t("tcId"), cell: (caso) => caso.tc_id },
+    { id: "category", header: t("category"), cell: (caso) => caso.category },
+    { id: "automationLevel", header: t("automationLevel"), cell: (caso) => caso.automation_level ? t(ROTULO_AUTOMACAO[caso.automation_level]) : "—" },
+    { id: "difficulty", header: t("difficulty"), cell: (caso) => caso.difficulty },
+    { id: "situation", header: t("tcSituation"), cell: (caso) => t(ROTULO_SITUACAO[caso.situation]) },
+    { id: "assignee", header: t("assignee"), cell: (caso) => caso.responsavel },
+    { id: "backup", header: t("backup"), cell: (caso) => caso.backup },
+  ];
 
   return (
-    <section aria-label={t("spreadsheetPreview")} className="mt-6 overflow-hidden rounded-2xl border border-border bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-[#F7F8FA] px-5 py-4">
+    <section aria-label={t("spreadsheetPreview")} className="mt-6">
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-2 px-1">
         <div>
-          <h2 className="text-sm font-semibold">{t("spreadsheetPreview")}</h2>
-          <p className="mt-1 text-xs text-muted-foreground">{t("project")}: {previa.app} {previa.one_ui}</p>
+          <h2 className="text-base font-medium leading-6 text-[#454442]">{t("spreadsheetPreview")}</h2>
+          <p className="mt-0.5 text-[13px] text-muted">{t("project")}: {previa.app} {previa.one_ui}</p>
         </div>
-        <span className="text-xs tabular-nums text-muted-foreground">{t("testCaseCount", { count: previa.casos.length, countLabel: formatNumber(previa.casos.length) })}</span>
+        <span className="text-[13px] tabular-nums text-muted">{t("testCaseCount", { count: previa.casos.length, countLabel: formatNumber(previa.casos.length) })}</span>
       </div>
-      {/* Com mais de uma página a altura é fixa, para a paginação não pular ao trocar de página (RN-21). */}
-      <div className={`thin-scroll overflow-auto ${previa.casos.length > tamanho ? "h-96" : "max-h-96"}`}>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("tcId")}</TableHead>
-              <TableHead>{t("category")}</TableHead>
-              <TableHead>{t("automationLevel")}</TableHead>
-              <TableHead>{t("difficulty")}</TableHead>
-              <TableHead>{t("tcSituation")}</TableHead>
-              <TableHead>{t("assignee")}</TableHead>
-              <TableHead>{t("backup")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {casosDaPagina.map((caso) => (
-              <TableRow key={caso.linha}>
-                <TableCell className="font-medium">{caso.tc_id}</TableCell>
-                <TableCell className="text-muted-foreground">{caso.category}</TableCell>
-                <TableCell className="text-muted-foreground">{caso.automation_level ? t(ROTULO_AUTOMACAO[caso.automation_level]) : "—"}</TableCell>
-                <TableCell className="text-muted-foreground">{caso.difficulty}</TableCell>
-                <TableCell className="text-muted-foreground">{t(ROTULO_SITUACAO[caso.situation])}</TableCell>
-                <TableCell className="text-muted-foreground">{caso.responsavel}</TableCell>
-                <TableCell className="text-muted-foreground">{caso.backup}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      {/* Com mais de uma página a altura é fixa, para a paginação não pular ao trocar de página (spec 016, RN-21). */}
+      <div className={`flex flex-col ${previa.casos.length > tamanho ? "h-[30rem]" : "max-h-[30rem]"}`}>
+        <DataTable
+          aria-label={t("spreadsheetPreview")}
+          columns={colunas}
+          items={casosDaPagina}
+          getKey={(caso) => String(caso.linha)}
+          rowDependencies={[t]}
+          pagination={<DataTablePagination page={pagina} pageSize={tamanho} totalCount={previa.casos.length} onPageChange={setPagina} onPageSizeChange={(n) => { setTamanho(n); setPagina(1); }} />}
+        />
       </div>
-      <TablePagination
-        className="px-5 pb-3"
-        page={pagina}
-        pageSize={tamanho}
-        totalCount={previa.casos.length}
-        onPageChange={setPagina}
-        onPageSizeChange={(n) => { setTamanho(n); setPagina(1); }}
-      />
     </section>
   );
 }
