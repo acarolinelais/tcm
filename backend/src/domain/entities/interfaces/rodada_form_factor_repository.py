@@ -13,6 +13,10 @@ class RodadaFormFactorRepository(Protocol):
         self, unidade_id: UUID, projeto_id: UUID, rodada_id: UUID
     ) -> RodadaFormFactor | None: ...
 
+    async def existe_sdf_id_no_projeto(
+        self, unidade_id: UUID, projeto_id: UUID, sdf_id: str
+    ) -> bool: ...
+
     async def listar_casos(
         self,
         unidade_id: UUID,

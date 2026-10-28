@@ -24,7 +24,7 @@ from src.application.validators.importacao_projeto import (
     ErroImportacaoPlanilha,
 )
 from src.application.validators.relatorio_sdf import RelatorioSdfInvalido
-from src.domain.common.exceptions import ForbiddenException
+from src.domain.common.exceptions import ConflictException, ForbiddenException
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.projeto import Projeto
 from src.domain.entities.time import Time
@@ -282,6 +282,27 @@ async def test_criar_rodada_recusa_sdf_id_acima_de_cinquenta(api_client):
 
     assert response.status_code == 422
     service.criar_rodada.assert_not_awaited()
+
+
+async def test_criar_rodada_com_sdf_id_repetido_retorna_409_com_campo(api_client):
+    from src.api.main import app
+
+    usuario = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
+    service = AsyncMock()
+    service.criar_rodada.side_effect = ConflictException(
+        "Este SDF ID já tem uma rodada neste projeto.", campo="sdf_id"
+    )
+    app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
+    app.dependency_overrides[get_form_factor_service] = dependency_override(service)
+
+    response = await api_client.post(
+        f"/api/projetos/{uuid4()}/form-factor/rodadas", json={"sdf_id": "SDF-001"}
+    )
+
+    assert response.status_code == 409
+    assert response.json()["errors"] == [
+        {"campo": "sdf_id", "mensagem": "Este SDF ID já tem uma rodada neste projeto."}
+    ]
 
 
 async def test_registrar_resultados_rodada_aceita_map_vazio(api_client):

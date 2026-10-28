@@ -1199,10 +1199,15 @@ export const mockFormFactorApi = {
     requireMockPermission("form_factor.registrar");
     if (!["ADMIN_UNIDADE", "GERENTE", "KP"].includes(profile?.codigo ?? "")) throw new Error("Somente Admin, Gerente ou KP podem iniciar uma rodada.");
     getMockProject(db, projectId);
-    if (input.sdf_id != null && input.sdf_id.length > 50) throw new Error("SDF ID deve ter no máximo 50 caracteres.");
+    const sdfId = input.sdf_id?.trim() || null;
+    if (sdfId != null && sdfId.length > 50) throw new Error("SDF ID deve ter no máximo 50 caracteres.");
+    if (sdfId != null && db.rodadasFormFactor.some((item) => item.projeto_id === projectId && item.sdf_id?.trim().toLowerCase() === sdfId.toLowerCase())) {
+      const mensagem = "Este SDF ID já tem uma rodada neste projeto.";
+      throw new ApiError({ type: "about:blank", title: "Conflito.", status: 409, detail: mensagem, errors: [{ campo: "sdf_id", mensagem }] });
+    }
     const testCases = db.casosTeste.filter((item) => item.projeto_id === projectId && item.ativo && item.status === "InValidation");
     if (!testCases.length) throw new Error("Não há Test Cases em In Validation para iniciar uma rodada.");
-    const rodada: RodadaFormFactor = { id: id("mock-form-factor-round"), projeto_id: projectId, sdf_id: input.sdf_id ?? null, created_at: new Date().toISOString(), total_test_cases: testCases.length };
+    const rodada: RodadaFormFactor = { id: id("mock-form-factor-round"), projeto_id: projectId, sdf_id: sdfId, created_at: new Date().toISOString(), total_test_cases: testCases.length };
     db.rodadasFormFactor.unshift(rodada);
     testCases.forEach((testCase) => db.execucoesFormFactor.push({ execucao_id: id("mock-sdf-execution"), rodada_id: rodada.id, projeto_id: projectId, caso_teste_id: testCase.id, sdf_id: rodada.sdf_id, data_reportada: rodada.created_at, resultados_registrados: false }));
     writeDb(db);

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { FieldError, Input, Label, ListBox, Select, TextField } from "@heroui/react";
+import { Description, FieldError, Input, Label, ListBox, Select, TextField } from "@heroui/react";
 
 // Campos dos painéis da spec 022 sobre o HeroUI. O erro vem da tela (validação própria ou ProblemDetails).
 
@@ -10,7 +10,9 @@ interface CampoBase {
   isDisabled?: boolean;
 }
 
-export function TextInputField({ label, error, isRequired, isDisabled, value, onChange, maxLength, isReadOnly, autoFocus }: CampoBase & {
+export function TextInputField({ label, error, description, isRequired, isDisabled, value, onChange, maxLength, isReadOnly, autoFocus }: CampoBase & {
+  /** Dica sob o campo; o erro, quando houver, toma o lugar dela. */
+  description?: string;
   value: string;
   onChange?: (value: string) => void;
   maxLength?: number;
@@ -21,7 +23,7 @@ export function TextInputField({ label, error, isRequired, isDisabled, value, on
     <TextField value={value} onChange={onChange} isInvalid={Boolean(error)} isRequired={isRequired} isDisabled={isDisabled} isReadOnly={isReadOnly} validationBehavior="aria" className="flex flex-col gap-2">
       <Label className="text-[14px] font-medium text-[#454442]">{label}</Label>
       <Input maxLength={maxLength} autoFocus={autoFocus} className="h-10 text-[14px]" />
-      {error ? <FieldError className="text-[12px]">{error}</FieldError> : null}
+      {error ? <FieldError className="text-[12px]">{error}</FieldError> : description ? <Description className="text-[12px] text-muted">{description}</Description> : null}
     </TextField>
   );
 }

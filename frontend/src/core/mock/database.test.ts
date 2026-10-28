@@ -362,6 +362,21 @@ describe("base mock de projetos", () => {
     }
   });
 
+  it("recusa SDF ID repetido no mesmo projeto, sem diferenciar maiúsculas e espaços", () => {
+    const criarProjeto = () => mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: ["mock-model-s27-ultra"] });
+    const [project, outro] = [criarProjeto(), criarProjeto()];
+    [project, outro].forEach((projeto) => mockCasosTesteApi.atualizar(mockCasosTesteApi.criar(projeto.id, { category: "A", difficulty: "Low", situation: "New", tc_id: "TC-SDF", responsavel_id: "mock-user-kp", backup_id: "mock-user-dev" }).id, { status: "InValidation" }));
+    mockFormFactorApi.criarRodada(project.id, { sdf_id: "SDF-001" });
+
+    let erro: unknown;
+    try { mockFormFactorApi.criarRodada(project.id, { sdf_id: " sdf-001 " }); } catch (error) { erro = error; }
+    expect(erro).toBeInstanceOf(ApiError);
+    expect((erro as ApiError).problem).toMatchObject({ status: 409, errors: [{ campo: "sdf_id" }] });
+    expect(mockFormFactorApi.criarRodada(outro.id, { sdf_id: "SDF-001" }).sdf_id).toBe("SDF-001");
+    expect(mockFormFactorApi.criarRodada(project.id, { sdf_id: "" }).sdf_id).toBeNull();
+    expect(mockFormFactorApi.criarRodada(project.id, { sdf_id: "  " }).sdf_id).toBeNull();
+  });
+
   it("só a rodada atual do TC recebe resultados e as anteriores ficam encerradas", () => {
     const project = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: ["mock-model-s27-ultra", "mock-model-s26-ultra"] });
     const testCase = mockCasosTesteApi.criar(project.id, { category: "A", difficulty: "Low", situation: "New", tc_id: "TC-ATUAL", responsavel_id: "mock-user-kp", backup_id: "mock-user-dev" });
