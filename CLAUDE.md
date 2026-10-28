@@ -67,6 +67,7 @@ Documentação em PT-BR. Termos de domínio no código em português; termos té
 
 ## Git
 - Commits **sem** `Co-Authored-By` nem qualquer atribuição ao Claude.
+- Descrições de PR também **sem** atribuição ao Claude: nada de "🤖 Generated with Claude Code" nem linha parecida.
 - Só commite quando o usuário pedir.
 - **Nunca** commite nem dê push direto na `main`. A `dev` aceita commit direto para mudanças pequenas
   (ADR 0035), mas uma spec continua sendo uma branch `feat/NNN-nome` criada a partir da `dev` atualizada
