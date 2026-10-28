@@ -65,14 +65,40 @@ Documentação em PT-BR. Termos de domínio no código em português; termos té
 - **Autorização:** quatro papéis fixos — `admin_unidade`, `gerente`, `kp` (Key Person, gerencia tasks só
   do próprio time) e `dev` — com regras de posse sobre as tasks (ADR 0015).
 
-## Git
-- Commits **sem** `Co-Authored-By` nem qualquer atribuição ao Claude.
-- Descrições de PR também **sem** atribuição ao Claude: nada de "🤖 Generated with Claude Code" nem linha parecida.
-- Só commite quando o usuário pedir.
-- **Nunca** commite nem dê push direto na `main`. A `dev` aceita commit direto para mudanças pequenas
-  (ADR 0035), mas uma spec continua sendo uma branch `feat/NNN-nome` criada a partir da `dev` atualizada
-  = um PR para a `dev`. Demais regras (hotfix, merge) no ADR 0027.
-- Commits e títulos de PR em Conventional Commits (`tipo(escopo): descrição`). Não use `--no-verify`.
+## Git e pull requests
+Regras para **todas as pessoas e agentes** do projeto (ADRs 0027, 0029 e 0035). O CI (`convencao`) recusa
+o que estiver fora delas, então siga antes de abrir o PR, não depois.
+
+**Antes do primeiro commit no clone:** confira os hooks com `git config --get core.hooksPath`. Se não
+responder `.githooks`, rode `git config core.hooksPath .githooks`. Sem isso nada é barrado localmente.
+
+**Branch**
+- Branch de trabalho sai da `dev` atualizada (`git switch dev && git pull`): `<tipo>/<descricao-em-kebab-case>`,
+  só `a-z`, `0-9`, `.` e `-`. Tipos: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `style`, `perf`, `ci`, `build`.
+- Spec = branch `feat/NNN-nome`, com a pasta `docs/specs/NNN-nome` já criada. **Antes de escolher o NNN**, confira o
+  roadmap (`docs/specs/README.md`), as branches remotas (`git branch -r`) e os PRs abertos (`gh pr list`):
+  duas specs com o mesmo número colidem no roadmap e nas migrations.
+- `hotfix/<descricao>` é a única branch que sai da `main` (fluxo no ADR 0027).
+- **Nunca** commite nem dê push direto na `main`. A `dev` aceita commit direto só para mudanças pequenas (ADR 0035).
+
+**Commits**
+- Conventional Commits: `tipo(escopo): descrição`, escopo em minúsculas e descrição em português.
+  Ex.: `feat(casos-teste): justificativa obrigatoria ao excluir Test Case`.
+- **Sem** `Co-Authored-By` nem qualquer atribuição ao Claude. Não use `--no-verify`.
+- Agentes só commitam quando o usuário pedir.
+
+**Pull request**
+- **Alvo:** sempre a `dev` (`gh pr create --base dev`). A `main` só recebe PR da `dev` (promoção) ou de
+  `hotfix/*`. Um PR de `feat/`, `fix/` etc. para a `main` é recusado pelo CI.
+- **Título:** no mesmo formato dos commits, ex.: `feat(form-factor): recusa SDF ID repetido ao criar rodada`.
+- **Descrição:** o template `.github/pull_request_template.md`, com as três seções: `## Spec` (a pasta
+  `docs/specs/NNN-nome`; em `fix/` sem spec, o problema corrigido), `## O que muda` e `## Como verifiquei`
+  (comandos rodados, resultados e o que **não** foi verificado). **Sem** atribuição ao Claude: nada de
+  "🤖 Generated with Claude Code" nem linha parecida.
+- **Antes de abrir:** atualize a branch com a `dev` (`git merge origin/dev`, sem rebase nem push forçado em branch
+  compartilhada), rode as suítes e, se houver migration, confira que `uv run alembic heads` mostra um único head
+  (o `down_revision` aponta para o head atual da `dev`).
+- Integração por merge commit, com as verificações verdes. A branch é apagada depois do merge.
 
 ## Ambiente
 - O repositório roda no **Windows**. O backend usa Python 3.13 com ambiente gerenciado por **uv**
