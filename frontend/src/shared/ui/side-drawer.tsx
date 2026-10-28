@@ -21,19 +21,21 @@ interface SideDrawerProps {
    * O padrão `panel` segue nos painéis de formulário.
    */
   variant?: "panel" | "card";
+  /** Salvando: Esc, o fundo e o X não fecham, para um erro da API achar o painel aberto (spec 031). */
+  isPending?: boolean;
 }
 
 /** Painel à direita para criar e editar (spec 022): título, corpo rolável e rodapé de ações. Esc e o fundo fecham. */
-export function SideDrawer({ isOpen, onOpenChange, title, subtitle, children, footer, onSubmit, variant = "panel" }: SideDrawerProps) {
+export function SideDrawer({ isOpen, onOpenChange, title, subtitle, children, footer, onSubmit, variant = "panel", isPending = false }: SideDrawerProps) {
   const card = variant === "card";
   const conteudo = <>
     <Drawer.Body className="thin-scroll flex min-h-0 flex-1 flex-col overflow-y-auto p-0">{children}</Drawer.Body>
     {footer ? <Drawer.Footer className={cn("flex justify-end gap-2 px-7 py-5", !card && "border-t border-separator")}>{footer}</Drawer.Footer> : null}
   </>;
   return (
-    <Drawer isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Drawer isOpen={isOpen} onOpenChange={(open) => { if (open || !isPending) onOpenChange(open); }}>
       {/* No card (Figma) a página atrás não escurece; o fundo transparente ainda fecha o painel ao clicar fora. */}
-      <Drawer.Backdrop isDismissable variant={card ? "transparent" : undefined}>
+      <Drawer.Backdrop isDismissable={!isPending} isKeyboardDismissDisabled={isPending} variant={card ? "transparent" : undefined}>
         {/* Content é o contêiner de tela inteira que encosta o painel à direita; a largura vai no Dialog. */}
         {/* Card: começa abaixo da barra de busca, termina antes do rodapé da tela e encosta na borda direita. */}
         <Drawer.Content placement="right" className={cn(card && "pb-10 pt-16")}>
@@ -55,15 +57,18 @@ export function SideDrawer({ isOpen, onOpenChange, title, subtitle, children, fo
 }
 
 /** Rodapé padrão de um painel com formulário: Cancelar e o botão de enviar. */
-export function DrawerFormActions({ onCancel, submitLabel, isPending = false, isSubmitDisabled = false }: {
+export function DrawerFormActions({ onCancel, submitLabel, isPending = false, isSubmitDisabled = false, pendingLabel }: {
   onCancel: () => void;
   submitLabel: string;
+  /** Texto do botão enquanto envia; o padrão é "Aguarde…". */
+  pendingLabel?: string;
   isPending?: boolean;
   isSubmitDisabled?: boolean;
 }) {
   const { t } = useTranslation();
   return <>
-    <Button variant="tertiary" onPress={onCancel}>{t("cancel")}</Button>
-    <Button type="submit" variant="primary" isDisabled={isPending || isSubmitDisabled}>{isPending ? t("pleaseWait") : submitLabel}</Button>
+    {/* Enquanto salva, Cancelar não fecha: um erro da API precisa achar o painel aberto com os valores. */}
+    <Button variant="tertiary" isDisabled={isPending} onPress={onCancel}>{t("cancel")}</Button>
+    <Button type="submit" variant="primary" isDisabled={isPending || isSubmitDisabled}>{isPending ? pendingLabel ?? t("pleaseWait") : submitLabel}</Button>
   </>;
 }

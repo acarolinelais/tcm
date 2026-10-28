@@ -1,6 +1,9 @@
-import { Combobox } from "@base-ui/react/combobox";
-import { Check, ChevronDown, X } from "lucide-react";
-import { useId, useMemo } from "react";
+import { useId, useRef, useState } from "react";
+import { Button, Label, ListBox, Popover, SearchField, Tag, TagGroup } from "@heroui/react";
+import { useTranslation } from "react-i18next";
+
+import { cn } from "@/shared/lib/utils";
+import { ChevronDownIcon } from "@/shared/ui/figma-icons";
 
 interface Option {
   value: string;
@@ -19,72 +22,95 @@ interface MultiSelectComboboxProps {
   removeLabel: (label: string) => string;
 }
 
+/**
+ * Seleção múltipla com busca (HeroUI, spec 031): o botão abre a lista com o campo de busca, e os escolhidos
+ * ficam como etiquetas removíveis abaixo dele. Mesmo caminho do `DataTableMultiFilter`.
+ */
 export function MultiSelectCombobox({ label, placeholder, options, value, onValueChange, emptyLabel, removeLabel }: MultiSelectComboboxProps) {
-  const inputId = useId();
-  const items = useMemo(
-    () => Combobox.createItems(options, { getValue: (option) => option.value, getLabel: (option) => option.label }),
-    [options],
-  );
-  const labelByValue = useMemo(() => new Map(options.map((option) => [option.value, option.label])), [options]);
+  const { t } = useTranslation();
+  const labelId = useId();
+  const gatilho = useRef<HTMLButtonElement>(null);
+  const [aberto, setAberto] = useState(false);
+  const [busca, setBusca] = useState("");
+  const termo = busca.trim().toLocaleLowerCase();
+  const visiveis = options.filter((opcao) => opcao.label.toLocaleLowerCase().includes(termo));
+  // Um escolhido que saiu das opções (ex.: modelo inativado) continua com etiqueta, para poder ser removido.
+  const escolhidos = value.map((item) => options.find((opcao) => opcao.value === item) ?? { value: item, label: item });
 
   return (
-    <div className="grid gap-2">
-      <label htmlFor={inputId} className="text-sm font-medium">{label}</label>
-      <Combobox.Root
-        items={items}
-        multiple
-        value={value}
-        onValueChange={(nextValue) => onValueChange(nextValue as string[])}
-        onOpenChange={(open, eventDetails) => {
-          if (!open && eventDetails.reason === "item-press") eventDetails.cancel();
-        }}
-      >
-        {/* relative: o Base UI insere um "Dismiss" visualmente oculto com position absolute; sem um
-            ancestral posicionado ele vaza do painel com rolagem e estica a página. */}
-        <Combobox.InputGroup className="relative flex min-h-10 flex-wrap items-center gap-1.5 rounded-xl border border-input bg-background px-3 py-1.5 text-sm outline-none transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30">
-          <Combobox.Value>
-            {(selectedValues: string[]) => <Combobox.Chips aria-label={selectedValues.length ? label : undefined} className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-              {selectedValues.map((selectedValue) => {
-                const selectedLabel = labelByValue.get(selectedValue) ?? selectedValue;
-                return <Combobox.Chip key={selectedValue} aria-label={selectedLabel} aria-description="Use Backspace ou Delete para remover" className="inline-flex max-w-full items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs text-secondary-foreground">
-                  <span className="truncate">{selectedLabel}</span>
-                  <Combobox.ChipRemove aria-label={removeLabel(selectedLabel)} className="inline-flex size-4 shrink-0 items-center justify-center rounded hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><X aria-hidden="true" className="size-3" /></Combobox.ChipRemove>
-                </Combobox.Chip>;
-              })}
-              <Combobox.Input
-                id={inputId}
-                placeholder={selectedValues.length ? "" : placeholder}
-                aria-description={selectedValues.length ? `${selectedValues.length} selecionados. Use as setas para navegar e Backspace para remover.` : undefined}
-                className="h-7 min-w-24 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-              />
-            </Combobox.Chips>}
-          </Combobox.Value>
-          <Combobox.Trigger aria-label={label} className="group inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <ChevronDown aria-hidden="true" className="size-4 transition-transform duration-200 ease-in-out group-data-[popup-open]:rotate-180 motion-reduce:transition-none" />
-          </Combobox.Trigger>
-        </Combobox.InputGroup>
-        <Combobox.Portal>
-          <Combobox.Positioner align="start" sideOffset={4} className="z-[70] w-[var(--anchor-width)] outline-none">
-            <Combobox.Popup aria-label={label} className="base-popup overflow-hidden rounded-xl border border-border bg-card p-1 text-card-foreground shadow-lg">
-              <Combobox.Empty><div className="px-3 py-5 text-center text-sm text-muted-foreground">{emptyLabel}</div></Combobox.Empty>
-              <Combobox.List className="max-h-[min(14rem,calc(var(--available-height)-1rem))] overflow-y-auto overscroll-contain">
-                {(option: Option) => <Combobox.Item key={option.value} value={option.value} className="group flex cursor-pointer select-none items-center gap-2 rounded-lg px-2.5 py-2 text-sm outline-none data-[highlighted]:bg-secondary data-[selected]:font-medium">
-                  <Combobox.ItemIndicator className="inline-flex size-4 shrink-0 items-center justify-center text-primary"><Check aria-hidden="true" className="size-4" /></Combobox.ItemIndicator>
-                  {/* Sem truncar: nome e descrição longos quebram a linha para continuarem legíveis. O "·" é
-                      decorativo, então o leitor de tela anuncia "nome descrição". */}
-                  <span className="min-w-0 break-words">
-                    {option.label}
-                    {option.description && <>
-                      <span aria-hidden="true" className="text-muted-foreground"> ·</span>{" "}
-                      <span className="font-normal text-muted-foreground group-data-[highlighted]:text-foreground/80">{option.description}</span>
-                    </>}
-                  </span>
-                </Combobox.Item>}
-              </Combobox.List>
-            </Combobox.Popup>
-          </Combobox.Positioner>
-        </Combobox.Portal>
-      </Combobox.Root>
+    <div className="flex flex-col gap-2">
+      <Label id={labelId} className="text-[14px] font-medium text-[#454442]">{label}</Label>
+      <Popover isOpen={aberto} onOpenChange={(open) => { setAberto(open); if (!open) setBusca(""); }}>
+        <Button
+          ref={gatilho}
+          variant="outline"
+          aria-labelledby={labelId}
+          className="h-10 w-full justify-between gap-2 px-3 text-[14px] font-normal"
+        >
+          {/* O botão sempre convida a escolher; o que já foi escolhido aparece nas etiquetas abaixo. */}
+          <span className="truncate text-muted">{placeholder}</span>
+          <ChevronDownIcon className={cn("shrink-0 transition-transform duration-200 motion-reduce:transition-none", aberto && "rotate-180")} />
+        </Button>
+        <Popover.Content placement="bottom start" className="w-[min(var(--trigger-width),calc(100vw-1rem))] p-1.5">
+          <Popover.Dialog aria-labelledby={labelId} className="grid gap-1 outline-none">
+            <SearchField aria-label={t("searchOptions")} value={busca} onChange={setBusca} autoFocus>
+              <SearchField.Group className="h-9">
+                <SearchField.SearchIcon />
+                <SearchField.Input placeholder={t("searchOptions")} className="text-[13px]" />
+              </SearchField.Group>
+            </SearchField>
+            {visiveis.length ? (
+              <ListBox
+                aria-labelledby={labelId}
+                selectionMode="multiple"
+                // Esc fecha a lista; o padrão do React Aria limparia toda a seleção.
+                escapeKeyBehavior="none"
+                selectedKeys={new Set(value)}
+                // "Todos" (Ctrl+A) vale só para as opções visíveis: as que a busca esconde ficam como estavam.
+                onSelectionChange={(chaves) => onValueChange(chaves === "all" ? [...new Set([...value, ...visiveis.map((opcao) => opcao.value)])] : [...chaves].map(String))}
+                className="max-h-56 overflow-y-auto"
+              >
+                {visiveis.map((opcao) => (
+                  <ListBox.Item key={opcao.value} id={opcao.value} textValue={opcao.description ? `${opcao.label} ${opcao.description}` : opcao.label} className="text-[13px]">
+                    {/* Sem truncar: nome e descrição longos quebram a linha. O "·" é decorativo. */}
+                    <span className="min-w-0 break-words">
+                      {opcao.label}
+                      {opcao.description && <>
+                        <span aria-hidden="true" className="text-muted"> ·</span>{" "}
+                        <span className="text-muted">{opcao.description}</span>
+                      </>}
+                    </span>
+                    <ListBox.ItemIndicator />
+                  </ListBox.Item>
+                ))}
+              </ListBox>
+            ) : null}
+            {/* Sempre montada: uma região viva que já nasce com texto não é anunciada pelos leitores de tela. */}
+            <p role="status" className={visiveis.length ? "sr-only" : "px-3 py-5 text-center text-[13px] text-muted"}>{visiveis.length ? "" : emptyLabel}</p>
+          </Popover.Dialog>
+        </Popover.Content>
+      </Popover>
+      {escolhidos.length ? (
+        <TagGroup
+          aria-labelledby={labelId}
+          onRemove={(chaves) => {
+            const restantes = value.filter((item) => !chaves.has(item));
+            onValueChange(restantes);
+            // Sem etiquetas a lista some com o foco dentro: ele volta ao botão.
+            if (!restantes.length) gatilho.current?.focus();
+          }}
+        >
+          <TagGroup.List className="flex flex-wrap gap-1.5">
+            {escolhidos.map((opcao) => (
+              <Tag key={opcao.value} id={opcao.value} textValue={opcao.label}>
+                {opcao.label}
+                {/* Só o próprio rótulo: o React Aria somaria o nome da etiqueta, que o `removeLabel` já traz. */}
+                <Tag.RemoveButton id={`${labelId}-remover-${opcao.value}`} aria-label={removeLabel(opcao.label)} aria-labelledby={`${labelId}-remover-${opcao.value}`} />
+              </Tag>
+            ))}
+          </TagGroup.List>
+        </TagGroup>
+      ) : null}
     </div>
   );
 }

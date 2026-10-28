@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { Description, FieldError, Input, Label, ListBox, Select, TextArea, TextField } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 
@@ -11,7 +11,7 @@ interface CampoBase {
   isDisabled?: boolean;
 }
 
-export function TextInputField({ label, error, description, isRequired, isDisabled, value, onChange, maxLength, isReadOnly, autoFocus }: CampoBase & {
+export function TextInputField({ label, error, description, isRequired, isDisabled, value, onChange, maxLength, isReadOnly, autoFocus, type, name, autoComplete, placeholder, ref }: CampoBase & {
   /** Dica sob o campo; o erro, quando houver, toma o lugar dela. */
   description?: string;
   value: string;
@@ -19,12 +19,18 @@ export function TextInputField({ label, error, description, isRequired, isDisabl
   maxLength?: number;
   isReadOnly?: boolean;
   autoFocus?: boolean;
+  type?: "text" | "email";
+  name?: string;
+  autoComplete?: string;
+  placeholder?: string;
+  /** O `field.ref` do react-hook-form: com ele, o envio inválido foca o primeiro campo com erro. */
+  ref?: Ref<HTMLInputElement>;
 }) {
   return (
-    <TextField value={value} onChange={onChange} isInvalid={Boolean(error)} isRequired={isRequired} isDisabled={isDisabled} isReadOnly={isReadOnly} validationBehavior="aria" className="flex flex-col gap-2">
+    <TextField value={value} onChange={onChange} isInvalid={Boolean(error)} isRequired={isRequired} isDisabled={isDisabled} isReadOnly={isReadOnly} validationBehavior="aria" type={type} name={name} autoComplete={autoComplete} className="flex flex-col gap-2">
       <Label className="text-[14px] font-medium text-[#454442]">{label}</Label>
-      <Input maxLength={maxLength} autoFocus={autoFocus} className="h-10 text-[14px]" />
-      {error ? <FieldError className="text-[12px]">{error}</FieldError> : description ? <Description className="text-[12px] text-muted">{description}</Description> : null}
+      <Input ref={ref} maxLength={maxLength} autoFocus={autoFocus} placeholder={placeholder} className="h-10 text-[14px]" />
+      {error ? <FieldError className="text-[12px]"><span role="alert">{error}</span></FieldError> : description ? <Description className="text-[12px] text-muted">{description}</Description> : null}
     </TextField>
   );
 }
@@ -43,7 +49,7 @@ export function TextAreaField({ label, error, description, isRequired, isDisable
       <Label className="text-[14px] font-medium text-[#454442]">{label}</Label>
       <TextArea maxLength={maxLength} autoFocus={autoFocus} rows={4} className="min-h-24 resize-y text-[14px]" />
       <div className="flex items-start justify-between gap-3">
-        {error ? <FieldError className="text-[12px]">{error}</FieldError> : description ? <Description className="text-[12px] text-muted">{description}</Description> : <span />}
+        {error ? <FieldError className="text-[12px]"><span role="alert">{error}</span></FieldError> : description ? <Description className="text-[12px] text-muted">{description}</Description> : <span />}
         {/* Algarismos de largura fixa: o contador não "pula" enquanto a pessoa digita. */}
         {maxLength ? <span className="shrink-0 text-[12px] tabular-nums text-muted">{t("charCount", { count: value.length, max: maxLength })}</span> : null}
       </div>
@@ -56,18 +62,28 @@ export interface SelectOption {
   label: ReactNode;
   /** Texto para busca por digitação e leitores de tela; pode faltar quando o `label` já é texto. */
   textValue?: string;
+  /** Aparece na lista, mas não pode ser escolhida (ex.: o perfil atual fora do escopo, spec 031 RN-06). */
+  isDisabled?: boolean;
 }
 
-export function SelectField({ label, error, isRequired, isDisabled, value, onChange, options, placeholder }: CampoBase & {
+/** Id da opção "nenhum" (`emptyOption`). Não sai do componente: escolhê-la devolve "". */
+const OPCAO_NENHUMA = "__nenhum__";
+
+export function SelectField({ label, error, description, isRequired, isDisabled, value, onChange, options, placeholder, emptyOption }: CampoBase & {
   value: string;
   onChange: (value: string) => void;
   options: SelectOption[];
   placeholder?: string;
+  /** Dica sob o campo; o erro, quando houver, toma o lugar dela. */
+  description?: string;
+  /** Primeira opção da lista que vale "" (ex.: "Sem responsável"); com ela, o valor vazio aparece marcado. */
+  emptyOption?: string;
 }) {
+  const opcoes = emptyOption ? [{ value: OPCAO_NENHUMA, label: emptyOption }, ...options] : options;
   return (
     <Select
-      value={value || null}
-      onChange={(valor) => onChange(valor === null ? "" : String(valor))}
+      value={value || (emptyOption ? OPCAO_NENHUMA : null)}
+      onChange={(valor) => onChange(valor === null || valor === OPCAO_NENHUMA ? "" : String(valor))}
       isInvalid={Boolean(error)}
       isRequired={isRequired}
       isDisabled={isDisabled}
@@ -80,11 +96,11 @@ export function SelectField({ label, error, isRequired, isDisabled, value, onCha
         <Select.Value />
         <Select.Indicator />
       </Select.Trigger>
-      {error ? <FieldError className="text-[12px]">{error}</FieldError> : null}
+      {error ? <FieldError className="text-[12px]"><span role="alert">{error}</span></FieldError> : description ? <Description className="text-[12px] text-muted">{description}</Description> : null}
       <Select.Popover>
         <ListBox>
-          {options.map((opcao) => (
-            <ListBox.Item key={opcao.value} id={opcao.value} textValue={opcao.textValue ?? (typeof opcao.label === "string" ? opcao.label : opcao.value)} className="text-[13px]">
+          {opcoes.map((opcao) => (
+            <ListBox.Item key={opcao.value} id={opcao.value} textValue={opcao.textValue ?? (typeof opcao.label === "string" ? opcao.label : opcao.value)} isDisabled={opcao.isDisabled} className="text-[13px]">
               {opcao.label}
               <ListBox.ItemIndicator />
             </ListBox.Item>
@@ -94,3 +110,4 @@ export function SelectField({ label, error, isRequired, isDisabled, value, onCha
     </Select>
   );
 }
+
