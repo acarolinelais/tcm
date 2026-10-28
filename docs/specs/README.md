@@ -53,6 +53,7 @@ ser registradas em ADR antes de serem introduzidas.
 | 025 | SDF ID único por rodada no projeto | Concluída |
 | 026 | Justificativa ao excluir um Test Case | Concluída |
 | 027 | Automation Level do Test Case (planilha, banco, API e tabela) | Concluída (e2e simulados; validação manual no navegador pendente) |
+| 029 | Avatar do usuário logado na barra superior (HeroUI Avatar, iniciais) | Aprovada |
 
 > As duas specs 012 foram criadas em paralelo. Os diretórios e históricos foram preservados nesta integração; a harmonização da numeração está registrada no backlog da spec de perfil Dev.
 
