@@ -49,17 +49,34 @@ class AtualizarCasoTesteRequest(BaseModel):
 
     category: CategoriaCasoTeste | None = None
     difficulty: DificuldadeCasoTeste | None = None
-    # Omitido ou null mantém o nível: depois de definido ele não é esvaziado (spec 026, RN-13).
+    # Omitido ou null mantém o nível: depois de definido ele não é esvaziado (spec 027, RN-13).
     automation_level: NivelAutomacaoOpcional = None
     situation: SituacaoCasoTeste | None = None
     status: StatusCasoTeste | None = None
     responsavel_id: UUID | None = None
     backup_id: UUID | None = None
+    justificativa_exclusao: str | None = Field(
+        default=None, max_length=CasoTeste.JUSTIFICATIVA_EXCLUSAO_MAX_LENGTH
+    )
+
+    # "before": o limite vale para o texto sem os espaços das pontas; só espaços conta como vazio.
+    @field_validator("justificativa_exclusao", mode="before")
+    @classmethod
+    def normalizar_justificativa(cls, justificativa: object) -> object:
+        if isinstance(justificativa, str):
+            return justificativa.strip() or None
+        return justificativa
 
     @model_validator(mode="after")
     def exigir_campo(self):
         if not self.model_fields_set:
             raise ValueError("Informe ao menos um campo para atualizar o Test Case.")
+        # Spec 026: excluir exige justificativa, e a justificativa só acompanha a exclusão.
+        excluindo = self.status is StatusCasoTeste.CANCELLED
+        if excluindo and not self.justificativa_exclusao:
+            raise ValueError("Informe a justificativa para excluir o Test Case.")
+        if not excluindo and self.justificativa_exclusao:
+            raise ValueError("A justificativa só pode ser enviada ao excluir o Test Case.")
         return self
 
 
@@ -75,6 +92,7 @@ class CasoTesteResponse(BaseModel):
     status: StatusCasoTeste
     responsavel_id: UUID
     backup_id: UUID | None
+    justificativa_exclusao: str | None
     ativo: bool
     created_at: datetime | None
     updated_at: datetime | None
@@ -93,6 +111,7 @@ def to_response(caso: CasoTeste) -> CasoTesteResponse:
         status=caso.status,
         responsavel_id=caso.responsavel_id,
         backup_id=caso.backup_id,
+        justificativa_exclusao=caso.justificativa_exclusao,
         ativo=caso.ativo,
         created_at=_timestamp_utc(caso.created_at),
         updated_at=_timestamp_utc(caso.updated_at),

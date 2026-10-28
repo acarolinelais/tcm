@@ -26,6 +26,7 @@ import {
   type Projeto,
   type StatusProjeto,
   NIVEIS_AUTOMACAO_CASO_TESTE,
+  MAX_JUSTIFICATIVA_EXCLUSAO,
 } from "@/modules/projetos/model/projeto";
 import type { ModeloDispositivo } from "@/modules/modelos-dispositivo/model/modelo-dispositivo";
 import { lerPlanilhaProjeto, PlanilhaProjetoError, type PessoasDaLinha, type PlanilhaProjeto } from "@/modules/projetos/utils/planilha-projeto";
@@ -318,7 +319,7 @@ function readDb(): Database {
       return writeDb(db);
     }
     if ((db.schemaVersion ?? 1) < 19) {
-      // Spec 026: os Test Cases anteriores não têm Automation Level.
+      // Spec 027: os Test Cases anteriores não têm Automation Level.
       db.casosTeste.forEach((testCase) => { testCase.automation_level ??= null; });
       db.schemaVersion = 19;
       return writeDb(db);
@@ -875,23 +876,24 @@ export const mockCasosTesteApi = {
     exigirNivelAutomacaoValido(input.automation_level);
     const { db, user, profile } = mockProfile();
     const { testCase, project } = getMockCase(db, caseId);
+    validarJustificativaExclusao(input);
     if (profile?.codigo === "ADMIN_UNIDADE" || profile?.codigo === "GERENTE" || profile?.codigo === "KP") {
       if (!canManageMockProject(project, "test_cases.gerenciar")) throw new Error("O projeto está fora do seu escopo.");
-      Object.assign(testCase, input);
+      aplicarAtualizacaoCaso(testCase, input);
     } else {
       if (!profile?.permissoes.includes("test_cases.consultar") || (testCase.responsavel_id !== user.id && testCase.backup_id !== user.id)) {
         throw new Error("Você só pode editar Test Cases atribuídos a você.");
       }
       if (testCase.responsavel_id !== user.id) {
-        if (Object.keys(input).length !== 1 || input.status !== "Cancelled") throw new Error("O Backup só pode cancelar o Test Case atribuído.");
-        Object.assign(testCase, input);
+        if (Object.keys(input).some((field) => field !== "status" && field !== "justificativa_exclusao") || input.status !== "Cancelled") throw new Error("O Backup só pode cancelar o Test Case atribuído.");
+        aplicarAtualizacaoCaso(testCase, input);
         testCase.updated_at = new Date().toISOString();
         writeDb(db);
         return testCase;
       }
-      const camposPermitidos = ["category", "difficulty", "status", "situation", "automation_level"];
+      const camposPermitidos = ["category", "difficulty", "status", "situation", "automation_level", "justificativa_exclusao"];
       if (Object.keys(input).some((field) => !camposPermitidos.includes(field))) throw new Error("Você só pode editar Status, TC Situation, Category, Difficulty e Automation Level.");
-      Object.assign(testCase, input);
+      aplicarAtualizacaoCaso(testCase, input);
     }
     testCase.updated_at = new Date().toISOString();
     writeDb(db);
@@ -913,6 +915,23 @@ export const mockCasosTesteApi = {
 /** Como a API (422): o Automation Level é 1, 2 ou 3; ausente mantém o que o caso já tem. */
 function exigirNivelAutomacaoValido(nivel: number | undefined) {
   if (nivel !== undefined && !(NIVEIS_AUTOMACAO_CASO_TESTE as readonly number[]).includes(nivel)) throw new Error("Automation Level deve ser 1, 2 ou 3.");
+}
+
+/** Spec 026, como o request da API: excluir exige justificativa, e a justificativa só acompanha a exclusão. */
+function validarJustificativaExclusao(input: AtualizarCasoTesteInput) {
+  const justificativa = input.justificativa_exclusao?.trim();
+  const excluindo = input.status === "Cancelled";
+  if (excluindo && !justificativa) throw new Error("Informe a justificativa para excluir o Test Case.");
+  if (justificativa && justificativa.length > MAX_JUSTIFICATIVA_EXCLUSAO) throw new Error(`Justificativa deve ter no máximo ${MAX_JUSTIFICATIVA_EXCLUSAO} caracteres.`);
+  if (!excluindo && justificativa) throw new Error("A justificativa só pode ser enviada ao excluir o Test Case.");
+}
+
+/** Entrar em Cancelled grava a justificativa; sair a apaga; continuar mantém a atual (como a entidade da API). */
+function aplicarAtualizacaoCaso(testCase: CasoTeste, { justificativa_exclusao, ...campos }: AtualizarCasoTesteInput) {
+  const estavaExcluido = testCase.status === "Cancelled";
+  Object.assign(testCase, campos);
+  if (testCase.status !== "Cancelled") testCase.justificativa_exclusao = null;
+  else if (!estavaExcluido) testCase.justificativa_exclusao = justificativa_exclusao?.trim() ?? null;
 }
 
 const nomeModeloDuplicado = () => new ApiError({ type: "about:blank", title: "Conflito.", status: 409, detail: "Já existe um modelo de dispositivo com este nome." });

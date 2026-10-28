@@ -550,10 +550,14 @@ async def test_responsavel_altera_o_status_livremente(contexto, atual, novo):
     service, casos, _, _, _, _, uow, admin, projeto, time = contexto
     dev, caso = _dev_e_caso(admin, projeto, time, atual)
     casos.obter_por_id.return_value = caso
+    justificativa = {"justificativa_exclusao": "Fora do escopo"} if novo == "Cancelled" else {}
 
-    resposta = await service.atualizar(dev, caso.id, AtualizarCasoTesteRequest(status=novo))
+    resposta = await service.atualizar(
+        dev, caso.id, AtualizarCasoTesteRequest(status=novo, **justificativa)
+    )
 
     assert resposta.status == novo
+    assert resposta.justificativa_exclusao == justificativa.get("justificativa_exclusao")
     uow.commit.assert_awaited_once()
 
 
@@ -566,22 +570,47 @@ async def test_backup_e_dev_sem_vinculo_nao_mudam_status(contexto):
         await service.atualizar(backup, caso.id, AtualizarCasoTesteRequest(status="InValidation"))
     alheio, _ = _dev_e_caso(admin, projeto, time, "InReview", vinculo="nenhum")
     with pytest.raises(ForbiddenException):
-        await service.atualizar(alheio, caso.id, AtualizarCasoTesteRequest(status="Cancelled"))
+        await service.atualizar(
+            alheio,
+            caso.id,
+            AtualizarCasoTesteRequest(status="Cancelled", justificativa_exclusao="Fora do escopo"),
+        )
     assert caso.status is StatusCasoTeste.IN_REVIEW
     uow.commit.assert_not_awaited()
 
 
-async def test_backup_exclui_tc_atribuido(contexto):
+async def test_backup_exclui_tc_atribuido_com_justificativa(contexto):
     service, casos, _, _, _, _, uow, admin, projeto, time = contexto
     backup, caso = _dev_e_caso(admin, projeto, time, "InReview", vinculo="backup")
     casos.obter_por_id.return_value = caso
 
     resposta = await service.atualizar(
-        backup, caso.id, AtualizarCasoTesteRequest(status="Cancelled")
+        backup,
+        caso.id,
+        AtualizarCasoTesteRequest(status="Cancelled", justificativa_exclusao="Fora do escopo"),
     )
 
     assert resposta.status is StatusCasoTeste.CANCELLED
+    assert resposta.justificativa_exclusao == "Fora do escopo"
     uow.commit.assert_awaited_once()
+
+
+async def test_gestor_exclui_com_justificativa_e_reativar_apaga(contexto):
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    _, caso = _dev_e_caso(admin, projeto, time, "InReview")
+    casos.obter_por_id.return_value = caso
+
+    excluido = await service.atualizar(
+        admin,
+        caso.id,
+        AtualizarCasoTesteRequest(status="Cancelled", justificativa_exclusao="Fora do escopo"),
+    )
+    assert excluido.justificativa_exclusao == "Fora do escopo"
+
+    reativado = await service.atualizar(admin, caso.id, AtualizarCasoTesteRequest(status="To-Do"))
+
+    assert reativado.status is StatusCasoTeste.TO_DO
+    assert reativado.justificativa_exclusao is None
 
 
 async def test_kp_no_escopo_aprova_pr_movendo_para_validacao(contexto):

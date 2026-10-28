@@ -39,7 +39,7 @@ async function preencherNovoCaso(user: ReturnType<typeof userEvent.setup>) {
   return drawer;
 }
 
-describe("CasoTesteDrawer: Automation Level (spec 026)", () => {
+describe("CasoTesteDrawer: Automation Level (spec 027)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(casosTesteApi.criar).mockResolvedValue(caso);

@@ -431,6 +431,21 @@ describe("base mock de projetos", () => {
     }
   });
 
+  it("exige justificativa ao excluir o TC e a apaga ao reativar", () => {
+    const project = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: ["mock-model-s27-ultra"] });
+    const testCase = mockCasosTesteApi.criar(project.id, { category: "A", difficulty: "Low", situation: "New", tc_id: "TC-EXCLUIR", responsavel_id: "mock-user-dev", backup_id: "mock-user-kp" });
+
+    expect(() => mockCasosTesteApi.atualizar(testCase.id, { status: "Cancelled" })).toThrow("justificativa");
+    expect(() => mockCasosTesteApi.atualizar(testCase.id, { status: "Cancelled", justificativa_exclusao: "   " })).toThrow("justificativa");
+    expect(() => mockCasosTesteApi.atualizar(testCase.id, { status: "Cancelled", justificativa_exclusao: "x".repeat(501) })).toThrow("500");
+    expect(() => mockCasosTesteApi.atualizar(testCase.id, { status: "To-Do", justificativa_exclusao: "Fora do escopo" })).toThrow("justificativa");
+    expect(mockCasosTesteApi.obter(testCase.id).status).toBe("To-Do");
+
+    expect(mockCasosTesteApi.atualizar(testCase.id, { status: "Cancelled", justificativa_exclusao: " Depende de hardware " }).justificativa_exclusao).toBe("Depende de hardware");
+    expect(mockCasosTesteApi.atualizar(testCase.id, { category: "B" }).justificativa_exclusao).toBe("Depende de hardware");
+    expect(mockCasosTesteApi.atualizar(testCase.id, { status: "To-Do" }).justificativa_exclusao).toBeNull();
+  });
+
   it("recusa SDF ID repetido no mesmo projeto, sem diferenciar maiúsculas e espaços", () => {
     const criarProjeto = () => mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: ["mock-model-s27-ultra"] });
     const [project, outro] = [criarProjeto(), criarProjeto()];

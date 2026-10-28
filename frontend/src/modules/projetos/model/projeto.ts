@@ -64,10 +64,15 @@ export interface CasoTeste {
   status: StatusCasoTeste;
   responsavel_id: string;
   backup_id: string | null;
+  /** Motivo da exclusão (spec 026); só existe com o Status `Cancelled`. Ausente nos TCs antigos. */
+  justificativa_exclusao?: string | null;
   ativo: boolean;
   created_at: string | null;
   updated_at: string | null;
 }
+
+/** Limite da justificativa de exclusão (spec 026). */
+export const MAX_JUSTIFICATIVA_EXCLUSAO = 500;
 
 /** Coluna da matriz do Form Factor: um modelo vinculado ao projeto. */
 export interface ModeloFormFactor {
@@ -213,6 +218,8 @@ export interface AtualizarCasoTesteInput {
   status?: StatusCasoTeste;
   responsavel_id?: string;
   backup_id?: string | null;
+  /** Obrigatória junto com `status: "Cancelled"` (spec 026). */
+  justificativa_exclusao?: string;
 }
 
 /** Códigos de problema da planilha de Test Cases (ADR 0033); o texto é montado no frontend. */

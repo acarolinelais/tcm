@@ -124,7 +124,7 @@ const linhaCompleta = (alteracoes: Partial<Record<ColunaModelo, unknown>> = {}, 
   return cabecalhos.map((coluna) => valores[coluna]);
 };
 
-describe("Automation Level na leitura da planilha (spec 026)", () => {
+describe("Automation Level na leitura da planilha (spec 027)", () => {
   it("expõe os cabeçalhos do modelo exatamente na ordem da planilha atual", () => {
     expect([...CABECALHOS_MODELO_PLANILHA]).toEqual([
       "App", "TC ID", "Title(English)", "Test Precondition(English)", "Test Procedure(English)", "Expected Result(English)",

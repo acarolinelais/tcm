@@ -12,7 +12,7 @@ pytestmark = pytest.mark.skipif(
     reason="Defina SDF_TEST_DATABASE_URL para executar a integração com Postgres.",
 )
 
-ANTERIOR = "f901a2b3c4d5"
+ANTERIOR = "a1b2c3d4e5f8"
 REVISAO = "a0b1c2d3e4f5"
 
 

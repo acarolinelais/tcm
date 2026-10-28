@@ -198,7 +198,7 @@ test("recusa um arquivo .csv mostrando o motivo junto da área", async ({ page }
   await expect(modelo(page)).toBeVisible();
 });
 
-// Modelo atual da planilha (spec 026): 13 colunas, com Automation Level depois de Category.
+// Modelo atual da planilha (spec 027): 13 colunas, com Automation Level depois de Category.
 const cabecalhoModelo = [
   "App", "TC ID", "Title(English)", "Test Precondition(English)", "Test Procedure(English)", "Expected Result(English)",
   "Difficulty", "Category", "Automation Level", "TC Situation", "One UI", "Assignees", "Backup",

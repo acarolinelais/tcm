@@ -83,10 +83,42 @@ describe("ProjetoDetalhePage", () => {
     // Excluded tira o caso do fluxo e o DEV não desfaz: só grava depois de confirmar.
     await user.click(screen.getByRole("option", { name: "Excluded" }));
     const confirmacao = await screen.findByRole("alertdialog", { name: "Exclude Clock_002?" });
-    expect(confirmacao).toHaveTextContent("Only an admin, manager or KP can undo this.");
+    expect(confirmacao).toHaveTextContent("Only the assignee, an admin, manager or KP can undo this.");
     expect(casosTesteApi.atualizar).not.toHaveBeenCalled();
-    await user.click(within(confirmacao).getByRole("button", { name: "Exclude" }));
-    await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-2", { status: "Cancelled" }));
+    // Spec 026: sem justificativa (ou só com espaços) não dá para confirmar.
+    const excluir = within(confirmacao).getByRole("button", { name: "Exclude" });
+    expect(excluir).toBeDisabled();
+    const justificativa = within(confirmacao).getByLabelText(/Justification/);
+    await user.type(justificativa, "   ");
+    expect(excluir).toBeDisabled();
+    expect(justificativa).toHaveAttribute("maxlength", "500");
+    await user.paste("Depende de hardware ");
+    expect(confirmacao).toHaveTextContent("23/500 characters");
+    // A recusa da API mantém a confirmação aberta com o texto, para tentar de novo.
+    vi.mocked(casosTesteApi.atualizar).mockRejectedValueOnce(new Error("Falha de rede."));
+    await user.click(excluir);
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Falha de rede."));
+    expect(within(confirmacao).getByLabelText(/Justification/)).toHaveValue("   Depende de hardware ");
+    await user.click(excluir);
+    await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenLastCalledWith("case-2", { status: "Cancelled", justificativa_exclusao: "Depende de hardware" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+    expect(toast.success).toHaveBeenCalledWith("Status updated to Excluded.");
+  });
+
+  it("abre a justificativa pelo ícone de observações para o perfil Developer", async () => {
+    const excluido = { ...casos[1], status: "Cancelled" as const, justificativa_exclusao: "Depende de hardware indisponível" };
+    vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [casos[0], excluido], page: 1, page_size: 20, total_count: 2 });
+    renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO" });
+    const user = userEvent.setup();
+
+    const semJustificativa = await screen.findByRole("row", { name: /Clock_001/ });
+    expect(within(semJustificativa).queryByRole("button", { name: /View justification/ })).not.toBeInTheDocument();
+    await user.click(within(screen.getByRole("row", { name: /Clock_002/ })).getByRole("button", { name: "View justification Clock_002" }));
+
+    const painel = await screen.findByRole("dialog");
+    expect(within(painel).getByText("Justification")).toBeInTheDocument();
+    expect(within(painel).getByText("Depende de hardware indisponível")).toBeInTheDocument();
+    expect(within(painel).queryByRole("textbox")).not.toBeInTheDocument();
   });
 
   it("filtra TCs por semana no cabeçalho e mantém as semanas das abas independentes", async () => {
@@ -255,6 +287,7 @@ describe("ProjetoDetalhePage", () => {
     await user.click(within(proprioCaso).getByRole("button", { name: /Status Clock_001/ }));
     await user.click(await screen.findByRole("option", { name: "In Progress" }));
     await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { status: "InProgress" }));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Status updated to In Progress."));
 
     await user.click(within(proprioCaso).getByRole("button", { name: /TC Situation Clock_001/ }));
     await user.click(await screen.findByRole("option", { name: "New Step" }));
@@ -302,7 +335,7 @@ describe("ProjetoDetalhePage", () => {
     expect(screen.queryByRole("row", { name: /Clock_001/ })).not.toBeInTheDocument();
   });
 
-  describe("Automation Level (spec 026)", () => {
+  describe("Automation Level (spec 027)", () => {
     const comNivel = (caso: (typeof casos)[number], nivel: NivelAutomacaoCasoTeste | null) => ({ ...caso, automation_level: nivel });
     const rotulos = ["1 – Not automatable", "2 – Partially automatable", "3 – 100% automatable"];
 
@@ -426,6 +459,31 @@ describe("ProjetoDetalhePage", () => {
     await user.click(screen.getByRole("option", { name: "In Validation" }));
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Save" }));
     await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { status: "InValidation" }));
+  });
+
+  it("exige justificativa no drawer de edição ao mudar o Status para Excluded e a esconde ao voltar", async () => {
+    const admin = { ...perfil, id: "admin", perfil_codigo: "ADMIN_UNIDADE", perfil: "Administrador" };
+    const user = userEvent.setup();
+    renderPage(admin);
+    const linha = await screen.findByRole("row", { name: /Clock_001/ });
+    await user.click(within(linha).getByRole("button", { name: "Edit Clock_001" }));
+    const drawer = screen.getByRole("dialog");
+    const escolherStatus = async (status: string) => {
+      await user.click(within(drawer).getByLabelText("Status"));
+      await user.click(await screen.findByRole("option", { name: status }));
+    };
+    expect(within(drawer).queryByLabelText(/Justification/)).not.toBeInTheDocument();
+    await escolherStatus("Excluded");
+
+    const salvar = within(drawer).getByRole("button", { name: "Save" });
+    expect(salvar).toBeDisabled();
+    await escolherStatus("In Progress");
+    expect(within(drawer).queryByLabelText(/Justification/)).not.toBeInTheDocument();
+    expect(salvar).toBeEnabled();
+    await escolherStatus("Excluded");
+    await user.type(within(drawer).getByLabelText(/Justification/), "  Fora do escopo ");
+    await user.click(salvar);
+    await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { status: "Cancelled", justificativa_exclusao: "Fora do escopo" }));
   });
 
   it("permite ao administrador criar um caso e atribuir responsável e backup do time", async () => {

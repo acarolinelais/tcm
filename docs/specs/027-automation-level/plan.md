@@ -1,4 +1,4 @@
-# 026. Automation Level do Test Case: Plan
+# 027. Automation Level do Test Case: Plan
 
 - **Spec:** [spec.md](spec.md)
 - **ADRs aplicados:** 0003, 0004, 0005, 0006, 0007, 0010, 0012, 0015, 0016, 0022, 0030, 0033, 0034, 0037

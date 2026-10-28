@@ -187,6 +187,22 @@ async def test_caso_persiste_com_responsaveis_e_tc_id_e_unico_no_projeto():
             assert mantido is not None
             assert mantido.automation_level is NivelAutomacaoCasoTeste.PARCIALMENTE_AUTOMATIZAVEL
 
+            # Spec 026: a justificativa é persistida ao excluir e vira NULL ao reativar.
+            validando.cancelar("Depende de hardware indisponível")
+            await repository.atualizar(validando)
+            await session.flush()
+            excluido = await repository.obter_por_id(unidade_id, caso.id)
+            assert excluido is not None
+            assert excluido.justificativa_exclusao == "Depende de hardware indisponível"
+            excluido.atualizar_campos_do_responsavel(
+                StatusCasoTeste.TO_DO, excluido.category, excluido.difficulty
+            )
+            await repository.atualizar(excluido)
+            await session.flush()
+            reativado = await repository.obter_por_id(unidade_id, caso.id)
+            assert reativado is not None
+            assert reativado.justificativa_exclusao is None
+
             duplicado = CasoTeste(
                 unidade_id,
                 projeto_id,

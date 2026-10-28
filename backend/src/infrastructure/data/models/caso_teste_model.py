@@ -22,6 +22,9 @@ class CasoTesteModel(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     responsavel_id: Mapped[UUID] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
     backup_id: Mapped[UUID | None] = mapped_column(ForeignKey("usuarios.id"))
+    justificativa_exclusao: Mapped[str | None] = mapped_column(
+        String(CasoTeste.JUSTIFICATIVA_EXCLUSAO_MAX_LENGTH)
+    )
     ativo: Mapped[bool] = mapped_column(default=True, server_default="true", nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime | None] = mapped_column(onupdate=func.now())

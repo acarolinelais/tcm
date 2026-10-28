@@ -1,4 +1,4 @@
-# 026. Automation Level do Test Case: Spec
+# 027. Automation Level do Test Case: Spec
 
 - **Status:** Concluída
 - **Data:** 2026-10-27

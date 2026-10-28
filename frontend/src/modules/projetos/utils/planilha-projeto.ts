@@ -50,7 +50,7 @@ const cabecalhosObrigatorios: Record<CabecalhoObrigatorio, string> = {
 };
 const cabecalhosOpcionais: Record<CabecalhoOpcional, string> = { "automation level": "Automation Level" };
 
-/** Cabeçalhos do modelo para download, na ordem da planilha atual (spec 026, RN-04). */
+/** Cabeçalhos do modelo para download, na ordem da planilha atual (spec 027, RN-04). */
 export const CABECALHOS_MODELO_PLANILHA = [
   "App", "TC ID", "Title(English)", "Test Precondition(English)", "Test Procedure(English)", "Expected Result(English)",
   "Difficulty", "Category", "Automation Level", "TC Situation", "One UI", "Assignees", "Backup",
