@@ -38,6 +38,7 @@ class StatusCasoTeste(StrEnum):
 
 class CasoTeste(EntidadeTenant):
     TC_ID_MAX_LENGTH = 120
+    JUSTIFICATIVA_EXCLUSAO_MAX_LENGTH = 500
 
     def __init__(
         self,
@@ -52,6 +53,7 @@ class CasoTeste(EntidadeTenant):
         status: StatusCasoTeste = StatusCasoTeste.TO_DO,
         *,
         exigir_backup: bool = True,
+        justificativa_exclusao: str | None = None,
     ) -> None:
         super().__init__(unidade_id)
         self.projeto_id = projeto_id
@@ -62,6 +64,8 @@ class CasoTeste(EntidadeTenant):
         self.status = StatusCasoTeste(status)
         self.responsavel_id = responsavel_id
         self.backup_id = backup_id
+        # Os TCs excluídos antes da spec 026 não têm justificativa: a reidratação não a exige.
+        self.justificativa_exclusao = justificativa_exclusao
         # Na reidratação o backup pode faltar: transferir_para_backup() o deixa vazio.
         self._validar_responsaveis(responsavel_id, backup_id, exigir_backup=exigir_backup)
 
@@ -71,8 +75,9 @@ class CasoTeste(EntidadeTenant):
         category: CategoriaCasoTeste,
         difficulty: DificuldadeCasoTeste,
         situation: SituacaoCasoTeste | None = None,
+        justificativa_exclusao: str | None = None,
     ) -> None:
-        self.status = StatusCasoTeste(status)
+        self._mudar_status(StatusCasoTeste(status), justificativa_exclusao)
         self.category = CategoriaCasoTeste(category)
         self.difficulty = DificuldadeCasoTeste(difficulty)
         if situation is not None:
@@ -90,8 +95,24 @@ class CasoTeste(EntidadeTenant):
         elif modelos_ids and all(resultados.get(modelo_id) == "PASS" for modelo_id in modelos_ids):
             self.status = StatusCasoTeste.DONE
 
-    def cancelar(self) -> None:
-        self.status = StatusCasoTeste.CANCELLED
+    def cancelar(self, justificativa_exclusao: str) -> None:
+        self._mudar_status(StatusCasoTeste.CANCELLED, justificativa_exclusao)
+
+    def _mudar_status(self, status: StatusCasoTeste, justificativa_exclusao: str | None) -> None:
+        # Spec 026: entrar em Cancelled exige justificativa; sair a apaga; continuar mantém a atual.
+        if status is StatusCasoTeste.CANCELLED and self.status is not StatusCasoTeste.CANCELLED:
+            justificativa = (justificativa_exclusao or "").strip()
+            if not justificativa:
+                raise ValueError("Justificativa é obrigatória para excluir o Test Case.")
+            if len(justificativa) > self.JUSTIFICATIVA_EXCLUSAO_MAX_LENGTH:
+                raise ValueError(
+                    f"Justificativa deve ter no máximo {self.JUSTIFICATIVA_EXCLUSAO_MAX_LENGTH} "
+                    "caracteres."
+                )
+            self.justificativa_exclusao = justificativa
+        elif status is not StatusCasoTeste.CANCELLED:
+            self.justificativa_exclusao = None
+        self.status = status
 
     def atualizar_gerenciamento(
         self,
@@ -101,12 +122,15 @@ class CasoTeste(EntidadeTenant):
         status: StatusCasoTeste,
         category: CategoriaCasoTeste,
         difficulty: DificuldadeCasoTeste,
+        justificativa_exclusao: str | None = None,
     ) -> None:
         self._validar_responsaveis(responsavel_id, backup_id, exigir_backup=False)
         self.responsavel_id = responsavel_id
         self.backup_id = backup_id
         self.situation = SituacaoCasoTeste(situation)
-        self.atualizar_campos_do_responsavel(status, category, difficulty)
+        self.atualizar_campos_do_responsavel(
+            status, category, difficulty, justificativa_exclusao=justificativa_exclusao
+        )
 
     def transferir_para_backup(self) -> None:
         if self.backup_id is None:

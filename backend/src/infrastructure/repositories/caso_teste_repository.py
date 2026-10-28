@@ -143,6 +143,7 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             SituacaoCasoTeste(model.situation),
             StatusCasoTeste(model.status),
             exigir_backup=False,
+            justificativa_exclusao=model.justificativa_exclusao,
         )
         caso.id = model.id
         caso.ativo = model.ativo
@@ -162,6 +163,7 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             status=entity.status.value,
             responsavel_id=entity.responsavel_id,
             backup_id=entity.backup_id,
+            justificativa_exclusao=entity.justificativa_exclusao,
             ativo=entity.ativo,
             created_at=entity.created_at,
             updated_at=entity.updated_at,

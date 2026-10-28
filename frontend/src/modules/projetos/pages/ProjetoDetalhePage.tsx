@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button as HeroButton, ToggleButton, ToggleButtonGroup } from "@heroui/react";
-import { Pencil, Plus, UploadCloud } from "lucide-react";
+import { MessageSquareText, Pencil, Plus, UploadCloud } from "lucide-react";
 import { useOutletContext, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
@@ -20,12 +20,14 @@ import { TransferIcon } from "@/shared/ui/figma-icons";
 import { InlineSelect, type InlineSelectOption } from "@/shared/ui/inline-select";
 import { PageCard, PageTitle } from "@/shared/ui/page-card";
 import { PageTabPanel, PageTabs } from "@/shared/ui/page-tabs";
-import { RowActions, type RowAction } from "@/shared/ui/row-action-button";
+import { RowActionButton, RowActions, type RowAction } from "@/shared/ui/row-action-button";
 import { rowActionIconProps } from "@/shared/ui/row-action-icon";
 import { TONS_ETIQUETA, TagChip } from "@/shared/ui/tag-chip";
 import { WeekPickerHero } from "@/shared/ui/week-picker-hero";
 
 import { CasoTesteDrawer } from "../components/casos-teste/CasoTesteDrawer";
+import { ExcluirCasoTesteDialog } from "../components/casos-teste/ExcluirCasoTesteDialog";
+import { JustificativaExclusaoDrawer } from "../components/casos-teste/JustificativaExclusaoDrawer";
 import { estadoCasosTeste } from "../components/casos-teste/estado-casos-teste";
 import { FormFactorTabela } from "../components/form-factor/FormFactorTabela";
 import { FormFactorManualDialog } from "../components/form-factor/FormFactorManualDialog";
@@ -37,7 +39,7 @@ import { ProjetosEntradaPage } from "./ProjetosEntradaPage";
 import { useCasosTeste, useCriarRodadaFormFactor, useFormFactor, useFormFactorResultados, useRegistrarResultadosRodadaFormFactor, useTransferirCasoTeste } from "../hooks/useProjetos";
 
 import { casosTesteApi, formFactorApi, projetosApi, type CasoTeste, type LinhaFormFactor } from "../api/projetos.api";
-import { CATEGORIAS_CASO_TESTE as categorias, DIFICULDADES_CASO_TESTE as dificuldades, ROTULO_DIFICULDADE, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, opcoesRotuladas, type StatusCasoTeste } from "../model/projeto";
+import { CATEGORIAS_CASO_TESTE as categorias, DIFICULDADES_CASO_TESTE as dificuldades, ROTULO_DIFICULDADE, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, opcoesRotuladas, type AtualizarCasoTesteInput, type StatusCasoTeste } from "../model/projeto";
 
 type CampoInline = "category" | "difficulty" | "situation" | "status" | "responsavel_id" | "backup_id";
 type Aba = "cases" | "form-factor";
@@ -97,20 +99,24 @@ function ProjetoDetalhe() {
   const registrarResultadoRodada = useRegistrarResultadosRodadaFormFactor(projetoId);
 
   const [casoParaExcluir, setCasoParaExcluir] = useState<CasoTeste | null>(null);
+  const [casoComJustificativa, setCasoComJustificativa] = useState<CasoTeste | null>(null);
   const updateMemberCase = useMutation({
-    mutationFn: ({ id, field, value }: { id: string; field: CampoInline; value: string }) => casosTesteApi.atualizar(id, { [field]: value } as Pick<CasoTeste, typeof field>),
+    // A exclusão leva a justificativa no mesmo PUT (spec 026).
+    mutationFn: ({ id, field, value, justificativa }: { id: string; field: CampoInline; value: string; justificativa?: string }) =>
+      casosTesteApi.atualizar(id, { [field]: value, ...(justificativa ? { justificativa_exclusao: justificativa } : {}) } as AtualizarCasoTesteInput),
     // A célula muda na hora; se a API recusar, o cache volta ao que era.
-    onMutate: async ({ id, field, value }) => {
+    onMutate: async ({ id, field, value, justificativa }) => {
       const queryKey = ["projetos", projetoId, "test-cases"];
       await client.cancelQueries({ queryKey });
       const anteriores = client.getQueriesData<Awaited<ReturnType<typeof casosTesteApi.listar>>>({ queryKey });
-      client.setQueriesData<Awaited<ReturnType<typeof casosTesteApi.listar>>>({ queryKey }, (old) => old && { ...old, items: old.items.map((item) => item.id === id ? { ...item, [field]: value } : item) });
+      client.setQueriesData<Awaited<ReturnType<typeof casosTesteApi.listar>>>({ queryKey }, (old) => old && { ...old, items: old.items.map((item) => item.id === id ? { ...item, [field]: value, ...(justificativa ? { justificativa_exclusao: justificativa } : {}) } : item) });
       return { anteriores };
     },
     onError: (error, _input, contexto) => {
       contexto?.anteriores.forEach(([queryKey, dados]) => client.setQueryData(queryKey, dados));
       toast.error(error instanceof Error ? error.message : t("caseUpdateError"));
     },
+    onSuccess: (_caso, { field, value }) => { if (field === "status") toast.success(t("caseStatusUpdated", { status: t(ROTULO_STATUS[value as StatusCasoTeste]) })); },
     onSettled: () => client.invalidateQueries({ queryKey: ["projetos", projetoId, "test-cases"] }),
   });
   const transfer = useTransferirCasoTeste(projetoId);
@@ -239,6 +245,15 @@ function ProjetoDetalhe() {
       header: <DataTableMultiFilter label={t("backup")} values={filtrosCaso.backup} onChange={(values) => alterarFiltroCaso("backup", values)} options={[...opcoesAssignee, { value: SEM_BACKUP, label: t("noBackup") }]} searchable />,
       cell: (caso) => celulaEditavel(caso, "backup_id", t("backup"), caso.backup_id ?? "", membrosExceto(caso.responsavel_id), <span>{caso.backup_id ? identificadoresMembros[caso.backup_id] ?? "—" : "—"}</span>, podeGerenciarCasos),
     },
+    {
+      // Spec 026: qualquer perfil que vê o TC lê a justificativa da exclusão.
+      id: "notes",
+      header: t("notes"),
+      className: "w-px whitespace-nowrap",
+      cell: (caso) => caso.status === "Cancelled" && caso.justificativa_exclusao
+        ? <RowActionButton identificador={caso.tc_id} action={{ label: t("viewJustification"), icon: <MessageSquareText {...rowActionIconProps} />, onPress: () => setCasoComJustificativa(caso) }} />
+        : <span className="block text-center">—</span>,
+    },
     ...(mostrarAcoes ? [{
       id: "acoes",
       header: t("actions"),
@@ -315,15 +330,12 @@ function ProjetoDetalhe() {
       </PageTabs>
     )}
 
-    <AlertConfirm
-      open={Boolean(casoParaExcluir)}
-      onOpenChange={(open) => { if (!open && !updateMemberCase.isPending) setCasoParaExcluir(null); }}
-      title={t("excludeCaseTitle", { tc: casoParaExcluir?.tc_id ?? "" })}
-      description={podeGerenciarCasos ? t("excludeCaseDescription") : `${t("excludeCaseDescription")} ${t("excludeCaseOnlyManagement")}`}
-      confirmLabel={t("excludeCase")}
-      variant="destructive"
+    <ExcluirCasoTesteDialog
+      caso={casoParaExcluir}
+      podeGerenciar={podeGerenciarCasos}
       isPending={updateMemberCase.isPending}
-      onConfirm={() => { if (casoParaExcluir) updateMemberCase.mutate({ id: casoParaExcluir.id, field: "status", value: "Cancelled" }, { onSettled: () => setCasoParaExcluir(null) }); }}
+      onFechar={() => setCasoParaExcluir(null)}
+      onConfirmar={(justificativa) => { if (casoParaExcluir) updateMemberCase.mutate({ id: casoParaExcluir.id, field: "status", value: "Cancelled", justificativa }, { onSuccess: () => setCasoParaExcluir(null) }); }}
     />
     <AlertConfirm
       open={Boolean(casoParaTransferir)}
@@ -334,6 +346,7 @@ function ProjetoDetalhe() {
       isPending={transfer.isPending}
       onConfirm={() => { if (casoParaTransferir) transferir(casoParaTransferir.id); }}
     />
+    <JustificativaExclusaoDrawer caso={casoComJustificativa} onFechar={() => setCasoComJustificativa(null)} />
     <CasoTesteDrawer key={aberturasDrawer} isOpen={drawerCasoAberto} onOpenChange={setDrawerCasoAberto} projetoId={projetoId} editar={editar} membrosAtivos={membrosAtivos} />
     <FormFactorCriarRodadaDialog
       aberto={abrirCriacaoRodada}

@@ -23,7 +23,9 @@ from src.domain.entities.time import Time
 
 
 class CasoTesteServiceImpl:
-    CAMPOS_RESPONSAVEL = frozenset({"category", "difficulty", "status", "situation"})
+    CAMPOS_RESPONSAVEL = frozenset(
+        {"category", "difficulty", "status", "situation", "justificativa_exclusao"}
+    )
     CAMPOS_GESTAO = CAMPOS_RESPONSAVEL | {"responsavel_id", "backup_id"}
 
     def __init__(
@@ -134,11 +136,11 @@ class CasoTesteServiceImpl:
             if caso.responsavel_id != usuario_atual.id:
                 if (
                     caso.backup_id != usuario_atual.id
-                    or campos_enviados != {"status"}
+                    or campos_enviados - {"justificativa_exclusao"} != {"status"}
                     or request.status is not StatusCasoTeste.CANCELLED
                 ):
                     raise ForbiddenException("Você só pode editar Test Cases atribuídos a você.")
-                caso.cancelar()
+                caso.cancelar(request.justificativa_exclusao)
                 await self._caso_repo.atualizar(caso)
                 await self._uow.commit()
                 caso_atualizado = await self._caso_repo.obter_por_id(
@@ -154,6 +156,7 @@ class CasoTesteServiceImpl:
                 request.category or caso.category,
                 request.difficulty or caso.difficulty,
                 request.situation,
+                request.justificativa_exclusao,
             )
         await self._caso_repo.atualizar(caso)
         await self._uow.commit()
@@ -206,6 +209,7 @@ class CasoTesteServiceImpl:
             request.status or caso.status,
             request.category or caso.category,
             request.difficulty or caso.difficulty,
+            request.justificativa_exclusao,
         )
 
     async def _obter_projeto_visivel(

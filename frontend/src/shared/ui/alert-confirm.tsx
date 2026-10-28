@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { AlertDialog, Button } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 
@@ -11,10 +12,13 @@ export interface AlertConfirmProps {
   variant?: "default" | "destructive";
   onConfirm: () => void;
   isPending?: boolean;
+  /** Campos extras sob a descrição, como a justificativa da exclusão (spec 026). */
+  children?: ReactNode;
+  isConfirmDisabled?: boolean;
 }
 
 /** Confirmação com o AlertDialog do HeroUI; mesma API do `ConfirmDialog` do shadcn (spec 022). */
-export function AlertConfirm({ open, onOpenChange, title, description, confirmLabel, cancelLabel, variant = "default", onConfirm, isPending = false }: AlertConfirmProps) {
+export function AlertConfirm({ open, onOpenChange, title, description, confirmLabel, cancelLabel, variant = "default", onConfirm, isPending = false, children, isConfirmDisabled = false }: AlertConfirmProps) {
   const { t } = useTranslation();
   return (
     <AlertDialog isOpen={open} onOpenChange={(aberto) => { if (!isPending || aberto) onOpenChange(aberto); }}>
@@ -27,10 +31,11 @@ export function AlertConfirm({ open, onOpenChange, title, description, confirmLa
             </AlertDialog.Header>
             <AlertDialog.Body>
               <p className="text-[14px] leading-6 text-muted">{description}</p>
+              {children ? <div className="mt-4">{children}</div> : null}
             </AlertDialog.Body>
             <AlertDialog.Footer>
               <Button variant="tertiary" isDisabled={isPending} onPress={() => onOpenChange(false)}>{cancelLabel ?? t("cancel")}</Button>
-              <Button variant={variant === "destructive" ? "danger" : "primary"} isDisabled={isPending} onPress={onConfirm}>
+              <Button variant={variant === "destructive" ? "danger" : "primary"} isDisabled={isPending || isConfirmDisabled} onPress={onConfirm}>
                 {isPending ? t("pleaseWait") : confirmLabel ?? t("confirm")}
               </Button>
             </AlertDialog.Footer>
