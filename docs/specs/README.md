@@ -51,6 +51,7 @@ ser registradas em ADR antes de serem introduzidas.
 | 022 | Resultados Form Factor por rodada (SDF ID, Status `Done`/`Cancelled`) | Concluída |
 | 023 | Ciclo de Status do Test Case com PR e correções (`In Fixes`, `Excluded`) | Concluída |
 | 025 | SDF ID único por rodada no projeto | Concluída |
+| 026 | Automation Level do Test Case (planilha, banco, API e tabela) | Concluída (e2e simulados; validação manual no navegador pendente) |
 
 > As duas specs 012 foram criadas em paralelo. Os diretórios e históricos foram preservados nesta integração; a harmonização da numeração está registrada no backlog da spec de perfil Dev.
 
