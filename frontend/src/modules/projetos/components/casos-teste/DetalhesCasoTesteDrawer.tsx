@@ -30,16 +30,21 @@ export function DetalhesCasoTesteDrawer({ caso, perfil, onFechar }: { caso: Caso
       isOpen={Boolean(caso)}
       onOpenChange={(aberto) => { if (!aberto) onFechar(); }}
       title={exibido?.tc_id ?? ""}
-      footer={<Button variant="secondary" onPress={onFechar}>{t("close")}</Button>}
+      variant="card"
+      // Como no Figma: Cancel e Done. O painel é só de leitura, então os dois apenas fecham.
+      footer={<>
+        <Button variant="tertiary" onPress={onFechar}>{t("cancel")}</Button>
+        <Button variant="primary" onPress={onFechar}>{t("done")}</Button>
+      </>}
     >
-      <div className="px-7 py-6">
+      <div className="px-7 pb-6 pt-1">
         {/* Os dados vêm antes do erro: uma nova busca que falha em segundo plano não apaga o texto que a pessoa está lendo. */}
         {detalhe.data ? (
-          <dl className="space-y-6">
+          <dl className="space-y-8">
             {SECOES.map(({ rotulo, campo }) => (
               <div key={campo}>
-                <dt className="text-[14px] font-semibold leading-5 text-[#454442]">{t(rotulo)}</dt>
-                <dd className="mt-2 whitespace-pre-wrap break-words text-[14px] leading-6 text-[#454442]">{detalhe.data[campo] ?? "—"}</dd>
+                <dt className="text-[18px] font-medium leading-6 text-[#454442]">{t(rotulo)}</dt>
+                <dd className="mt-3 whitespace-pre-wrap break-words text-[14px] leading-5 text-muted">{detalhe.data[campo] ?? "—"}</dd>
               </div>
             ))}
           </dl>

@@ -37,15 +37,15 @@ function renderDrawer(onFechar = vi.fn()) {
 describe("DetalhesCasoTesteDrawer", () => {
   beforeEach(() => { vi.mocked(casosTesteApi.obter).mockReset(); });
 
-  it("mostra o TC ID no título e as quatro seções na ordem, com o nome em negrito", async () => {
+  it("mostra o TC ID no título e as quatro seções na ordem do Figma, com o nome destacado", async () => {
     vi.mocked(casosTesteApi.obter).mockResolvedValue(detalhe);
     renderDrawer();
 
     const drawer = screen.getByRole("dialog");
     expect(within(drawer).getByRole("heading", { name: "Clock_000001" })).toBeInTheDocument();
     const nomes = await within(drawer).findAllByRole("term");
-    expect(nomes.map((nome) => nome.textContent)).toEqual(["Title", "Test Precondition", "Test Procedure", "Expected Result"]);
-    expect(nomes.every((nome) => nome.classList.contains("font-semibold"))).toBe(true);
+    expect(nomes.map((nome) => nome.textContent)).toEqual(["Title", "Test Precondition(English)", "Test Procedure(English)", "Expected Result(English)"]);
+    expect(nomes.every((nome) => nome.classList.contains("font-medium"))).toBe(true);
     expect(casosTesteApi.obter).toHaveBeenCalledWith("case-1");
   });
 
@@ -59,7 +59,7 @@ describe("DetalhesCasoTesteDrawer", () => {
     expect(valores[3].textContent).toBe("—");
   });
 
-  it("é só de leitura: sem campos e com um único botão Fechar, que fecha o painel", async () => {
+  it.each(["Cancel", "Done"])("é só de leitura: sem campos, e o botão %s do rodapé fecha o painel", async (botao) => {
     vi.mocked(casosTesteApi.obter).mockResolvedValue(detalhe);
     const user = userEvent.setup();
     const onFechar = renderDrawer();
@@ -68,8 +68,7 @@ describe("DetalhesCasoTesteDrawer", () => {
     await within(drawer).findAllByRole("term");
     expect(within(drawer).queryByRole("textbox")).not.toBeInTheDocument();
     expect(within(drawer).queryByRole("combobox")).not.toBeInTheDocument();
-    expect(within(drawer).getAllByRole("button", { name: "Close" })).toHaveLength(2); // o X do cabeçalho e o rodapé
-    await user.click(within(drawer).getAllByRole("button", { name: "Close" }).at(-1)!);
+    await user.click(within(drawer).getByRole("button", { name: botao }));
     expect(onFechar).toHaveBeenCalled();
   });
 

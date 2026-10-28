@@ -264,14 +264,14 @@ test("detalhes: importa a planilha com os textos e lê o procedimento no painel 
 
   const painel = page.getByRole("dialog");
   await expect(painel.getByRole("heading", { name: "Clock_001" })).toBeVisible();
-  await expect(painel.getByRole("term")).toHaveText(["Título", "Pré-condição", "Procedimento", "Resultado esperado"]);
+  await expect(painel.getByRole("term")).toHaveText(["Título", "Pré-condição (inglês)", "Procedimento (inglês)", "Resultado esperado (inglês)"]);
   const valores = painel.getByRole("definition");
   await expect(valores.nth(0)).toHaveText(title);
   await expect(valores.nth(1)).toHaveText(precondition);
   expect(await valores.nth(2).innerText()).toBe(procedure);
   await expect(valores.nth(3)).toHaveText(expected_result);
 
-  await painel.getByRole("button", { name: "Fechar" }).last().click();
+  await painel.getByRole("button", { name: "Concluir" }).click();
   await expect(painel).toBeHidden();
 });
 

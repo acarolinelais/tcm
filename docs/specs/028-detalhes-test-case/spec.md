@@ -40,12 +40,12 @@ resultado esperado do caso.
   nem pelo formulário de criação; o Test Case criado manualmente fica sem textos.
 - RN-07: Qualquer perfil que vê a tabela de Test Cases do projeto pode abrir o painel de detalhes de qualquer
   caso listado.
-- RN-08: O painel mostra, nesta ordem: o TC ID como título, depois **Title**, **Test Precondition**, **Test
-  Procedure** e **Expected Result**. Cada seção tem o nome como cabeçalho em **negrito**, seguido do texto
-  em peso normal, como veio da planilha (só com as quebras de linha), no padrão do protótipo do Figma. Texto
-  vazio aparece como um traço.
-- RN-09: O painel é só de leitura e tem uma única ação, **Fechar** (também fecha com Esc ou clicando fora). Os
-  botões Cancel/Done do protótipo viram essa ação única, porque não há o que confirmar.
+- RN-08: O painel segue o protótipo do Figma: um card flutuante à direita, com o TC ID como título e, nesta
+  ordem, **Title**, **Test Precondition(English)**, **Test Procedure(English)** e **Expected Result(English)**
+  (o nome indica o idioma do conteúdo, que vem em inglês da planilha). Cada seção tem o nome em destaque,
+  seguido do texto como veio da planilha, só com as quebras de linha. Texto vazio aparece como um traço.
+- RN-09: O painel é só de leitura. O rodapé tem **Cancel** e **Done**, como no Figma, e os dois apenas fecham o
+  painel, porque não há o que confirmar. Ele também fecha com Esc, pelo X ou clicando fora.
 - RN-10: O link no TC ID não interfere nas outras ações da linha (edição inline, menu de ações, justificativa
   de exclusão).
 - RN-11: A prévia da planilha antes da importação **não** ganha colunas para esses textos.
@@ -69,11 +69,11 @@ resultado esperado do caso.
 - **CA-07 (falha):** Dado um Expected Result com 10.001 caracteres e outro erro em outra linha, quando a gestão
   importa, então os dois erros são apresentados juntos e nada é importado.
 - **CA-08:** Dado a tabela de Test Cases, quando qualquer perfil clica no TC ID de um caso, então abre o painel
-  com o TC ID no título e os quatro textos na ordem da RN-08, cada um abaixo do nome da seção em negrito.
+  com o TC ID no título e os quatro textos na ordem da RN-08, cada um abaixo do nome da seção em destaque.
 - **CA-09:** Dado um caso sem textos (criado antes desta mudança ou manualmente), quando o painel é aberto,
   então cada seção mostra um traço.
-- **CA-10:** Dado o painel aberto, quando o usuário clica em Fechar, aperta Esc ou clica fora, então o painel
-  fecha e a tabela continua no mesmo estado (filtros e página).
+- **CA-10:** Dado o painel aberto, quando o usuário clica em Cancel, em Done ou no X, aperta Esc ou clica fora,
+  então o painel fecha e a tabela continua no mesmo estado (filtros e página).
 - **CA-11:** Dado o painel, quando ele é exibido, então não há campo editável nem ação de salvar.
 - **CA-12:** Dado o teclado, quando o usuário navega até o TC ID e aperta Enter, então o painel abre, e ao
   fechar o foco volta para o TC ID.
@@ -92,7 +92,7 @@ resultado esperado do caso.
 - Mostrar os textos na prévia da planilha, nas tabelas de Form Factor ou nos resultados gerais.
 - Busca ou filtro pelo conteúdo dos textos.
 - Formatação rica (negrito, listas, links) **dentro** dos textos vindos da planilha: eles aparecem como texto
-  simples, só com as quebras de linha. Os cabeçalhos das seções do painel são em negrito (RN-08).
+  simples, só com as quebras de linha. Os nomes das seções do painel ficam em destaque (RN-08).
 
 ## Dúvidas em aberto
 

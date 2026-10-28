@@ -2,6 +2,8 @@ import type { FormEvent, ReactNode } from "react";
 import { Button, Drawer } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 
+import { cn } from "@/shared/lib/utils";
+
 interface SideDrawerProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -13,23 +15,32 @@ interface SideDrawerProps {
   footer?: ReactNode;
   /** Com `onSubmit`, corpo e rodapé ficam dentro de um formulário: o botão `type="submit"` do rodapé o envia. */
   onSubmit?: () => void;
+  /**
+   * `card` (spec 028, Figma): painel de leitura que encosta na borda direita entre a barra de busca e o fim da tela,
+   * sem escurecer a página, com os cantos da esquerda arredondados e sem divisórias.
+   * O padrão `panel` segue nos painéis de formulário.
+   */
+  variant?: "panel" | "card";
 }
 
 /** Painel à direita para criar e editar (spec 022): título, corpo rolável e rodapé de ações. Esc e o fundo fecham. */
-export function SideDrawer({ isOpen, onOpenChange, title, subtitle, children, footer, onSubmit }: SideDrawerProps) {
+export function SideDrawer({ isOpen, onOpenChange, title, subtitle, children, footer, onSubmit, variant = "panel" }: SideDrawerProps) {
+  const card = variant === "card";
   const conteudo = <>
     <Drawer.Body className="thin-scroll flex min-h-0 flex-1 flex-col overflow-y-auto p-0">{children}</Drawer.Body>
-    {footer ? <Drawer.Footer className="flex justify-end gap-2 border-t border-separator px-7 py-5">{footer}</Drawer.Footer> : null}
+    {footer ? <Drawer.Footer className={cn("flex justify-end gap-2 px-7 py-5", !card && "border-t border-separator")}>{footer}</Drawer.Footer> : null}
   </>;
   return (
     <Drawer isOpen={isOpen} onOpenChange={onOpenChange}>
-      <Drawer.Backdrop isDismissable>
+      {/* No card (Figma) a página atrás não escurece; o fundo transparente ainda fecha o painel ao clicar fora. */}
+      <Drawer.Backdrop isDismissable variant={card ? "transparent" : undefined}>
         {/* Content é o contêiner de tela inteira que encosta o painel à direita; a largura vai no Dialog. */}
-        <Drawer.Content placement="right">
-          <Drawer.Dialog className="flex h-full w-[min(28rem,100vw)] flex-col p-0">
+        {/* Card: começa abaixo da barra de busca, termina antes do rodapé da tela e encosta na borda direita. */}
+        <Drawer.Content placement="right" className={cn(card && "pb-10 pt-16")}>
+          <Drawer.Dialog className={cn("flex h-full w-[min(28rem,100vw)] flex-col p-0", card && "rounded-l-[24px] shadow-[-8px_0_40px_rgba(0,0,0,0.08)]")}>
             <Drawer.CloseTrigger />
-            <Drawer.Header className="border-b border-separator px-7 py-6 pr-16">
-              <Drawer.Heading className="text-[18px] font-medium leading-6 text-[#454442]">{title}</Drawer.Heading>
+            <Drawer.Header className={cn("px-7 py-6 pr-16", !card && "border-b border-separator")}>
+              <Drawer.Heading className={cn("leading-6 text-[#454442]", card ? "text-[22px] font-normal leading-7" : "text-[18px] font-medium")}>{title}</Drawer.Heading>
               {subtitle ? <p className="mt-1 text-[12px] text-muted">{subtitle}</p> : null}
             </Drawer.Header>
             {onSubmit
