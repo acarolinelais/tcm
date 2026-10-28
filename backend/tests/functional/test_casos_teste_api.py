@@ -1,10 +1,16 @@
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
 from src.api.dependencies import get_caso_teste_service, get_usuario_atual
 from src.application.schemas.caso_teste import CasoTesteDetalheResponse, CasoTesteResponse
+from src.application.schemas.link_pull_request import (
+    LinkPullRequestResponse,
+    LinksPullRequestResponse,
+)
 from src.application.services.caso_teste_service import CasoTesteServiceImpl
+from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.caso_teste import (
@@ -131,7 +137,7 @@ def _usar_service_real_com_caso(caso_do_membro: bool):
     projeto_repo.obter_por_id.return_value = projeto
     time_repo.obter_por_id.return_value = time
     service = CasoTesteServiceImpl(
-        caso_repo, projeto_repo, time_repo, membro_repo, usuario_repo, uow
+        caso_repo, projeto_repo, time_repo, membro_repo, usuario_repo, AsyncMock(), uow
     )
     app.dependency_overrides[get_usuario_atual] = dependency_override(membro)
     app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
@@ -436,7 +442,7 @@ async def test_gerente_nao_consulta_test_case_de_outro_setor(api_client):
     projeto_repo.obter_por_id.return_value = projeto
     time_repo.obter_por_id.return_value = Time(unidade_id, setor_id, "Outro setor", usuario_id)
     service = CasoTesteServiceImpl(
-        caso_repo, projeto_repo, time_repo, membro_repo, usuario_repo, uow
+        caso_repo, projeto_repo, time_repo, membro_repo, usuario_repo, AsyncMock(), uow
     )
     app.dependency_overrides[get_usuario_atual] = dependency_override(gerente)
     app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
@@ -478,7 +484,7 @@ async def test_gerente_membro_do_time_consulta_test_case_de_outro_setor(api_clie
     projeto_repo.obter_por_id.return_value = projeto
     time_repo.obter_por_id.return_value = time
     service = CasoTesteServiceImpl(
-        caso_repo, projeto_repo, time_repo, membro_repo, usuario_repo, uow
+        caso_repo, projeto_repo, time_repo, membro_repo, usuario_repo, AsyncMock(), uow
     )
     app.dependency_overrides[get_usuario_atual] = dependency_override(gerente)
     app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
@@ -498,7 +504,7 @@ async def test_test_case_de_outra_unidade_nao_e_encontrado(api_client):
     )
     caso_repo.obter_por_id.return_value = None
     service = CasoTesteServiceImpl(
-        caso_repo, projeto_repo, time_repo, membro_repo, usuario_repo, uow
+        caso_repo, projeto_repo, time_repo, membro_repo, usuario_repo, AsyncMock(), uow
     )
     app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
     app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
@@ -544,7 +550,7 @@ async def test_obter_test_case_devolve_os_textos_da_planilha(api_client, perfil)
     projeto_repo.obter_por_id.return_value = projeto
     time_repo.obter_por_id.return_value = time
     service = CasoTesteServiceImpl(
-        caso_repo, projeto_repo, time_repo, membro_repo, usuario_repo, uow
+        caso_repo, projeto_repo, time_repo, membro_repo, usuario_repo, AsyncMock(), uow
     )
     app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
     app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
@@ -596,3 +602,132 @@ async def test_criar_ou_atualizar_com_texto_da_planilha_retorna_422(api_client, 
     assert atualizar.status_code == 422
     service.criar.assert_not_awaited()
     service.atualizar.assert_not_awaited()
+
+
+# Spec 030: links de PR do Test Case.
+URL_PR = "https://github.sec.samsung.net/org/repo/pull/12"
+
+
+def _link_response(caso_id, autor_id):
+    return LinkPullRequestResponse(
+        id=uuid4(),
+        caso_teste_id=caso_id,
+        url=URL_PR,
+        created_at=datetime(2026, 10, 28, 12, 0, tzinfo=UTC),
+        created_by=autor_id,
+        created_by_nome="Ana",
+    )
+
+
+def _usar_service_simulado(perfil="USUARIO_PADRAO"):
+    from src.api.main import app
+
+    usuario = UsuarioAutenticado(uuid4(), uuid4(), perfil)
+    service = AsyncMock()
+    app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
+    app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
+    return usuario, service
+
+
+async def test_listar_links_de_pr_retorna_itens_e_permissao(api_client):
+    usuario, service = _usar_service_simulado()
+    caso_id = uuid4()
+    service.listar_pull_requests.return_value = LinksPullRequestResponse(
+        itens=[_link_response(caso_id, usuario.id)], pode_remover=False
+    )
+
+    response = await api_client.get(f"/api/test-cases/{caso_id}/pull-requests")
+
+    assert response.status_code == 200
+    assert response.json()["pode_remover"] is False
+    assert response.json()["itens"][0]["url"] == URL_PR
+    assert response.json()["itens"][0]["created_by_nome"] == "Ana"
+    service.listar_pull_requests.assert_awaited_once_with(usuario, caso_id)
+
+
+async def test_adicionar_link_de_pr_retorna_201_com_o_autor(api_client):
+    usuario, service = _usar_service_simulado()
+    caso_id = uuid4()
+    service.adicionar_pull_request.return_value = _link_response(caso_id, usuario.id)
+
+    response = await api_client.post(
+        f"/api/test-cases/{caso_id}/pull-requests", json={"url": f" {URL_PR} "}
+    )
+
+    assert response.status_code == 201
+    assert response.json()["created_by"] == str(usuario.id)
+    assert response.json()["created_by_nome"] == "Ana"
+    request = service.adicionar_pull_request.call_args.args[2]
+    assert request.url == URL_PR
+
+
+@pytest.mark.parametrize(
+    "corpo",
+    [
+        {"url": "github.sec.samsung.net/org/repo/pull/1"},
+        {"url": "http://github.sec.samsung.net/org/repo/pull/1"},
+        {"url": "https://github.com/org/repo/pull/1"},
+        {"url": "https://outro.github.sec.samsung.net/org/repo/pull/1"},
+        {"url": "https://github.sec.samsung.net/" + "a" * 2000},
+        {"url": "   "},
+        {},
+        {"url": URL_PR, "created_by": "00000000-0000-0000-0000-000000000000"},
+    ],
+)
+async def test_adicionar_link_de_pr_invalido_retorna_422_sem_chamar_o_service(api_client, corpo):
+    _, service = _usar_service_simulado()
+
+    response = await api_client.post(f"/api/test-cases/{uuid4()}/pull-requests", json=corpo)
+
+    assert response.status_code == 422
+    assert response.headers["content-type"].startswith("application/problem+json")
+    service.adicionar_pull_request.assert_not_awaited()
+
+
+async def test_remover_link_de_pr_retorna_204(api_client):
+    usuario, service = _usar_service_simulado("KP")
+    caso_id, link_id = uuid4(), uuid4()
+
+    response = await api_client.patch(f"/api/test-cases/{caso_id}/pull-requests/{link_id}/inativar")
+
+    assert response.status_code == 204
+    service.remover_pull_request.assert_awaited_once_with(usuario, caso_id, link_id)
+
+
+@pytest.mark.parametrize(
+    ("metodo", "erro", "status"),
+    [
+        ("adicionar_pull_request", ConflictException("Este link de PR já está registrado."), 409),
+        ("remover_pull_request", ForbiddenException("Sem permissão para remover."), 403),
+        ("remover_pull_request", NotFoundException("Link de PR não encontrado."), 404),
+        ("listar_pull_requests", NotFoundException("Test Case não encontrado."), 404),
+    ],
+)
+async def test_erros_dos_links_de_pr_saem_como_problem_details(api_client, metodo, erro, status):
+    _, service = _usar_service_simulado()
+    getattr(service, metodo).side_effect = erro
+    caso_id = uuid4()
+    chamadas = {
+        "listar_pull_requests": lambda: api_client.get(f"/api/test-cases/{caso_id}/pull-requests"),
+        "adicionar_pull_request": lambda: api_client.post(
+            f"/api/test-cases/{caso_id}/pull-requests", json={"url": URL_PR}
+        ),
+        "remover_pull_request": lambda: api_client.patch(
+            f"/api/test-cases/{caso_id}/pull-requests/{uuid4()}/inativar"
+        ),
+    }
+
+    response = await chamadas[metodo]()
+
+    assert response.status_code == status
+    assert response.headers["content-type"].startswith("application/problem+json")
+    # O 403 do projeto não detalha o motivo; os demais repetem a mensagem do service.
+    assert response.json().get("detail") == (None if status == 403 else str(erro))
+
+
+async def test_rotas_de_links_de_pr_aparecem_no_openapi(api_client):
+    response = await api_client.get("/openapi.json")
+
+    caminhos = response.json()["paths"]
+    assert {"get", "post"} <= set(caminhos["/api/test-cases/{caso_id}/pull-requests"])
+    assert "patch" in caminhos["/api/test-cases/{caso_id}/pull-requests/{link_id}/inativar"]

@@ -5,6 +5,7 @@ from uuid import uuid4
 import pytest
 from pydantic import ValidationError
 from src.application.schemas.caso_teste import AtualizarCasoTesteRequest, CriarCasoTesteRequest
+from src.application.schemas.link_pull_request import AdicionarLinkPullRequestRequest
 from src.application.services.caso_teste_service import CasoTesteServiceImpl
 from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.domain.common.paged_result import PagedResult
@@ -17,15 +18,17 @@ from src.domain.entities.caso_teste import (
     SituacaoCasoTeste,
     StatusCasoTeste,
 )
+from src.domain.entities.link_pull_request import LinkPullRequest
 from src.domain.entities.projeto import Projeto
 from src.domain.entities.time import Time
 from src.domain.entities.time_membro import TimeMembro
 from src.domain.entities.usuario import Usuario
+from src.domain.queries.link_pull_request_com_autor import LinkPullRequestComAutor
 
 
 @pytest.fixture
 def contexto():
-    casos, projetos, times, membros, usuarios, uow = [AsyncMock() for _ in range(6)]
+    casos, projetos, times, membros, usuarios, links, uow = [AsyncMock() for _ in range(7)]
     unidade_id, time_id, setor_id, projeto_id, kp_id = (uuid4() for _ in range(5))
     time = Time(unidade_id, setor_id, "Clock", kp_id)
     time.id = time_id
@@ -35,7 +38,7 @@ def contexto():
     projetos.obter_por_id.return_value = projeto
     casos.obter_por_id.return_value = None
     casos.existe_tc_id.return_value = False
-    service = CasoTesteServiceImpl(casos, projetos, times, membros, usuarios, uow)
+    service = CasoTesteServiceImpl(casos, projetos, times, membros, usuarios, links, uow)
     admin = UsuarioAutenticado(kp_id, unidade_id, "ADMIN_UNIDADE")
     return service, casos, projetos, times, membros, usuarios, uow, admin, projeto, time
 
@@ -804,3 +807,161 @@ def test_criar_sem_situation_valida_e_rejeitado(situation):
 def test_atualizar_com_status_invalido_e_rejeitado():
     with pytest.raises(ValidationError, match="status"):
         AtualizarCasoTesteRequest(status="New")
+
+
+# Spec 030: links de PR do Test Case.
+URL_PR = "https://github.sec.samsung.net/org/repo/pull/12"
+
+
+@pytest.fixture
+def links_contexto(contexto):
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    caso = CasoTeste(
+        admin.unidade_id,
+        projeto.id,
+        "clock_000001",
+        CategoriaCasoTeste.A,
+        DificuldadeCasoTeste.LOW,
+        uuid4(),
+        uuid4(),
+        SituacaoCasoTeste.NEW,
+    )
+    casos.obter_por_id.return_value = caso
+    links = service._link_repo
+    links.existe_ativo.return_value = False
+    links.obter_por_id.return_value = None
+
+    def usuario(perfil, *permissoes, no_time=True):
+        return UsuarioAutenticado(
+            uuid4(),
+            admin.unidade_id,
+            perfil,
+            nome=f"Pessoa {perfil}",
+            permissoes=frozenset({"test_cases.consultar", *permissoes}),
+            time_ids=(time.id,) if no_time else (),
+        )
+
+    return service, casos, links, uow, caso, usuario
+
+
+def link_do_caso(caso, autor_id=None):
+    link = LinkPullRequest(caso.unidade_id, caso.id, URL_PR, autor_id or uuid4())
+    link.created_at = datetime(2026, 10, 28, 12, 0)
+    return link
+
+
+async def test_dev_adiciona_link_com_ele_como_autor(links_contexto):
+    service, _, links, uow, caso, usuario = links_contexto
+    dev = usuario("USUARIO_PADRAO")
+    links.obter_por_id.side_effect = lambda *_: links.adicionar.call_args.args[0]
+
+    resposta = await service.adicionar_pull_request(
+        dev, caso.id, AdicionarLinkPullRequestRequest(url=f"  {URL_PR} ")
+    )
+
+    link = links.adicionar.call_args.args[0]
+    assert (link.caso_teste_id, link.url, link.created_by) == (caso.id, URL_PR, dev.id)
+    assert (resposta.url, resposta.created_by) == (URL_PR, dev.id)
+    assert resposta.created_by_nome == "Pessoa USUARIO_PADRAO"
+    links.existe_ativo.assert_awaited_once_with(dev.unidade_id, caso.id, URL_PR)
+    uow.commit.assert_awaited_once()
+
+
+async def test_link_ativo_repetido_e_recusado_sem_gravar(links_contexto):
+    service, _, links, uow, caso, usuario = links_contexto
+    links.existe_ativo.return_value = True
+
+    with pytest.raises(ConflictException, match="já está registrado"):
+        await service.adicionar_pull_request(
+            usuario("USUARIO_PADRAO"), caso.id, AdicionarLinkPullRequestRequest(url=URL_PR)
+        )
+
+    links.adicionar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    ("perfil", "permissoes", "pode"),
+    [
+        ("ADMIN_UNIDADE", (), True),
+        ("GERENTE", ("test_cases.gerenciar",), True),
+        ("KP", ("test_cases.gerenciar",), True),
+        ("USUARIO_PADRAO", (), False),
+    ],
+)
+async def test_listagem_diz_quem_pode_remover(links_contexto, perfil, permissoes, pode):
+    service, _, links, _, caso, usuario = links_contexto
+    link = link_do_caso(caso)
+    links.listar_ativos_por_caso.return_value = (LinkPullRequestComAutor(link, "Ana"),)
+
+    resposta = await service.listar_pull_requests(usuario(perfil, *permissoes), caso.id)
+
+    assert resposta.pode_remover is pode
+    assert [(item.id, item.created_by_nome) for item in resposta.itens] == [(link.id, "Ana")]
+
+
+@pytest.mark.parametrize("perfil", ["GERENTE", "KP"])
+async def test_gestao_remove_link_de_outra_pessoa(links_contexto, perfil):
+    service, _, links, uow, caso, usuario = links_contexto
+    link = link_do_caso(caso)
+    links.obter_por_id.return_value = link
+
+    await service.remover_pull_request(usuario(perfil, "test_cases.gerenciar"), caso.id, link.id)
+
+    assert link.ativo is False
+    links.atualizar.assert_awaited_once_with(link)
+    uow.commit.assert_awaited_once()
+
+
+async def test_dev_nao_remove_nem_o_proprio_link(links_contexto):
+    service, _, links, uow, caso, usuario = links_contexto
+    dev = usuario("USUARIO_PADRAO")
+    link = link_do_caso(caso, autor_id=dev.id)
+    links.obter_por_id.return_value = link
+
+    with pytest.raises(ForbiddenException):
+        await service.remover_pull_request(dev, caso.id, link.id)
+
+    assert link.ativo is True
+    links.atualizar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+@pytest.mark.parametrize("situacao", ["inexistente", "removido", "de_outro_caso"])
+async def test_remover_link_que_nao_esta_ativo_no_caso_retorna_nao_encontrado(
+    links_contexto, situacao
+):
+    service, _, links, uow, caso, usuario = links_contexto
+    if situacao == "removido":
+        link = link_do_caso(caso)
+        link.inativar()
+        links.obter_por_id.return_value = link
+    elif situacao == "de_outro_caso":
+        links.obter_por_id.return_value = LinkPullRequest(caso.unidade_id, uuid4(), URL_PR, uuid4())
+
+    with pytest.raises(NotFoundException, match="Link de PR"):
+        await service.remover_pull_request(usuario("KP", "test_cases.gerenciar"), caso.id, uuid4())
+
+    links.atualizar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+@pytest.mark.parametrize("motivo", ["caso_inexistente", "fora_do_escopo"])
+async def test_links_de_caso_inacessivel_retornam_nao_encontrado(links_contexto, motivo):
+    service, casos, links, uow, caso, usuario = links_contexto
+    pessoa = usuario("KP", "test_cases.gerenciar", no_time=motivo != "fora_do_escopo")
+    if motivo == "caso_inexistente":
+        casos.obter_por_id.return_value = None
+
+    with pytest.raises(NotFoundException):
+        await service.listar_pull_requests(pessoa, caso.id)
+    with pytest.raises(NotFoundException):
+        await service.adicionar_pull_request(
+            pessoa, caso.id, AdicionarLinkPullRequestRequest(url=URL_PR)
+        )
+    with pytest.raises(NotFoundException):
+        await service.remover_pull_request(pessoa, caso.id, uuid4())
+
+    links.listar_ativos_por_caso.assert_not_awaited()
+    links.adicionar.assert_not_awaited()
+    uow.commit.assert_not_awaited()

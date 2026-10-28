@@ -31,6 +31,9 @@ from src.infrastructure.data.unit_of_work import UnitOfWorkImpl
 from src.infrastructure.repositories.caso_teste_repository import CasoTesteRepositoryImpl
 from src.infrastructure.repositories.execucao_sdf_repository import ExecucaoSdfRepositoryImpl
 from src.infrastructure.repositories.importacao_sdf_repository import ImportacaoSdfRepositoryImpl
+from src.infrastructure.repositories.link_pull_request_repository import (
+    LinkPullRequestRepositoryImpl,
+)
 from src.infrastructure.repositories.modelo_dispositivo_repository import (
     ModeloDispositivoRepositoryImpl,
 )
@@ -243,6 +246,7 @@ async def get_caso_teste_service(
         TimeRepositoryImpl(session),
         TimeMembroRepositoryImpl(session),
         UsuarioRepositoryImpl(session),
+        LinkPullRequestRepositoryImpl(session),
         UnitOfWorkImpl(session),
     )
 

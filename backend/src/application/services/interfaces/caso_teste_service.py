@@ -8,6 +8,11 @@ from src.application.schemas.caso_teste import (
     CasoTesteResponse,
     CriarCasoTesteRequest,
 )
+from src.application.schemas.link_pull_request import (
+    AdicionarLinkPullRequestRequest,
+    LinkPullRequestResponse,
+    LinksPullRequestResponse,
+)
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 
@@ -46,3 +51,18 @@ class CasoTesteService(Protocol):
     async def transferir_para_backup(
         self, usuario_atual: UsuarioAutenticado, caso_id: UUID
     ) -> CasoTesteResponse: ...
+
+    async def listar_pull_requests(
+        self, usuario_atual: UsuarioAutenticado, caso_id: UUID
+    ) -> LinksPullRequestResponse: ...
+
+    async def adicionar_pull_request(
+        self,
+        usuario_atual: UsuarioAutenticado,
+        caso_id: UUID,
+        request: AdicionarLinkPullRequestRequest,
+    ) -> LinkPullRequestResponse: ...
+
+    async def remover_pull_request(
+        self, usuario_atual: UsuarioAutenticado, caso_id: UUID, link_id: UUID
+    ) -> None: ...
