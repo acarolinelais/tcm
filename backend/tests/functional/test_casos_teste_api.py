@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
+import pytest
 from src.api.dependencies import get_caso_teste_service, get_usuario_atual
 from src.application.schemas.caso_teste import CasoTesteResponse
 from src.application.services.caso_teste_service import CasoTesteServiceImpl
@@ -30,6 +31,7 @@ def _caso(usuario, projeto_id):
         status="To-Do",
         responsavel_id=uuid4(),
         backup_id=uuid4(),
+        justificativa_exclusao=None,
         ativo=True,
         created_at=None,
         updated_at=None,
@@ -152,6 +154,40 @@ async def test_responsavel_volta_o_status_para_to_do(api_client):
     assert response.status_code == 200
     assert caso.status is StatusCasoTeste.TO_DO
     uow.commit.assert_awaited_once()
+
+
+async def test_excluir_com_justificativa_retorna_200(api_client):
+    caso, uow = _usar_service_real_com_caso(caso_do_membro=True)
+
+    response = await api_client.put(
+        f"/api/test-cases/{caso.id}",
+        json={"status": "Cancelled", "justificativa_exclusao": " Depende de hardware "},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "Cancelled"
+    assert response.json()["justificativa_exclusao"] == "Depende de hardware"
+    uow.commit.assert_awaited_once()
+
+
+@pytest.mark.parametrize(
+    "corpo",
+    [
+        {"status": "Cancelled"},
+        {"status": "Cancelled", "justificativa_exclusao": "   "},
+        {"status": "Cancelled", "justificativa_exclusao": "x" * 501},
+        {"status": "To-Do", "justificativa_exclusao": "Fora do escopo"},
+    ],
+)
+async def test_excluir_sem_justificativa_valida_retorna_422(api_client, corpo):
+    caso, uow = _usar_service_real_com_caso(caso_do_membro=True)
+
+    response = await api_client.put(f"/api/test-cases/{caso.id}", json=corpo)
+
+    assert response.status_code == 422
+    assert caso.status is StatusCasoTeste.TO_DO
+    assert caso.justificativa_exclusao is None
+    uow.commit.assert_not_awaited()
 
 
 async def test_atualizar_status_invalido_retorna_422(api_client):

@@ -77,6 +77,83 @@ def test_gestao_atualiza_situation_e_status():
     assert caso.status == StatusCasoTeste.IN_REVIEW
 
 
+def test_excluir_grava_a_justificativa_sem_os_espacos_das_pontas():
+    caso = criar_caso(StatusCasoTeste.IN_PROGRESS)
+
+    caso.atualizar_campos_do_responsavel(
+        StatusCasoTeste.CANCELLED,
+        caso.category,
+        caso.difficulty,
+        justificativa_exclusao="  Depende de hardware indisponível ",
+    )
+
+    assert caso.status is StatusCasoTeste.CANCELLED
+    assert caso.justificativa_exclusao == "Depende de hardware indisponível"
+
+
+def test_cancelar_grava_a_justificativa():
+    caso = criar_caso()
+
+    caso.cancelar("Fora do escopo do projeto")
+
+    assert caso.status is StatusCasoTeste.CANCELLED
+    assert caso.justificativa_exclusao == "Fora do escopo do projeto"
+
+
+@pytest.mark.parametrize("justificativa", [None, "", "   "])
+def test_excluir_sem_justificativa_levanta_erro_e_nao_muda_o_status(justificativa):
+    caso = criar_caso(StatusCasoTeste.IN_PROGRESS)
+
+    with pytest.raises(ValueError, match="Justificativa"):
+        caso.atualizar_campos_do_responsavel(
+            StatusCasoTeste.CANCELLED,
+            caso.category,
+            caso.difficulty,
+            justificativa_exclusao=justificativa,
+        )
+
+    assert caso.status is StatusCasoTeste.IN_PROGRESS
+    assert caso.justificativa_exclusao is None
+
+
+def test_excluir_com_justificativa_acima_de_500_levanta_erro():
+    caso = criar_caso()
+
+    with pytest.raises(ValueError, match="500"):
+        caso.cancelar("x" * 501)
+
+    assert caso.status is StatusCasoTeste.TO_DO
+
+
+def test_sair_de_cancelled_apaga_justificativa():
+    caso = criar_caso()
+    caso.cancelar("Fora do escopo do projeto")
+
+    caso.atualizar_gerenciamento(
+        caso.responsavel_id,
+        caso.backup_id,
+        caso.situation,
+        StatusCasoTeste.TO_DO,
+        caso.category,
+        caso.difficulty,
+    )
+
+    assert caso.status is StatusCasoTeste.TO_DO
+    assert caso.justificativa_exclusao is None
+
+
+def test_continuar_em_cancelled_mantem_a_justificativa():
+    caso = criar_caso()
+    caso.cancelar("Fora do escopo do projeto")
+
+    caso.atualizar_campos_do_responsavel(
+        StatusCasoTeste.CANCELLED, CategoriaCasoTeste.B, caso.difficulty
+    )
+
+    assert caso.justificativa_exclusao == "Fora do escopo do projeto"
+    assert caso.category is CategoriaCasoTeste.B
+
+
 def test_status_inclui_conclusao_e_cancelamento():
     assert list(StatusCasoTeste) == [
         "To-Do",

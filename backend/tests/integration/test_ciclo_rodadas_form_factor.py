@@ -137,11 +137,19 @@ async def test_ciclo_de_duas_rodadas_preserva_historico_e_respeita_atribuicao(ce
     ]
 
     with pytest.raises(ForbiddenException):
-        await casos.atualizar(dev, alheio, AtualizarCasoTesteRequest(status="Cancelled"))
+        await casos.atualizar(
+            dev,
+            alheio,
+            AtualizarCasoTesteRequest(status="Cancelled", justificativa_exclusao="Fora do escopo"),
+        )
     assert await _status(cenario, alheio) == "InValidation"
     for status in ("InReview", "InValidation"):
         await casos.atualizar(dev, falha, AtualizarCasoTesteRequest(status=status))
-    await casos.atualizar(dev, parcial, AtualizarCasoTesteRequest(status="Cancelled"))
+    await casos.atualizar(
+        dev,
+        parcial,
+        AtualizarCasoTesteRequest(status="Cancelled", justificativa_exclusao="Fora do escopo"),
+    )
 
     segunda = await form_factor.criar_rodada(
         gestora, cenario.projeto_id, CriarRodadaFormFactorLoteRequest()
