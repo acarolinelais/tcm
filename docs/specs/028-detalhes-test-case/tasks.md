@@ -116,7 +116,7 @@
 - e2e antigos que já falham na `dev` (11 em `projetos-dev.spec.ts`, `projetos-importacao.spec.ts` e `projetos.spec.ts`;
   conferido numa worktree limpa da `dev`, com o mesmo resultado nesta branch). Inclui os 4 de `getByLabel("Time")` já
   listados na spec 027. Fora do escopo desta spec (achado ao rodar a T11).
-- A classe de link do TC ID (`text-accent underline-offset-4 hover:underline focus-visible:...`) repete a de
+- **Resolvido na spec 030** (`shared/ui/link.ts`, `linkClassName`). A classe de link do TC ID (`text-accent underline-offset-4 hover:underline focus-visible:...`) repete a de
   `FormFactorGlobalTabela.tsx`; uma constante em `shared/ui` serviria às duas. Mexe em arquivo de outra spec (achado da
   `simplify` da fase 4).
 - `JustificativaExclusaoDrawer` e `DetalhesCasoTesteDrawer` repetem o "último caso exibido" (`useState` + `setExibido`)
