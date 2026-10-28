@@ -15,12 +15,6 @@ export type StatusCasoTeste = (typeof STATUS_CASO_TESTE)[number];
 /** Chaves i18n dos rótulos de TC Situation, Status e Difficulty. */
 export const ROTULO_SITUACAO: Record<SituacaoCasoTeste, string> = { New: "situationNew", "New Step": "situationNewStep", "Without Changes": "situationWithoutChanges" };
 export const ROTULO_STATUS: Record<StatusCasoTeste, string> = { "To-Do": "statusTodo", InProgress: "statusInProgress", InReview: "statusInReview", InValidation: "statusInValidation", Done: "statusDone", InFixes: "statusInFixes", Cancelled: "statusCancelled" };
-/** Próximo passo do responsável principal (spec 023); Done e InFixes vêm só dos resultados da rodada. */
-export const PROXIMO_STATUS_RESPONSAVEL: Partial<Record<StatusCasoTeste, readonly StatusCasoTeste[]>> = { "To-Do": ["InProgress"], InProgress: ["InReview"], InReview: ["InValidation"], InFixes: ["InReview"] };
-/** Opções do seletor do responsável: Status atual, próximo passo e Excluded. */
-export function opcoesStatusResponsavel(status: StatusCasoTeste): StatusCasoTeste[] {
-  return [...new Set([status, ...(PROXIMO_STATUS_RESPONSAVEL[status] ?? []), "Cancelled" as const])];
-}
 export const ROTULO_DIFICULDADE: Record<DificuldadeCasoTeste, string> = { Low: "difficultyLow", Medium: "difficultyMedium", High: "difficultyHigh" };
 
 /** Resultados que o filtro por modelo do Form Factor oferece. */

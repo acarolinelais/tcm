@@ -36,8 +36,10 @@ modelos, com o resultado final `Done` ou `In Fixes`. Um TC que não pode ser aut
 - RN-04: O responsável principal pode fazer as transições `To-Do` → `In Progress`, `In Progress` → `In Review`,
   `In Review` → `In Validation` e `In Fixes` → `In Review`. Admin da unidade, gerente e KP autorizados no escopo
   do projeto também podem mover `In Review` → `In Validation`. A gestão mantém a edição livre de Status que já
-  existe.
+  existe. **Suspensa em 2026-10-27:** por enquanto o responsável principal também edita o Status livremente,
+  inclusive voltando para `To-Do`. O ciclo acima continua sendo o fluxo esperado, mas não é imposto.
 - RN-05: `Done` e `In Fixes` vêm do registro de resultados da rodada. O DEV não os define manualmente.
+  **Suspensa em 2026-10-27** junto com a RN-04: o responsável principal pode escolhê-los na linha.
 - RN-06: `Excluded` marca um TC que não pode ser automatizado. O DEV atribuído (principal ou Backup) e a gestão
   autorizada no escopo podem excluir um TC a partir de qualquer Status. A exclusão não apaga o TC, seus resultados
   nem seu histórico de rodadas. É o mesmo Status `Cancelled` da spec 022, agora exibido como `Excluded` (EN),
@@ -66,9 +68,9 @@ modelos, com o resultado final `Done` ou `In Fixes`. Um TC que não pode ser aut
 - **CA-05:** Dado um TC em `In Fixes`, quando o DEV principal envia a correção, então o Status volta para
   `In Review` e os resultados das rodadas anteriores continuam no histórico.
 - **CA-06 (falha):** Dado um TC em `In Progress` ou `In Fixes`, quando o DEV tenta movê-lo direto para
-  `In Validation`, então a transição é recusada e o Status permanece igual.
+  `In Validation`, então a transição é recusada e o Status permanece igual. *(Suspenso em 2026-10-27, ver RN-04.)*
 - **CA-07 (falha):** Dado um DEV, quando tenta definir `Done` ou `In Fixes` manualmente, então a operação é
-  recusada e o Status permanece igual.
+  recusada e o Status permanece igual. *(Suspenso em 2026-10-27, ver RN-05.)*
 - **CA-08:** Dado um TC que não pode ser automatizado, quando o DEV atribuído ou a gestão no escopo o marca como
   `Excluded`, então o Status é salvo e o histórico permanece consultável.
 - **CA-09 (falha):** Dado um DEV sem atribuição ao TC, quando tenta marcá-lo como `Excluded` ou mudar seu

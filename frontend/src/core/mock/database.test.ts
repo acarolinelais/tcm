@@ -383,14 +383,13 @@ describe("base mock de projetos", () => {
     }
   });
 
-  it("segue o ciclo do DEV: revisão de PR antes da validação e FAIL leva a In Fixes", () => {
+  it("deixa o DEV mudar o Status livremente e FAIL leva a In Fixes", () => {
     const project = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: ["mock-model-s27-ultra"] });
     const testCase = mockCasosTesteApi.criar(project.id, { category: "A", difficulty: "Low", situation: "New", tc_id: "TC-CICLO", responsavel_id: "mock-user-dev", backup_id: "mock-user-kp" });
     entrar("daniel.oliveira@example.com");
 
     mockCasosTesteApi.atualizar(testCase.id, { status: "InProgress" });
-    expect(() => mockCasosTesteApi.atualizar(testCase.id, { status: "InValidation" })).toThrow("transição");
-    mockCasosTesteApi.atualizar(testCase.id, { status: "InReview" });
+    expect(mockCasosTesteApi.atualizar(testCase.id, { status: "To-Do" }).status).toBe("To-Do");
     mockCasosTesteApi.atualizar(testCase.id, { status: "InValidation" });
     entrar("admin@sdfmanager.com");
     const rodada = mockFormFactorApi.criarRodada(project.id, { sdf_id: null });
@@ -398,8 +397,8 @@ describe("base mock de projetos", () => {
     entrar("daniel.oliveira@example.com");
 
     expect(mockCasosTesteApi.obter(testCase.id).status).toBe("InFixes");
-    expect(() => mockCasosTesteApi.atualizar(testCase.id, { status: "Done" })).toThrow("transição");
-    expect(mockCasosTesteApi.atualizar(testCase.id, { status: "InReview" }).status).toBe("InReview");
+    expect(mockCasosTesteApi.atualizar(testCase.id, { status: "Done" }).status).toBe("Done");
+    expect(() => mockCasosTesteApi.atualizar(testCase.id, { status: "InReview", responsavel_id: "mock-user-kp" })).toThrow();
   });
 
   it("schema 18 move para In Fixes o TC em revisão com FAIL na execução mais recente", () => {

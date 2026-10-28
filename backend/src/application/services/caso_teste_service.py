@@ -25,13 +25,6 @@ from src.domain.entities.time import Time
 class CasoTesteServiceImpl:
     CAMPOS_RESPONSAVEL = frozenset({"category", "difficulty", "status", "situation"})
     CAMPOS_GESTAO = CAMPOS_RESPONSAVEL | {"responsavel_id", "backup_id"}
-    # Ciclo do responsável (spec 023): Done e InFixes vêm só dos resultados da rodada.
-    TRANSICOES_RESPONSAVEL = {
-        StatusCasoTeste.TO_DO: frozenset({StatusCasoTeste.IN_PROGRESS}),
-        StatusCasoTeste.IN_PROGRESS: frozenset({StatusCasoTeste.IN_REVIEW}),
-        StatusCasoTeste.IN_REVIEW: frozenset({StatusCasoTeste.IN_VALIDATION}),
-        StatusCasoTeste.IN_FIXES: frozenset({StatusCasoTeste.IN_REVIEW}),
-    }
 
     def __init__(
         self,
@@ -156,12 +149,6 @@ class CasoTesteServiceImpl:
                 raise ForbiddenException(
                     "O responsável só pode editar Status, TC Situation, Category e Difficulty."
                 )
-            if "status" in campos_enviados and request.status is not None:
-                permitidos = self.TRANSICOES_RESPONSAVEL.get(caso.status, frozenset())
-                if request.status is StatusCasoTeste.CANCELLED:
-                    caso.cancelar()
-                elif request.status is not caso.status and request.status not in permitidos:
-                    raise ConflictException("A transição de Status solicitada não é permitida.")
             caso.atualizar_campos_do_responsavel(
                 request.status or caso.status,
                 request.category or caso.category,

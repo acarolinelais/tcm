@@ -36,7 +36,7 @@ import { ProjetosEntradaPage } from "./ProjetosEntradaPage";
 import { useCasosTeste, useCriarRodadaFormFactor, useFormFactor, useFormFactorResultados, useRegistrarResultadosRodadaFormFactor, useTransferirCasoTeste } from "../hooks/useProjetos";
 
 import { casosTesteApi, formFactorApi, projetosApi, type CasoTeste, type LinhaFormFactor } from "../api/projetos.api";
-import { CATEGORIAS_CASO_TESTE as categorias, DIFICULDADES_CASO_TESTE as dificuldades, ROTULO_DIFICULDADE, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, opcoesRotuladas, opcoesStatusResponsavel, type StatusCasoTeste } from "../model/projeto";
+import { CATEGORIAS_CASO_TESTE as categorias, DIFICULDADES_CASO_TESTE as dificuldades, ROTULO_DIFICULDADE, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, opcoesRotuladas, type StatusCasoTeste } from "../model/projeto";
 
 type CampoInline = "category" | "difficulty" | "situation" | "status" | "responsavel_id" | "backup_id";
 type Aba = "cases" | "form-factor";
@@ -175,11 +175,10 @@ function ProjetoDetalhe() {
 
   const membrosExceto = (usuarioId: string | null) => opcoesMembros.filter((opcao) => opcao.value !== usuarioId);
   const podeEditarProprio = (caso: CasoTeste) => podeGerenciarCasos || caso.responsavel_id === responsavelAtual;
-  /** Status que o usuário pode escolher (spec 023): a gestão edita livre, o responsável segue o ciclo e o Backup só exclui. */
+  /** Status que o usuário pode escolher (spec 023): a gestão e o responsável editam livre e o Backup só exclui. */
   const opcoesStatusDoCaso = (caso: CasoTeste) => {
-    if (podeGerenciarCasos) return opcoes.status;
-    const permitidos: StatusCasoTeste[] = caso.responsavel_id === responsavelAtual ? opcoesStatusResponsavel(caso.status)
-      : caso.backup_id === responsavelAtual ? [...new Set([caso.status, "Cancelled" as const])] : [];
+    if (podeGerenciarCasos || caso.responsavel_id === responsavelAtual) return opcoes.status;
+    const permitidos: StatusCasoTeste[] = caso.backup_id === responsavelAtual ? [...new Set([caso.status, "Cancelled" as const])] : [];
     return opcoesRotuladas(permitidos, ROTULO_STATUS, t);
   };
   /** Célula com edição na linha quando o usuário pode editar; senão, só o valor. */

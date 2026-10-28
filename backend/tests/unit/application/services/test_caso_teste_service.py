@@ -414,14 +414,15 @@ def _dev_e_caso(admin, projeto, time, status, *, vinculo="responsavel"):
     ("atual", "novo"),
     [
         ("To-Do", "InProgress"),
-        ("InProgress", "InReview"),
-        ("InReview", "InValidation"),
-        ("InFixes", "InReview"),
-        ("InValidation", "Cancelled"),
+        ("To-Do", "InValidation"),
+        ("InProgress", "To-Do"),
+        ("InValidation", "Done"),
+        ("InValidation", "InFixes"),
         ("Done", "Cancelled"),
+        ("Cancelled", "InProgress"),
     ],
 )
-async def test_responsavel_segue_o_ciclo_de_status(contexto, atual, novo):
+async def test_responsavel_altera_o_status_livremente(contexto, atual, novo):
     service, casos, _, _, _, _, uow, admin, projeto, time = contexto
     dev, caso = _dev_e_caso(admin, projeto, time, atual)
     casos.obter_por_id.return_value = caso
@@ -430,29 +431,6 @@ async def test_responsavel_segue_o_ciclo_de_status(contexto, atual, novo):
 
     assert resposta.status == novo
     uow.commit.assert_awaited_once()
-
-
-@pytest.mark.parametrize(
-    ("atual", "novo"),
-    [
-        ("To-Do", "InReview"),
-        ("InProgress", "InValidation"),
-        ("InFixes", "InValidation"),
-        ("InValidation", "Done"),
-        ("InValidation", "InFixes"),
-        ("Cancelled", "InProgress"),
-    ],
-)
-async def test_responsavel_nao_pula_etapas_nem_define_resultado(contexto, atual, novo):
-    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
-    dev, caso = _dev_e_caso(admin, projeto, time, atual)
-    casos.obter_por_id.return_value = caso
-
-    with pytest.raises(ConflictException, match="transição"):
-        await service.atualizar(dev, caso.id, AtualizarCasoTesteRequest(status=novo))
-
-    assert caso.status == atual
-    uow.commit.assert_not_awaited()
 
 
 async def test_backup_e_dev_sem_vinculo_nao_mudam_status(contexto):

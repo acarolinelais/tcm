@@ -254,7 +254,7 @@ describe("ProjetoDetalhePage", () => {
     expect(within(proprioCaso).queryByRole("button", { name: "Edit Clock_001" })).not.toBeInTheDocument();
   });
 
-  it("oferece transições válidas e mostra Done sem Data final em outros estados", async () => {
+  it("oferece ao responsável todos os Status e mostra Done sem Data final em outros estados", async () => {
     const validando = { ...casos[1], id: "case-3", tc_id: "Clock_003", status: "InValidation" as const, updated_at: "2026-10-20T12:00:00Z" };
     const emProgresso = { ...casos[0], status: "InProgress" as const };
     vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [emProgresso, casos[1], validando], page: 1, page_size: 20, total_count: 3 });
@@ -268,7 +268,7 @@ describe("ProjetoDetalhePage", () => {
 
     const proprioCaso = screen.getByRole("row", { name: /Clock_001/ });
     await user.click(within(proprioCaso).getByRole("button", { name: /Status Clock_001/ }));
-    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["In Progress", "In Review", "Excluded"]);
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(ROTULOS_STATUS);
     await user.click(screen.getByRole("option", { name: "In Review" }));
     await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { status: "InReview" }));
 
@@ -289,7 +289,7 @@ describe("ProjetoDetalhePage", () => {
     expect(screen.queryByRole("row", { name: /Clock_001/ })).not.toBeInTheDocument();
   });
 
-  it("leva um TC em correção de volta para revisão, sem oferecer Done nem In Validation ao DEV", async () => {
+  it("deixa o DEV voltar um TC em correção para To-Do", async () => {
     const emCorrecao = { ...casos[0], status: "InFixes" as const };
     vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [emCorrecao], page: 1, page_size: 20, total_count: 1 });
     const user = userEvent.setup();
@@ -299,9 +299,9 @@ describe("ProjetoDetalhePage", () => {
     const status = within(linha).getByRole("button", { name: /Status Clock_001/ });
     expect(status).toHaveTextContent("In Fixes");
     await user.click(status);
-    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["In Fixes", "In Review", "Excluded"]);
-    await user.click(screen.getByRole("option", { name: "In Review" }));
-    await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { status: "InReview" }));
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(ROTULOS_STATUS);
+    await user.click(screen.getByRole("option", { name: "To-Do" }));
+    await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { status: "To-Do" }));
   });
 
   it("oferece In Validation no drawer de edição, na ordem do progresso", async () => {

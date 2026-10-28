@@ -6,7 +6,6 @@ import type { Time, TimeMembro } from "@/modules/times/api/times.api";
 import type { Usuario, UsuarioFormValues } from "@/modules/usuarios/model/usuario";
 import type { UsuarioFiltros } from "@/modules/usuarios/api/usuario.api";
 import {
-  opcoesStatusResponsavel,
   type AtualizarCasoTesteInput,
   type AtualizarProjetoInput,
   type CasoTeste,
@@ -883,9 +882,6 @@ export const mockCasosTesteApi = {
       }
       const camposPermitidos = ["category", "difficulty", "status", "situation"];
       if (Object.keys(input).some((field) => !camposPermitidos.includes(field))) throw new Error("Você só pode editar Status, TC Situation, Category e Difficulty.");
-      if (input.status) {
-        if (!opcoesStatusResponsavel(testCase.status).includes(input.status)) throw new Error("A transição de Status solicitada não é permitida.");
-      }
       Object.assign(testCase, input);
     }
     testCase.updated_at = new Date().toISOString();

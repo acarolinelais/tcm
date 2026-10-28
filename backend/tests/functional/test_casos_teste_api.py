@@ -141,17 +141,17 @@ async def test_responsavel_altera_situation_mas_nao_o_backup(api_client):
     assert caso.backup_id == backup_original
 
 
-async def test_responsavel_que_pula_a_revisao_do_pr_recebe_409(api_client):
+async def test_responsavel_volta_o_status_para_to_do(api_client):
     caso, uow = _usar_service_real_com_caso(caso_do_membro=True)
     caso.atualizar_campos_do_responsavel(
         StatusCasoTeste.IN_PROGRESS, caso.category, caso.difficulty
     )
 
-    response = await api_client.put(f"/api/test-cases/{caso.id}", json={"status": "InValidation"})
+    response = await api_client.put(f"/api/test-cases/{caso.id}", json={"status": "To-Do"})
 
-    assert response.status_code == 409
-    assert caso.status is StatusCasoTeste.IN_PROGRESS
-    uow.commit.assert_not_awaited()
+    assert response.status_code == 200
+    assert caso.status is StatusCasoTeste.TO_DO
+    uow.commit.assert_awaited_once()
 
 
 async def test_atualizar_status_invalido_retorna_422(api_client):
