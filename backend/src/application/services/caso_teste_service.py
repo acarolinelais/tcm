@@ -23,7 +23,9 @@ from src.domain.entities.time import Time
 
 
 class CasoTesteServiceImpl:
-    CAMPOS_RESPONSAVEL = frozenset({"category", "difficulty", "status", "situation"})
+    CAMPOS_RESPONSAVEL = frozenset(
+        {"category", "difficulty", "status", "situation", "automation_level"}
+    )
     CAMPOS_GESTAO = CAMPOS_RESPONSAVEL | {"responsavel_id", "backup_id"}
 
     def __init__(
@@ -105,6 +107,7 @@ class CasoTesteServiceImpl:
             request.responsavel_id,
             request.backup_id,
             request.situation,
+            automation_level=request.automation_level,
         )
         await self._caso_repo.adicionar(caso)
         await self._uow.commit()
@@ -147,13 +150,15 @@ class CasoTesteServiceImpl:
                 return to_response(caso_atualizado or caso)
             if campos_enviados - self.CAMPOS_RESPONSAVEL:
                 raise ForbiddenException(
-                    "O responsável só pode editar Status, TC Situation, Category e Difficulty."
+                    "O responsável só pode editar Status, TC Situation, Category, Difficulty "
+                    "e Automation Level."
                 )
             caso.atualizar_campos_do_responsavel(
                 request.status or caso.status,
                 request.category or caso.category,
                 request.difficulty or caso.difficulty,
                 request.situation,
+                request.automation_level,
             )
         await self._caso_repo.atualizar(caso)
         await self._uow.commit()
@@ -206,6 +211,7 @@ class CasoTesteServiceImpl:
             request.status or caso.status,
             request.category or caso.category,
             request.difficulty or caso.difficulty,
+            request.automation_level,
         )
 
     async def _obter_projeto_visivel(

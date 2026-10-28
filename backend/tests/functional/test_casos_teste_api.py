@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
+import pytest
 from src.api.dependencies import get_caso_teste_service, get_usuario_atual
 from src.application.schemas.caso_teste import CasoTesteResponse
 from src.application.services.caso_teste_service import CasoTesteServiceImpl
@@ -18,7 +19,7 @@ from src.domain.entities.time import Time
 from tests.functional.conftest import dependency_override
 
 
-def _caso(usuario, projeto_id):
+def _caso(usuario, projeto_id, automation_level=None):
     return CasoTesteResponse(
         id=uuid4(),
         unidade_id=usuario.unidade_id,
@@ -26,6 +27,7 @@ def _caso(usuario, projeto_id):
         tc_id="Clock_001",
         category="A",
         difficulty="Low",
+        automation_level=automation_level,
         situation="New",
         status="To-Do",
         responsavel_id=uuid4(),
@@ -245,6 +247,105 @@ async def test_atualizar_test_case_usa_put_e_repassa_payload(api_client):
 
     assert response.status_code == 200
     service.atualizar.assert_awaited_once()
+
+
+async def test_atualizar_test_case_repassa_automation_level_e_devolve_o_nivel(api_client):
+    from src.api.main import app
+
+    usuario = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
+    caso = _caso(usuario, uuid4(), automation_level=2)
+    service = AsyncMock()
+    service.atualizar.return_value = caso
+    app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
+    app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
+
+    response = await api_client.put(f"/api/test-cases/{caso.id}", json={"automation_level": 2})
+
+    assert response.status_code == 200
+    assert response.json()["automation_level"] == 2
+    request = service.atualizar.await_args.args[2]
+    assert request.automation_level == 2
+
+
+@pytest.mark.parametrize("nivel", [0, 4, -1, 1.5, 2.0, "2", "abc", True])
+async def test_atualizar_automation_level_invalido_retorna_422(api_client, nivel):
+    from src.api.main import app
+
+    usuario = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
+    service = AsyncMock()
+    app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
+    app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
+
+    response = await api_client.put(f"/api/test-cases/{uuid4()}", json={"automation_level": nivel})
+
+    assert response.status_code == 422
+    service.atualizar.assert_not_awaited()
+
+
+async def test_obter_test_case_sem_nivel_devolve_automation_level_nulo(api_client):
+    from src.api.main import app
+
+    usuario = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
+    caso = _caso(usuario, uuid4())
+    service = AsyncMock()
+    service.obter.return_value = caso
+    app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
+    app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
+
+    response = await api_client.get(f"/api/test-cases/{caso.id}")
+
+    assert response.status_code == 200
+    assert response.json()["automation_level"] is None
+
+
+def _payload_criar(**extra):
+    return {
+        "tc_id": "Clock_001",
+        "category": "A",
+        "difficulty": "Low",
+        "situation": "New",
+        "responsavel_id": str(uuid4()),
+        "backup_id": str(uuid4()),
+        **extra,
+    }
+
+
+@pytest.mark.parametrize("nivel", [None, 1, 3])
+async def test_criar_test_case_com_ou_sem_automation_level_retorna_201(api_client, nivel):
+    from src.api.main import app
+
+    usuario = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
+    projeto_id = uuid4()
+    service = AsyncMock()
+    service.criar.return_value = _caso(usuario, projeto_id, automation_level=nivel)
+    app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
+    app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
+    extra = {} if nivel is None else {"automation_level": nivel}
+
+    response = await api_client.post(
+        f"/api/projetos/{projeto_id}/test-cases", json=_payload_criar(**extra)
+    )
+
+    assert response.status_code == 201
+    assert response.json()["automation_level"] == nivel
+    assert service.criar.await_args.args[2].automation_level == nivel
+
+
+@pytest.mark.parametrize("nivel", [0, 5, "3", 3.0, "abc", True])
+async def test_criar_test_case_com_automation_level_invalido_retorna_422(api_client, nivel):
+    from src.api.main import app
+
+    usuario = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
+    service = AsyncMock()
+    app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
+    app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
+
+    response = await api_client.post(
+        f"/api/projetos/{uuid4()}/test-cases", json=_payload_criar(automation_level=nivel)
+    )
+
+    assert response.status_code == 422
+    service.criar.assert_not_awaited()
 
 
 async def test_transferir_test_case_para_backup(api_client):

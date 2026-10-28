@@ -9,6 +9,7 @@ from src.application.validators.importacao_projeto import (
 from src.domain.entities.caso_teste import (
     CategoriaCasoTeste,
     DificuldadeCasoTeste,
+    NivelAutomacaoCasoTeste,
     SituacaoCasoTeste,
 )
 
@@ -190,3 +191,182 @@ def test_valida_planilha_com_mil_test_cases():
 
     assert len(resultado.casos) == 1000
     assert resultado.total_linhas == 1000
+
+
+CABECALHO_COMPLETO = [
+    "App",
+    "TC ID",
+    "Title(English)",
+    "Test Precondition(English)",
+    "Test Procedure(English)",
+    "Expected Result(English)",
+    "Difficulty",
+    "Category",
+    "Automation Level",
+    "TC Situation",
+    "One UI",
+    "Assignees",
+    "Backup",
+]
+
+
+# Gerador do modelo atual (13 colunas, ordem e cabeçalho variáveis). Os helpers acima são do modelo
+# antigo, fixo em 8 colunas, e os testes antigos continuam usando-os.
+def gerar_planilha_completa(linhas, cabecalho=CABECALHO_COMPLETO):
+    """Planilha no modelo atual: cada linha é um dict por coluna; o que faltar usa o valor-base."""
+    base = {
+        "App": "Clock",
+        "TC ID": "Clock_001",
+        "Title(English)": "Titulo",
+        "Test Precondition(English)": "Pre",
+        "Test Procedure(English)": "Passos",
+        "Expected Result(English)": "Resultado",
+        "Difficulty": "Low",
+        "Category": "A",
+        "Automation Level": None,
+        "TC Situation": "New",
+        "One UI": "9.5",
+        "Assignees": "ana@example.com",
+        "Backup": "backup@example.com",
+    }
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.append(cabecalho)
+    for linha in linhas:
+        valores = {**base, **linha}
+        worksheet.append([valores.get(coluna) for coluna in cabecalho])
+    conteudo = BytesIO()
+    workbook.save(conteudo)
+    return conteudo.getvalue()
+
+
+def test_automation_level_1_2_e_3_chegam_em_cada_linha():
+    planilha = validar_planilha_projeto(
+        gerar_planilha_completa(
+            [
+                {"TC ID": "Clock_001", "Automation Level": 1},
+                {"TC ID": "Clock_002", "Automation Level": 2},
+                {"TC ID": "Clock_003", "Automation Level": 3},
+            ]
+        )
+    )
+
+    assert [caso.automation_level for caso in planilha.casos] == [
+        NivelAutomacaoCasoTeste.NAO_AUTOMATIZAVEL,
+        NivelAutomacaoCasoTeste.PARCIALMENTE_AUTOMATIZAVEL,
+        NivelAutomacaoCasoTeste.TOTALMENTE_AUTOMATIZAVEL,
+    ]
+
+
+def test_colunas_em_outra_ordem_e_colunas_extras_nao_mudam_o_resultado():
+    cabecalho = list(reversed(CABECALHO_COMPLETO))
+
+    planilha = validar_planilha_projeto(
+        gerar_planilha_completa([{"Automation Level": 2, "Category": "B"}], cabecalho)
+    )
+
+    caso = planilha.casos[0]
+    assert (caso.tc_id, caso.category, caso.difficulty) == (
+        "Clock_001",
+        CategoriaCasoTeste.B,
+        DificuldadeCasoTeste.LOW,
+    )
+    assert caso.automation_level is NivelAutomacaoCasoTeste.PARCIALMENTE_AUTOMATIZAVEL
+    assert caso.responsavel == "ana@example.com"
+    assert planilha.app == "Clock"
+    assert planilha.one_ui == "9.5"
+
+
+def test_planilha_sem_a_coluna_automation_level_importa_com_nivel_vazio():
+    cabecalho = [coluna for coluna in CABECALHO_COMPLETO if coluna != "Automation Level"]
+
+    planilha = validar_planilha_projeto(
+        gerar_planilha_completa([{}, {"TC ID": "Clock_002"}], cabecalho)
+    )
+
+    assert [caso.automation_level for caso in planilha.casos] == [None, None]
+
+
+def test_celula_vazia_importa_nivel_vazio_sem_afetar_as_outras_linhas():
+    planilha = validar_planilha_projeto(
+        gerar_planilha_completa(
+            [
+                {"TC ID": "Clock_001", "Automation Level": None},
+                {"TC ID": "Clock_002", "Automation Level": "   "},
+                {"TC ID": "Clock_003", "Automation Level": 3},
+            ]
+        )
+    )
+
+    assert [caso.automation_level for caso in planilha.casos] == [
+        None,
+        None,
+        NivelAutomacaoCasoTeste.TOTALMENTE_AUTOMATIZAVEL,
+    ]
+
+
+@pytest.mark.parametrize(
+    "valor,esperado",
+    [(1, 1), (2.0, 2), ("3", 3), ("1.0", 1), (" 2 ", 2), ("3.00", 3), ("02", 2)],
+)
+def test_valores_numericos_do_excel_viram_o_inteiro_correspondente(valor, esperado):
+    planilha = validar_planilha_projeto(gerar_planilha_completa([{"Automation Level": valor}]))
+
+    assert planilha.casos[0].automation_level == esperado
+
+
+@pytest.mark.parametrize(
+    "valor", [4, 0, 1.5, -1, "abc", "1,5", "1.0.0", "um", 10, "2.5", "２", "٢"]
+)
+def test_automation_level_invalido_informa_linha_coluna_valor_e_esperados(valor):
+    conteudo = gerar_planilha_completa(
+        [
+            {"TC ID": "Clock_001", "Automation Level": 1},
+            {"TC ID": "Clock_002", "Automation Level": valor},
+        ]
+    )
+
+    erro = validar_com_erro(conteudo).erros[0]
+
+    assert (erro.linha, erro.codigo, erro.coluna) == (3, "valor_invalido", "Automation Level")
+    assert erro.valor == str(valor)
+    assert erro.parametros == {"esperados": ["1", "2", "3"]}
+
+
+def test_cabecalho_de_automation_level_em_outra_grafia_e_citado_como_esta_na_planilha():
+    cabecalho = [
+        "automation_level" if coluna == "Automation Level" else coluna
+        for coluna in CABECALHO_COMPLETO
+    ]
+
+    erro = validar_com_erro(gerar_planilha_completa([{"automation_level": 9}], cabecalho)).erros[0]
+
+    assert erro.coluna == "automation_level"
+
+
+def test_automation_level_invalido_vem_junto_com_os_outros_erros_da_planilha():
+    conteudo = gerar_planilha_completa(
+        [
+            {"TC ID": "Clock_001", "Automation Level": 7},
+            {"TC ID": "Clock_002", "Category": "Z"},
+        ]
+    )
+
+    invalida = validar_com_erro(conteudo)
+
+    assert [(erro.linha, erro.coluna, erro.codigo) for erro in invalida.erros] == [
+        (2, "Automation Level", "valor_invalido"),
+        (3, "Category", "valor_invalido"),
+    ]
+    assert invalida.total_linhas == 2
+
+
+def test_colunas_de_titulo_e_passos_preenchidas_nao_geram_erro():
+    planilha = validar_planilha_projeto(
+        gerar_planilha_completa(
+            [{"Title(English)": "Abrir alarme", "Test Procedure(English)": "1. Abrir\n2. Fechar"}]
+        )
+    )
+
+    assert planilha.total_linhas == 1
+    assert planilha.casos[0].tc_id == "Clock_001"

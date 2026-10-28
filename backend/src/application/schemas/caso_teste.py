@@ -1,21 +1,36 @@
 from datetime import UTC, datetime
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, field_validator, model_validator
 
 from src.domain.entities.caso_teste import (
     CasoTeste,
     CategoriaCasoTeste,
     DificuldadeCasoTeste,
+    NivelAutomacaoCasoTeste,
     SituacaoCasoTeste,
     StatusCasoTeste,
 )
+
+
+def _exigir_inteiro_como_nivel(valor: object) -> object:
+    # O enum inteiro aceitaria `true` (como 1), "2" e 2.0: o nível é um inteiro de 1 a 3, nada além.
+    if valor is not None and (isinstance(valor, bool) or not isinstance(valor, int)):
+        raise ValueError("Automation Level deve ser 1, 2 ou 3.")
+    return valor
+
+
+NivelAutomacaoOpcional = Annotated[
+    NivelAutomacaoCasoTeste | None, BeforeValidator(_exigir_inteiro_como_nivel)
+]
 
 
 class CriarCasoTesteRequest(BaseModel):
     tc_id: str = Field(min_length=1, max_length=CasoTeste.TC_ID_MAX_LENGTH)
     category: CategoriaCasoTeste
     difficulty: DificuldadeCasoTeste
+    automation_level: NivelAutomacaoOpcional = None
     situation: SituacaoCasoTeste
     responsavel_id: UUID
     backup_id: UUID
@@ -34,6 +49,8 @@ class AtualizarCasoTesteRequest(BaseModel):
 
     category: CategoriaCasoTeste | None = None
     difficulty: DificuldadeCasoTeste | None = None
+    # Omitido ou null mantém o nível: depois de definido ele não é esvaziado (spec 026, RN-13).
+    automation_level: NivelAutomacaoOpcional = None
     situation: SituacaoCasoTeste | None = None
     status: StatusCasoTeste | None = None
     responsavel_id: UUID | None = None
@@ -53,6 +70,7 @@ class CasoTesteResponse(BaseModel):
     tc_id: str
     category: CategoriaCasoTeste
     difficulty: DificuldadeCasoTeste
+    automation_level: NivelAutomacaoCasoTeste | None
     situation: SituacaoCasoTeste
     status: StatusCasoTeste
     responsavel_id: UUID
@@ -70,6 +88,7 @@ def to_response(caso: CasoTeste) -> CasoTesteResponse:
         tc_id=caso.tc_id,
         category=caso.category,
         difficulty=caso.difficulty,
+        automation_level=caso.automation_level,
         situation=caso.situation,
         status=caso.status,
         responsavel_id=caso.responsavel_id,
