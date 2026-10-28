@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import * as XLSX from "@e965/xlsx";
 
-import { project, setupProjectSession, setupTeamsAndModels } from "./projetos-fixtures";
+import { caseItem, project, projectId, setupMembrosDoTime, setupProjectSession, setupTeamsAndModels } from "./projetos-fixtures";
 
 const cabecalho = ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI", "Assignees", "Backup"];
 
@@ -237,5 +237,55 @@ test("recusa um Automation Level inválido na planilha, apontando a linha e a co
   await expect(alerta).toContainText("1 de 2 linhas precisa de ajuste. Nada foi criado.");
   await expect(alerta.getByRole("heading", { name: "Linha 3" })).toBeVisible();
   await expect(alerta).toContainText('Coluna Automation Level: "4" não é válido. Use 1, 2 ou 3.');
+  expect(enviou).toBe(false);
+});
+
+// Spec 028: os textos da planilha chegam ao painel de detalhes aberto pelo TC ID.
+test("detalhes: importa a planilha com os textos e lê o procedimento no painel aberto pelo TC ID", async ({ page }) => {
+  // A API é simulada: o detalhe devolve os textos da mesma linha que a planilha importa.
+  const linha = casoModelo("Clock_001", 1);
+  const [title, precondition, procedure, expected_result] = linha.slice(2, 6) as string[];
+  await page.route("**/api/projetos/importar", (route) => route.fulfill({ json: { projeto: project, quantidade_casos: 1 } }));
+  await page.route(`**/api/projetos/${projectId}`, (route) => route.fulfill({ json: project }));
+  await page.route(`**/api/projetos/${projectId}/test-cases?*`, (route) => route.fulfill({ json: { items: [caseItem], page: 1, page_size: 20, total_count: 1 } }));
+  await page.route(`**/api/test-cases/${caseItem.id}`, (route) => route.fulfill({ json: { ...caseItem, title, precondition, procedure, expected_result } }));
+  await setupMembrosDoTime(page);
+
+  await abrirNovoProjeto(page);
+  await escolher(page, planilha([linha], cabecalhoModelo));
+  await expect(previaDe(page)).toContainText("1 Test Case");
+  await page.getByRole("combobox", { name: "Time" }).click();
+  await page.getByRole("option", { name: "Plataforma" }).click();
+  await page.getByRole("button", { name: "Criar projeto" }).click();
+  await expect(page.getByText(/Planilha importada com sucesso/)).toBeVisible();
+
+  await page.goto(`/projetos/${projectId}`);
+  await page.getByRole("row", { name: /Clock_001/ }).getByRole("button", { name: "Clock_001", exact: true }).click();
+
+  const painel = page.getByRole("dialog");
+  await expect(painel.getByRole("heading", { name: "Clock_001" })).toBeVisible();
+  await expect(painel.getByRole("term")).toHaveText(["Título", "Pré-condição", "Procedimento", "Resultado esperado"]);
+  const valores = painel.getByRole("definition");
+  await expect(valores.nth(0)).toHaveText(title);
+  await expect(valores.nth(1)).toHaveText(precondition);
+  expect(await valores.nth(2).innerText()).toBe(procedure);
+  await expect(valores.nth(3)).toHaveText(expected_result);
+
+  await painel.getByRole("button", { name: "Fechar" }).last().click();
+  await expect(painel).toBeHidden();
+});
+
+test("detalhes: recusa um Title acima de 500 caracteres, apontando a linha e a coluna, sem enviar nada", async ({ page }) => {
+  let enviou = false;
+  await page.route("**/api/projetos/importar", (route) => { enviou = true; return route.fulfill({ json: { projeto: project, quantidade_casos: 1 } }); });
+  const longo = casoModelo("Clock_001", 1);
+  longo[2] = "a".repeat(501);
+
+  await abrirNovoProjeto(page);
+  await escolher(page, planilha([longo], cabecalhoModelo));
+
+  const alerta = page.getByRole("alert");
+  await expect(alerta.getByRole("heading", { name: "Linha 2" })).toBeVisible();
+  await expect(alerta).toContainText("Coluna Title(English): o texto passa de 500 caracteres. Encurte o texto.");
   expect(enviou).toBe(false);
 });

@@ -217,3 +217,68 @@ describe("Automation Level na leitura da planilha (spec 027)", () => {
     ]);
   });
 });
+
+const colunasDeTexto = ["Title(English)", "Test Precondition(English)", "Test Procedure(English)", "Expected Result(English)"] as const;
+const textosDoCaso = ({ title, precondition, procedure, expected_result }: { title: string | null; precondition: string | null; procedure: string | null; expected_result: string | null }) =>
+  [title, precondition, procedure, expected_result];
+
+describe("Textos do Test Case na leitura da planilha (spec 028)", () => {
+  it("lê os quatro textos sem os espaços das pontas e com as quebras de linha, em qualquer ordem e caixa", async () => {
+    const cabecalhos = CABECALHOS_MODELO_PLANILHA.map((coluna) => (colunasDeTexto as readonly string[]).includes(coluna) ? coluna.toUpperCase() : coluna).reverse();
+    const linha = linhaCompleta({ "Title(English)": "  Check Writing style  ", "Test Precondition(English)": "1. Settings", "Test Procedure(English)": "1. Messages > Compose\n2-1. Select Shorten", "Expected Result(English)": "2-3. Should work normally" }).reverse();
+
+    const planilha = await lerPlanilhaProjeto(planilhaFile([cabecalhos, linha]));
+
+    expect(textosDoCaso(planilha.casos[0])).toEqual(["Check Writing style", "1. Settings", "1. Messages > Compose\n2-1. Select Shorten", "2-3. Should work normally"]);
+  });
+
+  it("reconhece o cabeçalho de texto com espaço antes dos parênteses, como o backend", async () => {
+    const cabecalhos = CABECALHOS_MODELO_PLANILHA.map((coluna) => coluna === "Title(English)" ? "Title (English)" : coluna);
+
+    const planilha = await lerPlanilhaProjeto(planilhaFile([cabecalhos, linhaCompleta({ "Title(English)": "Check Writing style" })]));
+
+    expect(planilha.casos[0].title).toBe("Check Writing style");
+  });
+
+  it("importa sem textos quando as colunas faltam ou as células estão vazias, sem erro", async () => {
+    const semTextos = CABECALHOS_MODELO_PLANILHA.filter((coluna) => !(colunasDeTexto as readonly string[]).includes(coluna));
+    const vazias = Object.fromEntries(colunasDeTexto.map((coluna) => [coluna, "   "]));
+
+    const sem = await lerPlanilhaProjeto(planilhaFile([semTextos, linhaCompleta({}, semTextos)]));
+    const comVazias = await lerPlanilhaProjeto(planilhaFile([[...CABECALHOS_MODELO_PLANILHA], linhaCompleta(vazias)]));
+
+    expect(textosDoCaso(sem.casos[0])).toEqual([null, null, null, null]);
+    expect(textosDoCaso(comVazias.casos[0])).toEqual([null, null, null, null]);
+  });
+
+  it("aceita os textos no limite, contando um emoji como um caractere como o backend", async () => {
+    const planilha = await lerPlanilhaProjeto(planilhaFile([[...CABECALHOS_MODELO_PLANILHA], linhaCompleta({ "Title(English)": "😀".repeat(500), "Test Procedure(English)": "a".repeat(10_000) })]));
+
+    expect([...planilha.casos[0].title!]).toHaveLength(500);
+    expect(planilha.casos[0].procedure).toHaveLength(10_000);
+  });
+
+  it("recusa o Title acima do limite com linha, coluna, trecho e máximo", async () => {
+    const erro = await erros([
+      [...CABECALHOS_MODELO_PLANILHA],
+      linhaCompleta({ "TC ID": "Clock_001" }),
+      linhaCompleta({ "TC ID": "Clock_002" }),
+      linhaCompleta({ "TC ID": "Clock_003", "Title(English)": "b".repeat(501) }),
+    ]);
+
+    expect(erro.errors).toEqual([{ codigo: "texto_muito_longo", linha: 4, coluna: "Title(English)", valor: "b".repeat(40) + "…", parametros: { maximo: 500 } }]);
+  });
+
+  it("devolve o texto longo junto com os outros erros da planilha", async () => {
+    const erro = await erros([
+      [...CABECALHOS_MODELO_PLANILHA],
+      linhaCompleta({ "TC ID": "Clock_001", "Expected Result(English)": "c".repeat(10_001) }),
+      linhaCompleta({ "TC ID": "Clock_002", Category: "Z" }),
+    ]);
+
+    expect(erro.errors.map(({ linha, coluna, codigo, parametros }) => ({ linha, coluna, codigo, parametros }))).toEqual([
+      { linha: 2, coluna: "Expected Result(English)", codigo: "texto_muito_longo", parametros: { maximo: 10_000 } },
+      { linha: 3, coluna: "Category", codigo: "valor_invalido", parametros: { esperados: ["A", "B", "C"] } },
+    ]);
+  });
+});

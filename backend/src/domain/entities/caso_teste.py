@@ -47,6 +47,9 @@ class StatusCasoTeste(StrEnum):
 class CasoTeste(EntidadeTenant):
     TC_ID_MAX_LENGTH = 120
     JUSTIFICATIVA_EXCLUSAO_MAX_LENGTH = 500
+    # Textos da planilha (spec 028): só a importação os grava e nada os altera depois.
+    TITLE_MAX_LENGTH = 500
+    TEXTO_MAX_LENGTH = 10_000
 
     def __init__(
         self,
@@ -63,6 +66,10 @@ class CasoTeste(EntidadeTenant):
         exigir_backup: bool = True,
         automation_level: NivelAutomacaoCasoTeste | None = None,
         justificativa_exclusao: str | None = None,
+        title: str | None = None,
+        precondition: str | None = None,
+        procedure: str | None = None,
+        expected_result: str | None = None,
     ) -> None:
         super().__init__(unidade_id)
         self.projeto_id = projeto_id
@@ -78,6 +85,14 @@ class CasoTeste(EntidadeTenant):
         self.backup_id = backup_id
         # Os TCs excluídos antes da spec 026 não têm justificativa: a reidratação não a exige.
         self.justificativa_exclusao = justificativa_exclusao
+        self.title = self._validar_texto(title, "Title", self.TITLE_MAX_LENGTH)
+        self.precondition = self._validar_texto(
+            precondition, "Test Precondition", self.TEXTO_MAX_LENGTH
+        )
+        self.procedure = self._validar_texto(procedure, "Test Procedure", self.TEXTO_MAX_LENGTH)
+        self.expected_result = self._validar_texto(
+            expected_result, "Expected Result", self.TEXTO_MAX_LENGTH
+        )
         # Na reidratação o backup pode faltar: transferir_para_backup() o deixa vazio.
         self._validar_responsaveis(responsavel_id, backup_id, exigir_backup=exigir_backup)
 
@@ -174,6 +189,14 @@ class CasoTeste(EntidadeTenant):
         if len(normalizado) > cls.TC_ID_MAX_LENGTH:
             raise ValueError(f"TC ID deve ter no máximo {cls.TC_ID_MAX_LENGTH} caracteres.")
         return normalizado
+
+    @staticmethod
+    def _validar_texto(texto: str | None, nome: str, maximo: int) -> str | None:
+        # Só as pontas: as quebras de linha internas são o passo a passo do caso.
+        normalizado = (texto or "").strip()
+        if len(normalizado) > maximo:
+            raise ValueError(f"{nome} deve ter no máximo {maximo} caracteres.")
+        return normalizado or None
 
     @staticmethod
     def _validar_responsaveis(

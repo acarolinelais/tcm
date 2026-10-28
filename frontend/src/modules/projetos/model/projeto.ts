@@ -71,6 +71,20 @@ export interface CasoTeste {
   updated_at: string | null;
 }
 
+/** Detalhe do Test Case (spec 028): os textos da planilha só vêm no `GET /api/test-cases/{id}`. */
+export interface CasoTesteDetalhe extends CasoTeste {
+  title: string | null;
+  precondition: string | null;
+  procedure: string | null;
+  expected_result: string | null;
+}
+
+export type TextosCasoTeste = Pick<CasoTesteDetalhe, "title" | "precondition" | "procedure" | "expected_result">;
+
+/** Limites dos textos da planilha (spec 028, RN-04), os mesmos de `CasoTeste` no backend. */
+export const MAX_TITLE_CASO_TESTE = 500;
+export const MAX_TEXTO_CASO_TESTE = 10_000;
+
 /** Limite da justificativa de exclusão (spec 026). */
 export const MAX_JUSTIFICATIVA_EXCLUSAO = 500;
 
@@ -227,6 +241,7 @@ export const CODIGOS_ERRO_PLANILHA = [
   "arquivo_invalido", "planilha_vazia", "cabecalho_duplicado", "coluna_obrigatoria_ausente", "sem_casos",
   "app_ausente", "one_ui_ausente", "valor_obrigatorio", "valor_invalido", "tc_id_duplicado",
   "pessoa_nao_encontrada", "pessoa_ambigua", "pessoa_fora_do_time", "responsavel_igual_backup",
+  "texto_muito_longo",
 ] as const;
 export type CodigoErroPlanilha = (typeof CODIGOS_ERRO_PLANILHA)[number];
 
@@ -236,5 +251,5 @@ export interface ErroPlanilha {
   linha: number | null;
   coluna: string | null;
   valor: string | null;
-  parametros?: { esperados?: string[]; primeira_linha?: number } | null;
+  parametros?: { esperados?: string[]; primeira_linha?: number; maximo?: number } | null;
 }

@@ -46,6 +46,15 @@ describe("CasoTesteDrawer: Automation Level (spec 027)", () => {
     vi.mocked(casosTesteApi.atualizar).mockResolvedValue(caso);
   });
 
+  it("não tem campos para os textos da planilha, ao criar nem ao editar (spec 028)", () => {
+    for (const editar of [null, caso]) {
+      const { unmount } = renderDrawer(editar);
+      const drawer = screen.getByRole("dialog");
+      for (const nome of [/^Title/, /Precondition/, /Procedure/, /Expected Result/]) expect(within(drawer).queryByLabelText(nome)).not.toBeInTheDocument();
+      unmount();
+    }
+  });
+
   it("cria o Test Case sem Automation Level quando o campo fica sem escolha", async () => {
     const user = userEvent.setup();
     renderDrawer(null);

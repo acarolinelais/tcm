@@ -3,8 +3,10 @@ from uuid import UUID
 
 from src.application.schemas.caso_teste import (
     AtualizarCasoTesteRequest,
+    CasoTesteDetalheResponse,
     CasoTesteResponse,
     CriarCasoTesteRequest,
+    to_detalhe_response,
     to_response,
 )
 from src.application.validators.semana import intervalo_semana_iso
@@ -51,13 +53,15 @@ class CasoTesteServiceImpl:
         self._usuario_repo = usuario_repo
         self._uow = uow
 
-    async def obter(self, usuario_atual: UsuarioAutenticado, caso_id: UUID) -> CasoTesteResponse:
+    async def obter(
+        self, usuario_atual: UsuarioAutenticado, caso_id: UUID
+    ) -> CasoTesteDetalheResponse:
         self._exigir_permissao(usuario_atual, "test_cases.consultar")
         caso = await self._caso_repo.obter_por_id(usuario_atual.unidade_id, caso_id)
         if caso is None:
             raise NotFoundException("Test Case não encontrado.")
         await self._obter_projeto_visivel(usuario_atual, caso.projeto_id)
-        return to_response(caso)
+        return to_detalhe_response(caso)
 
     async def listar(
         self,

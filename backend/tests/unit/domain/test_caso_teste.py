@@ -11,7 +11,7 @@ from src.domain.entities.caso_teste import (
 )
 
 
-def criar_caso(status: StatusCasoTeste = StatusCasoTeste.TO_DO) -> CasoTeste:
+def criar_caso(status: StatusCasoTeste = StatusCasoTeste.TO_DO, **textos) -> CasoTeste:
     return CasoTeste(
         unidade_id=uuid4(),
         projeto_id=uuid4(),
@@ -22,6 +22,7 @@ def criar_caso(status: StatusCasoTeste = StatusCasoTeste.TO_DO) -> CasoTeste:
         backup_id=uuid4(),
         situation=SituacaoCasoTeste.NEW,
         status=status,
+        **textos,
     )
 
 
@@ -414,3 +415,77 @@ def test_reidratar_caso_sem_backup_nao_exige_backup():
     )
 
     assert caso.backup_id is None
+
+
+def test_caso_nasce_sem_os_textos_da_planilha():
+    caso = criar_caso()
+
+    assert (caso.title, caso.precondition, caso.procedure, caso.expected_result) == (
+        None,
+        None,
+        None,
+        None,
+    )
+
+
+def test_textos_perdem_os_espacos_das_pontas_e_mantem_as_quebras_de_linha():
+    caso = criar_caso(
+        title="  Check Writing style  ",
+        precondition="\n1. Settings > General management\n",
+        procedure=" 1. Messages\n2. Compose\r\n2-1. Select Shorten ",
+        expected_result="   ",
+    )
+
+    assert caso.title == "Check Writing style"
+    assert caso.precondition == "1. Settings > General management"
+    assert caso.procedure == "1. Messages\n2. Compose\r\n2-1. Select Shorten"
+    assert caso.expected_result is None
+
+
+def test_textos_no_limite_sao_aceitos_contando_emoji_como_um_caractere():
+    caso = criar_caso(
+        title="😀" + "a" * (CasoTeste.TITLE_MAX_LENGTH - 1),
+        precondition="a" * CasoTeste.TEXTO_MAX_LENGTH,
+        procedure="a" * CasoTeste.TEXTO_MAX_LENGTH,
+        expected_result="😀" * CasoTeste.TEXTO_MAX_LENGTH,
+    )
+
+    assert len(caso.title) == 500
+    assert len(caso.expected_result) == 10_000
+
+
+@pytest.mark.parametrize(
+    ("campo", "tamanho"),
+    [
+        ("title", 501),
+        ("precondition", 10_001),
+        ("procedure", 10_001),
+        ("expected_result", 10_001),
+    ],
+)
+def test_texto_acima_do_limite_levanta_erro(campo, tamanho):
+    with pytest.raises(ValueError, match="no máximo"):
+        criar_caso(**{campo: "a" * tamanho})
+
+
+def test_atualizacoes_nao_recebem_os_textos():
+    caso = criar_caso(procedure="1. Messages")
+
+    with pytest.raises(TypeError):
+        caso.atualizar_campos_do_responsavel(
+            StatusCasoTeste.TO_DO,
+            CategoriaCasoTeste.A,
+            DificuldadeCasoTeste.LOW,
+            procedure="outro",
+        )
+    with pytest.raises(TypeError):
+        caso.atualizar_gerenciamento(
+            caso.responsavel_id,
+            caso.backup_id,
+            SituacaoCasoTeste.NEW,
+            StatusCasoTeste.TO_DO,
+            CategoriaCasoTeste.A,
+            DificuldadeCasoTeste.LOW,
+            procedure="outro",
+        )
+    assert caso.procedure == "1. Messages"

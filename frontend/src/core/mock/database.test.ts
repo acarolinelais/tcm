@@ -261,6 +261,32 @@ describe("base mock de projetos", () => {
     expect(niveis(semColuna.projeto.id)).toEqual({ Weather_001: null });
   });
 
+  it("guarda os textos da planilha na importação e só os devolve no detalhe do caso", async () => {
+    const cabecalho = ["App", "TC ID", "Title(English)", "Test Procedure(English)", "Difficulty", "Category", "TC Situation", "One UI", "Assignees", "Backup"];
+    const importacao = await mockProjetosApi.importar(planilhaFile([
+      cabecalho,
+      ["Clock", "Clock_001", "Check Writing style", "1. Messages\n2-1. Select Shorten", "Low", "A", "New", "9.5", "Daniel Oliveira", "Kaique Pereira"],
+    ]), "mock-team-platform", []);
+
+    const [listado] = mockCasosTesteApi.listar(importacao.projeto.id, 1, 10).items;
+    const detalhe = mockCasosTesteApi.obter(listado.id);
+
+    expect(listado).not.toHaveProperty("title");
+    expect(listado).not.toHaveProperty("procedure");
+    expect(detalhe).toMatchObject({ tc_id: "Clock_001", title: "Check Writing style", procedure: "1. Messages\n2-1. Select Shorten", precondition: null, expected_result: null });
+  });
+
+  it("devolve os textos vazios no detalhe de um caso criado manualmente", () => {
+    const projeto = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: [] });
+    const criado = mockCasosTesteApi.criar(projeto.id, { tc_id: "Manual_028", category: "A", difficulty: "Low", situation: "New", responsavel_id: "mock-user-dev", backup_id: "mock-user-kp" });
+
+    expect(mockCasosTesteApi.obter(criado.id)).toMatchObject({ title: null, precondition: null, procedure: null, expected_result: null });
+  });
+
+  it("não encontra o detalhe de um caso inexistente", () => {
+    expect(() => mockCasosTesteApi.obter("nao-existe")).toThrow("Test Case não encontrado.");
+  });
+
   it("recusa a importação com Automation Level inválido, apontando linha e coluna, sem criar o projeto", async () => {
     const total = mockProjetosApi.listar(1, 100).total_count;
     const arquivo = planilhaFile([
