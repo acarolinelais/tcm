@@ -38,8 +38,11 @@ import { Avatar } from "@heroui/react";
 - Arquivo: `frontend/src/core/layout/Navbar.tsx`, botão do menu do usuário (`aria-haspopup="menu"`).
   Hoje é um `<span>` de 21px, `bg-[#8880F7]`, texto branco 11px, com a 1ª letra de `perfil.nome`.
 - Dados: `PerfilAtual` (`frontend/src/core/auth/api.ts`) tem `nome` e `email`, **sem URL de foto**.
-  Então use só `Avatar.Fallback` com as iniciais; não invente campo de foto no backend. Se pedirem foto,
-  isso é mudança de contrato da API: pare e indique que precisa de spec (skill `spec`).
+  O avatar usa a imagem padrão do HeroUI (`AVATAR_PADRAO_URL` em `Navbar.tsx`, a esfera `blue.jpg` do CDN de
+  exemplos deles) em `Avatar.Image`, e `Avatar.Fallback` com as iniciais (`delayMs={600}`) quando ela não carrega.
+  Não invente campo de foto no backend: foto por pessoa é mudança de contrato da API e precisa de spec (skill `spec`).
+- Teste: o jsdom não carrega imagens, então o fallback aparece depois do `delayMs` (use `findBy*`). Para testar a
+  imagem, simule `window.Image` com `complete = true` e `naturalWidth > 0` (`vi.stubGlobal`).
 - Iniciais: primeira letra do primeiro e do último nome (`"Ana Carolina Lais"` → `"AL"`; um nome só → 1 letra),
   em maiúsculas, tolerando espaços extras. Coloque a função em `shared/lib` se for reutilizável, com teste.
 - Mantenha o visual do Figma (21px, roxo `#8880F7`, texto branco) via `className` no `Avatar` e no
