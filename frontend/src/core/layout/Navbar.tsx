@@ -2,10 +2,12 @@ import type { PerfilAtual } from "@/core/auth/api";
 import { useLocation, useNavigate } from "react-router";
 import { httpPost } from "@/core/api/http-client";
 import { clearTokens } from "@/core/auth/session";
-import { ChevronDown, CircleArrowRight, Search } from "lucide-react";
+import { Avatar } from "@heroui/react";
+import { ChevronDown, CircleArrowRight, Search, UserRound } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LanguageSelector } from "@/core/i18n/LanguageSelector";
+import { iniciais } from "@/shared/lib/iniciais";
 import { useDismiss } from "@/shared/lib/use-dismiss";
 import { ChevronIcon } from "./sidebar-icons";
 import { rotaPai, rotuloDaRota } from "./voltar";
@@ -48,9 +50,12 @@ export function Navbar({ perfil }: { perfil: PerfilAtual }) {
         <LanguageSelector perfil={perfil} className="gap-2 text-[15px] text-[#454442]" />
         <div ref={menuRef} className="relative">
           <button type="button" aria-haspopup="menu" aria-expanded={menuAberto} onClick={() => setMenuAberto(!menuAberto)} title={t("userMenu")} className="flex items-center gap-1.5">
-            <span aria-hidden="true" className="flex size-[21px] items-center justify-center rounded-full bg-[#8880F7] text-[11px] font-medium text-white">
-              {perfil.nome.slice(0, 1).toUpperCase()}
-            </span>
+            {/* Decorativo: o nome já aparece ao lado. Tamanho e cor do Figma, menores que o `sm` do HeroUI. */}
+            <Avatar aria-hidden="true" className="size-[21px]">
+              <Avatar.Fallback className="bg-[#8880F7] text-[11px] font-medium text-white">
+                {iniciais(perfil.nome) || <UserRound className="size-3" strokeWidth={2} />}
+              </Avatar.Fallback>
+            </Avatar>
             <span className="max-w-40 truncate text-[15px] font-medium text-[#454442]">{perfil.nome.split(" ")[0]}</span>
             <ChevronDown aria-hidden="true" className="size-3.5 text-[#454442]" />
           </button>
