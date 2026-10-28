@@ -15,7 +15,7 @@ import { ApiError } from "@/shared/api/problem-details";
 import { toast } from "@/shared/lib/toast";
 
 vi.mock("../api/projetos.api", () => ({
-  projetosApi: { obter: vi.fn(), listar: vi.fn() }, casosTesteApi: { listar: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), transferirParaBackup: vi.fn() },
+  projetosApi: { obter: vi.fn(), listar: vi.fn() }, casosTesteApi: { listar: vi.fn(), obter: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), transferirParaBackup: vi.fn() },
   formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), criarRodada: vi.fn(), registrarResultadosRodada: vi.fn(), importar: vi.fn() }, modelosDispositivoApi: {},
 }));
 vi.mock("@/modules/times/api/times.api", () => ({ timesApi: { membros: vi.fn() } }));
@@ -119,6 +119,46 @@ describe("ProjetoDetalhePage", () => {
     expect(within(painel).getByText("Justification")).toBeInTheDocument();
     expect(within(painel).getByText("Depende de hardware indisponível")).toBeInTheDocument();
     expect(within(painel).queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["Developer", { ...perfil, perfil_codigo: "USUARIO_PADRAO" }],
+    ["gestão", { ...perfil, id: "admin", perfil_codigo: "ADMIN_UNIDADE", perfil: "Administrador" }],
+  ] as const)("abre os detalhes do Test Case pelo TC ID para o perfil %s", async (_, perfilAtual) => {
+    vi.mocked(casosTesteApi.obter).mockResolvedValue({ ...casos[0], title: "Check Writing style", precondition: null, procedure: "1. Messages\n2-1. Select Shorten", expected_result: null });
+    renderPage(perfilAtual);
+    const user = userEvent.setup();
+
+    await user.click(within(await screen.findByRole("row", { name: /Clock_001/ })).getByRole("button", { name: "Clock_001" }));
+
+    const painel = await screen.findByRole("dialog");
+    expect(within(painel).getByRole("heading", { name: "Clock_001" })).toBeInTheDocument();
+    expect(await within(painel).findByText("Check Writing style")).toBeInTheDocument();
+    expect(casosTesteApi.obter).toHaveBeenCalledWith("case-1");
+  });
+
+  it("abre os detalhes pelo teclado e, ao fechar, devolve o foco ao TC ID sem recarregar a tabela", async () => {
+    vi.mocked(casosTesteApi.obter).mockResolvedValue({ ...casos[1], title: null, precondition: null, procedure: null, expected_result: null });
+    renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO" });
+    const user = userEvent.setup();
+    const tcId = within(await screen.findByRole("row", { name: /Clock_002/ })).getByRole("button", { name: "Clock_002" });
+    const celula = tcId.closest("td")!;
+    const consultas = vi.mocked(casosTesteApi.listar).mock.calls.length;
+
+    // A tabela do React Aria é uma grade: as setas andam entre células e o Tab entra no botão da célula.
+    celula.focus();
+    await user.tab();
+    expect(tcId).toHaveFocus();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(celula).toContainElement(document.activeElement as HTMLElement));
+    if (document.activeElement === celula) await user.tab();
+    expect(tcId).toHaveFocus();
+    expect(screen.getAllByRole("row", { name: /Clock_00/ })).toHaveLength(2);
+    expect(casosTesteApi.listar).toHaveBeenCalledTimes(consultas);
   });
 
   it("filtra TCs por semana no cabeçalho e mantém as semanas das abas independentes", async () => {

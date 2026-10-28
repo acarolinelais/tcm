@@ -150,6 +150,10 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
                 else NivelAutomacaoCasoTeste(model.automation_level)
             ),
             justificativa_exclusao=model.justificativa_exclusao,
+            title=model.title,
+            precondition=model.precondition,
+            procedure=model.procedure,
+            expected_result=model.expected_result,
         )
         caso.id = model.id
         caso.ativo = model.ativo
@@ -173,6 +177,10 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             responsavel_id=entity.responsavel_id,
             backup_id=entity.backup_id,
             justificativa_exclusao=entity.justificativa_exclusao,
+            title=entity.title,
+            precondition=entity.precondition,
+            procedure=entity.procedure,
+            expected_result=entity.expected_result,
             ativo=entity.ativo,
             created_at=entity.created_at,
             updated_at=entity.updated_at,

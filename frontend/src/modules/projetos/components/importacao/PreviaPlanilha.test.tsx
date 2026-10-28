@@ -11,10 +11,12 @@ function previa(total: number): PlanilhaProjeto {
     app: "Clock",
     one_ui: "9.5",
     totalLinhas: total,
-    colunas: { app: "App", "tc id": "TC ID", difficulty: "Difficulty", category: "Category", "tc situation": "TC Situation", "one ui": "One UI", assignees: "Assignees", backup: "Backup", "automation level": "Automation Level" },
+    colunas: { app: "App", "tc id": "TC ID", difficulty: "Difficulty", category: "Category", "tc situation": "TC Situation", "one ui": "One UI", assignees: "Assignees", backup: "Backup", "automation level": "Automation Level",
+      "title(english)": "Title(English)", "test precondition(english)": "Test Precondition(English)", "test procedure(english)": "Test Procedure(English)", "expected result(english)": "Expected Result(English)" },
     casos: Array.from({ length: total }, (_, index) => ({
       linha: index + 2, tc_id: `Clock_${String(index + 1).padStart(4, "0")}`, category: "A", difficulty: "Low",
       situation: "New Step", responsavel: "Daniel Oliveira", backup: "Kaique Pereira", automation_level: null,
+      title: null, precondition: null, procedure: null, expected_result: null,
     })),
   };
 }

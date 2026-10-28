@@ -26,6 +26,7 @@ import { TONS_ETIQUETA, TagChip } from "@/shared/ui/tag-chip";
 import { WeekPickerHero } from "@/shared/ui/week-picker-hero";
 
 import { CasoTesteDrawer } from "../components/casos-teste/CasoTesteDrawer";
+import { DetalhesCasoTesteDrawer } from "../components/casos-teste/DetalhesCasoTesteDrawer";
 import { ExcluirCasoTesteDialog } from "../components/casos-teste/ExcluirCasoTesteDialog";
 import { JustificativaExclusaoDrawer } from "../components/casos-teste/JustificativaExclusaoDrawer";
 import { estadoCasosTeste } from "../components/casos-teste/estado-casos-teste";
@@ -68,6 +69,7 @@ function ProjetoDetalhe() {
   const [drawerCasoAberto, setDrawerCasoAberto] = useState(false);
   const [aberturasDrawer, setAberturasDrawer] = useState(0);
   const [editar, setEditar] = useState<CasoTeste | null>(null);
+  const [casoDetalhado, setCasoDetalhado] = useState<CasoTeste | null>(null);
   const [semana, setSemana] = useState("");
   const [assigneeFormFactor, setAssigneeFormFactor] = useState<string[]>([]);
   const [filtrosResumo, setFiltrosResumo] = useState({ tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" });
@@ -206,7 +208,9 @@ function ProjetoDetalhe() {
   const ordemDosCasos = casosFiltrados.map((caso) => caso.id).join();
   const colunas: DataTableColumn<CasoTeste>[] = [
     { id: "numero", header: "", className: "w-12 text-right tabular-nums text-muted after:hidden", cell: (caso) => String(primeiraDaPagina + casosFiltrados.indexOf(caso) + 1).padStart(2, "0") },
-    { id: "tcId", isRowHeader: true, header: <DataTableFilter label={t("tcId")} value={filtrosCaso.tcId} onChange={(value) => alterarFiltroCaso("tcId", value)} />, cell: (caso) => caso.tc_id },
+    { id: "tcId", isRowHeader: true, header: <DataTableFilter label={t("tcId")} value={filtrosCaso.tcId} onChange={(value) => alterarFiltroCaso("tcId", value)} />,
+      // Botão, não link: abre o painel de detalhes (spec 028) sem sair da página; o React Aria devolve o foco a ele ao fechar.
+      cell: (caso) => <button type="button" aria-haspopup="dialog" onClick={() => setCasoDetalhado(caso)} className="text-accent underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{caso.tc_id}</button> },
     {
       id: "status",
       header: <DataTableMultiFilter label={t("status")} values={filtrosCaso.status} onChange={(values) => alterarFiltroCaso("status", values)} options={opcoes.status} />,
@@ -356,6 +360,7 @@ function ProjetoDetalhe() {
       onConfirm={() => { if (casoParaTransferir) transferir(casoParaTransferir.id); }}
     />
     <JustificativaExclusaoDrawer caso={casoComJustificativa} onFechar={() => setCasoComJustificativa(null)} />
+    <DetalhesCasoTesteDrawer caso={casoDetalhado} perfil={perfil} onFechar={() => setCasoDetalhado(null)} />
     <CasoTesteDrawer key={aberturasDrawer} isOpen={drawerCasoAberto} onOpenChange={setDrawerCasoAberto} projetoId={projetoId} editar={editar} membrosAtivos={membrosAtivos} />
     <FormFactorCriarRodadaDialog
       aberto={abrirCriacaoRodada}

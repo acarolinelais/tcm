@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pytest
 from src.api.dependencies import get_caso_teste_service, get_usuario_atual
-from src.application.schemas.caso_teste import CasoTesteResponse
+from src.application.schemas.caso_teste import CasoTesteDetalheResponse, CasoTesteResponse
 from src.application.services.caso_teste_service import CasoTesteServiceImpl
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
@@ -36,6 +36,13 @@ def _caso(usuario, projeto_id, automation_level=None):
         ativo=True,
         created_at=None,
         updated_at=None,
+    )
+
+
+def _detalhe(usuario, projeto_id, **textos):
+    vazios = dict.fromkeys(("title", "precondition", "procedure", "expected_result"))
+    return CasoTesteDetalheResponse(
+        **_caso(usuario, projeto_id).model_dump(), **{**vazios, **textos}
     )
 
 
@@ -256,7 +263,7 @@ async def test_obter_test_case_retorna_200(api_client):
     from src.api.main import app
 
     usuario = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
-    caso = _caso(usuario, uuid4())
+    caso = _detalhe(usuario, uuid4())
     service = AsyncMock()
     service.obter.return_value = caso
     app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
@@ -321,7 +328,7 @@ async def test_obter_test_case_sem_nivel_devolve_automation_level_nulo(api_clien
     from src.api.main import app
 
     usuario = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
-    caso = _caso(usuario, uuid4())
+    caso = _detalhe(usuario, uuid4())
     service = AsyncMock()
     service.obter.return_value = caso
     app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
@@ -501,3 +508,91 @@ async def test_test_case_de_outra_unidade_nao_e_encontrado(api_client):
     assert response.status_code == 404
     caso_repo.obter_por_id.assert_awaited_once()
     assert caso_repo.obter_por_id.await_args.args[0] == usuario.unidade_id
+
+
+@pytest.mark.parametrize("perfil", ["DEV", "KP", "GERENTE"])
+async def test_obter_test_case_devolve_os_textos_da_planilha(api_client, perfil):
+    from src.api.main import app
+
+    unidade_id, time_id = uuid4(), uuid4()
+    usuario = UsuarioAutenticado(
+        uuid4(),
+        unidade_id,
+        perfil,
+        permissoes=frozenset({"test_cases.consultar"}),
+        time_ids=(time_id,),
+    )
+    caso_repo, projeto_repo, time_repo, membro_repo, usuario_repo, uow = (
+        AsyncMock() for _ in range(6)
+    )
+    projeto = Projeto(unidade_id, time_id, "Clock", "9.5")
+    caso = CasoTeste(
+        unidade_id,
+        projeto.id,
+        "Clock_001",
+        CategoriaCasoTeste.A,
+        DificuldadeCasoTeste.LOW,
+        uuid4(),
+        uuid4(),
+        SituacaoCasoTeste.NEW,
+        title="Check Writing style",
+        procedure="1. Messages\n2-1. Select Shorten",
+    )
+    time = Time(unidade_id, uuid4(), "Time", uuid4())
+    time.id = time_id
+    caso_repo.obter_por_id.return_value = caso
+    projeto_repo.obter_por_id.return_value = projeto
+    time_repo.obter_por_id.return_value = time
+    service = CasoTesteServiceImpl(
+        caso_repo, projeto_repo, time_repo, membro_repo, usuario_repo, uow
+    )
+    app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
+    app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
+
+    response = await api_client.get(f"/api/test-cases/{caso.id}")
+
+    assert response.status_code == 200
+    corpo = response.json()
+    assert corpo["title"] == "Check Writing style"
+    assert corpo["procedure"] == "1. Messages\n2-1. Select Shorten"
+    assert corpo["precondition"] is None
+    assert corpo["expected_result"] is None
+
+
+async def test_listar_test_cases_nao_traz_os_textos_da_planilha(api_client):
+    from src.api.main import app
+
+    usuario = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
+    projeto_id = uuid4()
+    service = AsyncMock()
+    service.listar.return_value = PagedResult([_caso(usuario, projeto_id)], 1, 20, 1)
+    app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
+    app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
+
+    response = await api_client.get(f"/api/projetos/{projeto_id}/test-cases")
+
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert {"title", "precondition", "procedure", "expected_result"}.isdisjoint(item)
+
+
+@pytest.mark.parametrize("campo", ["title", "precondition", "procedure", "expected_result"])
+async def test_criar_ou_atualizar_com_texto_da_planilha_retorna_422(api_client, campo):
+    from src.api.main import app
+
+    usuario = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
+    service = AsyncMock()
+    app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
+    app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
+
+    criar = await api_client.post(
+        f"/api/projetos/{uuid4()}/test-cases", json=_payload_criar(**{campo: "outro"})
+    )
+    atualizar = await api_client.put(
+        f"/api/test-cases/{uuid4()}", json={"category": "B", campo: "outro"}
+    )
+
+    assert criar.status_code == 422
+    assert atualizar.status_code == 422
+    service.criar.assert_not_awaited()
+    service.atualizar.assert_not_awaited()

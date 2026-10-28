@@ -13,6 +13,14 @@ describe("translation resources", () => {
     }
   });
 
+  it("names the Test Case detail sections in every language", () => {
+    for (const language of ["en", "pt-BR", "ko"] as const) {
+      const { translation } = resources[language];
+      for (const key of ["caseTitle", "casePrecondition", "caseProcedure", "caseExpectedResult", "caseNotFound", "caseDetailsLoadError", "done"] as const) expect(translation[key], `${language} ${key}`).toBeTruthy();
+    }
+    expect(resources.en.translation.caseProcedure).toBe("Test Procedure(English)");
+  });
+
   it("labels each Automation Level with its number in every language", () => {
     for (const language of ["en", "pt-BR", "ko"] as const) {
       const { translation } = resources[language];

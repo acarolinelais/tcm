@@ -99,6 +99,9 @@ async def test_caso_persiste_com_responsaveis_e_tc_id_e_unico_no_projeto():
                 responsavel_id,
                 backup_id,
                 SituacaoCasoTeste.NEW_STEP,
+                title="Check Writing style",
+                procedure="1. Messages > Compose\n2-1. Select Shorten",
+                expected_result="😀" * CasoTeste.TEXTO_MAX_LENGTH,
             )
             await repository.adicionar(caso)
             await session.flush()
@@ -202,6 +205,13 @@ async def test_caso_persiste_com_responsaveis_e_tc_id_e_unico_no_projeto():
             reativado = await repository.obter_por_id(unidade_id, caso.id)
             assert reativado is not None
             assert reativado.justificativa_exclusao is None
+
+            # Spec 028: os textos atravessam o banco como vieram, com as quebras de linha, e o
+            # VARCHAR(n) conta caracteres (10 mil emojis cabem).
+            assert reativado.title == "Check Writing style"
+            assert reativado.precondition is None
+            assert reativado.procedure == "1. Messages > Compose\n2-1. Select Shorten"
+            assert reativado.expected_result == "😀" * CasoTeste.TEXTO_MAX_LENGTH
 
             duplicado = CasoTeste(
                 unidade_id,

@@ -9,6 +9,8 @@ import {
   type AtualizarCasoTesteInput,
   type AtualizarProjetoInput,
   type CasoTeste,
+  type CasoTesteDetalhe,
+  type TextosCasoTeste,
   type CriarCasoTesteInput,
   type CriarProjetoInput,
   type FormFactorMatriz,
@@ -75,7 +77,8 @@ interface Database {
   projetos: Projeto[];
   modelosDispositivo: ModeloDispositivo[];
   projetoModelos: { projeto_id: string; modelo_dispositivo_id: string; ativo?: boolean }[];
-  casosTeste: CasoTeste[];
+  /** Os textos da planilha (spec 028) só existem nos casos importados depois dela. */
+  casosTeste: (CasoTeste & Partial<TextosCasoTeste>)[];
   formFactor: ResultadoFormFactorMock[];
   rodadasFormFactor: RodadaFormFactor[];
   execucoesFormFactor: ExecucaoFormFactorMock[];
@@ -798,7 +801,7 @@ export const mockProjetosApi = {
     const versao = planilha.one_ui || oneUi?.trim() || "";
     const now = new Date().toISOString();
     const projeto: Projeto = { id: id("mock-project"), unidade_id: db.unidade.id, time_id: time.id, app: nomeApp, one_ui: versao, nome: `${nomeApp} ${versao}`, status: "Created", ativo: true, created_at: now, updated_at: now };
-    const casos: CasoTeste[] = atribuidos.map(({ caso, responsavelId, backupId }) => ({ id: id("mock-test-case"), unidade_id: db.unidade.id, projeto_id: projeto.id, tc_id: caso.tc_id, category: caso.category, difficulty: caso.difficulty, automation_level: caso.automation_level, situation: caso.situation, status: "To-Do", responsavel_id: responsavelId, backup_id: backupId, ativo: true, created_at: now, updated_at: now }));
+    const casos: Database["casosTeste"] = atribuidos.map(({ caso, responsavelId, backupId }) => ({ id: id("mock-test-case"), unidade_id: db.unidade.id, projeto_id: projeto.id, tc_id: caso.tc_id, category: caso.category, difficulty: caso.difficulty, automation_level: caso.automation_level, situation: caso.situation, status: "To-Do", responsavel_id: responsavelId, backup_id: backupId, ativo: true, created_at: now, updated_at: now, title: caso.title, precondition: caso.precondition, procedure: caso.procedure, expected_result: caso.expected_result }));
     db.projetos.unshift(projeto);
     modelIds.forEach((modelId) => db.projetoModelos.push({ projeto_id: projeto.id, modelo_dispositivo_id: modelId }));
     db.casosTeste.unshift(...casos);
@@ -821,6 +824,9 @@ function canManageMockProject(project: Projeto, permission: string) {
   return projectInMockScope(project);
 }
 
+/** Textos da planilha (spec 028): como na API, só o detalhe do caso os devolve. */
+const CAMPOS_TEXTO_CASO = new Set<string>(["title", "precondition", "procedure", "expected_result"] satisfies (keyof TextosCasoTeste)[]);
+
 function getMockCase(db: Database, caseId: string) {
   const testCase = db.casosTeste.find((item) => item.id === caseId);
   if (!testCase) throw new Error("Test Case não encontrado.");
@@ -841,12 +847,15 @@ export const mockCasosTesteApi = {
     // Igual à API: os casos em que o usuário é o responsável principal vêm primeiro.
     const prioridade = (item: (typeof casosDoProjeto)[number]) => (item.responsavel_id === user.id ? 0 : 1);
     casosDoProjeto.sort((a, b) => prioridade(a) - prioridade(b) || a.tc_id.localeCompare(b.tc_id));
-    return page(casosDoProjeto, pageNumber, pageSize);
+    // Igual à API: os textos da planilha só saem no detalhe.
+    const pagina = page(casosDoProjeto, pageNumber, pageSize);
+    return { ...pagina, items: pagina.items.map((caso) => Object.fromEntries(Object.entries(caso).filter(([campo]) => !CAMPOS_TEXTO_CASO.has(campo))) as CasoTeste) };
   },
-  obter(caseId: string) {
+  obter(caseId: string): CasoTesteDetalhe {
     requireMockPermission("test_cases.consultar");
     const { db } = mockProfile();
-    return getMockCase(db, caseId).testCase;
+    // Casos criados à mão ou antes da spec 028 não têm os campos.
+    return { title: null, precondition: null, procedure: null, expected_result: null, ...getMockCase(db, caseId).testCase };
   },
   criar(projectId: string, input: CriarCasoTesteInput) {
     exigirNivelAutomacaoValido(input.automation_level);

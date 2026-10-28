@@ -3,14 +3,18 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 
 from src.api.dependencies import get_caso_teste_service, get_usuario_atual
-from src.application.schemas.caso_teste import AtualizarCasoTesteRequest, CasoTesteResponse
+from src.application.schemas.caso_teste import (
+    AtualizarCasoTesteRequest,
+    CasoTesteDetalheResponse,
+    CasoTesteResponse,
+)
 from src.application.services.interfaces.caso_teste_service import CasoTesteService
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 
 router = APIRouter(prefix="/api/test-cases", tags=["test-cases"])
 
 
-@router.get("/{caso_id}", response_model=CasoTesteResponse)
+@router.get("/{caso_id}", response_model=CasoTesteDetalheResponse)
 async def obter(
     caso_id: UUID,
     service: CasoTesteService = Depends(get_caso_teste_service),
