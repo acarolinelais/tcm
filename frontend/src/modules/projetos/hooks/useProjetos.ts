@@ -1,5 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { PerfilAtual } from "@/core/auth/api";
+import { ApiError } from "@/shared/api/problem-details";
 
 import {
   casosTesteApi,
@@ -74,6 +75,18 @@ export function useCasosTeste(projetoId: string, page: number, pageSize: number,
     queryKey: ["projetos", projetoId, "test-cases", page, pageSize, filtros, perfil?.unidade_id, perfil?.id],
     queryFn: () => filtros ? casosTesteApi.listar(projetoId, page, pageSize, filtros) : casosTesteApi.listar(projetoId, page, pageSize),
     enabled: Boolean(projetoId) && enabled,
+  });
+}
+
+export const ehNaoEncontrado = (erro: unknown) => erro instanceof ApiError && erro.problem.status === 404;
+
+/** Detalhe de um Test Case com os textos da planilha (spec 028). Erro 4xx não é repetido: outra tentativa não muda a resposta. */
+export function useCasoTeste(id: string, perfil?: PerfilAtual) {
+  return useQuery({
+    queryKey: ["projetos", "test-cases", "detalhe", id, perfil?.unidade_id, perfil?.id],
+    queryFn: () => casosTesteApi.obter(id),
+    enabled: Boolean(id),
+    retry: (falhas, erro) => !(erro instanceof ApiError && erro.problem.status < 500) && falhas < 3,
   });
 }
 

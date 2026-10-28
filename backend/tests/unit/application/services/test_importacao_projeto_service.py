@@ -18,14 +18,17 @@ from src.domain.entities.time_membro import TimeMembro
 from src.domain.entities.usuario import Usuario
 
 
-def criar_arquivo(*linhas, category="A", niveis=None):
-    """`niveis` acrescenta a coluna Automation Level, com um valor por linha."""
+def criar_arquivo(*linhas, category="A", niveis=None, textos=None):
+    """`niveis` acrescenta a coluna Automation Level, com um valor por linha; `textos` acrescenta
+    colunas de texto (spec 028), como {cabeçalho: [valor por linha]}."""
+    textos = textos or {}
     workbook = Workbook()
     worksheet = workbook.active
     cabecalho = ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI"]
     cabecalho += ["Assignees", "Backup"]
     if niveis is not None:
         cabecalho.append("Automation Level")
+    cabecalho += list(textos)
     worksheet.append(cabecalho)
     for indice, (tc_id, responsavel, backup) in enumerate(
         linhas or [("Clock_001", "dev@example.com", "backup@example.com")]
@@ -33,6 +36,7 @@ def criar_arquivo(*linhas, category="A", niveis=None):
         linha = ["Clock", tc_id, "Low", category, "New Step", "9.5", responsavel, backup]
         if niveis is not None:
             linha.append(niveis[indice])
+        linha += [valores[indice] for valores in textos.values()]
         worksheet.append(linha)
     arquivo = BytesIO()
     workbook.save(arquivo)
@@ -249,6 +253,39 @@ async def test_automation_level_invalido_nao_persiste_nada(contexto):
 
     assert [(e.linha, e.coluna, e.codigo, e.valor) for e in erro.value.erros] == [
         (3, "Automation Level", "valor_invalido", "4")
+    ]
+    projetos.adicionar.assert_not_awaited()
+    casos.adicionar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+async def test_importacao_grava_os_textos_de_cada_caso(contexto):
+    service, admin, request, _, casos, uow = contexto
+    textos = {
+        "Title(English)": ["Check Writing style", None],
+        "Test Procedure(English)": ["1. Messages\n2-1. Select Shorten", "  "],
+    }
+
+    await service.importar(admin, request, criar_arquivo(*linhas_de_casos(2), textos=textos))
+
+    gravados = [chamada.args[0] for chamada in casos.adicionar.call_args_list]
+    assert [(caso.title, caso.procedure) for caso in gravados] == [
+        ("Check Writing style", "1. Messages\n2-1. Select Shorten"),
+        (None, None),
+    ]
+    assert gravados[0].precondition is None
+    uow.commit.assert_awaited_once()
+
+
+async def test_texto_longo_nao_persiste_nada(contexto):
+    service, admin, request, projetos, casos, uow = contexto
+    textos = {"Title(English)": ["ok", "x" * 501]}
+
+    with pytest.raises(PlanilhaProjetoInvalida) as erro:
+        await service.importar(admin, request, criar_arquivo(*linhas_de_casos(2), textos=textos))
+
+    assert [(e.linha, e.coluna, e.codigo) for e in erro.value.erros] == [
+        (3, "Title(English)", "texto_muito_longo")
     ]
     projetos.adicionar.assert_not_awaited()
     casos.adicionar.assert_not_awaited()

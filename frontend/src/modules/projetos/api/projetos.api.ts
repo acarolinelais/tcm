@@ -12,6 +12,7 @@ import type {
   AtualizarCasoTesteInput,
   AtualizarProjetoInput,
   CasoTeste,
+  CasoTesteDetalhe,
   CriarCasoTesteInput,
   CriarProjetoInput,
   FormFactorMatriz,
@@ -36,6 +37,7 @@ export type {
   AtualizarProjetoInput,
   CategoriaCasoTeste,
   CasoTeste,
+  CasoTesteDetalhe,
   CriarCasoTesteInput,
   CriarProjetoInput,
   DificuldadeCasoTeste,
@@ -112,7 +114,7 @@ export const casosTesteApi = {
   obter(id: string) {
     return useMock
       ? Promise.resolve(mockCasosTesteApi.obter(id))
-      : httpGet<CasoTeste>(`/api/test-cases/${id}`);
+      : httpGet<CasoTesteDetalhe>(`/api/test-cases/${id}`);
   },
   criar(projetoId: string, body: CriarCasoTesteInput) {
     return useMock

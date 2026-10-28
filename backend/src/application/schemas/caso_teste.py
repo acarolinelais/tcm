@@ -27,6 +27,9 @@ NivelAutomacaoOpcional = Annotated[
 
 
 class CriarCasoTesteRequest(BaseModel):
+    # Recusa campo desconhecido: os textos da planilha só entram pela importação (spec 028, RN-06).
+    model_config = ConfigDict(extra="forbid")
+
     tc_id: str = Field(min_length=1, max_length=CasoTeste.TC_ID_MAX_LENGTH)
     category: CategoriaCasoTeste
     difficulty: DificuldadeCasoTeste
@@ -98,6 +101,15 @@ class CasoTesteResponse(BaseModel):
     updated_at: datetime | None
 
 
+class CasoTesteDetalheResponse(CasoTesteResponse):
+    """Detalhe do caso: os textos da planilha ficam fora do JSON da listagem, que não os mostra."""
+
+    title: str | None
+    precondition: str | None
+    procedure: str | None
+    expected_result: str | None
+
+
 def to_response(caso: CasoTeste) -> CasoTesteResponse:
     return CasoTesteResponse(
         id=caso.id,
@@ -115,6 +127,16 @@ def to_response(caso: CasoTeste) -> CasoTesteResponse:
         ativo=caso.ativo,
         created_at=_timestamp_utc(caso.created_at),
         updated_at=_timestamp_utc(caso.updated_at),
+    )
+
+
+def to_detalhe_response(caso: CasoTeste) -> CasoTesteDetalheResponse:
+    return CasoTesteDetalheResponse(
+        **to_response(caso).model_dump(),
+        title=caso.title,
+        precondition=caso.precondition,
+        procedure=caso.procedure,
+        expected_result=caso.expected_result,
     )
 
 

@@ -1,7 +1,7 @@
 import type { TFunction } from "i18next";
 
 import type { ProblemDetails } from "@/shared/api/problem-details";
-import { formatList } from "@/core/i18n/format";
+import { formatList, formatNumber } from "@/core/i18n/format";
 import { CODIGOS_ERRO_PLANILHA, type CodigoErroPlanilha, type ErroPlanilha } from "../model/projeto";
 
 const codigos = new Set<string>(CODIGOS_ERRO_PLANILHA);
@@ -23,10 +23,12 @@ export function errosDaApi(problem: ProblemDetails): ErroPlanilhaExibivel[] {
 export function formatarErroPlanilha(t: TFunction, erro: ErroPlanilhaExibivel): string {
   if (erro.codigo === null) return erro.mensagem;
   const esperados = erro.parametros?.esperados;
+  const maximo = erro.parametros?.maximo;
   return t(`spreadsheetError.${erro.codigo}`, {
     coluna: erro.coluna ?? "",
     valor: erro.valor ?? "",
     primeira_linha: erro.parametros?.primeira_linha,
+    maximo: maximo === undefined ? "" : formatNumber(maximo),
     esperados: esperados ? formatList(esperados, "disjunction") : "",
   });
 }

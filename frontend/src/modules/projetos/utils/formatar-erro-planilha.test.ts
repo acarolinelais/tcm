@@ -25,6 +25,15 @@ describe("mensagens de erro da planilha", () => {
       .toBe('TC ID column: "Clock_001" already appears in row 2.');
   });
 
+  it("cita a coluna e o limite formatado quando o texto passa do máximo", async () => {
+    const erro = { codigo: "texto_muito_longo" as const, linha: 4, coluna: "Test Procedure(English)", valor: "a".repeat(40) + "…", parametros: { maximo: 10_000 } };
+
+    await i18n.changeLanguage("pt-BR");
+    expect(formatarErroPlanilha(i18n.t, erro)).toBe("Coluna Test Procedure(English): o texto passa de 10.000 caracteres. Encurte o texto.");
+    await i18n.changeLanguage("en");
+    expect(formatarErroPlanilha(i18n.t, erro)).toBe("Test Procedure(English) column: the text is longer than 10,000 characters. Shorten it.");
+  });
+
   it("converte o 422 da API e usa a mensagem do servidor quando o código é desconhecido", () => {
     const erros = errosDaApi({
       type: "about:blank", title: "Planilha inválida.", status: 422,

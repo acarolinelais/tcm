@@ -370,3 +370,103 @@ def test_colunas_de_titulo_e_passos_preenchidas_nao_geram_erro():
 
     assert planilha.total_linhas == 1
     assert planilha.casos[0].tc_id == "Clock_001"
+
+
+TEXTOS = [
+    "Title(English)",
+    "Test Precondition(English)",
+    "Test Procedure(English)",
+    "Expected Result(English)",
+]
+
+
+def _textos(caso):
+    return (caso.title, caso.precondition, caso.procedure, caso.expected_result)
+
+
+def test_textos_chegam_em_cada_linha_com_as_quebras_de_linha_em_qualquer_ordem():
+    cabecalho = [coluna.upper() if coluna in TEXTOS else coluna for coluna in CABECALHO_COMPLETO]
+    cabecalho.reverse()
+    linha = {
+        coluna.upper(): valor
+        for coluna, valor in {
+            "Title(English)": "  Check Writing style  ",
+            "Test Precondition(English)": "1. Settings > General management",
+            "Test Procedure(English)": "1. Messages > Compose\n2-1. Select Shorten",
+            "Expected Result(English)": "2-3. Should work normally",
+        }.items()
+    }
+
+    caso = validar_planilha_projeto(gerar_planilha_completa([linha], cabecalho)).casos[0]
+
+    assert _textos(caso) == (
+        "Check Writing style",
+        "1. Settings > General management",
+        "1. Messages > Compose\n2-1. Select Shorten",
+        "2-3. Should work normally",
+    )
+
+
+def test_planilha_sem_as_colunas_de_texto_ou_com_celulas_vazias_importa_sem_textos():
+    sem_colunas = [coluna for coluna in CABECALHO_COMPLETO if coluna not in TEXTOS]
+    vazias = dict.fromkeys(TEXTOS, "   ")
+
+    sem = validar_planilha_projeto(gerar_planilha_completa([{}], sem_colunas)).casos[0]
+    com_vazias = validar_planilha_projeto(gerar_planilha_completa([vazias])).casos[0]
+
+    assert _textos(sem) == (None, None, None, None)
+    assert _textos(com_vazias) == (None, None, None, None)
+
+
+def test_textos_no_limite_sao_aceitos():
+    caso = validar_planilha_projeto(
+        gerar_planilha_completa(
+            [{"Title(English)": "😀" * 500, "Test Procedure(English)": "a" * 10_000}]
+        )
+    ).casos[0]
+
+    assert len(caso.title) == 500
+    assert len(caso.procedure) == 10_000
+
+
+def test_title_acima_do_limite_informa_linha_coluna_trecho_e_maximo():
+    linhas = [
+        {"TC ID": "Clock_001"},
+        {"TC ID": "Clock_002"},
+        {"TC ID": "Clock_003", "Title(English)": "b" * 501},
+    ]
+
+    erro = validar_com_erro(gerar_planilha_completa(linhas)).erros[0]
+
+    assert (erro.linha, erro.coluna, erro.codigo) == (4, "Title(English)", "texto_muito_longo")
+    assert erro.valor == "b" * 40 + "…"
+    assert erro.parametros == {"maximo": 500}
+
+
+def test_texto_longo_vem_junto_com_os_outros_erros_e_nada_e_importado():
+    conteudo = gerar_planilha_completa(
+        [
+            {"TC ID": "Clock_001", "Expected Result(English)": "c" * 10_001},
+            {"TC ID": "Clock_002", "Category": "Z"},
+        ]
+    )
+
+    invalida = validar_com_erro(conteudo)
+
+    assert [(erro.linha, erro.coluna, erro.codigo) for erro in invalida.erros] == [
+        (2, "Expected Result(English)", "texto_muito_longo"),
+        (3, "Category", "valor_invalido"),
+    ]
+    assert invalida.erros[0].parametros == {"maximo": 10_000}
+
+
+def test_cabecalho_de_texto_com_espaco_antes_dos_parenteses_e_reconhecido():
+    cabecalho = [
+        "Title (English)" if coluna == "Title(English)" else coluna for coluna in CABECALHO_COMPLETO
+    ]
+
+    caso = validar_planilha_projeto(
+        gerar_planilha_completa([{"Title (English)": "Check Writing style"}], cabecalho)
+    ).casos[0]
+
+    assert caso.title == "Check Writing style"

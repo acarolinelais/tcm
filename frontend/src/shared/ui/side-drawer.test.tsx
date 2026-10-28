@@ -20,6 +20,13 @@ describe("SideDrawer", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
+  it("na variante card, encosta na borda com os cantos da esquerda arredondados e sem divisórias", () => {
+    render(<SideDrawer isOpen onOpenChange={vi.fn()} title="Clock_001" variant="card" footer={<button type="button">Done</button>}><p>Body</p></SideDrawer>);
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveClass("rounded-l-[24px]");
+    expect(dialog.querySelector(".border-b, .border-t")).toBeNull();
+  });
+
   it("fechado, não renderiza nada", () => {
     render(<SideDrawer isOpen={false} onOpenChange={vi.fn()} title="New team"><p>Body</p></SideDrawer>);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

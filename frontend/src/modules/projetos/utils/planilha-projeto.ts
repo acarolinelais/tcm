@@ -1,8 +1,8 @@
-import { CATEGORIAS_CASO_TESTE, DIFICULDADES_CASO_TESTE, NIVEIS_AUTOMACAO_CASO_TESTE, SITUACOES_CASO_TESTE, type CategoriaCasoTeste, type DificuldadeCasoTeste, type ErroPlanilha, type NivelAutomacaoCasoTeste, type SituacaoCasoTeste } from "../model/projeto";
+import { CATEGORIAS_CASO_TESTE, DIFICULDADES_CASO_TESTE, MAX_TEXTO_CASO_TESTE, MAX_TITLE_CASO_TESTE, NIVEIS_AUTOMACAO_CASO_TESTE, SITUACOES_CASO_TESTE, type CategoriaCasoTeste, type DificuldadeCasoTeste, type ErroPlanilha, type NivelAutomacaoCasoTeste, type SituacaoCasoTeste, type TextosCasoTeste } from "../model/projeto";
 
 type ExcelWorkbook = import("@e965/xlsx").WorkBook;
 
-export interface CasoTestePlanilha {
+export interface CasoTestePlanilha extends TextosCasoTeste {
   linha: number;
   tc_id: string;
   category: CategoriaCasoTeste;
@@ -15,7 +15,8 @@ export interface CasoTestePlanilha {
 
 type CabecalhoObrigatorio = "app" | "tc id" | "difficulty" | "category" | "tc situation" | "one ui" | "assignees" | "backup";
 /** Colunas que podem faltar: ausente equivale a célula vazia, sem erro. */
-type CabecalhoOpcional = "automation level";
+type CabecalhoTexto = "title(english)" | "test precondition(english)" | "test procedure(english)" | "expected result(english)";
+type CabecalhoOpcional = "automation level" | CabecalhoTexto;
 type CabecalhoLido = CabecalhoObrigatorio | CabecalhoOpcional;
 
 export interface PlanilhaProjeto {
@@ -48,7 +49,19 @@ const cabecalhosObrigatorios: Record<CabecalhoObrigatorio, string> = {
   app: "App", "tc id": "TC ID", difficulty: "Difficulty", category: "Category",
   "tc situation": "TC Situation", "one ui": "One UI", assignees: "Assignees", backup: "Backup",
 };
-const cabecalhosOpcionais: Record<CabecalhoOpcional, string> = { "automation level": "Automation Level" };
+/** Textos do caso (spec 028): mesmos cabeçalhos, campos e limites de `TEXTOS_CASO_TESTE` no backend. */
+const textosCasoTeste: Record<CabecalhoTexto, { exibido: string; campo: keyof TextosCasoTeste; maximo: number }> = {
+  "title(english)": { exibido: "Title(English)", campo: "title", maximo: MAX_TITLE_CASO_TESTE },
+  "test precondition(english)": { exibido: "Test Precondition(English)", campo: "precondition", maximo: MAX_TEXTO_CASO_TESTE },
+  "test procedure(english)": { exibido: "Test Procedure(English)", campo: "procedure", maximo: MAX_TEXTO_CASO_TESTE },
+  "expected result(english)": { exibido: "Expected Result(English)", campo: "expected_result", maximo: MAX_TEXTO_CASO_TESTE },
+};
+const cabecalhosOpcionais: Record<CabecalhoOpcional, string> = {
+  "automation level": "Automation Level",
+  ...(Object.fromEntries(Object.entries(textosCasoTeste).map(([nome, { exibido }]) => [nome, exibido])) as Record<CabecalhoTexto, string>),
+};
+/** Quanto do texto longo volta no `valor` do erro, como no backend (`TRECHO_TEXTO_LONGO`). */
+const TRECHO_TEXTO_LONGO = 40;
 
 /** Cabeçalhos do modelo para download, na ordem da planilha atual (spec 027, RN-04). */
 export const CABECALHOS_MODELO_PLANILHA = [
@@ -78,7 +91,8 @@ function texto(value: unknown): string {
 }
 
 function cabecalho(value: unknown): string {
-  return texto(value).toLocaleLowerCase().replaceAll("_", " ").split(/\s+/).filter(Boolean).join(" ");
+  // Como no backend: "Title (English)" e "Title(English)" são a mesma coluna.
+  return texto(value).toLocaleLowerCase().replaceAll("_", " ").split(/\s+/).filter(Boolean).join(" ").replace(/\s*([()])\s*/g, "$1");
 }
 
 function geral(codigo: ErroPlanilha["codigo"], coluna: string | null = null): ErroPlanilha {
@@ -197,6 +211,16 @@ export async function lerPlanilhaProjeto(file: File, onProgress?: (progress: num
     const numeroNivel = REGRA_NIVEL_AUTOMACAO.test(valorNivel) ? Number.parseInt(valorNivel, 10) : 0;
     const automationLevel: NivelAutomacaoCasoTeste | null = NIVEIS_AUTOMACAO_CASO_TESTE.find((nivel) => nivel === numeroNivel) ?? null;
     if (valorNivel && !automationLevel) erro("automation level", "valor_invalido", valorNivel, { esperados: NIVEIS_AUTOMACAO_CASO_TESTE.map(String) });
+    const textos = Object.fromEntries(Object.entries(textosCasoTeste).map(([nome, { campo, maximo }]) => {
+      const valor = get(nome as CabecalhoTexto);
+      // `.length` (UTF-16) nunca é menor que a contagem de code points: só o que passa dela é recontado como o Python,
+      // com `[...valor]`, que vê um emoji como 1 caractere.
+      if (valor.length <= maximo) return [campo, valor || null];
+      const caracteres = [...valor];
+      if (caracteres.length <= maximo) return [campo, valor];
+      erro(nome as CabecalhoTexto, "texto_muito_longo", caracteres.slice(0, TRECHO_TEXTO_LONGO).join("") + "…", { maximo });
+      return [campo, null];
+    })) as TextosCasoTeste;
     const responsavel = get("assignees");
     const backup = get("backup");
     pessoas.push({ linha, responsavel, backup });
@@ -204,7 +228,7 @@ export async function lerPlanilhaProjeto(file: File, onProgress?: (progress: num
     if (!backup) erro("backup", "valor_obrigatorio");
 
     if (tcId && category && difficulty && situation && responsavel && backup) {
-      casos.push({ linha, tc_id: tcId, category, difficulty, situation, responsavel, backup, automation_level: automationLevel });
+      casos.push({ linha, tc_id: tcId, category, difficulty, situation, responsavel, backup, automation_level: automationLevel, ...textos });
     }
   });
 
