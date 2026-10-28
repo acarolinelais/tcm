@@ -33,7 +33,7 @@ describe("SelectField", () => {
     expect(screen.getByRole("button", { name: /Manager/ })).toHaveTextContent("Unassigned");
   });
 
-  it("escolhe pelo teclado, e o Esc fecha só a lista", async () => {
+  it("o Esc com a lista aberta fecha só a lista", async () => {
     const onChange = vi.fn();
     const onEscPainel = vi.fn();
     const user = userEvent.setup();
@@ -43,12 +43,23 @@ describe("SelectField", () => {
     await user.keyboard("{Enter}");
     expect(await screen.findByRole("listbox")).toBeInTheDocument();
     await user.keyboard("{Escape}");
+
     await waitFor(() => expect(screen.queryByRole("listbox")).not.toBeInTheDocument());
     expect(onEscPainel).not.toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled();
+  });
 
+  // Teste à parte: reabrir a lista logo depois do Esc depende de a saída dela terminar, o que no CI demora mais.
+  it("escolhe pelo teclado: Enter abre, as setas andam e Enter escolhe", async () => {
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(<Gerente onChange={onChange} />);
+
+    screen.getByRole("button", { name: /Manager/ }).focus();
     await user.keyboard("{Enter}");
     await screen.findByRole("listbox");
     await user.keyboard("{ArrowDown}{Enter}");
+
     await waitFor(() => expect(onChange).toHaveBeenCalledTimes(1));
     expect(onChange).toHaveBeenCalledWith(expect.stringMatching(/^(ivan|kaique)$/));
   });
