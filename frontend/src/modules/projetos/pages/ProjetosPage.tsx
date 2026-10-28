@@ -29,6 +29,7 @@ import { toast } from "@/shared/lib/toast";
 import { formatarDiaIso } from "@/shared/lib/utils";
 import { ApiError } from "@/shared/api/problem-details";
 import { errosDaApi } from "../utils/formatar-erro-planilha";
+import { CABECALHOS_MODELO_PLANILHA, EXEMPLO_MODELO_PLANILHA } from "../utils/planilha-projeto";
 import { UploadPlanilha } from "../components/importacao/UploadPlanilha";
 import { useLeituraPlanilha } from "../hooks/useLeituraPlanilha";
 import { statusProjetoTons } from "../components/status/status-projeto-estilos";
@@ -143,8 +144,8 @@ export function ProjetosPage() {
   async function downloadTemplate() {
     const XLSX = await import("@e965/xlsx");
     const worksheet = XLSX.utils.aoa_to_sheet([
-      ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI", "Assignees", "Backup"],
-      ["Clock", "Clock_0001", "Low", "A", "New", "9.5", "nome ou e-mail do membro do time", "nome ou e-mail do backup"],
+      [...CABECALHOS_MODELO_PLANILHA],
+      CABECALHOS_MODELO_PLANILHA.map((coluna) => EXEMPLO_MODELO_PLANILHA[coluna]),
     ]);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Test Cases");

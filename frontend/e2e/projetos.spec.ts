@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { caseItem, project, projectId, setupProjectSession, setupTeamsAndModels, teamId } from "./projetos-fixtures";
+import { caseItem, project, projectId, setupMembrosDoTime, setupProjectSession, setupTeamsAndModels } from "./projetos-fixtures";
 
 test("cria projeto manualmente, atribui casos e transfere um caso ao backup", async ({ page }) => {
   await setupProjectSession(page);
@@ -26,10 +26,7 @@ test("cria projeto manualmente, atribui casos e transfere um caso ao backup", as
     cases = [{ ...caseItem, tc_id: body.tc_id, situation: body.situation, responsavel_id: body.responsavel_id, backup_id: body.backup_id }];
     await route.fulfill({ json: cases[0] });
   });
-  await page.route("**/api/times/team-1/membros", (route) => route.fulfill({ json: [
-    { id: "member-1", time_id: teamId, usuario_id: "manager-1", usuario_nome: "Gerente Ana", usuario_user_id: "GER-001", usuario_perfil: "Gerente", usuario_perfil_codigo: "GERENTE", ativo: true },
-    { id: "member-2", time_id: teamId, usuario_id: "backup-1", usuario_nome: "Kaique Pereira", usuario_user_id: "KP-002", usuario_perfil: "KP", usuario_perfil_codigo: "KP", ativo: true },
-  ] }));
+  await setupMembrosDoTime(page);
   await page.route("**/api/test-cases/case-1/transferir-para-backup", async (route) => {
     // Troca de papéis: quem transferiu vira o backup.
     cases = [{ ...cases[0], responsavel_id: "backup-1", backup_id: cases[0].responsavel_id }];
@@ -68,4 +65,36 @@ test("cria projeto manualmente, atribui casos e transfere um caso ao backup", as
   await page.getByRole("alertdialog", { name: "Transferir ao backup?" }).getByRole("button", { name: "Transferir ao backup" }).click();
   await expect(page.getByText("Test Case transferido para o backup.")).toBeVisible();
   await expect(page.getByRole("row", { name: /Clock_001/ })).toContainText("KP-002");
+});
+
+test("edita o Automation Level na tabela e mantém o nível depois de recarregar", async ({ page }) => {
+  await setupProjectSession(page);
+  let cases = [{ ...caseItem }];
+  let atualizacao: Record<string, unknown> = {};
+
+  await page.route(`**/api/projetos/${projectId}`, (route) => route.fulfill({ json: project }));
+  await page.route(`**/api/projetos/${projectId}/test-cases?*`, (route) => route.fulfill({ json: { items: cases, page: 1, page_size: 10, total_count: cases.length } }));
+  await setupMembrosDoTime(page);
+  await page.route("**/api/test-cases/case-1", async (route) => {
+    atualizacao = route.request().postDataJSON();
+    cases = [{ ...cases[0], ...atualizacao }];
+    await route.fulfill({ json: cases[0] });
+  });
+
+  await page.goto(`/projetos/${projectId}`);
+  const linha = page.getByRole("row", { name: /Clock_001/ });
+  const nivel = linha.getByRole("button", { name: /Automation Level Clock_001/ });
+  await expect(linha).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: /Automation Level/ })).toBeVisible();
+  await expect(nivel).toContainText("—");
+
+  await nivel.click();
+  await expect(page.getByRole("option")).toHaveText(["1 – Não automatizável", "2 – Automatizável até certo ponto", "3 – 100% automatizável"]);
+  await page.getByRole("option", { name: "2 – Automatizável até certo ponto" }).click();
+
+  await expect(nivel).toContainText("2 – Automatizável até certo ponto");
+  expect(atualizacao).toEqual({ automation_level: 2 });
+
+  await page.reload();
+  await expect(linha).toContainText("2 – Automatizável até certo ponto");
 });

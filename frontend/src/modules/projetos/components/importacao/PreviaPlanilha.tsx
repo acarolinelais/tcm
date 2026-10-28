@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { formatNumber } from "@/core/i18n/format";
 import { DEFAULT_TABLE_PAGE_SIZE, Table, TableBody, TableCell, TableHead, TableHeader, TablePagination, TableRow } from "@/shared/ui/table";
-import { ROTULO_SITUACAO } from "../../model/projeto";
+import { ROTULO_AUTOMACAO, ROTULO_SITUACAO } from "../../model/projeto";
 import type { PlanilhaProjeto } from "../../utils/planilha-projeto";
 
 /** Prévia paginada no cliente: a planilha já foi lida inteira no navegador. */
@@ -30,6 +30,7 @@ export function PreviaPlanilha({ previa }: { previa: PlanilhaProjeto }) {
             <TableRow>
               <TableHead>{t("tcId")}</TableHead>
               <TableHead>{t("category")}</TableHead>
+              <TableHead>{t("automationLevel")}</TableHead>
               <TableHead>{t("difficulty")}</TableHead>
               <TableHead>{t("tcSituation")}</TableHead>
               <TableHead>{t("assignee")}</TableHead>
@@ -41,6 +42,7 @@ export function PreviaPlanilha({ previa }: { previa: PlanilhaProjeto }) {
               <TableRow key={caso.linha}>
                 <TableCell className="font-medium">{caso.tc_id}</TableCell>
                 <TableCell className="text-muted-foreground">{caso.category}</TableCell>
+                <TableCell className="text-muted-foreground">{caso.automation_level ? t(ROTULO_AUTOMACAO[caso.automation_level]) : "—"}</TableCell>
                 <TableCell className="text-muted-foreground">{caso.difficulty}</TableCell>
                 <TableCell className="text-muted-foreground">{t(ROTULO_SITUACAO[caso.situation])}</TableCell>
                 <TableCell className="text-muted-foreground">{caso.responsavel}</TableCell>

@@ -5,6 +5,7 @@ from src.domain.entities.caso_teste import (
     CasoTeste,
     CategoriaCasoTeste,
     DificuldadeCasoTeste,
+    NivelAutomacaoCasoTeste,
     SituacaoCasoTeste,
     StatusCasoTeste,
 )
@@ -272,6 +273,123 @@ def test_criar_caso_com_mesma_pessoa_responsavel_e_backup_levanta_erro():
             backup_id=usuario_id,
             situation=SituacaoCasoTeste.NEW,
         )
+
+
+def test_nivel_de_automacao_aceita_somente_1_2_e_3():
+    assert [nivel.value for nivel in NivelAutomacaoCasoTeste] == [1, 2, 3]
+    assert NivelAutomacaoCasoTeste(2) is NivelAutomacaoCasoTeste.PARCIALMENTE_AUTOMATIZAVEL
+
+
+@pytest.mark.parametrize("valor", [0, 4, -1])
+def test_nivel_de_automacao_fora_de_1_a_3_levanta_erro(valor):
+    with pytest.raises(ValueError):
+        NivelAutomacaoCasoTeste(valor)
+
+
+def test_caso_nasce_sem_nivel_de_automacao_e_aceita_um_na_criacao():
+    assert criar_caso().automation_level is None
+
+    caso = CasoTeste(
+        unidade_id=uuid4(),
+        projeto_id=uuid4(),
+        tc_id="Clock_001",
+        category=CategoriaCasoTeste.A,
+        difficulty=DificuldadeCasoTeste.LOW,
+        responsavel_id=uuid4(),
+        backup_id=uuid4(),
+        situation=SituacaoCasoTeste.NEW,
+        automation_level=3,
+    )
+
+    assert caso.automation_level is NivelAutomacaoCasoTeste.TOTALMENTE_AUTOMATIZAVEL
+
+
+def test_criar_caso_com_nivel_de_automacao_invalido_levanta_erro():
+    with pytest.raises(ValueError):
+        CasoTeste(
+            unidade_id=uuid4(),
+            projeto_id=uuid4(),
+            tc_id="Clock_001",
+            category=CategoriaCasoTeste.A,
+            difficulty=DificuldadeCasoTeste.LOW,
+            responsavel_id=uuid4(),
+            backup_id=uuid4(),
+            situation=SituacaoCasoTeste.NEW,
+            automation_level=4,
+        )
+
+
+def test_responsavel_define_e_troca_o_nivel_de_automacao():
+    caso = criar_caso()
+
+    caso.atualizar_campos_do_responsavel(
+        caso.status,
+        caso.category,
+        caso.difficulty,
+        automation_level=NivelAutomacaoCasoTeste.NAO_AUTOMATIZAVEL,
+    )
+    assert caso.automation_level is NivelAutomacaoCasoTeste.NAO_AUTOMATIZAVEL
+
+    caso.atualizar_campos_do_responsavel(
+        caso.status,
+        caso.category,
+        caso.difficulty,
+        automation_level=NivelAutomacaoCasoTeste.TOTALMENTE_AUTOMATIZAVEL,
+    )
+    assert caso.automation_level is NivelAutomacaoCasoTeste.TOTALMENTE_AUTOMATIZAVEL
+
+
+def test_atualizar_sem_nivel_de_automacao_mantem_o_que_ja_estava():
+    caso = criar_caso()
+    caso.atualizar_campos_do_responsavel(
+        caso.status,
+        caso.category,
+        caso.difficulty,
+        automation_level=NivelAutomacaoCasoTeste.PARCIALMENTE_AUTOMATIZAVEL,
+    )
+
+    caso.atualizar_campos_do_responsavel(
+        StatusCasoTeste.IN_PROGRESS, caso.category, caso.difficulty
+    )
+    caso.atualizar_gerenciamento(
+        caso.responsavel_id,
+        caso.backup_id,
+        caso.situation,
+        caso.status,
+        caso.category,
+        caso.difficulty,
+    )
+
+    assert caso.automation_level is NivelAutomacaoCasoTeste.PARCIALMENTE_AUTOMATIZAVEL
+
+
+def test_gestao_define_o_nivel_de_automacao():
+    caso = criar_caso()
+
+    caso.atualizar_gerenciamento(
+        caso.responsavel_id,
+        caso.backup_id,
+        caso.situation,
+        caso.status,
+        caso.category,
+        caso.difficulty,
+        NivelAutomacaoCasoTeste.TOTALMENTE_AUTOMATIZAVEL,
+    )
+
+    assert caso.automation_level is NivelAutomacaoCasoTeste.TOTALMENTE_AUTOMATIZAVEL
+
+
+def test_atualizar_com_nivel_de_automacao_invalido_levanta_erro_e_nao_altera():
+    caso = criar_caso()
+
+    with pytest.raises(ValueError):
+        caso.atualizar_campos_do_responsavel(
+            StatusCasoTeste.IN_REVIEW, CategoriaCasoTeste.C, caso.difficulty, automation_level=7
+        )
+
+    assert caso.automation_level is None
+    assert caso.status is StatusCasoTeste.TO_DO
+    assert caso.category is CategoriaCasoTeste.A
 
 
 def test_transferir_sem_backup_levanta_erro():

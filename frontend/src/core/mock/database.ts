@@ -25,6 +25,7 @@ import {
   type LinhaFormFactor,
   type Projeto,
   type StatusProjeto,
+  NIVEIS_AUTOMACAO_CASO_TESTE,
   MAX_JUSTIFICATIVA_EXCLUSAO,
 } from "@/modules/projetos/model/projeto";
 import type { ModeloDispositivo } from "@/modules/modelos-dispositivo/model/modelo-dispositivo";
@@ -126,7 +127,7 @@ function createSeed(): Database {
     { id: "mock-user-inactive", nome: "Rafael Lima", email: "rafael.lima@example.com", ativo: false, perfil_id: standardProfile.id, responsavel_id: MANAGER_ID, created_at: "2026-02-10T12:00:00Z" },
   ].map((user: Usuario) => ({ ...user, user_id: user.user_id ?? null }));
   return {
-    schemaVersion: 18,
+    schemaVersion: 19,
     unidade: { id: UNIT_ID, nome: "Manaus", ativo: true },
     usuarios: users,
     perfis: [adminProfile, standardProfile, managerProfile, kpProfile],
@@ -315,6 +316,12 @@ function readDb(): Database {
         if (ultima && resultados.some((item) => item.execucao_id === ultima.execucao_id && item.resultado.trim().toUpperCase() === "FAIL")) testCase.status = "InFixes";
       });
       db.schemaVersion = 18;
+      return writeDb(db);
+    }
+    if ((db.schemaVersion ?? 1) < 19) {
+      // Spec 027: os Test Cases anteriores não têm Automation Level.
+      db.casosTeste.forEach((testCase) => { testCase.automation_level ??= null; });
+      db.schemaVersion = 19;
       return writeDb(db);
     }
     return db;
@@ -791,7 +798,7 @@ export const mockProjetosApi = {
     const versao = planilha.one_ui || oneUi?.trim() || "";
     const now = new Date().toISOString();
     const projeto: Projeto = { id: id("mock-project"), unidade_id: db.unidade.id, time_id: time.id, app: nomeApp, one_ui: versao, nome: `${nomeApp} ${versao}`, status: "Created", ativo: true, created_at: now, updated_at: now };
-    const casos: CasoTeste[] = atribuidos.map(({ caso, responsavelId, backupId }) => ({ id: id("mock-test-case"), unidade_id: db.unidade.id, projeto_id: projeto.id, tc_id: caso.tc_id, category: caso.category, difficulty: caso.difficulty, situation: caso.situation, status: "To-Do", responsavel_id: responsavelId, backup_id: backupId, ativo: true, created_at: now, updated_at: now }));
+    const casos: CasoTeste[] = atribuidos.map(({ caso, responsavelId, backupId }) => ({ id: id("mock-test-case"), unidade_id: db.unidade.id, projeto_id: projeto.id, tc_id: caso.tc_id, category: caso.category, difficulty: caso.difficulty, automation_level: caso.automation_level, situation: caso.situation, status: "To-Do", responsavel_id: responsavelId, backup_id: backupId, ativo: true, created_at: now, updated_at: now }));
     db.projetos.unshift(projeto);
     modelIds.forEach((modelId) => db.projetoModelos.push({ projeto_id: projeto.id, modelo_dispositivo_id: modelId }));
     db.casosTeste.unshift(...casos);
@@ -842,6 +849,7 @@ export const mockCasosTesteApi = {
     return getMockCase(db, caseId).testCase;
   },
   criar(projectId: string, input: CriarCasoTesteInput) {
+    exigirNivelAutomacaoValido(input.automation_level);
     const { db } = mockProfile();
     const project = getMockProject(db, projectId);
     if (!canManageMockProject(project, "test_cases.gerenciar")) throw new Error("O projeto está fora do seu escopo.");
@@ -856,7 +864,7 @@ export const mockCasosTesteApi = {
     const now = new Date().toISOString();
     const testCase: CasoTeste = {
       id: id("mock-test-case"), unidade_id: db.unidade.id, projeto_id: projectId, tc_id: tcId,
-      category: input.category, difficulty: input.difficulty, situation: input.situation, status: "To-Do",
+      category: input.category, difficulty: input.difficulty, automation_level: input.automation_level ?? null, situation: input.situation, status: "To-Do",
       responsavel_id: input.responsavel_id, backup_id: input.backup_id, ativo: true,
       created_at: now, updated_at: now,
     };
@@ -865,6 +873,7 @@ export const mockCasosTesteApi = {
     return testCase;
   },
   atualizar(caseId: string, input: AtualizarCasoTesteInput) {
+    exigirNivelAutomacaoValido(input.automation_level);
     const { db, user, profile } = mockProfile();
     const { testCase, project } = getMockCase(db, caseId);
     validarJustificativaExclusao(input);
@@ -882,8 +891,8 @@ export const mockCasosTesteApi = {
         writeDb(db);
         return testCase;
       }
-      const camposPermitidos = ["category", "difficulty", "status", "situation", "justificativa_exclusao"];
-      if (Object.keys(input).some((field) => !camposPermitidos.includes(field))) throw new Error("Você só pode editar Status, TC Situation, Category e Difficulty.");
+      const camposPermitidos = ["category", "difficulty", "status", "situation", "automation_level", "justificativa_exclusao"];
+      if (Object.keys(input).some((field) => !camposPermitidos.includes(field))) throw new Error("Você só pode editar Status, TC Situation, Category, Difficulty e Automation Level.");
       aplicarAtualizacaoCaso(testCase, input);
     }
     testCase.updated_at = new Date().toISOString();
@@ -902,6 +911,11 @@ export const mockCasosTesteApi = {
     return testCase;
   },
 };
+
+/** Como a API (422): o Automation Level é 1, 2 ou 3; ausente mantém o que o caso já tem. */
+function exigirNivelAutomacaoValido(nivel: number | undefined) {
+  if (nivel !== undefined && !(NIVEIS_AUTOMACAO_CASO_TESTE as readonly number[]).includes(nivel)) throw new Error("Automation Level deve ser 1, 2 ou 3.");
+}
 
 /** Spec 026, como o request da API: excluir exige justificativa, e a justificativa só acompanha a exclusão. */
 function validarJustificativaExclusao(input: AtualizarCasoTesteInput) {

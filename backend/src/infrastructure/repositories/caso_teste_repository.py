@@ -9,6 +9,7 @@ from src.domain.entities.caso_teste import (
     CasoTeste,
     CategoriaCasoTeste,
     DificuldadeCasoTeste,
+    NivelAutomacaoCasoTeste,
     SituacaoCasoTeste,
     StatusCasoTeste,
 )
@@ -143,6 +144,11 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             SituacaoCasoTeste(model.situation),
             StatusCasoTeste(model.status),
             exigir_backup=False,
+            automation_level=(
+                None
+                if model.automation_level is None
+                else NivelAutomacaoCasoTeste(model.automation_level)
+            ),
             justificativa_exclusao=model.justificativa_exclusao,
         )
         caso.id = model.id
@@ -159,6 +165,9 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             tc_id=entity.tc_id,
             category=entity.category.value,
             difficulty=entity.difficulty.value,
+            automation_level=(
+                None if entity.automation_level is None else entity.automation_level.value
+            ),
             situation=entity.situation.value,
             status=entity.status.value,
             responsavel_id=entity.responsavel_id,

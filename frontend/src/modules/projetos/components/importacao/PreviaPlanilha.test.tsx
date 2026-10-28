@@ -11,10 +11,10 @@ function previa(total: number): PlanilhaProjeto {
     app: "Clock",
     one_ui: "9.5",
     totalLinhas: total,
-    colunas: { app: "App", "tc id": "TC ID", difficulty: "Difficulty", category: "Category", "tc situation": "TC Situation", "one ui": "One UI", assignees: "Assignees", backup: "Backup" },
+    colunas: { app: "App", "tc id": "TC ID", difficulty: "Difficulty", category: "Category", "tc situation": "TC Situation", "one ui": "One UI", assignees: "Assignees", backup: "Backup", "automation level": "Automation Level" },
     casos: Array.from({ length: total }, (_, index) => ({
       linha: index + 2, tc_id: `Clock_${String(index + 1).padStart(4, "0")}`, category: "A", difficulty: "Low",
-      situation: "New Step", responsavel: "Daniel Oliveira", backup: "Kaique Pereira",
+      situation: "New Step", responsavel: "Daniel Oliveira", backup: "Kaique Pereira", automation_level: null,
     })),
   };
 }
@@ -50,6 +50,17 @@ describe("PreviaPlanilha", () => {
     expect(screen.getByRole("columnheader", { name: "TC Situation" })).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "Status" })).not.toBeInTheDocument();
     expect(screen.getByText("New Step")).toBeInTheDocument();
+  });
+
+  it("mostra o Automation Level depois de Category, com o rótulo do nível ou um traço quando vazio", () => {
+    const base = previa(3);
+    base.casos = base.casos.map((caso, indice) => ({ ...caso, automation_level: ([1, null, 3] as const)[indice] }));
+    render(<PreviaPlanilha previa={base} />);
+
+    const colunas = screen.getAllByRole("columnheader").map((coluna) => coluna.textContent);
+    expect(colunas.indexOf("Automation Level")).toBe(colunas.indexOf("Category") + 1);
+    const celulas = linhasDoCorpo().map((linha) => within(linha).getAllByRole("cell")[colunas.indexOf("Automation Level")].textContent);
+    expect(celulas).toEqual(["1 – Not automatable", "—", "3 – 100% automatable"]);
   });
 
   it("mantém a altura fixa só quando há mais de uma página", () => {

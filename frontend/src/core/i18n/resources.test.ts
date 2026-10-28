@@ -13,6 +13,17 @@ describe("translation resources", () => {
     }
   });
 
+  it("labels each Automation Level with its number in every language", () => {
+    for (const language of ["en", "pt-BR", "ko"] as const) {
+      const { translation } = resources[language];
+      expect(translation.automationLevel).toBeTruthy();
+      expect(translation.automationLevel1.startsWith("1 – ")).toBe(true);
+      expect(translation.automationLevel2.startsWith("2 – ")).toBe(true);
+      expect(translation.automationLevel3.startsWith("3 – ")).toBe(true);
+    }
+    expect(resources["pt-BR"].translation.automationLevel2).toBe("2 – Automatizável até certo ponto");
+  });
+
   it("formats numbers using the active language locale", async () => {
     await i18n.changeLanguage("en");
     expect(formatNumber(1234.5)).toBe("1,234.5");

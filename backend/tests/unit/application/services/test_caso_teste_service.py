@@ -13,6 +13,7 @@ from src.domain.entities.caso_teste import (
     CasoTeste,
     CategoriaCasoTeste,
     DificuldadeCasoTeste,
+    NivelAutomacaoCasoTeste,
     SituacaoCasoTeste,
     StatusCasoTeste,
 )
@@ -335,6 +336,129 @@ async def test_atualizar_caso_proprio_permite_campos_do_responsavel(contexto):
     assert resposta.created_at == caso.created_at
     casos.atualizar.assert_awaited_once_with(caso)
     uow.commit.assert_awaited_once()
+
+
+def _usuario_do_time(admin, time):
+    return UsuarioAutenticado(
+        uuid4(),
+        admin.unidade_id,
+        "USUARIO_PADRAO",
+        permissoes=frozenset({"test_cases.consultar"}),
+        time_ids=(time.id,),
+    )
+
+
+def _caso_de(admin, projeto, responsavel_id, automation_level=None):
+    return CasoTeste(
+        admin.unidade_id,
+        projeto.id,
+        "Clock_001",
+        CategoriaCasoTeste.A,
+        DificuldadeCasoTeste.LOW,
+        responsavel_id,
+        uuid4(),
+        SituacaoCasoTeste.NEW,
+        automation_level=automation_level,
+    )
+
+
+async def test_criar_caso_com_e_sem_automation_level(contexto):
+    service, casos, _, _, membros, usuarios, _, admin, projeto, time = contexto
+    for nivel in (NivelAutomacaoCasoTeste.NAO_AUTOMATIZAVEL, None):
+        request = request_criar()
+        request.automation_level = nivel
+        tornar_membro(membros, usuarios, admin.unidade_id, time.id, request.responsavel_id)
+        tornar_membro(membros, usuarios, admin.unidade_id, time.id, request.backup_id)
+
+        resposta = await service.criar(admin, projeto.id, request)
+
+        assert casos.adicionar.call_args.args[0].automation_level is nivel
+        assert resposta.automation_level is nivel
+
+
+async def test_responsavel_define_automation_level_do_proprio_caso(contexto):
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    responsavel = _usuario_do_time(admin, time)
+    caso = _caso_de(admin, projeto, responsavel.id)
+    casos.obter_por_id.return_value = caso
+
+    resposta = await service.atualizar(
+        responsavel, caso.id, AtualizarCasoTesteRequest(automation_level=2)
+    )
+
+    assert resposta.automation_level is NivelAutomacaoCasoTeste.PARCIALMENTE_AUTOMATIZAVEL
+    casos.atualizar.assert_awaited_once()
+    uow.commit.assert_awaited_once()
+
+
+async def test_gestao_define_automation_level_de_qualquer_caso(contexto):
+    service, casos, _, _, _, _, uow, admin, projeto, _ = contexto
+    caso = _caso_de(admin, projeto, uuid4())
+    casos.obter_por_id.return_value = caso
+
+    resposta = await service.atualizar(
+        admin, caso.id, AtualizarCasoTesteRequest(automation_level=3)
+    )
+
+    assert resposta.automation_level is NivelAutomacaoCasoTeste.TOTALMENTE_AUTOMATIZAVEL
+    uow.commit.assert_awaited_once()
+
+
+async def test_atualizar_outro_campo_mantem_o_automation_level(contexto):
+    service, casos, _, _, _, _, _, admin, projeto, _ = contexto
+    caso = _caso_de(admin, projeto, uuid4(), NivelAutomacaoCasoTeste.NAO_AUTOMATIZAVEL)
+    casos.obter_por_id.return_value = caso
+
+    resposta = await service.atualizar(
+        admin, caso.id, AtualizarCasoTesteRequest(category=CategoriaCasoTeste.B)
+    )
+
+    assert resposta.automation_level is NivelAutomacaoCasoTeste.NAO_AUTOMATIZAVEL
+
+
+async def test_responsavel_nao_altera_automation_level_de_caso_alheio(contexto):
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    caso = _caso_de(admin, projeto, uuid4())
+    casos.obter_por_id.return_value = caso
+
+    with pytest.raises(ForbiddenException, match="atribuídos a você"):
+        await service.atualizar(
+            _usuario_do_time(admin, time), caso.id, AtualizarCasoTesteRequest(automation_level=2)
+        )
+
+    assert caso.automation_level is None
+    casos.atualizar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+async def test_backup_nao_altera_automation_level(contexto):
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    backup = _usuario_do_time(admin, time)
+    caso = _caso_de(admin, projeto, uuid4())
+    caso.backup_id = backup.id
+    casos.obter_por_id.return_value = caso
+
+    with pytest.raises(ForbiddenException):
+        await service.atualizar(backup, caso.id, AtualizarCasoTesteRequest(automation_level=1))
+
+    assert caso.automation_level is None
+    uow.commit.assert_not_awaited()
+
+
+@pytest.mark.parametrize("nivel", [0, 4, -1, 1.5, 2.0, "2", "abc", True])
+def test_requests_recusam_automation_level_fora_de_1_a_3(nivel):
+    with pytest.raises(ValidationError):
+        AtualizarCasoTesteRequest(automation_level=nivel)
+    with pytest.raises(ValidationError):
+        CriarCasoTesteRequest(
+            tc_id="Clock_001",
+            category=CategoriaCasoTeste.A,
+            difficulty=DificuldadeCasoTeste.LOW,
+            situation=SituacaoCasoTeste.NEW,
+            responsavel_id=uuid4(),
+            backup_id=uuid4(),
+            automation_level=nivel,
+        )
 
 
 async def test_responsavel_nao_edita_atribuicao_nem_caso_de_outra_pessoa(contexto):

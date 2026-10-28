@@ -1,4 +1,4 @@
-from enum import StrEnum
+from enum import IntEnum, StrEnum
 from uuid import UUID
 
 from src.domain.common.entidade_tenant import EntidadeTenant
@@ -22,6 +22,14 @@ class SituacaoCasoTeste(StrEnum):
     NEW = "New"
     NEW_STEP = "New Step"
     WITHOUT_CHANGES = "Without Changes"
+
+
+class NivelAutomacaoCasoTeste(IntEnum):
+    """Automation Level: quanto do caso pode ser automatizado. O banco guarda só o número."""
+
+    NAO_AUTOMATIZAVEL = 1
+    PARCIALMENTE_AUTOMATIZAVEL = 2
+    TOTALMENTE_AUTOMATIZAVEL = 3
 
 
 class StatusCasoTeste(StrEnum):
@@ -53,6 +61,7 @@ class CasoTeste(EntidadeTenant):
         status: StatusCasoTeste = StatusCasoTeste.TO_DO,
         *,
         exigir_backup: bool = True,
+        automation_level: NivelAutomacaoCasoTeste | None = None,
         justificativa_exclusao: str | None = None,
     ) -> None:
         super().__init__(unidade_id)
@@ -62,6 +71,9 @@ class CasoTeste(EntidadeTenant):
         self.difficulty = DificuldadeCasoTeste(difficulty)
         self.situation = SituacaoCasoTeste(situation)
         self.status = StatusCasoTeste(status)
+        self.automation_level = (
+            None if automation_level is None else NivelAutomacaoCasoTeste(automation_level)
+        )
         self.responsavel_id = responsavel_id
         self.backup_id = backup_id
         # Os TCs excluídos antes da spec 026 não têm justificativa: a reidratação não a exige.
@@ -75,13 +87,23 @@ class CasoTeste(EntidadeTenant):
         category: CategoriaCasoTeste,
         difficulty: DificuldadeCasoTeste,
         situation: SituacaoCasoTeste | None = None,
+        automation_level: NivelAutomacaoCasoTeste | None = None,
         justificativa_exclusao: str | None = None,
     ) -> None:
+        # Valida tudo antes de atribuir: um valor inválido não deixa o caso pela metade.
+        nova_category = CategoriaCasoTeste(category)
+        nova_difficulty = DificuldadeCasoTeste(difficulty)
+        nova_situation = None if situation is None else SituacaoCasoTeste(situation)
+        novo_nivel = None if automation_level is None else NivelAutomacaoCasoTeste(automation_level)
+        # _mudar_status valida a justificativa antes de mudar o Status (spec 026).
         self._mudar_status(StatusCasoTeste(status), justificativa_exclusao)
-        self.category = CategoriaCasoTeste(category)
-        self.difficulty = DificuldadeCasoTeste(difficulty)
-        if situation is not None:
-            self.situation = SituacaoCasoTeste(situation)
+        self.category = nova_category
+        self.difficulty = nova_difficulty
+        if nova_situation is not None:
+            self.situation = nova_situation
+        # O nível não pode ser esvaziado por aqui: None significa "manter".
+        if novo_nivel is not None:
+            self.automation_level = novo_nivel
 
     def registrar_resultado_form_factor(
         self, resultados: dict[UUID, str], modelos_ids: set[UUID]
@@ -122,6 +144,7 @@ class CasoTeste(EntidadeTenant):
         status: StatusCasoTeste,
         category: CategoriaCasoTeste,
         difficulty: DificuldadeCasoTeste,
+        automation_level: NivelAutomacaoCasoTeste | None = None,
         justificativa_exclusao: str | None = None,
     ) -> None:
         self._validar_responsaveis(responsavel_id, backup_id, exigir_backup=False)
@@ -129,7 +152,11 @@ class CasoTeste(EntidadeTenant):
         self.backup_id = backup_id
         self.situation = SituacaoCasoTeste(situation)
         self.atualizar_campos_do_responsavel(
-            status, category, difficulty, justificativa_exclusao=justificativa_exclusao
+            status,
+            category,
+            difficulty,
+            automation_level=automation_level,
+            justificativa_exclusao=justificativa_exclusao,
         )
 
     def transferir_para_backup(self) -> None:

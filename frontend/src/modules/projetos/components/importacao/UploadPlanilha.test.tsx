@@ -14,7 +14,7 @@ vi.mock("@/shared/lib/toast", () => ({ toast: toastMock }));
 let leitura: { progresso: (valor: number) => void; resolver: (previa: PlanilhaProjeto) => void; rejeitar: (erro: unknown) => void };
 const previa: PlanilhaProjeto = {
   app: "Clock", one_ui: "9.5", totalLinhas: 2, colunas: {} as PlanilhaProjeto["colunas"],
-  casos: [1, 2].map((n) => ({ linha: n + 1, tc_id: `Clock_00${n}`, category: "A", difficulty: "Low", situation: "New", responsavel: "Ana", backup: "Bia" })),
+  casos: [1, 2].map((n) => ({ linha: n + 1, tc_id: `Clock_00${n}`, category: "A", difficulty: "Low", situation: "New", responsavel: "Ana", backup: "Bia", automation_level: null })),
 };
 const xlsx = new File(["x"], "Table Name.xlsx");
 

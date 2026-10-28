@@ -5,6 +5,9 @@ export const CATEGORIAS_CASO_TESTE = ["A", "B", "C"] as const;
 export const DIFICULDADES_CASO_TESTE = ["Low", "Medium", "High"] as const;
 export type CategoriaCasoTeste = (typeof CATEGORIAS_CASO_TESTE)[number];
 export type DificuldadeCasoTeste = (typeof DIFICULDADES_CASO_TESTE)[number];
+/** Automation Level: o banco guarda só o número; o rótulo existe apenas na tela. */
+export const NIVEIS_AUTOMACAO_CASO_TESTE = [1, 2, 3] as const;
+export type NivelAutomacaoCasoTeste = (typeof NIVEIS_AUTOMACAO_CASO_TESTE)[number];
 /** TC Situation: origem do caso em relação a projetos anteriores. */
 export type SituacaoCasoTeste = "New" | "New Step" | "Without Changes";
 
@@ -16,13 +19,14 @@ export type StatusCasoTeste = (typeof STATUS_CASO_TESTE)[number];
 export const ROTULO_SITUACAO: Record<SituacaoCasoTeste, string> = { New: "situationNew", "New Step": "situationNewStep", "Without Changes": "situationWithoutChanges" };
 export const ROTULO_STATUS: Record<StatusCasoTeste, string> = { "To-Do": "statusTodo", InProgress: "statusInProgress", InReview: "statusInReview", InValidation: "statusInValidation", Done: "statusDone", InFixes: "statusInFixes", Cancelled: "statusCancelled" };
 export const ROTULO_DIFICULDADE: Record<DificuldadeCasoTeste, string> = { Low: "difficultyLow", Medium: "difficultyMedium", High: "difficultyHigh" };
+export const ROTULO_AUTOMACAO: Record<NivelAutomacaoCasoTeste, string> = { 1: "automationLevel1", 2: "automationLevel2", 3: "automationLevel3" };
 
 /** Resultados que o filtro por modelo do Form Factor oferece. */
 export const OPCOES_RESULTADO = [{ value: "PASS", label: "PASS" }, { value: "FAIL", label: "FAIL" }] as const;
 
-/** Opções `{ value, label }` de um conjunto fechado, com o rótulo traduzido pela chave i18n de cada valor. */
-export function opcoesRotuladas<V extends string>(valores: readonly V[], rotulos: Record<V, string>, t: (chave: string) => string) {
-  return valores.map((valor) => ({ value: valor, label: t(rotulos[valor]) }));
+/** Opções `{ value, label }` de um conjunto fechado, com o rótulo traduzido pela chave i18n de cada valor. O `value` é sempre texto, o que os selects pedem (níveis numéricos viram "1", "2", "3"). */
+export function opcoesRotuladas<V extends string | number>(valores: readonly V[], rotulos: Record<V, string>, t: (chave: string) => string) {
+  return valores.map((valor) => ({ value: String(valor), label: t(rotulos[valor]) }));
 }
 
 export interface Projeto {
@@ -54,6 +58,8 @@ export interface CasoTeste {
   tc_id: string;
   category: CategoriaCasoTeste;
   difficulty: DificuldadeCasoTeste;
+  /** `null` até alguém escolher um nível; depois de definido não volta a vazio. */
+  automation_level: NivelAutomacaoCasoTeste | null;
   situation: SituacaoCasoTeste;
   status: StatusCasoTeste;
   responsavel_id: string;
@@ -198,6 +204,7 @@ export interface CriarCasoTesteInput {
   tc_id: string;
   category: CategoriaCasoTeste;
   difficulty: DificuldadeCasoTeste;
+  automation_level?: NivelAutomacaoCasoTeste;
   situation: SituacaoCasoTeste;
   responsavel_id: string;
   backup_id: string;
@@ -206,6 +213,7 @@ export interface CriarCasoTesteInput {
 export interface AtualizarCasoTesteInput {
   category?: CategoriaCasoTeste;
   difficulty?: DificuldadeCasoTeste;
+  automation_level?: NivelAutomacaoCasoTeste;
   situation?: SituacaoCasoTeste;
   status?: StatusCasoTeste;
   responsavel_id?: string;

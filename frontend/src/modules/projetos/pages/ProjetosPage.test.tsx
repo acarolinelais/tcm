@@ -8,6 +8,7 @@ import * as XLSX from "@e965/xlsx";
 import type { PerfilAtual } from "@/core/auth/api";
 import { ProjetosPage } from "./ProjetosPage";
 import { modelosDispositivoApi, projetosApi } from "../api/projetos.api";
+import { lerPlanilhaProjeto } from "../utils/planilha-projeto";
 import { timesApi } from "@/modules/times/api/times.api";
 import { ApiError } from "@/shared/api/problem-details";
 
@@ -254,9 +255,17 @@ describe("ProjetosPage", () => {
     });
     const workbook = XLSX.read(bytes, { type: "array" });
     const [cabecalho, exemplo] = XLSX.utils.sheet_to_json<string[]>(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
-    expect(cabecalho).toContain("TC Situation");
+    expect(cabecalho).toEqual([
+      "App", "TC ID", "Title(English)", "Test Precondition(English)", "Test Procedure(English)", "Expected Result(English)",
+      "Difficulty", "Category", "Automation Level", "TC Situation", "One UI", "Assignees", "Backup",
+    ]);
     expect(cabecalho).not.toContain("Status");
+    expect(exemplo).toHaveLength(cabecalho.length);
     expect(exemplo[cabecalho.indexOf("TC Situation")]).toBe("New");
+    expect(String(exemplo[cabecalho.indexOf("Automation Level")])).toBe("1");
+    // O modelo baixado volta a ser lido sem erro quando as pessoas são preenchidas (cabeçalho e exemplo andam juntos).
+    const arquivo = new File([bytes], "modelo.xlsx");
+    await expect(lerPlanilhaProjeto(arquivo)).resolves.toMatchObject({ app: "Clock", one_ui: "9.5", totalLinhas: 1 });
     clickSpy.mockRestore();
     vi.unstubAllGlobals();
   });

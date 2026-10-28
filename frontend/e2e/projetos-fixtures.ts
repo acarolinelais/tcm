@@ -26,6 +26,7 @@ export const caseItem = {
   tc_id: "Clock_001",
   category: "A",
   difficulty: "Low",
+  automation_level: null as 1 | 2 | 3 | null,
   situation: "New",
   status: "To-Do",
   responsavel_id: managerId,
@@ -61,6 +62,14 @@ export async function setupTeams(page: Page) {
   await page.route("**/api/times?*", (route) => route.fulfill({ json: {
     items: [{ id: teamId, setor_id: "sector-1", nome: "Plataforma", ativo: true }], page: 1, page_size: 100, total_count: 1,
   } }));
+}
+
+/** Membros do time: a gerente Ana (responsável do caso) e o KP Kaique (backup). */
+export async function setupMembrosDoTime(page: Page) {
+  await page.route(`**/api/times/${teamId}/membros`, (route) => route.fulfill({ json: [
+    { id: "member-1", time_id: teamId, usuario_id: managerId, usuario_nome: "Gerente Ana", usuario_user_id: "GER-001", usuario_perfil: "Gerente", usuario_perfil_codigo: "GERENTE", ativo: true },
+    { id: "member-2", time_id: teamId, usuario_id: "backup-1", usuario_nome: "Kaique Pereira", usuario_user_id: "KP-002", usuario_perfil: "KP", usuario_perfil_codigo: "KP", ativo: true },
+  ] }));
 }
 
 export async function setupTeamsAndModels(page: Page) {

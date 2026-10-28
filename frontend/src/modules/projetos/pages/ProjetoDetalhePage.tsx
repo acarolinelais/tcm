@@ -39,14 +39,16 @@ import { ProjetosEntradaPage } from "./ProjetosEntradaPage";
 import { useCasosTeste, useCriarRodadaFormFactor, useFormFactor, useFormFactorResultados, useRegistrarResultadosRodadaFormFactor, useTransferirCasoTeste } from "../hooks/useProjetos";
 
 import { casosTesteApi, formFactorApi, projetosApi, type CasoTeste, type LinhaFormFactor } from "../api/projetos.api";
-import { CATEGORIAS_CASO_TESTE as categorias, DIFICULDADES_CASO_TESTE as dificuldades, ROTULO_DIFICULDADE, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, opcoesRotuladas, type AtualizarCasoTesteInput, type StatusCasoTeste } from "../model/projeto";
+import { CATEGORIAS_CASO_TESTE as categorias, DIFICULDADES_CASO_TESTE as dificuldades, NIVEIS_AUTOMACAO_CASO_TESTE as niveisAutomacao, ROTULO_AUTOMACAO, ROTULO_DIFICULDADE, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, opcoesRotuladas, type AtualizarCasoTesteInput, type StatusCasoTeste } from "../model/projeto";
 
-type CampoInline = "category" | "difficulty" | "situation" | "status" | "responsavel_id" | "backup_id";
+type CampoInline = "category" | "difficulty" | "automation_level" | "situation" | "status" | "responsavel_id" | "backup_id";
+/** As células editam em texto; o Automation Level viaja como número (1, 2 ou 3). */
+const valorDoCampo = (campo: CampoInline, valor: string) => campo === "automation_level" ? Number(valor) : valor;
 type Aba = "cases" | "form-factor";
 // Valor do filtro de Backup para os casos sem backup.
 const SEM_BACKUP = "__sem_backup__";
 // Colunas de valores fechados filtram por vários valores ao mesmo tempo; TC ID (texto) e End date (dia) filtram por um.
-const FILTROS_CASO_VAZIOS = { tcId: "", status: [] as string[], situation: [] as string[], assignee: [] as string[], difficulty: [] as string[], category: [] as string[], endDate: "", backup: [] as string[] };
+const FILTROS_CASO_VAZIOS = { tcId: "", status: [] as string[], situation: [] as string[], assignee: [] as string[], difficulty: [] as string[], category: [] as string[], automationLevel: [] as string[], endDate: "", backup: [] as string[] };
 
 export function ProjetoDetalhePage() {
   const { projetoId = "" } = useParams();
@@ -103,13 +105,13 @@ function ProjetoDetalhe() {
   const updateMemberCase = useMutation({
     // A exclusão leva a justificativa no mesmo PUT (spec 026).
     mutationFn: ({ id, field, value, justificativa }: { id: string; field: CampoInline; value: string; justificativa?: string }) =>
-      casosTesteApi.atualizar(id, { [field]: value, ...(justificativa ? { justificativa_exclusao: justificativa } : {}) } as AtualizarCasoTesteInput),
+      casosTesteApi.atualizar(id, { [field]: valorDoCampo(field, value), ...(justificativa ? { justificativa_exclusao: justificativa } : {}) } as AtualizarCasoTesteInput),
     // A célula muda na hora; se a API recusar, o cache volta ao que era.
     onMutate: async ({ id, field, value, justificativa }) => {
       const queryKey = ["projetos", projetoId, "test-cases"];
       await client.cancelQueries({ queryKey });
       const anteriores = client.getQueriesData<Awaited<ReturnType<typeof casosTesteApi.listar>>>({ queryKey });
-      client.setQueriesData<Awaited<ReturnType<typeof casosTesteApi.listar>>>({ queryKey }, (old) => old && { ...old, items: old.items.map((item) => item.id === id ? { ...item, [field]: value, ...(justificativa ? { justificativa_exclusao: justificativa } : {}) } : item) });
+      client.setQueriesData<Awaited<ReturnType<typeof casosTesteApi.listar>>>({ queryKey }, (old) => old && { ...old, items: old.items.map((item) => item.id === id ? { ...item, [field]: valorDoCampo(field, value), ...(justificativa ? { justificativa_exclusao: justificativa } : {}) } : item) });
       return { anteriores };
     },
     onError: (error, _input, contexto) => {
@@ -140,6 +142,7 @@ function ProjetoDetalhe() {
     situacao: opcoesRotuladas(SITUACOES_CASO_TESTE, ROTULO_SITUACAO, t),
     dificuldade: opcoesRotuladas(dificuldades, ROTULO_DIFICULDADE, t),
     categoria: categorias.map((valor) => ({ value: valor, label: valor })),
+    automacao: opcoesRotuladas(niveisAutomacao, ROTULO_AUTOMACAO, t),
   }), [t]);
   const identificadoresMembros = useMemo(() => Object.fromEntries((membros.data ?? []).map((member) => [member.usuario_id, member.usuario_user_id ?? "—"])), [membros.data]);
   const { membrosAtivos, opcoesAssignee, opcoesMembros } = useMemo(() => {
@@ -160,6 +163,7 @@ function ProjetoDetalhe() {
       && (!filtrosCaso.assignee.length || filtrosCaso.assignee.includes(item.responsavel_id))
       && (!filtrosCaso.difficulty.length || filtrosCaso.difficulty.includes(item.difficulty))
       && (!filtrosCaso.category.length || filtrosCaso.category.includes(item.category))
+      && (!filtrosCaso.automationLevel.length || filtrosCaso.automationLevel.includes(String(item.automation_level ?? "")))
       && (!filtrosCaso.endDate || dataFinal === filtrosCaso.endDate)
       && (!filtrosCaso.backup.length || filtrosCaso.backup.includes(item.backup_id ?? SEM_BACKUP));
   });
@@ -230,6 +234,11 @@ function ProjetoDetalhe() {
       id: "category",
       header: <DataTableMultiFilter label={t("category")} values={filtrosCaso.category} onChange={(values) => alterarFiltroCaso("category", values)} options={opcoes.categoria} />,
       cell: (caso) => celulaEditavel(caso, "category", t("category"), caso.category, opcoes.categoria, <span>{caso.category}</span>, podeEditarProprio(caso)),
+    },
+    {
+      id: "automationLevel",
+      header: <DataTableMultiFilter label={t("automationLevel")} values={filtrosCaso.automationLevel} onChange={(values) => alterarFiltroCaso("automationLevel", values)} options={opcoes.automacao} />,
+      cell: (caso) => celulaEditavel(caso, "automation_level", t("automationLevel"), String(caso.automation_level ?? ""), opcoes.automacao, <span>{caso.automation_level ? t(ROTULO_AUTOMACAO[caso.automation_level]) : "—"}</span>, podeEditarProprio(caso)),
     },
     {
       id: "endDate",

@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from io import BytesIO
 from zipfile import BadZipFile
@@ -7,6 +8,7 @@ from openpyxl.utils.exceptions import InvalidFileException
 from src.domain.entities.caso_teste import (
     CategoriaCasoTeste,
     DificuldadeCasoTeste,
+    NivelAutomacaoCasoTeste,
     SituacaoCasoTeste,
 )
 
@@ -21,6 +23,14 @@ CABECALHOS_OBRIGATORIOS = {
     "assignees": "Assignees",
     "backup": "Backup",
 }
+
+# Colunas que podem faltar na planilha: ausente equivale a célula vazia, sem erro.
+CABECALHOS_OPCIONAIS = {"automation level": "Automation Level"}
+
+# Inteiro puro ou com casa decimal zerada ("2", "2.0"), como o Excel entrega o número. É a mesma
+# regra do navegador (planilha-projeto.ts): a prévia e a importação não podem divergir. [0-9] e não
+# \d porque, em str, \d casa dígitos de outros alfabetos ("２") que o JavaScript recusa.
+_NIVEL_AUTOMACAO = re.compile(r"[0-9]+(\.0+)?")
 
 # Valor normalizado → opção, montado uma vez para não refazer a cada linha.
 _OPCOES = {
@@ -74,6 +84,7 @@ class LinhaCasoTesteImportada:
     situation: SituacaoCasoTeste
     responsavel: str
     backup: str
+    automation_level: NivelAutomacaoCasoTeste | None = None
 
 
 @dataclass(frozen=True)
@@ -112,7 +123,7 @@ def validar_planilha_projeto(conteudo: bytes) -> PlanilhaProjetoValidada:
         raise PlanilhaProjetoInvalida((_erro_geral("planilha_vazia", "A planilha está vazia."),))
 
     mapa_cabecalhos: dict[str, int] = {}
-    colunas: dict[str, str] = dict(CABECALHOS_OBRIGATORIOS)
+    colunas: dict[str, str] = {**CABECALHOS_OBRIGATORIOS, **CABECALHOS_OPCIONAIS}
     erros: list[ErroImportacaoPlanilha] = []
     for indice, valor in enumerate(cabecalho):
         if valor is None:
@@ -166,6 +177,27 @@ def validar_planilha_projeto(conteudo: bytes) -> PlanilhaProjetoValidada:
             )
         return encontrada
 
+    def nivel_automacao(numero, valor):
+        if not valor:
+            return None
+        if _NIVEL_AUTOMACAO.fullmatch(valor):
+            try:
+                return NivelAutomacaoCasoTeste(int(valor.split(".")[0]))
+            except ValueError:
+                pass
+        esperados = [str(nivel.value) for nivel in NivelAutomacaoCasoTeste]
+        erros.append(
+            erro_linha(
+                numero,
+                "automation level",
+                "valor_invalido",
+                f"Use {', '.join(esperados)}.",
+                valor,
+                esperados=esperados,
+            )
+        )
+        return None
+
     valores_app: list[str] = []
     valores_one_ui: list[str] = []
     casos: list[LinhaCasoTesteImportada] = []
@@ -206,6 +238,7 @@ def validar_planilha_projeto(conteudo: bytes) -> PlanilhaProjetoValidada:
         category = opcao(numero_linha, "category", campos["category"], CategoriaCasoTeste)
         difficulty = opcao(numero_linha, "difficulty", campos["difficulty"], DificuldadeCasoTeste)
         situation = opcao(numero_linha, "tc situation", campos["tc situation"], SituacaoCasoTeste)
+        automation_level = nivel_automacao(numero_linha, campos.get("automation level", ""))
         responsavel = campos["assignees"]
         backup = campos["backup"]
         pessoas.append(PessoasDaLinha(numero_linha, responsavel, backup))
@@ -222,7 +255,14 @@ def validar_planilha_projeto(conteudo: bytes) -> PlanilhaProjetoValidada:
         if tc_id and category and difficulty and situation and responsavel and backup:
             casos.append(
                 LinhaCasoTesteImportada(
-                    numero_linha, tc_id, category, difficulty, situation, responsavel, backup
+                    numero_linha,
+                    tc_id,
+                    category,
+                    difficulty,
+                    situation,
+                    responsavel,
+                    backup,
+                    automation_level,
                 )
             )
 

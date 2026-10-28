@@ -5,9 +5,9 @@ import { project, setupProjectSession, setupTeamsAndModels } from "./projetos-fi
 
 const cabecalho = ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI", "Assignees", "Backup"];
 
-function planilha(linhas: unknown[][]) {
+function planilha(linhas: unknown[][], colunas: string[] = cabecalho) {
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([cabecalho, ...linhas]), "Cases");
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([colunas, ...linhas]), "Cases");
   return { name: "clock.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from(XLSX.write(workbook, { type: "array", bookType: "xlsx" })) };
 }
 
@@ -196,4 +196,46 @@ test("recusa um arquivo .csv mostrando o motivo junto da área", async ({ page }
   await expect(page.getByText("Selecione uma planilha XLS ou XLSX.").first()).toBeVisible();
   await expect(page.getByRole("progressbar")).toHaveCount(0);
   await expect(modelo(page)).toBeVisible();
+});
+
+// Modelo atual da planilha (spec 027): 13 colunas, com Automation Level depois de Category.
+const cabecalhoModelo = [
+  "App", "TC ID", "Title(English)", "Test Precondition(English)", "Test Procedure(English)", "Expected Result(English)",
+  "Difficulty", "Category", "Automation Level", "TC Situation", "One UI", "Assignees", "Backup",
+];
+const casoModelo = (tcId: string, nivel: unknown) =>
+  ["Clock", tcId, "Criar alarme", "App Clock instalado", "1. Abrir\n2. Tocar em Adicionar", "O alarme é criado", "Low", "A", nivel, "New", "9.5", "Gerente Ana", "Kaique Pereira"];
+
+test("importa a planilha no modelo atual e mostra o Automation Level de cada caso na prévia", async ({ page }) => {
+  await page.route("**/api/projetos/importar", (route) => route.fulfill({ json: { projeto: project, quantidade_casos: 3 } }));
+
+  await abrirNovoProjeto(page);
+  await escolher(page, planilha([casoModelo("Clock_001", 1), casoModelo("Clock_002", ""), casoModelo("Clock_003", "3.0")], cabecalhoModelo));
+
+  const previa = previaDe(page);
+  await expect(previa).toContainText("3 Test Cases");
+  await expect(previa.getByRole("columnheader", { name: "Automation Level" })).toBeVisible();
+  const linhas = previa.getByRole("row");
+  await expect(linhas.filter({ hasText: "Clock_001" })).toContainText("1 – Não automatizável");
+  await expect(linhas.filter({ hasText: "Clock_002" })).toContainText("—");
+  await expect(linhas.filter({ hasText: "Clock_003" })).toContainText("3 – 100% automatizável");
+  await page.getByRole("combobox", { name: "Time" }).click();
+  await page.getByRole("option", { name: "Plataforma" }).click();
+  await page.getByRole("button", { name: "Criar projeto" }).click();
+
+  await expect(page.getByText("Planilha importada com sucesso: 3 Test Cases criados em Clock 9.5.")).toBeVisible();
+});
+
+test("recusa um Automation Level inválido na planilha, apontando a linha e a coluna, sem enviar nada", async ({ page }) => {
+  let enviou = false;
+  await page.route("**/api/projetos/importar", (route) => { enviou = true; return route.fulfill({ json: { projeto: project, quantidade_casos: 2 } }); });
+
+  await abrirNovoProjeto(page);
+  await escolher(page, planilha([casoModelo("Clock_001", 2), casoModelo("Clock_002", 4)], cabecalhoModelo));
+
+  const alerta = page.getByRole("alert");
+  await expect(alerta).toContainText("1 de 2 linhas precisa de ajuste. Nada foi criado.");
+  await expect(alerta.getByRole("heading", { name: "Linha 3" })).toBeVisible();
+  await expect(alerta).toContainText('Coluna Automation Level: "4" não é válido. Use 1, 2 ou 3.');
+  expect(enviou).toBe(false);
 });
