@@ -7,7 +7,7 @@ import { SelectField, TextInputField } from "@/shared/ui/form-field";
 import { DrawerFormActions, SideDrawer } from "@/shared/ui/side-drawer";
 import type { CasoTeste, CategoriaCasoTeste, DificuldadeCasoTeste, SituacaoCasoTeste } from "../../api/projetos.api";
 import { useAtualizarCasoTeste, useCriarCasoTeste } from "../../hooks/useProjetos";
-import { CATEGORIAS_CASO_TESTE, DIFICULDADES_CASO_TESTE, ROTULO_DIFICULDADE, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, opcoesRotuladas, type StatusCasoTeste } from "../../model/projeto";
+import { CATEGORIAS_CASO_TESTE, DIFICULDADES_CASO_TESTE, NIVEIS_AUTOMACAO_CASO_TESTE, ROTULO_AUTOMACAO, ROTULO_DIFICULDADE, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, opcoesRotuladas, type NivelAutomacaoCasoTeste, type StatusCasoTeste } from "../../model/projeto";
 
 type CamposEditaveis = Pick<CasoTeste, "category" | "difficulty" | "situation" | "status" | "responsavel_id" | "backup_id">;
 
@@ -34,6 +34,8 @@ export function CasoTesteDrawer({ isOpen, onOpenChange, projetoId, editar, membr
   const [tcId, setTcId] = useState(editar?.tc_id ?? "");
   const [category, setCategory] = useState<CategoriaCasoTeste>(editar?.category ?? "A");
   const [difficulty, setDifficulty] = useState<DificuldadeCasoTeste>(editar?.difficulty ?? "Low");
+  // Opcional: vazio até alguém escolher e, depois de definido, não volta a vazio (spec 026, RN-13).
+  const [automationLevel, setAutomationLevel] = useState(String(editar?.automation_level ?? ""));
   const [situation, setSituation] = useState<SituacaoCasoTeste | "">(editar?.situation ?? "");
   const [status, setStatus] = useState<StatusCasoTeste>(editar?.status ?? "To-Do");
   const [responsavelId, setResponsavelId] = useState(editar?.responsavel_id ?? "");
@@ -50,10 +52,12 @@ export function CasoTesteDrawer({ isOpen, onOpenChange, projetoId, editar, membr
 
   function salvar() {
     if (camposFaltando) return;
+    const nivel = automationLevel ? Number(automationLevel) as NivelAutomacaoCasoTeste : undefined;
     if (editar) {
-      atualizar.mutate({ id: editar.id, input: camposAlterados(editar, { category, difficulty, situation: situation || editar.situation, status, responsavel_id: responsavelId, backup_id: backupId || null }) }, aoSalvar);
+      const alterados = camposAlterados(editar, { category, difficulty, situation: situation || editar.situation, status, responsavel_id: responsavelId, backup_id: backupId || null });
+      atualizar.mutate({ id: editar.id, input: { ...alterados, ...(nivel && nivel !== editar.automation_level && { automation_level: nivel }) } }, aoSalvar);
     } else {
-      criar.mutate({ tc_id: tcId.trim(), category, difficulty, situation: situation as SituacaoCasoTeste, responsavel_id: responsavelId, backup_id: backupId }, aoSalvar);
+      criar.mutate({ tc_id: tcId.trim(), category, difficulty, situation: situation as SituacaoCasoTeste, responsavel_id: responsavelId, backup_id: backupId, ...(nivel && { automation_level: nivel }) }, aoSalvar);
     }
   }
 
@@ -71,6 +75,7 @@ export function CasoTesteDrawer({ isOpen, onOpenChange, projetoId, editar, membr
       <div className="space-y-5 px-7 py-6">
         <TextInputField label={t("tcId")} value={tcId} onChange={setTcId} maxLength={120} isDisabled={Boolean(editar)} isRequired autoFocus={!editar} />
         <SelectField label={t("category")} value={category} onChange={(valor) => setCategory(valor as CategoriaCasoTeste)} options={CATEGORIAS_CASO_TESTE.map((valor) => ({ value: valor, label: valor }))} />
+        <SelectField label={t("automationLevel")} value={automationLevel} onChange={setAutomationLevel} placeholder={t("automationLevelNotSet")} options={opcoesRotuladas(NIVEIS_AUTOMACAO_CASO_TESTE, ROTULO_AUTOMACAO, t)} />
         <SelectField label={t("difficulty")} value={difficulty} onChange={(valor) => setDifficulty(valor as DificuldadeCasoTeste)} options={opcoesRotuladas(DIFICULDADES_CASO_TESTE, ROTULO_DIFICULDADE, t)} />
         <SelectField label={t("tcSituation")} value={situation} onChange={(valor) => setSituation(valor as SituacaoCasoTeste)} isRequired placeholder={t("tcSituationRequired")} options={opcoesRotuladas(SITUACOES_CASO_TESTE, ROTULO_SITUACAO, t)} />
         {editar && <SelectField label={t("status")} value={status} onChange={(valor) => setStatus(valor as StatusCasoTeste)} options={opcoesRotuladas(STATUS_CASO_TESTE, ROTULO_STATUS, t)} />}

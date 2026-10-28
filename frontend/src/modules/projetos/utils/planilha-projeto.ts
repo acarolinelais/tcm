@@ -1,4 +1,4 @@
-import { CATEGORIAS_CASO_TESTE, DIFICULDADES_CASO_TESTE, SITUACOES_CASO_TESTE, type CategoriaCasoTeste, type DificuldadeCasoTeste, type ErroPlanilha, type SituacaoCasoTeste } from "../model/projeto";
+import { CATEGORIAS_CASO_TESTE, DIFICULDADES_CASO_TESTE, NIVEIS_AUTOMACAO_CASO_TESTE, SITUACOES_CASO_TESTE, type CategoriaCasoTeste, type DificuldadeCasoTeste, type ErroPlanilha, type NivelAutomacaoCasoTeste, type SituacaoCasoTeste } from "../model/projeto";
 
 type ExcelWorkbook = import("@e965/xlsx").WorkBook;
 
@@ -10,9 +10,13 @@ export interface CasoTestePlanilha {
   situation: SituacaoCasoTeste;
   responsavel: string;
   backup: string;
+  automation_level: NivelAutomacaoCasoTeste | null;
 }
 
 type CabecalhoObrigatorio = "app" | "tc id" | "difficulty" | "category" | "tc situation" | "one ui" | "assignees" | "backup";
+/** Colunas que podem faltar: ausente equivale a célula vazia, sem erro. */
+type CabecalhoOpcional = "automation level";
+type CabecalhoLido = CabecalhoObrigatorio | CabecalhoOpcional;
 
 export interface PlanilhaProjeto {
   app: string;
@@ -20,7 +24,7 @@ export interface PlanilhaProjeto {
   casos: CasoTestePlanilha[];
   totalLinhas: number;
   /** Cabeçalho normalizado → texto como está na planilha, para as mensagens. */
-  colunas: Record<CabecalhoObrigatorio, string>;
+  colunas: Record<CabecalhoLido, string>;
 }
 
 export interface PessoasDaLinha {
@@ -44,6 +48,24 @@ const cabecalhosObrigatorios: Record<CabecalhoObrigatorio, string> = {
   app: "App", "tc id": "TC ID", difficulty: "Difficulty", category: "Category",
   "tc situation": "TC Situation", "one ui": "One UI", assignees: "Assignees", backup: "Backup",
 };
+const cabecalhosOpcionais: Record<CabecalhoOpcional, string> = { "automation level": "Automation Level" };
+
+/** Cabeçalhos do modelo para download, na ordem da planilha atual (spec 026, RN-04). */
+export const CABECALHOS_MODELO_PLANILHA = [
+  "App", "TC ID", "Title(English)", "Test Precondition(English)", "Test Procedure(English)", "Expected Result(English)",
+  "Difficulty", "Category", "Automation Level", "TC Situation", "One UI", "Assignees", "Backup",
+] as const;
+/** Linha de exemplo do modelo: indexada pelo cabeçalho, então não sai da ordem nem do tamanho dele. */
+export const EXEMPLO_MODELO_PLANILHA: Record<(typeof CABECALHOS_MODELO_PLANILHA)[number], string> = {
+  App: "Clock", "TC ID": "Clock_0001", "Title(English)": "Create an alarm", "Test Precondition(English)": "The Clock app is installed",
+  "Test Procedure(English)": "1. Open Clock\n2. Tap Add", "Expected Result(English)": "The alarm is created",
+  Difficulty: "Low", Category: "A", "Automation Level": "1", "TC Situation": "New", "One UI": "9.5",
+  Assignees: "nome ou e-mail do membro do time", Backup: "nome ou e-mail do backup",
+};
+
+// Mesma regra do validador do backend (importacao_projeto.py): inteiro puro ou com casa decimal zerada, só dígitos ASCII.
+const REGRA_NIVEL_AUTOMACAO = /^[0-9]+(\.0+)?$/;
+
 const opcoes: Record<"category" | "difficulty" | "tc situation", readonly string[]> = {
   category: CATEGORIAS_CASO_TESTE,
   difficulty: DIFICULDADES_CASO_TESTE,
@@ -123,7 +145,7 @@ export async function lerPlanilhaProjeto(file: File, onProgress?: (progress: num
   if (!rows.length) return falha([geral("planilha_vazia")]);
   onProgress?.(99);
   const indexes = new Map<string, number>();
-  const colunas: Record<string, string> = { ...cabecalhosObrigatorios };
+  const colunas: Record<string, string> = { ...cabecalhosObrigatorios, ...cabecalhosOpcionais };
   const errors: ErroPlanilha[] = [];
   rows[0].forEach((value, index) => {
     const name = cabecalho(value);
@@ -145,13 +167,16 @@ export async function lerPlanilhaProjeto(file: File, onProgress?: (progress: num
   const pessoas: PessoasDaLinha[] = [];
   rows.slice(1).forEach((row, index) => {
     const linha = index + 2;
-    const get = (name: CabecalhoObrigatorio) => texto(row[indexes.get(name)!]);
+    const get = (name: CabecalhoLido) => {
+      const indice = indexes.get(name);
+      return indice === undefined ? "" : texto(row[indice]);
+    };
     if (!row.some((value) => texto(value))) return;
     totalLinhas += 1;
     if (!app) app = get("app");
     if (!oneUi) oneUi = get("one ui");
 
-    const erro = (name: CabecalhoObrigatorio, codigo: ErroPlanilha["codigo"], valor = "", parametros?: ErroPlanilha["parametros"]) =>
+    const erro = (name: CabecalhoLido, codigo: ErroPlanilha["codigo"], valor = "", parametros?: ErroPlanilha["parametros"]) =>
       errors.push({ codigo, linha, coluna: colunas[name], valor: valor || null, ...(parametros && { parametros }) });
     const opcao = <T extends string>(name: keyof typeof opcoes): T | null => {
       const valor = get(name);
@@ -168,6 +193,10 @@ export async function lerPlanilhaProjeto(file: File, onProgress?: (progress: num
     const category = opcao<CategoriaCasoTeste>("category");
     const difficulty = opcao<DificuldadeCasoTeste>("difficulty");
     const situation = opcao<SituacaoCasoTeste>("tc situation");
+    const valorNivel = get("automation level");
+    const numeroNivel = REGRA_NIVEL_AUTOMACAO.test(valorNivel) ? Number.parseInt(valorNivel, 10) : 0;
+    const automationLevel: NivelAutomacaoCasoTeste | null = NIVEIS_AUTOMACAO_CASO_TESTE.find((nivel) => nivel === numeroNivel) ?? null;
+    if (valorNivel && !automationLevel) erro("automation level", "valor_invalido", valorNivel, { esperados: NIVEIS_AUTOMACAO_CASO_TESTE.map(String) });
     const responsavel = get("assignees");
     const backup = get("backup");
     pessoas.push({ linha, responsavel, backup });
@@ -175,7 +204,7 @@ export async function lerPlanilhaProjeto(file: File, onProgress?: (progress: num
     if (!backup) erro("backup", "valor_obrigatorio");
 
     if (tcId && category && difficulty && situation && responsavel && backup) {
-      casos.push({ linha, tc_id: tcId, category, difficulty, situation, responsavel, backup });
+      casos.push({ linha, tc_id: tcId, category, difficulty, situation, responsavel, backup, automation_level: automationLevel });
     }
   });
 

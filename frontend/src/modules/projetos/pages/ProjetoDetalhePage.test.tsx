@@ -6,7 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PerfilAtual } from "@/core/auth/api";
 import { ProjetoDetalhePage } from "./ProjetoDetalhePage";
-import { casosTesteApi, formFactorApi, projetosApi } from "../api/projetos.api";
+import { casosTesteApi, formFactorApi, projetosApi, type CasoTeste } from "../api/projetos.api";
+import type { NivelAutomacaoCasoTeste } from "../model/projeto";
 import { timesApi } from "@/modules/times/api/times.api";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/ui/table";
 import { formatarDiaIso, semanaIso } from "@/shared/lib/utils";
@@ -22,8 +23,8 @@ vi.mock("@/shared/lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn()
 
 const projeto = { id: "project-1", unidade_id: "unit-1", time_id: "team-1", nome: "Clock 9.5", app: "Clock", one_ui: "9.5", status: "Created" as const, ativo: true, created_at: null, updated_at: null };
 const casos = [
-  { id: "case-1", unidade_id: "unit-1", projeto_id: "project-1", tc_id: "Clock_001", category: "A" as const, difficulty: "Low" as const, situation: "New" as const, status: "To-Do" as const, responsavel_id: "user-1", backup_id: "backup-1", ativo: true, created_at: null, updated_at: null },
-  { id: "case-2", unidade_id: "unit-1", projeto_id: "project-1", tc_id: "Clock_002", category: "B" as const, difficulty: "Medium" as const, situation: "New Step" as const, status: "Done" as const, responsavel_id: "user-2", backup_id: null, ativo: true, created_at: null, updated_at: null },
+  { id: "case-1", unidade_id: "unit-1", projeto_id: "project-1", tc_id: "Clock_001", category: "A" as const, difficulty: "Low" as const, automation_level: null as NivelAutomacaoCasoTeste | null, situation: "New" as const, status: "To-Do" as const, responsavel_id: "user-1", backup_id: "backup-1", ativo: true, created_at: null, updated_at: null },
+  { id: "case-2", unidade_id: "unit-1", projeto_id: "project-1", tc_id: "Clock_002", category: "B" as const, difficulty: "Medium" as const, automation_level: null as NivelAutomacaoCasoTeste | null, situation: "New Step" as const, status: "Done" as const, responsavel_id: "user-2", backup_id: null, ativo: true, created_at: null, updated_at: null },
 ];
 // Literal de propósito: a ordem do progresso é requisito (spec 017).
 const ROTULOS_STATUS = ["To-Do", "In Progress", "In Review", "In Validation", "Done", "In Fixes", "Excluded"];
@@ -299,6 +300,104 @@ describe("ProjetoDetalhePage", () => {
     expect(screen.getByRole("row", { name: /Clock_002/ })).toBeInTheDocument();
     expect(screen.getByRole("row", { name: /Clock_003/ })).toBeInTheDocument();
     expect(screen.queryByRole("row", { name: /Clock_001/ })).not.toBeInTheDocument();
+  });
+
+  describe("Automation Level (spec 026)", () => {
+    const comNivel = (caso: (typeof casos)[number], nivel: NivelAutomacaoCasoTeste | null) => ({ ...caso, automation_level: nivel });
+    const rotulos = ["1 – Not automatable", "2 – Partially automatable", "3 – 100% automatable"];
+
+    it("mostra a coluna logo depois de Category, com o rótulo do nível ou um traço", async () => {
+      vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [comNivel(casos[0], 3), casos[1]], page: 1, page_size: 20, total_count: 2 });
+      renderPage();
+
+      const primeiro = await screen.findByRole("row", { name: /Clock_001/ });
+      const cabecalhos = screen.getAllByRole("columnheader").map((coluna) => coluna.textContent);
+      const posicao = cabecalhos.findIndex((texto) => texto?.includes("Automation Level"));
+      expect(posicao).toBe(cabecalhos.findIndex((texto) => texto?.includes("Category")) + 1);
+      expect(primeiro.querySelectorAll("th, td")[posicao]).toHaveTextContent("3 – 100% automatable");
+      expect(screen.getByRole("row", { name: /Clock_002/ }).querySelectorAll("th, td")[posicao]).toHaveTextContent("—");
+    });
+
+    it("mostra a coluna também para quem gerencia os casos", async () => {
+      renderPage({ ...perfil, id: "admin", perfil_codigo: "ADMIN_UNIDADE", perfil: "Administrador" });
+
+      await screen.findByRole("row", { name: /Clock_001/ });
+      expect(screen.getByRole("button", { name: "Filter by Automation Level" })).toBeInTheDocument();
+    });
+
+    it("oferece só os níveis 1, 2 e 3 na célula e grava o número escolhido, mostrando o novo rótulo", async () => {
+      let atuais: CasoTeste[] = [casos[0], casos[1]];
+      vi.mocked(casosTesteApi.listar).mockImplementation(async () => ({ items: atuais, page: 1, page_size: 20, total_count: 2 }));
+      vi.mocked(casosTesteApi.atualizar).mockImplementation(async (id, input) => {
+        atuais = atuais.map((caso) => caso.id === id ? { ...caso, ...input } : caso);
+        return atuais.find((caso) => caso.id === id)!;
+      });
+      const user = userEvent.setup();
+      renderPage();
+      const proprioCaso = await screen.findByRole("row", { name: /Clock_001/ });
+
+      await user.click(within(proprioCaso).getByRole("button", { name: /Automation Level Clock_001/ }));
+      expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(rotulos);
+      await user.click(screen.getByRole("option", { name: "2 – Partially automatable" }));
+
+      await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { automation_level: 2 }));
+      await waitFor(() => expect(within(screen.getByRole("row", { name: /Clock_001/ })).getByRole("button", { name: /Automation Level Clock_001/ })).toHaveTextContent("2 – Partially automatable"));
+    });
+
+    it("deixa o responsável editar só o próprio caso, e a gestão qualquer um", async () => {
+      const { unmount } = renderPage();
+      const casoAlheio = await screen.findByRole("row", { name: /Clock_002/ });
+      expect(within(screen.getByRole("row", { name: /Clock_001/ })).getByRole("button", { name: /Automation Level Clock_001/ })).toBeInTheDocument();
+      expect(within(casoAlheio).queryByRole("button", { name: /Automation Level Clock_002/ })).not.toBeInTheDocument();
+      unmount();
+
+      renderPage({ ...perfil, id: "admin", perfil_codigo: "ADMIN_UNIDADE", perfil: "Administrador" });
+      const comoGestao = await screen.findByRole("row", { name: /Clock_002/ });
+      expect(within(comoGestao).getByRole("button", { name: /Automation Level Clock_002/ })).toBeInTheDocument();
+    });
+
+    it("volta ao valor anterior e avisa quando a API recusa a mudança", async () => {
+      vi.mocked(casosTesteApi.atualizar).mockRejectedValue(new Error("Automation Level deve ser 1, 2 ou 3."));
+      const user = userEvent.setup();
+      renderPage();
+      const proprioCaso = await screen.findByRole("row", { name: /Clock_001/ });
+
+      await user.click(within(proprioCaso).getByRole("button", { name: /Automation Level Clock_001/ }));
+      await user.click(await screen.findByRole("option", { name: "1 – Not automatable" }));
+
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Automation Level deve ser 1, 2 ou 3."));
+      await waitFor(() => expect(within(screen.getByRole("row", { name: /Clock_001/ })).getByRole("button", { name: /Automation Level Clock_001/ })).toHaveTextContent("—"));
+    });
+
+    it("filtra por vários níveis ao mesmo tempo", async () => {
+      const terceiro = { ...comNivel(casos[0], 3), id: "case-3", tc_id: "Clock_003" };
+      vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [comNivel(casos[0], 1), comNivel(casos[1], 2), terceiro], page: 1, page_size: 20, total_count: 3 });
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByRole("row", { name: /Clock_001/ });
+
+      await user.click(screen.getByRole("button", { name: "Filter by Automation Level" }));
+      expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(rotulos);
+      await user.click(screen.getByRole("option", { name: "1 – Not automatable" }));
+      await user.click(screen.getByRole("option", { name: "3 – 100% automatable" }));
+      await user.keyboard("{Escape}");
+
+      expect(screen.getByRole("row", { name: /Clock_001/ })).toBeInTheDocument();
+      expect(screen.getByRole("row", { name: /Clock_003/ })).toBeInTheDocument();
+      expect(screen.queryByRole("row", { name: /Clock_002/ })).not.toBeInTheDocument();
+    });
+
+    it("não mostra a coluna na aba Form Factor", async () => {
+      const user = userEvent.setup();
+      renderPage({ ...perfil, id: "admin", perfil_codigo: "ADMIN_UNIDADE", perfil: "Administrador" });
+      await screen.findByRole("row", { name: /Clock_001/ });
+
+      await user.click(screen.getByRole("tab", { name: "Form Factor" }));
+
+      await waitFor(() => expect(formFactorApi.listar).toHaveBeenCalled());
+      expect(screen.queryByRole("columnheader", { name: /Automation Level/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Filter by Automation Level" })).not.toBeInTheDocument();
+    });
   });
 
   it("deixa o DEV voltar um TC em correção para To-Do", async () => {

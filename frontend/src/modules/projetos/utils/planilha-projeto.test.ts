@@ -1,7 +1,7 @@
 import * as XLSX from "@e965/xlsx";
 import { describe, expect, it } from "vitest";
 
-import { lerPlanilhaProjeto, PlanilhaProjetoError } from "./planilha-projeto";
+import { CABECALHOS_MODELO_PLANILHA, EXEMPLO_MODELO_PLANILHA, lerPlanilhaProjeto, PlanilhaProjetoError } from "./planilha-projeto";
 
 function planilhaFile(rows: unknown[][]) {
   const workbook = XLSX.utils.book_new();
@@ -112,5 +112,108 @@ describe("leitura da planilha inicial de projetos", () => {
     const planilha = await lerPlanilhaProjeto(new File([bytes as BlobPart], "reparada.xlsx"));
 
     expect(planilha.casos.map((caso) => caso.tc_id)).toEqual(["Clock_001", "Clock_002"]);
+  });
+});
+
+type ColunaModelo = (typeof CABECALHOS_MODELO_PLANILHA)[number];
+const cabecalhosSemNivel = CABECALHOS_MODELO_PLANILHA.filter((coluna) => coluna !== "Automation Level");
+
+/** Linha no modelo atual: parte do exemplo do modelo e troca só o que o caso de teste muda. */
+const linhaCompleta = (alteracoes: Partial<Record<ColunaModelo, unknown>> = {}, cabecalhos: readonly string[] = CABECALHOS_MODELO_PLANILHA) => {
+  const valores: Record<string, unknown> = { ...EXEMPLO_MODELO_PLANILHA, "Automation Level": "", ...alteracoes };
+  return cabecalhos.map((coluna) => valores[coluna]);
+};
+
+describe("Automation Level na leitura da planilha (spec 026)", () => {
+  it("expõe os cabeçalhos do modelo exatamente na ordem da planilha atual", () => {
+    expect([...CABECALHOS_MODELO_PLANILHA]).toEqual([
+      "App", "TC ID", "Title(English)", "Test Precondition(English)", "Test Procedure(English)", "Expected Result(English)",
+      "Difficulty", "Category", "Automation Level", "TC Situation", "One UI", "Assignees", "Backup",
+    ]);
+    expect(Object.keys(EXEMPLO_MODELO_PLANILHA)).toEqual([...CABECALHOS_MODELO_PLANILHA]);
+  });
+
+  it("lê o exemplo do modelo sem erro, já que quem baixa o modelo o preenche", async () => {
+    const exemplo = CABECALHOS_MODELO_PLANILHA.map((coluna) => EXEMPLO_MODELO_PLANILHA[coluna]);
+
+    const planilha = await lerPlanilhaProjeto(planilhaFile([[...CABECALHOS_MODELO_PLANILHA], exemplo]));
+
+    expect(planilha.casos).toHaveLength(1);
+    expect(planilha.casos[0].automation_level).toBe(1);
+  });
+
+  it("lê os níveis 1, 2 e 3 de cada linha", async () => {
+    const planilha = await lerPlanilhaProjeto(planilhaFile([
+      [...CABECALHOS_MODELO_PLANILHA],
+      linhaCompleta({ "TC ID": "Clock_001", "Automation Level": 1 }),
+      linhaCompleta({ "TC ID": "Clock_002", "Automation Level": 2 }),
+      linhaCompleta({ "TC ID": "Clock_003", "Automation Level": 3 }),
+    ]));
+
+    expect(planilha.casos.map((caso) => caso.automation_level)).toEqual([1, 2, 3]);
+  });
+
+  it("lê pelo nome do cabeçalho: outra ordem de colunas e colunas extras não mudam o resultado", async () => {
+    const invertidos = [...CABECALHOS_MODELO_PLANILHA].reverse();
+
+    const planilha = await lerPlanilhaProjeto(planilhaFile([[...invertidos, "Status"], [...linhaCompleta({ "Automation Level": 2, Category: "B" }, invertidos), "Pass"]]));
+
+    expect(planilha).toMatchObject({ app: "Clock", one_ui: "9.5" });
+    expect(planilha.casos[0]).toMatchObject({ tc_id: "Clock_0001", category: "B", difficulty: "Low", situation: "New", automation_level: 2 });
+  });
+
+  it("importa com nível vazio quando a coluna não existe na planilha", async () => {
+    const planilha = await lerPlanilhaProjeto(planilhaFile([cabecalhosSemNivel, linhaCompleta({}, cabecalhosSemNivel), linhaCompleta({ "TC ID": "Clock_002" }, cabecalhosSemNivel)]));
+
+    expect(planilha.casos.map((caso) => caso.automation_level)).toEqual([null, null]);
+  });
+
+  it("importa a célula vazia como nível vazio sem afetar as outras linhas", async () => {
+    const planilha = await lerPlanilhaProjeto(planilhaFile([
+      [...CABECALHOS_MODELO_PLANILHA],
+      linhaCompleta({ "TC ID": "Clock_001", "Automation Level": "" }),
+      linhaCompleta({ "TC ID": "Clock_002", "Automation Level": "   " }),
+      linhaCompleta({ "TC ID": "Clock_003", "Automation Level": 3 }),
+    ]));
+
+    expect(planilha.casos.map((caso) => caso.automation_level)).toEqual([null, null, 3]);
+  });
+
+  it.each([[1, 1], [2.0, 2], ["3", 3], ["1.0", 1], [" 2 ", 2], ["3.00", 3], ["02", 2]])("aceita %j do Excel como o nível %i", async (valor, esperado) => {
+    const planilha = await lerPlanilhaProjeto(planilhaFile([[...CABECALHOS_MODELO_PLANILHA], linhaCompleta({ "Automation Level": valor })]));
+
+    expect(planilha.casos[0].automation_level).toBe(esperado);
+  });
+
+  it.each([4, 0, 1.5, -1, "abc", "1,5", "1.0.0", "um", 10, "2.5", "２", "٢"])("recusa %j informando linha, coluna, valor e níveis aceitos", async (valor) => {
+    const erro = await erros([
+      [...CABECALHOS_MODELO_PLANILHA],
+      linhaCompleta({ "TC ID": "Clock_001", "Automation Level": 1 }),
+      linhaCompleta({ "TC ID": "Clock_002", "Automation Level": valor }),
+    ]);
+
+    expect(erro.errors).toEqual([{ codigo: "valor_invalido", linha: 3, coluna: "Automation Level", valor: String(valor), parametros: { esperados: ["1", "2", "3"] } }]);
+  });
+
+  it("cita o cabeçalho como está escrito na planilha", async () => {
+    const cabecalhos = CABECALHOS_MODELO_PLANILHA.map((coluna) => (coluna === "Automation Level" ? "automation_level" : coluna));
+
+    const erro = await erros([cabecalhos, linhaCompleta({ "Automation Level": 9 }, CABECALHOS_MODELO_PLANILHA)]);
+
+    expect(erro.errors[0]).toMatchObject({ coluna: "automation_level", linha: 2 });
+  });
+
+  it("devolve o nível inválido junto com os outros erros da planilha", async () => {
+    const erro = await erros([
+      [...CABECALHOS_MODELO_PLANILHA],
+      linhaCompleta({ "TC ID": "Clock_001", "Automation Level": 7 }),
+      linhaCompleta({ "TC ID": "Clock_002", Category: "Z" }),
+    ]);
+
+    expect(erro.totalLinhas).toBe(2);
+    expect(erro.errors.map(({ linha, coluna, codigo }) => ({ linha, coluna, codigo }))).toEqual([
+      { linha: 2, coluna: "Automation Level", codigo: "valor_invalido" },
+      { linha: 3, coluna: "Category", codigo: "valor_invalido" },
+    ]);
   });
 });

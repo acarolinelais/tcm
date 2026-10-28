@@ -246,6 +246,75 @@ describe("base mock de projetos", () => {
     expect(mockCasosTesteApi.transferirParaBackup(testCase.id)).toMatchObject({ responsavel_id: "mock-user-kp", backup_id: "mock-user-dev" });
   });
 
+  it("importa o Automation Level de cada caso e deixa vazio quando a coluna ou a célula faltam", async () => {
+    const cabecalho = ["App", "TC ID", "Difficulty", "Category", "Automation Level", "TC Situation", "One UI", "Assignees", "Backup"];
+    const linha = (tcId: string, nivel: unknown) => ["Clock", tcId, "Low", "A", nivel, "New", "9.5", "Daniel Oliveira", "Kaique Pereira"];
+
+    const comColuna = await mockProjetosApi.importar(planilhaFile([cabecalho, linha("Clock_001", 1), linha("Clock_002", ""), linha("Clock_003", "3.0")]), "mock-team-platform", []);
+    const semColuna = await mockProjetosApi.importar(planilhaFile([
+      ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI", "Assignees", "Backup"],
+      ["Weather", "Weather_001", "Low", "A", "New", "9.5", "Daniel Oliveira", "Kaique Pereira"],
+    ]), "mock-team-platform", []);
+
+    const niveis = (projetoId: string) => Object.fromEntries(mockCasosTesteApi.listar(projetoId, 1, 10).items.map((caso) => [caso.tc_id, caso.automation_level]));
+    expect(niveis(comColuna.projeto.id)).toEqual({ Clock_001: 1, Clock_002: null, Clock_003: 3 });
+    expect(niveis(semColuna.projeto.id)).toEqual({ Weather_001: null });
+  });
+
+  it("recusa a importação com Automation Level inválido, apontando linha e coluna, sem criar o projeto", async () => {
+    const total = mockProjetosApi.listar(1, 100).total_count;
+    const arquivo = planilhaFile([
+      ["App", "TC ID", "Difficulty", "Category", "Automation Level", "TC Situation", "One UI", "Assignees", "Backup"],
+      ["Clock", "Clock_001", "Low", "A", 4, "New", "9.5", "Daniel Oliveira", "Kaique Pereira"],
+    ]);
+
+    await expect(mockProjetosApi.importar(arquivo, "mock-team-platform", [])).rejects.toMatchObject({
+      problem: { errors: [expect.objectContaining({ codigo: "valor_invalido", linha: 2, coluna: "Automation Level", valor: "4" })] },
+    });
+    expect(mockProjetosApi.listar(1, 100).total_count).toBe(total);
+  });
+
+  it("cria Test Case com ou sem Automation Level e recusa nível fora de 1, 2 e 3", () => {
+    const project = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: [] });
+    const base = { category: "A" as const, difficulty: "Low" as const, situation: "New" as const, responsavel_id: "mock-user-dev", backup_id: "mock-user-kp" };
+
+    expect(mockCasosTesteApi.criar(project.id, { ...base, tc_id: "Clock_010", automation_level: 2 })).toMatchObject({ automation_level: 2 });
+    expect(mockCasosTesteApi.criar(project.id, { ...base, tc_id: "Clock_011" })).toMatchObject({ automation_level: null });
+    expect(() => mockCasosTesteApi.criar(project.id, { ...base, tc_id: "Clock_012", automation_level: 4 as never })).toThrow(/Automation Level deve ser 1, 2 ou 3/);
+    expect(mockCasosTesteApi.listar(project.id, 1, 10).items.map((caso) => caso.tc_id)).not.toContain("Clock_012");
+  });
+
+  it("deixa a gestão e o responsável do caso definirem o Automation Level, e só eles", () => {
+    const project = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: [] });
+    const base = { category: "A" as const, difficulty: "Low" as const, situation: "New" as const };
+    const doDev = mockCasosTesteApi.criar(project.id, { ...base, tc_id: "Clock_020", responsavel_id: "mock-user-dev", backup_id: "mock-user-kp" });
+    const doKp = mockCasosTesteApi.criar(project.id, { ...base, tc_id: "Clock_021", responsavel_id: "mock-user-kp", backup_id: "mock-user-dev" });
+
+    expect(mockCasosTesteApi.atualizar(doKp.id, { automation_level: 3 })).toMatchObject({ automation_level: 3 });
+
+    entrar("daniel.oliveira@example.com");
+    expect(mockCasosTesteApi.atualizar(doDev.id, { automation_level: 1 })).toMatchObject({ automation_level: 1 });
+    expect(mockCasosTesteApi.atualizar(doDev.id, { status: "InProgress" })).toMatchObject({ automation_level: 1, status: "InProgress" });
+    expect(() => mockCasosTesteApi.atualizar(doDev.id, { automation_level: 9 as never })).toThrow(/Automation Level deve ser 1, 2 ou 3/);
+    // Daniel é só o backup do segundo caso: o backup apenas cancela.
+    expect(() => mockCasosTesteApi.atualizar(doKp.id, { automation_level: 1 })).toThrow(/só pode cancelar/);
+    expect(mockCasosTesteApi.listar(project.id, 1, 10).items.find((caso) => caso.id === doKp.id)).toMatchObject({ automation_level: 3 });
+  });
+
+  it("schema 19 deixa os Test Cases anteriores sem Automation Level", () => {
+    const database = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+    const antigo = { id: "antigo", unidade_id: database.unidade.id, projeto_id: "p", tc_id: "TC-A", category: "A", difficulty: "Low", situation: "New", status: "To-Do", responsavel_id: "mock-user-dev", backup_id: null, ativo: true, created_at: null, updated_at: null };
+    database.casosTeste = [antigo];
+    database.schemaVersion = 18;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(database));
+
+    mockProjetosApi.listar(1, 10);
+    const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+
+    expect(migrado.schemaVersion).toBe(19);
+    expect(migrado.casosTeste[0]).toHaveProperty("automation_level", null);
+  });
+
   it("preserva lotes anteriores ao importar novos relatórios SDF", () => {
     const project = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: [] });
     const file1 = new File(["sdf-1"], "resultado-1.xlsx");
@@ -431,7 +500,7 @@ describe("base mock de projetos", () => {
     mockProjetosApi.listar(1, 10);
     const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
 
-    expect(migrado.schemaVersion).toBe(18);
+    expect(migrado.schemaVersion).toBeGreaterThanOrEqual(18);
     expect(migrado.casosTeste.map((testCase: { status: string }) => testCase.status)).toEqual(["InFixes", "InReview"]);
   });
 
