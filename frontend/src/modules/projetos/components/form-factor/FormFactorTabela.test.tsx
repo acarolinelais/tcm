@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/ui/table";
+import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import type { FormFactorMatriz } from "../../model/projeto";
 import { FormFactorTabela } from "./FormFactorTabela";
 

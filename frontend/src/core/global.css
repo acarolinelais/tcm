@@ -156,36 +156,13 @@ body {
   animation: dialog-enter 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes drawer-overlay-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes drawer-enter {
-  from { opacity: 0.8; transform: translateX(1rem); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-.drawer-overlay[data-state="open"] {
-  animation: drawer-overlay-in 160ms ease-out;
-}
-
-.drawer-content[data-state="open"] {
-  animation: drawer-enter 200ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
 /* Saídas: mesmo caminho da entrada, mais curtas e suaves. */
-.dialog-overlay[data-state="closed"],
-.drawer-overlay[data-state="closed"] {
+.dialog-overlay[data-state="closed"] {
   animation: dialog-fade-in 140ms ease-out reverse;
 }
 
 .dialog-content[data-state="closed"] {
   animation: dialog-enter 140ms ease-out reverse;
-}
-
-.drawer-content[data-state="closed"] {
-  animation: drawer-enter 160ms ease-out reverse;
 }
 
 /* Menus e popovers nascem do gatilho. */
@@ -210,52 +187,27 @@ body {
   pointer-events: none;
 }
 
-.select-content {
-  transform-origin: var(--radix-select-content-transform-origin);
-}
-
-/* Popups do Base UI: transição (interrompível) que entra e sai pelo mesmo caminho, a partir do gatilho. */
-.base-popup {
-  transform-origin: var(--transform-origin);
-  transition: opacity 140ms cubic-bezier(0.2, 0, 0, 1), scale 140ms cubic-bezier(0.2, 0, 0, 1);
-}
-
-.base-popup[data-starting-style],
-.base-popup[data-ending-style] {
-  opacity: 0;
-  scale: 0.96;
-}
-
 /* Movimento reduzido: sem deslizar nem escalar, mas com um fade curto (o retorno visual continua). */
 @media (prefers-reduced-motion: reduce) {
   .dialog-overlay[data-state="open"],
   .dialog-content[data-state="open"],
-  .drawer-overlay[data-state="open"],
-  .drawer-content[data-state="open"],
   .popover-enter {
     animation: dialog-fade-in 140ms ease-out;
   }
 
   .dialog-overlay[data-state="closed"],
-  .dialog-content[data-state="closed"],
-  .drawer-overlay[data-state="closed"],
-  .drawer-content[data-state="closed"] {
+  .dialog-content[data-state="closed"] {
     animation: dialog-fade-in 120ms ease-out reverse;
   }
 
   .popover-enter[data-saindo="true"] {
     animation: dialog-fade-in 100ms ease-out reverse forwards;
   }
-
-  .base-popup {
-    transition-property: opacity;
-  }
 }
 
 /* Transparência reduzida: overlays sem desfoque e um pouco mais opacos. */
 @media (prefers-reduced-transparency: reduce) {
-  .dialog-overlay,
-  .drawer-overlay {
+  .dialog-overlay {
     backdrop-filter: none;
     background-color: rgb(2 6 23 / 0.6);
   }
