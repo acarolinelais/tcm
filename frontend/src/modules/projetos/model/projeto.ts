@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import type { PagedResult } from "@/shared/types/paged-result";
 
 export type StatusProjeto = "Created" | "To Do" | "InProgress" | "Completed" | "Canceled";
@@ -71,6 +73,9 @@ export interface CasoTeste {
   updated_at: string | null;
 }
 
+/** Basta o id e o TC ID para abrir o painel de detalhes pelas tabelas de Test Cases, Form Factor e Resultados gerais (spec 030). */
+export type CasoTesteResumo = Pick<CasoTeste, "id" | "tc_id">;
+
 /** Detalhe do Test Case (spec 028): os textos da planilha só vêm no `GET /api/test-cases/{id}`. */
 export interface CasoTesteDetalhe extends CasoTeste {
   title: string | null;
@@ -87,6 +92,48 @@ export const MAX_TEXTO_CASO_TESTE = 10_000;
 
 /** Limite da justificativa de exclusão (spec 026). */
 export const MAX_JUSTIFICATIVA_EXCLUSAO = 500;
+
+/** Link de PR do Test Case (spec 030). Espelha o `LinkPullRequestResponse` do backend. */
+export interface LinkPullRequest {
+  id: string;
+  caso_teste_id: string;
+  url: string;
+  created_at: string | null;
+  created_by: string;
+  created_by_nome: string;
+}
+
+export interface LinksPullRequest {
+  itens: LinkPullRequest[];
+  /** Calculado pela API: só a gestão remove (spec 030, RN-04). */
+  pode_remover: boolean;
+}
+
+/** Mesmas regras de `LinkPullRequest.normalizar_url` no backend (spec 030, RN-02). */
+const DOMINIO_PULL_REQUEST = "github.sec.samsung.net";
+export const MAX_URL_PULL_REQUEST = 2000;
+
+/** O endereço é o trecho entre `https://` e a primeira `/`, `?` ou `#`. Os espaços das pontas não contam. */
+export function problemaUrlPullRequest(url: string): "vazia" | "longa" | "invalida" | "dominio" | null {
+  const normalizada = url.trim();
+  if (!normalizada) return "vazia";
+  if (normalizada.length > MAX_URL_PULL_REQUEST) return "longa";
+  const endereco = /^https:\/\/([^/?#]*)/i.exec(normalizada)?.[1];
+  if (/\s/.test(normalizada) || !endereco) return "invalida";
+  // O endereço inteiro tem de ser o domínio: recusa porta, usuário/senha e subdomínio.
+  return endereco.toLowerCase() === DOMINIO_PULL_REQUEST ? null : "dominio";
+}
+
+const MENSAGEM_URL_PULL_REQUEST = { vazia: "pullRequestUrlRequired", longa: "pullRequestUrlMax", invalida: "pullRequestUrlInvalid", dominio: "pullRequestUrlDomain" } as const;
+
+export const createLinkPullRequestSchema = (t: (key: string) => string) => z.object({
+  url: z.string().trim().superRefine((url, ctx) => {
+    const problema = problemaUrlPullRequest(url);
+    if (problema) ctx.addIssue({ code: z.ZodIssueCode.custom, message: t(MENSAGEM_URL_PULL_REQUEST[problema]) });
+  }),
+});
+
+export type LinkPullRequestFormValues = z.infer<ReturnType<typeof createLinkPullRequestSchema>>;
 
 /** Coluna da matriz do Form Factor: um modelo vinculado ao projeto. */
 export interface ModeloFormFactor {

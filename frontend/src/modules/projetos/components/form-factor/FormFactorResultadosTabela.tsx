@@ -7,7 +7,8 @@ import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
 import { DataTableFilter, DataTableMultiFilter, type DataTableFilterOption } from "@/shared/ui/data-table-filter";
 import { DataTablePagination } from "@/shared/ui/data-table-pagination";
 import { estadoDaTabela } from "@/shared/ui/data-table-state";
-import type { FormFactorResultados } from "../../model/projeto";
+import type { CasoTesteResumo, FormFactorResultados } from "../../model/projeto";
+import { TcIdBotao } from "../casos-teste/TcIdBotao";
 import { colunasPorModelo } from "./colunas-form-factor";
 
 type Execucao = FormFactorResultados["items"][number];
@@ -15,7 +16,9 @@ type Filtros = { tcId: string; sdfId: string; origem: string; modeloDispositivoI
 const chaveDaExecucao = (execucao: Execucao) => execucao.execucao_id;
 const SEM_EXECUCOES: Execucao[] = [];
 
-export function FormFactorResultadosTabela({ dados, carregando, erro, identificadoresMembros, opcoesAssignee, filtros, responsaveis, onResponsaveisChange, onFiltroChange, onFiltroResultado, onLimparFiltros, page, pageSize, onPageChange, onPageSizeChange }: {
+export function FormFactorResultadosTabela({ onAbrirDetalhes, dados, carregando, erro, identificadoresMembros, opcoesAssignee, filtros, responsaveis, onResponsaveisChange, onFiltroChange, onFiltroResultado, onLimparFiltros, page, pageSize, onPageChange, onPageSizeChange }: {
+  /** Abre o painel de detalhes do caso pelo TC ID (spec 030). */
+  onAbrirDetalhes: (caso: CasoTesteResumo) => void;
   dados?: FormFactorResultados;
   carregando: boolean;
   erro: boolean;
@@ -35,7 +38,7 @@ export function FormFactorResultadosTabela({ dados, carregando, erro, identifica
   const items = erro ? SEM_EXECUCOES : dados?.items ?? SEM_EXECUCOES;
   const modelos = dados?.modelos ?? [];
   const colunas: DataTableColumn<Execucao>[] = [
-    { id: "tcId", isRowHeader: true, header: <DataTableFilter label={t("tcId")} value={filtros.tcId} onChange={(v) => onFiltroChange("tcId", v)} />, cell: (execucao) => execucao.tc_id },
+    { id: "tcId", isRowHeader: true, header: <DataTableFilter label={t("tcId")} value={filtros.tcId} onChange={(v) => onFiltroChange("tcId", v)} />, cell: (execucao) => <TcIdBotao caso={{ id: execucao.caso_teste_id, tc_id: execucao.tc_id }} onAbrir={onAbrirDetalhes} /> },
     { id: "sdfId", header: <DataTableFilter label={t("sdfId")} value={filtros.sdfId} onChange={(v) => onFiltroChange("sdfId", v)} />, cell: (execucao) => execucao.sdf_id ?? "—" },
     { id: "assignee", header: <DataTableMultiFilter label={t("assignee")} values={responsaveis} onChange={onResponsaveisChange} options={opcoesAssignee} searchable />, cell: (execucao) => identificadoresMembros[execucao.responsavel_id] ?? "—" },
     { id: "origem", header: <DataTableFilter label={t("origin")} value={filtros.origem} onChange={(v) => onFiltroChange("origem", v)} options={comOpcaoTodos(t("all"), [{ value: "SDF", label: "SDF" }, { value: "MANUAL", label: t("manual") }])} />, cell: (execucao) => execucao.origem === "SDF" ? "SDF" : t("manual") },

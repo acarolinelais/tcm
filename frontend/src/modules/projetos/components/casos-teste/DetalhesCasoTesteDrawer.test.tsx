@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,7 +8,7 @@ import { casosTesteApi, type CasoTeste, type CasoTesteDetalhe } from "../../api/
 import { DetalhesCasoTesteDrawer } from "./DetalhesCasoTesteDrawer";
 
 vi.mock("../../api/projetos.api", () => ({
-  projetosApi: {}, casosTesteApi: { obter: vi.fn() }, formFactorApi: {}, modelosDispositivoApi: {},
+  projetosApi: {}, casosTesteApi: { obter: vi.fn(), listarPullRequests: vi.fn() }, formFactorApi: {}, modelosDispositivoApi: {},
 }));
 
 const caso: CasoTeste = {
@@ -30,12 +30,16 @@ const falharCom = (status: number) => vi.mocked(casosTesteApi.obter).mockImpleme
 function renderDrawer(onFechar = vi.fn()) {
   // `retryDelay: 0`: o hook decide quantas vezes repetir (nunca no 404), e o teste não espera o intervalo entre elas.
   const client = new QueryClient({ defaultOptions: { queries: { retryDelay: 0 } } });
-  render(<QueryClientProvider client={client}><DetalhesCasoTesteDrawer caso={caso} onFechar={onFechar} /></QueryClientProvider>);
-  return onFechar;
+  const ui = (aberto: { id: string; tc_id: string }) => <QueryClientProvider client={client}><DetalhesCasoTesteDrawer caso={aberto} onFechar={onFechar} /></QueryClientProvider>;
+  const { rerender } = render(ui(caso));
+  return Object.assign(onFechar, { abrir: (outro: { id: string; tc_id: string }) => rerender(ui(outro)) });
 }
 
 describe("DetalhesCasoTesteDrawer", () => {
-  beforeEach(() => { vi.mocked(casosTesteApi.obter).mockReset(); });
+  beforeEach(() => {
+    vi.mocked(casosTesteApi.obter).mockReset();
+    vi.mocked(casosTesteApi.listarPullRequests).mockReset().mockResolvedValue({ itens: [], pode_remover: false });
+  });
 
   it("mostra o TC ID no título e as quatro seções na ordem do Figma, com o nome destacado", async () => {
     vi.mocked(casosTesteApi.obter).mockResolvedValue(detalhe);
@@ -59,14 +63,15 @@ describe("DetalhesCasoTesteDrawer", () => {
     expect(valores[3].textContent).toBe("—");
   });
 
-  it.each(["Cancel", "Done"])("é só de leitura: sem campos, e o botão %s do rodapé fecha o painel", async (botao) => {
+  it.each(["Cancel", "Done"])("os textos são só de leitura: o único campo é o do link de PR, e o botão %s do rodapé fecha o painel", async (botao) => {
     vi.mocked(casosTesteApi.obter).mockResolvedValue(detalhe);
     const user = userEvent.setup();
     const onFechar = renderDrawer();
 
     const drawer = screen.getByRole("dialog");
     await within(drawer).findAllByRole("term");
-    expect(within(drawer).queryByRole("textbox")).not.toBeInTheDocument();
+    expect(within(drawer).getAllByRole("textbox")).toHaveLength(1);
+    expect(within(drawer).getByRole("textbox", { name: "PR link" })).toBeInTheDocument();
     expect(within(drawer).queryByRole("combobox")).not.toBeInTheDocument();
     await user.click(within(drawer).getByRole("button", { name: botao }));
     expect(onFechar).toHaveBeenCalled();
@@ -95,6 +100,7 @@ describe("DetalhesCasoTesteDrawer", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("This Test Case wasn't found.");
     expect(screen.queryByRole("term")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Pull Requests" })).not.toBeInTheDocument();
     expect(casosTesteApi.obter).toHaveBeenCalledTimes(1);
   });
 
@@ -117,5 +123,29 @@ describe("DetalhesCasoTesteDrawer", () => {
     vi.mocked(casosTesteApi.obter).mockResolvedValue(detalhe);
     await user.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText(detalhe.title!)).toBeInTheDocument();
+  });
+
+  it("mostra a seção Pull Requests abaixo dos textos, que continuam visíveis se os links não carregarem", async () => {
+    vi.mocked(casosTesteApi.obter).mockResolvedValue(detalhe);
+    vi.mocked(casosTesteApi.listarPullRequests).mockRejectedValue(new ApiError({ type: "about:blank", title: "Erro", status: 500 }));
+    renderDrawer();
+
+    expect(await screen.findByRole("heading", { name: "Pull Requests" })).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't load the PRs.");
+    expect(screen.getByText(detalhe.title!)).toBeInTheDocument();
+    expect(casosTesteApi.listarPullRequests).toHaveBeenCalledWith("case-1");
+  });
+
+  it("abre a partir de só o id e o TC ID, e uma URL digitada não passa para outro caso", async () => {
+    vi.mocked(casosTesteApi.obter).mockImplementation(async (id) => ({ ...detalhe, id, tc_id: id === "case-2" ? "Clock_000002" : detalhe.tc_id }));
+    const user = userEvent.setup();
+    const drawer = renderDrawer();
+
+    await user.type(await screen.findByRole("textbox", { name: "PR link" }), "https://github.sec.samsung.net/x");
+    drawer.abrir({ id: "case-2", tc_id: "Clock_000002" });
+
+    expect(await screen.findByRole("heading", { name: "Clock_000002" })).toBeInTheDocument();
+    await waitFor(() => expect(casosTesteApi.listarPullRequests).toHaveBeenCalledWith("case-2"));
+    expect(await screen.findByRole("textbox", { name: "PR link" })).toHaveValue("");
   });
 });

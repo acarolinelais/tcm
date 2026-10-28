@@ -1,11 +1,13 @@
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { FormFactorGlobalResultadosTabela } from "./FormFactorGlobalTabela";
 
 describe("FormFactorGlobalResultadosTabela", () => {
-  it("mantém cada execução anterior em uma linha com projeto e origem", () => {
+  it("mantém cada execução anterior em uma linha com projeto e origem", async () => {
+    const onAbrirDetalhes = vi.fn();
     render(<MemoryRouter><FormFactorGlobalResultadosTabela
       dados={{
         modelos: [{ id: "m1", nome: "SM-123" }],
@@ -18,7 +20,7 @@ describe("FormFactorGlobalResultadosTabela", () => {
       }}
       carregando={false} erro={false} projetos={[]}
       filtros={{ page: 1, pageSize: 20, tcId: "", sdfId: "", responsavelId: "", modeloDispositivoId: "", resultado: "", origem: undefined, projetoId: "" }}
-      onFiltroChange={vi.fn()} onLimparFiltros={vi.fn()} temFiltros={false}
+      onFiltroChange={vi.fn()} onAbrirDetalhes={onAbrirDetalhes} onLimparFiltros={vi.fn()} temFiltros={false}
       page={1} pageSize={20} onPageChange={vi.fn()} onPageSizeChange={vi.fn()}
     /></MemoryRouter>);
 
@@ -28,5 +30,8 @@ describe("FormFactorGlobalResultadosTabela", () => {
     expect(screen.getByText("PASS")).toBeInTheDocument();
     expect(screen.getByText("FAIL")).toBeInTheDocument();
     expect(within(screen.getAllByRole("row", { name: /TC-001/ })[1]).getByText("SDF-1")).toBeInTheDocument();
+    // Spec 030: o TC ID de qualquer execução abre o painel do caso.
+    await userEvent.click(within(screen.getAllByRole("row", { name: /TC-001/ })[1]).getByRole("button", { name: "TC-001" }));
+    expect(onAbrirDetalhes).toHaveBeenCalledWith(expect.objectContaining({ tc_id: "TC-001" }));
   });
 });

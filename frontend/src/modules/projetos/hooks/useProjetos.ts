@@ -80,13 +80,46 @@ export function useCasosTeste(projetoId: string, page: number, pageSize: number,
 
 export const ehNaoEncontrado = (erro: unknown) => erro instanceof ApiError && erro.problem.status === 404;
 
-/** Detalhe de um Test Case com os textos da planilha (spec 028). Erro 4xx não é repetido: outra tentativa não muda a resposta. */
+/** 4xx (ex.: caso fora do escopo) não melhora tentando de novo. */
+const semRetryEm4xx = (falhas: number, erro: Error) => !(erro instanceof ApiError && erro.problem.status < 500) && falhas < 3;
+
+/** Detalhe de um Test Case com os textos da planilha (spec 028). */
 export function useCasoTeste(id: string, perfil?: PerfilAtual) {
   return useQuery({
     queryKey: ["projetos", "test-cases", "detalhe", id, perfil?.unidade_id, perfil?.id],
     queryFn: () => casosTesteApi.obter(id),
     enabled: Boolean(id),
-    retry: (falhas, erro) => !(erro instanceof ApiError && erro.problem.status < 500) && falhas < 3,
+    retry: semRetryEm4xx,
+  });
+}
+
+const pullRequestsQueryKey = (casoId: string) => ["projetos", "test-cases", "pull-requests", casoId] as const;
+
+/** Links de PR do caso (spec 030). As mutações só invalidam esta lista: os links não aparecem nas tabelas. */
+export function usePullRequestsCasoTeste(casoId: string, perfil?: PerfilAtual) {
+  return useQuery({
+    queryKey: [...pullRequestsQueryKey(casoId), perfil?.unidade_id, perfil?.id],
+    queryFn: () => casosTesteApi.listarPullRequests(casoId),
+    enabled: Boolean(casoId),
+    retry: semRetryEm4xx,
+  });
+}
+
+export function useAdicionarPullRequest(casoId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (url: string) => casosTesteApi.adicionarPullRequest(casoId, url),
+    // Também no erro: um 409 significa que outra pessoa já adicionou o link, e a lista precisa mostrá-lo.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: pullRequestsQueryKey(casoId) }),
+  });
+}
+
+export function useRemoverPullRequest(casoId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (linkId: string) => casosTesteApi.removerPullRequest(casoId, linkId),
+    // Também no erro: um 404 significa que outra pessoa já removeu, e a lista precisa refletir isso.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: pullRequestsQueryKey(casoId) }),
   });
 }
 

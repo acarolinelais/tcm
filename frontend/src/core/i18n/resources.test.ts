@@ -21,6 +21,15 @@ describe("translation resources", () => {
     expect(resources.en.translation.caseProcedure).toBe("Test Procedure(English)");
   });
 
+  it("has the PR link section texts in every language", () => {
+    const chaves = ["pullRequests", "pullRequestUrl", "noPullRequests", "pullRequestsLoadError", "pullRequestAddedBy", "removePullRequest", "removePullRequestTitle", "removePullRequestDescription", "pullRequestAdded", "pullRequestRemoved", "pullRequestAddError", "pullRequestRemoveError", "pullRequestNotFound", "pullRequestDuplicate", "pullRequestUrlRequired", "pullRequestUrlInvalid", "pullRequestUrlDomain", "pullRequestUrlMax"] as const;
+    for (const language of ["en", "pt-BR", "ko"] as const) {
+      for (const key of chaves) expect(resources[language].translation[key], `${language} ${key}`).toBeTruthy();
+      expect(resources[language].translation.pullRequestUrlDomain).toContain("github.sec.samsung.net");
+    }
+    expect(resources["pt-BR"].translation.noPullRequests).toBe("Nenhum PR registrado");
+  });
+
   it("labels each Automation Level with its number in every language", () => {
     for (const language of ["en", "pt-BR", "ko"] as const) {
       const { translation } = resources[language];

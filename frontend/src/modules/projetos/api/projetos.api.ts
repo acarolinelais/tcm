@@ -1,4 +1,4 @@
-import { httpDelete, httpGet, httpPatchBody, httpPost, httpPostForm, httpPut } from "@/core/api/http-client";
+import { httpDelete, httpGet, httpPatch, httpPatchBody, httpPost, httpPostForm, httpPut } from "@/core/api/http-client";
 import { useMock } from "@/core/config";
 import {
   mockCasosTesteApi,
@@ -26,6 +26,8 @@ import type {
   EnviarResultadosRodadaInput,
   ImportacaoProjeto,
   ImportacaoSdf,
+  LinkPullRequest,
+  LinksPullRequest,
   OpcaoModeloDispositivo,
   Projeto,
   StatusProjeto,
@@ -53,6 +55,8 @@ export type {
   ImportacaoProjeto,
   ImportacaoSdf,
   LinhaFormFactor,
+  LinkPullRequest,
+  LinksPullRequest,
   OpcaoModeloDispositivo,
   Projeto,
   SituacaoCasoTeste,
@@ -130,6 +134,21 @@ export const casosTesteApi = {
     return useMock
       ? Promise.resolve(mockCasosTesteApi.transferirParaBackup(id))
       : httpPatchBody<CasoTeste>(`/api/test-cases/${id}/transferir-para-backup`, {});
+  },
+  listarPullRequests(casoId: string) {
+    return useMock
+      ? Promise.resolve(mockCasosTesteApi.listarPullRequests(casoId))
+      : httpGet<LinksPullRequest>(`/api/test-cases/${casoId}/pull-requests`);
+  },
+  adicionarPullRequest(casoId: string, url: string) {
+    return useMock
+      ? Promise.resolve(mockCasosTesteApi.adicionarPullRequest(casoId, url))
+      : httpPost<LinkPullRequest>(`/api/test-cases/${casoId}/pull-requests`, { url });
+  },
+  removerPullRequest(casoId: string, linkId: string) {
+    return useMock
+      ? Promise.resolve(mockCasosTesteApi.removerPullRequest(casoId, linkId))
+      : httpPatch<void>(`/api/test-cases/${casoId}/pull-requests/${linkId}/inativar`);
   },
 };
 

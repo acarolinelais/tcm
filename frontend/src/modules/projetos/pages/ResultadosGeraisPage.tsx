@@ -9,8 +9,9 @@ import { PageCard, PageTitle } from "@/shared/ui/page-card";
 import { PageTabPanel, PageTabs } from "@/shared/ui/page-tabs";
 import { WeekPickerHero } from "@/shared/ui/week-picker-hero";
 import { useFormFactorGlobal, useFormFactorResultadosGlobais, useProjetosSeletor } from "../hooks/useProjetos";
-import type { FiltrosFormFactorGlobal } from "../model/projeto";
+import type { CasoTesteResumo, FiltrosFormFactorGlobal } from "../model/projeto";
 import { FormFactorGlobalResultadosTabela, FormFactorGlobalTabela } from "../components/form-factor/FormFactorGlobalTabela";
+import { DetalhesCasoTesteDrawer } from "../components/casos-teste/DetalhesCasoTesteDrawer";
 
 type Visao = "summary" | "results";
 
@@ -33,6 +34,7 @@ export function ResultadosGeraisPage() {
   const [visao, setVisao] = useState<Visao>("summary");
   const [semana, setSemana] = useState("");
   const [filtros, setFiltros] = useState(filtrosIniciais);
+  const [casoDetalhado, setCasoDetalhado] = useState<CasoTesteResumo | null>(null);
   const projetosQuery = useProjetosSeletor(perfil, permitido);
   const projetos = projetosQuery.data?.pages.flatMap((pagina) => pagina.items) ?? [];
   const { fetchNextPage, hasNextPage, isFetchingNextPage } = projetosQuery;
@@ -69,7 +71,7 @@ export function ResultadosGeraisPage() {
     onPageChange: (page: number) => setFiltros((atual) => ({ ...atual, page })),
     onPageSizeChange: (pageSize: number) => setFiltros((atual) => ({ ...atual, page: 1, pageSize })),
   };
-  const comuns = { projetos, filtros, onFiltroChange: alterarFiltro, temFiltros, onLimparFiltros: limparFiltros, ...paginacao };
+  const comuns = { projetos, filtros, onFiltroChange: alterarFiltro, onAbrirDetalhes: setCasoDetalhado, temFiltros, onLimparFiltros: limparFiltros, ...paginacao };
 
   return <PageCard>
     <header className="mb-[25px] flex shrink-0 flex-wrap items-start gap-4">
@@ -97,5 +99,6 @@ export function ResultadosGeraisPage() {
         <FormFactorGlobalResultadosTabela dados={historico.data} carregando={historico.isLoading} erro={historico.isError || projetosQuery.isError} {...comuns} />
       </PageTabPanel>
     </PageTabs>
+    <DetalhesCasoTesteDrawer caso={casoDetalhado} perfil={perfil} onFechar={() => setCasoDetalhado(null)} />
   </PageCard>;
 }

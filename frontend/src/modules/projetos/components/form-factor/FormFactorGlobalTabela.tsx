@@ -9,8 +9,10 @@ import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
 import { DataTableFilter } from "@/shared/ui/data-table-filter";
 import { DataTablePagination } from "@/shared/ui/data-table-pagination";
 import { estadoDaTabela } from "@/shared/ui/data-table-state";
-import type { Projeto } from "../../model/projeto";
+import { linkClassName } from "@/shared/ui/link";
+import type { CasoTesteResumo, Projeto } from "../../model/projeto";
 import type { FormFactorGlobal, FiltrosFormFactorGlobal, FormFactorResultadosGlobais } from "../../model/projeto";
+import { TcIdBotao } from "../casos-teste/TcIdBotao";
 import { colunasPorModelo } from "./colunas-form-factor";
 
 type Filtro = keyof Pick<FiltrosFormFactorGlobal, "projetoId" | "responsavelId" | "tcId" | "sdfId" | "modeloDispositivoId" | "resultado" | "origem">;
@@ -24,6 +26,8 @@ interface Props<T extends DadosGlobais> {
   projetos: Projeto[];
   filtros: FiltrosFormFactorGlobal;
   onFiltroChange: (campo: Filtro, valor: string) => void;
+  /** Abre o painel de detalhes do caso pelo TC ID (spec 030). */
+  onAbrirDetalhes: (caso: CasoTesteResumo) => void;
   onLimparFiltros: () => void;
   temFiltros: boolean;
   page: number;
@@ -35,15 +39,15 @@ interface Props<T extends DadosGlobais> {
 const SEM_LINHAS: Linha[] = [];
 
 /** Colunas que o Resumo e o histórico compartilham: projeto, TC, SDF ID e responsável, com os filtros no cabeçalho. */
-function colunasComuns<T extends Linha>(t: TFunction, { dados, projetos, filtros, onFiltroChange }: Props<DadosGlobais>): DataTableColumn<T>[] {
+function colunasComuns<T extends Linha>(t: TFunction, { dados, projetos, filtros, onFiltroChange, onAbrirDetalhes }: Props<DadosGlobais>): DataTableColumn<T>[] {
   const responsaveis = dados?.responsaveis ?? [];
   return [
     {
       id: "projeto",
       header: <DataTableFilter label={t("project")} value={filtros.projetoId ?? ""} onChange={(value) => onFiltroChange("projetoId", value)} options={comOpcaoTodos(t("all"), projetos.map((projeto) => ({ value: projeto.id, label: projeto.nome })))} searchable />,
-      cell: (linha) => <Link to={`/projetos/${linha.projeto_id}`} className="text-accent underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{linha.projeto_nome}</Link>,
+      cell: (linha) => <Link to={`/projetos/${linha.projeto_id}`} className={linkClassName}>{linha.projeto_nome}</Link>,
     },
-    { id: "tcId", isRowHeader: true, header: <DataTableFilter label={t("tcId")} value={filtros.tcId ?? ""} onChange={(value) => onFiltroChange("tcId", value)} />, cell: (linha) => linha.tc_id },
+    { id: "tcId", isRowHeader: true, header: <DataTableFilter label={t("tcId")} value={filtros.tcId ?? ""} onChange={(value) => onFiltroChange("tcId", value)} />, cell: (linha) => <TcIdBotao caso={{ id: linha.caso_teste_id, tc_id: linha.tc_id }} onAbrir={onAbrirDetalhes} /> },
     { id: "sdfId", header: <DataTableFilter label={t("sdfId")} value={filtros.sdfId ?? ""} onChange={(value) => onFiltroChange("sdfId", value)} />, cell: (linha) => linha.sdf_id ?? "—" },
     {
       id: "assignee",

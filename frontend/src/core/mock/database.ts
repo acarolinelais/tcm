@@ -25,10 +25,13 @@ import {
   type EnviarResultadosRodadaInput,
   type RodadaFormFactor,
   type LinhaFormFactor,
+  type LinkPullRequest,
+  type LinksPullRequest,
   type Projeto,
   type StatusProjeto,
   NIVEIS_AUTOMACAO_CASO_TESTE,
   MAX_JUSTIFICATIVA_EXCLUSAO,
+  problemaUrlPullRequest,
 } from "@/modules/projetos/model/projeto";
 import type { ModeloDispositivo } from "@/modules/modelos-dispositivo/model/modelo-dispositivo";
 import { lerPlanilhaProjeto, PlanilhaProjetoError, type PessoasDaLinha, type PlanilhaProjeto } from "@/modules/projetos/utils/planilha-projeto";
@@ -53,6 +56,9 @@ interface ResultadoFormFactorMock {
   data_reportada: string;
   origem?: "SDF" | "MANUAL";
 }
+
+/** Link de PR (spec 030): a remoção é lógica, como na API. */
+type LinkPullRequestMock = Omit<LinkPullRequest, "created_by_nome"> & { ativo: boolean };
 
 interface ExecucaoFormFactorMock {
   execucao_id: string;
@@ -83,6 +89,7 @@ interface Database {
   rodadasFormFactor: RodadaFormFactor[];
   execucoesFormFactor: ExecucaoFormFactorMock[];
   importacoesSdf: { importacao_id: string; projeto_id: string; importado_em: string }[];
+  linksPullRequest: LinkPullRequestMock[];
   idiomaPorUsuario: Record<string, PerfilAtual["idioma_preferido"]>;
   senhasAlteradas: string[];
 }
@@ -130,7 +137,7 @@ function createSeed(): Database {
     { id: "mock-user-inactive", nome: "Rafael Lima", email: "rafael.lima@example.com", ativo: false, perfil_id: standardProfile.id, responsavel_id: MANAGER_ID, created_at: "2026-02-10T12:00:00Z" },
   ].map((user: Usuario) => ({ ...user, user_id: user.user_id ?? null }));
   return {
-    schemaVersion: 19,
+    schemaVersion: 20,
     unidade: { id: UNIT_ID, nome: "Manaus", ativo: true },
     usuarios: users,
     perfis: [adminProfile, standardProfile, managerProfile, kpProfile],
@@ -160,6 +167,7 @@ function createSeed(): Database {
     rodadasFormFactor: [],
     execucoesFormFactor: [],
     importacoesSdf: [],
+    linksPullRequest: [],
     idiomaPorUsuario: {},
     senhasAlteradas: [],
   };
@@ -325,6 +333,12 @@ function readDb(): Database {
       // Spec 027: os Test Cases anteriores não têm Automation Level.
       db.casosTeste.forEach((testCase) => { testCase.automation_level ??= null; });
       db.schemaVersion = 19;
+      return writeDb(db);
+    }
+    if ((db.schemaVersion ?? 1) < 20) {
+      // Spec 030: links de PR do Test Case.
+      db.linksPullRequest ??= [];
+      db.schemaVersion = 20;
       return writeDb(db);
     }
     return db;
@@ -827,6 +841,20 @@ function canManageMockProject(project: Projeto, permission: string) {
 /** Textos da planilha (spec 028): como na API, só o detalhe do caso os devolve. */
 const CAMPOS_TEXTO_CASO = new Set<string>(["title", "precondition", "procedure", "expected_result"] satisfies (keyof TextosCasoTeste)[]);
 
+const problema = (status: number, title: string, detail: string) => new ApiError({ type: "about:blank", title, status, detail });
+
+/** Mesma regra de `_pode_gerenciar` na API: admin, ou gerente/KP com `test_cases.gerenciar` no escopo do time. */
+function podeGerenciarCasosMock(db: Database, user: Usuario, profile: Perfil | undefined, project: Projeto) {
+  const team = db.times.find((item) => item.id === project.time_id);
+  return Boolean(team && canManageMockTeam(db, user.id, profile?.codigo, team))
+    && (profile?.codigo === "ADMIN_UNIDADE" || Boolean(profile?.permissoes.includes("test_cases.gerenciar")));
+}
+
+function linkPullRequestResponse(db: Database, link: LinkPullRequestMock): LinkPullRequest {
+  const { id, caso_teste_id, url, created_at, created_by } = link;
+  return { id, caso_teste_id, url, created_at, created_by, created_by_nome: db.usuarios.find((user) => user.id === created_by)?.nome ?? "" };
+}
+
 function getMockCase(db: Database, caseId: string) {
   const testCase = db.casosTeste.find((item) => item.id === caseId);
   if (!testCase) throw new Error("Test Case não encontrado.");
@@ -850,6 +878,42 @@ export const mockCasosTesteApi = {
     // Igual à API: os textos da planilha só saem no detalhe.
     const pagina = page(casosDoProjeto, pageNumber, pageSize);
     return { ...pagina, items: pagina.items.map((caso) => Object.fromEntries(Object.entries(caso).filter(([campo]) => !CAMPOS_TEXTO_CASO.has(campo))) as CasoTeste) };
+  },
+  listarPullRequests(caseId: string): LinksPullRequest {
+    requireMockPermission("test_cases.consultar");
+    const { db, user, profile } = mockProfile();
+    const { project } = getMockCase(db, caseId);
+    const itens = db.linksPullRequest
+      .filter((link) => link.caso_teste_id === caseId && link.ativo)
+      .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "") || a.id.localeCompare(b.id))
+      .map((link) => linkPullRequestResponse(db, link));
+    return { itens, pode_remover: podeGerenciarCasosMock(db, user, profile, project) };
+  },
+  adicionarPullRequest(caseId: string, url: string): LinkPullRequest {
+    requireMockPermission("test_cases.consultar");
+    const { user } = mockProfile();
+    return updateDb((db) => {
+      getMockCase(db, caseId);
+      if (problemaUrlPullRequest(url)) throw problema(422, "Requisição inválida.", "Informe um link https do github.sec.samsung.net.");
+      const normalizada = url.trim();
+      if (db.linksPullRequest.some((link) => link.caso_teste_id === caseId && link.ativo && link.url === normalizada)) {
+        throw problema(409, "Conflito.", "Este link de PR já está registrado neste Test Case.");
+      }
+      const link: LinkPullRequestMock = { id: id("mock-pr"), caso_teste_id: caseId, url: normalizada, created_at: new Date().toISOString(), created_by: user.id, ativo: true };
+      db.linksPullRequest.push(link);
+      return linkPullRequestResponse(db, link);
+    });
+  },
+  removerPullRequest(caseId: string, linkId: string): void {
+    requireMockPermission("test_cases.consultar");
+    const { user, profile } = mockProfile();
+    updateDb((db) => {
+      const { project } = getMockCase(db, caseId);
+      if (!podeGerenciarCasosMock(db, user, profile, project)) throw problema(403, "Acesso negado.", "Acesso negado.");
+      const link = db.linksPullRequest.find((item) => item.id === linkId && item.caso_teste_id === caseId && item.ativo);
+      if (!link) throw problema(404, "Recurso não encontrado.", "Link de PR não encontrado.");
+      link.ativo = false;
+    });
   },
   obter(caseId: string): CasoTesteDetalhe {
     requireMockPermission("test_cases.consultar");
@@ -943,7 +1007,7 @@ function aplicarAtualizacaoCaso(testCase: CasoTeste, { justificativa_exclusao, .
   else if (!estavaExcluido) testCase.justificativa_exclusao = justificativa_exclusao?.trim() ?? null;
 }
 
-const nomeModeloDuplicado = () => new ApiError({ type: "about:blank", title: "Conflito.", status: 409, detail: "Já existe um modelo de dispositivo com este nome." });
+const nomeModeloDuplicado = () => problema(409, "Conflito.", "Já existe um modelo de dispositivo com este nome.");
 
 export const mockModelosDispositivoApi = {
   listar(pageNumber: number, pageSize: number, active?: boolean, search?: string) {
