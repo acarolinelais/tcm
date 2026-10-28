@@ -12,6 +12,9 @@ import { useDismiss } from "@/shared/lib/use-dismiss";
 import { ChevronIcon } from "./sidebar-icons";
 import { rotaPai, rotuloDaRota } from "./voltar";
 
+/** Imagem padrão do avatar (esfera azul dos exemplos do HeroUI). Sem ela, o fallback mostra as iniciais. */
+export const AVATAR_PADRAO_URL = "https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/blue.jpg";
+
 export function Navbar({ perfil }: { perfil: PerfilAtual }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -52,7 +55,9 @@ export function Navbar({ perfil }: { perfil: PerfilAtual }) {
           <button type="button" aria-haspopup="menu" aria-expanded={menuAberto} onClick={() => setMenuAberto(!menuAberto)} title={t("userMenu")} className="flex items-center gap-1.5">
             {/* Decorativo: o nome já aparece ao lado. Tamanho e cor do Figma, menores que o `sm` do HeroUI. */}
             <Avatar aria-hidden="true" className="size-[21px]">
-              <Avatar.Fallback className="bg-[#8880F7] text-[11px] font-medium text-white">
+              <Avatar.Image src={AVATAR_PADRAO_URL} alt="" />
+              {/* O atraso evita piscar as iniciais enquanto a imagem carrega. */}
+              <Avatar.Fallback delayMs={600} className="bg-[#8880F7] text-[11px] font-medium text-white">
                 {iniciais(perfil.nome) || <UserRound className="size-3" strokeWidth={2} />}
               </Avatar.Fallback>
             </Avatar>

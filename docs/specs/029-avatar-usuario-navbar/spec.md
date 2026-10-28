@@ -11,8 +11,8 @@ de interface que o projeto adotou. Isso pesa para qualquer pessoa logada, de qua
 
 ## Objetivo
 
-O ícone do usuário logado passa a ser um avatar com as iniciais do nome, no mesmo tamanho e cor do layout
-atual. O menu do usuário (e-mail e sair) continua igual.
+O ícone do usuário logado passa a ser um avatar com a imagem padrão do HeroUI (esfera em degradê azul), no
+mesmo tamanho do layout atual. Se a imagem não carregar, o avatar mostra as iniciais do nome. O menu do usuário (e-mail e sair) continua igual.
 
 ## Histórias de usuário
 
@@ -30,12 +30,15 @@ atual. O menu do usuário (e-mail e sair) continua igual.
 - RN-05: O avatar mantém o tamanho, a cor de fundo e a cor do texto do layout atual (Figma), e a barra não
   muda de altura.
 - RN-06: O avatar é decorativo: o nome já aparece em texto ao lado, então leitores de tela não o anunciam.
-- RN-07: Não há foto de perfil. O avatar mostra sempre iniciais (ou o ícone da RN-04).
+- RN-07: Não há foto de perfil. O avatar mostra a imagem padrão do HeroUI (esfera azul) para todas as pessoas;
+  as iniciais (RN-01 a RN-04) são o fallback quando a imagem não carrega.
 
 ## Critérios de aceite
 
-- **CA-01:** Dado uma pessoa logada com o nome `Ana Carolina Lais`, quando a barra superior aparece, então o
-  avatar mostra `AL` e o primeiro nome `Ana` aparece ao lado.
+- **CA-00:** Dado uma pessoa logada e a imagem padrão disponível, quando a barra superior aparece, então o
+  avatar mostra a esfera azul do HeroUI, sem iniciais.
+- **CA-01:** Dado uma pessoa logada com o nome `Ana Carolina Lais` e a imagem padrão indisponível, quando a
+  barra superior aparece, então o avatar mostra `AL` e o primeiro nome `Ana` aparece ao lado.
 - **CA-02:** Dado uma pessoa logada com o nome `Ana`, quando a barra aparece, então o avatar mostra `A`.
 - **CA-03:** Dado uma pessoa logada com o nome `  ana   lais  `, quando a barra aparece, então o avatar
   mostra `AL`.

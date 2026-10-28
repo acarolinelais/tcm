@@ -31,11 +31,19 @@
     - `cd frontend && npm test && npm run lint && npx tsc -b` → tudo verde;
     - no navegador (`npm run dev`, modo mock): avatar com 21px, redondo, fundo `#8880F7`, texto branco, sem
       fundo cinza do HeroUI aparecendo, e a barra com a mesma altura de antes.
+- [x] **T04. Imagem padrão do HeroUI no avatar**
+  - Arquivos: `frontend/src/core/layout/Navbar.tsx`, `frontend/src/core/layout/Navbar.test.tsx`.
+  - Cobre: CA-00, RN-07 (as iniciais viram fallback).
+  - Verificação: `cd frontend && npx vitest run src/core/layout` → com a imagem simulada como carregada, o
+    `<img>` usa `AVATAR_PADRAO_URL` e as iniciais não aparecem; sem imagem, as iniciais aparecem depois do
+    `delayMs`. No navegador (modo mock), o avatar mostra a esfera azul com 21px e a barra continua com 32px.
 
 ## Backlog
 
 - Cor do avatar escolhida pela pessoa em Settings, persistida na conta (próxima spec; seguir o caminho do
-  `idioma_preferido` e do `PATCH /api/auth/preferencias`).
+  `idioma_preferido` e do `PATCH /api/auth/preferencias`). Pode ser a escolha entre as imagens do HeroUI
+  (`blue`, `purple`, `red`) ou uma cor própria.
+- Copiar a imagem padrão para `frontend/public` e deixar de depender do CDN de exemplos do HeroUI.
 - `TimesPage` monta outro avatar à mão (`nomeMembro.slice(0, 1)`): reaproveitar `iniciais()` e o Avatar do
   HeroUI quando a tela for migrada.
 - `Navbar` tira o primeiro nome com `perfil.nome.split(" ")[0]`, regra diferente da de `iniciais()` (com
