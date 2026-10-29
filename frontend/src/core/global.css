@@ -111,7 +111,7 @@
   --avatar: #5e5ce6;                /* systemIndigo */
   --chart-1: #0a84ff;
   --chart-2: #5e5ce6;
-  --chart-3: #48484a;
+  --chart-3: #8e8e93;               /* systemGray: 5,1:1 sobre o cartão (gráfico com significado pede ≥ 3:1) */
 }
 
 /* Tons das etiquetas e dos status (ADR 0040). No claro, os pares do Figma (texto `--x`/`-fg`, fundo `-bg`), com o
