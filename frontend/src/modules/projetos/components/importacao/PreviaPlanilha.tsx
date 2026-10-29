@@ -31,7 +31,7 @@ export function PreviaPlanilha({ previa }: { previa: PlanilhaProjeto }) {
     <section aria-label={t("spreadsheetPreview")} className="mt-6">
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2 px-1">
         <div>
-          <h2 className="text-base font-medium leading-6 text-[#454442]">{t("spreadsheetPreview")}</h2>
+          <h2 className="text-base font-medium leading-6 text-body">{t("spreadsheetPreview")}</h2>
           <p className="mt-0.5 text-[13px] text-muted">{t("project")}: {previa.app} {previa.one_ui}</p>
         </div>
         <span className="text-[13px] tabular-nums text-muted">{t("testCaseCount", { count: previa.casos.length, countLabel: formatNumber(previa.casos.length) })}</span>

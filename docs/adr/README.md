@@ -51,3 +51,5 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0037](0037-heroui-como-base-de-ui.md) | HeroUI como base de UI, com migração gradual a partir do shadcn/ui | Aceito |
 | [0038](0038-resultados-gerais-sem-paginacao.md) | Resultados Gerais sem paginação de Test Cases (exceção aos ADRs 0022 e 0034) | Substituído por 0039 |
 | [0039](0039-resultados-gerais-com-paginacao.md) | Resultados Gerais com paginação de Test Cases (substitui 0038) | Aceito |
+| [0040](0040-tema-claro-escuro-no-navegador.md) | Tema claro e escuro por classe no `<html>`, guardado no navegador | Aceito |
+| [0041](0041-cores-somente-por-tokens-semanticos.md) | Cores somente por tokens semânticos | Aceito |

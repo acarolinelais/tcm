@@ -54,8 +54,8 @@ describe("FormFactorTabela", () => {
 
     const [primeira, segunda, terceira] = linhasDoCorpo().map(celulas);
     expect(primeira.map((cell) => cell.textContent)).toEqual(["01", "TC-001", "SDF-10", "ana.silva", "PASS", "Fail", expect.stringMatching(/2026/)]);
-    expect(fundoDaEtiqueta(primeira[4])).toBe("#DCF7E8");
-    expect(fundoDaEtiqueta(primeira[5])).toBe("#FDEEEE");
+    expect(fundoDaEtiqueta(primeira[4])).toBe("var(--etiqueta-ativo-bg)");
+    expect(fundoDaEtiqueta(primeira[5])).toBe("var(--etiqueta-fixes-bg)");
     expect(segunda.map((cell) => cell.textContent)).toEqual(["02", "TC-002", "—", "bia.souza", "—", "—", "—"]);
     // Valor que não é Pass nem Fail aparece como veio do SDF, sem badge; responsável fora do time vira —.
     expect(terceira[3]).toHaveTextContent("—");

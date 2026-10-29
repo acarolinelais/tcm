@@ -22,8 +22,8 @@ export function FormFactorManualDialog({ aberto, onAbertoChange, linha, modelos,
         <Modal.Dialog>
           <Modal.CloseTrigger />
           <Modal.Header className="flex-col items-start gap-1">
-            <Modal.Heading className="text-[18px] font-medium text-[#454442]">{t("recordResultsTitle")}</Modal.Heading>
-            <p className="text-[14px] text-muted">{t("tcId")}: <span className="font-medium text-[#454442]">{linha?.tc_id ?? "—"}</span></p>
+            <Modal.Heading className="text-[18px] font-medium text-body">{t("recordResultsTitle")}</Modal.Heading>
+            <p className="text-[14px] text-muted">{t("tcId")}: <span className="font-medium text-body">{linha?.tc_id ?? "—"}</span></p>
             <p className="text-[14px] leading-relaxed text-muted">{t("manualResultsHint")}</p>
           </Modal.Header>
           {/* key pelo caso: cada abertura começa sem resultados escolhidos. */}
@@ -67,9 +67,9 @@ function FormularioResultados({ tcId, modelos, salvando, onSalvar, onCancelar }:
             aria-label={t("resultForModel", { model: modelo.nome })}
             value={resultados[modelo.id] ?? NAO_DEFINIDO}
             onChange={(valor) => escolher(modelo.id, String(valor))}
-            className="grid grid-cols-[minmax(0,1fr)_9rem] items-center gap-3 rounded-xl border border-separator bg-[#FBFBFB] px-3 py-2.5"
+            className="grid grid-cols-[minmax(0,1fr)_9rem] items-center gap-3 rounded-xl border border-separator bg-page px-3 py-2.5"
           >
-            <Label className="truncate text-[14px] font-medium text-[#454442]">{modelo.nome}</Label>
+            <Label className="truncate text-[14px] font-medium text-body">{modelo.nome}</Label>
             <Select.Trigger className="h-9 text-[13px]">
               <Select.Value />
               <Select.Indicator />
@@ -83,7 +83,7 @@ function FormularioResultados({ tcId, modelos, salvando, onSalvar, onCancelar }:
             </Select.Popover>
           </Select>
         ))}
-        <div id="manual-result-outcome" role="status" className="mt-3 rounded-xl bg-[#F3F5F7] px-3 py-2.5 text-[13px] leading-5 text-[#454442]">
+        <div id="manual-result-outcome" role="status" className="mt-3 rounded-xl bg-panel px-3 py-2.5 text-[13px] leading-5 text-body">
           {escolhidos.length ? <><p>{consequencia}</p><p className="mt-1 text-muted">{t("manualResultFinal")}</p></> : <p className="text-muted">{t("manualResultRequired")}</p>}
         </div>
       </Modal.Body>

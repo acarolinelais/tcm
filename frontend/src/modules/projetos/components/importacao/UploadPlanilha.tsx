@@ -20,7 +20,7 @@ const MENSAGEM_RECUSA: Record<MotivoRecusa, string> = { formato: "projectFileTyp
 
 type Leitura = ReturnType<typeof useLeituraPlanilha>;
 
-const CARD = "mt-5 rounded-[20px] bg-[#F3F5F7] px-5 py-5 sm:px-8";
+const CARD = "mt-5 rounded-[20px] bg-panel px-5 py-5 sm:px-8";
 // Erro sem código é arquivo ilegível; com código, a planilha foi lida mas tem problemas (RN-18).
 const mensagemDeErro = (erros: Leitura["erros"]) => (erros.some((erro) => erro.codigo === null) ? "spreadsheetReadFailed" : "spreadsheetHasProblems");
 
@@ -94,15 +94,15 @@ export function UploadPlanilha({ leitura, onBaixarModelo }: { leitura: Leitura; 
           onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setArrastando(false); }}
           onDrop={(event) => { event.preventDefault(); setArrastando(false); selecionar(event.dataTransfer.files[0]); }}
           data-arrastando={arrastando}
-          className={`dropzone-tracejada flex h-64 w-full items-center justify-center px-6 text-center outline-none transition-[background-color,scale] duration-150 ease-out hover:bg-[#EFF5FF] focus-visible:bg-[#EFF5FF] active:scale-[0.995] motion-reduce:active:scale-100 ${arrastando ? "bg-[#EFF5FF]" : "bg-white"}`}
+          className={`dropzone-tracejada flex h-64 w-full items-center justify-center px-6 text-center outline-none transition-[background-color,scale] duration-150 ease-out hover:bg-accent-tint focus-visible:bg-accent-tint active:scale-[0.995] motion-reduce:active:scale-100 ${arrastando ? "bg-accent-tint" : "bg-surface"}`}
         >
           {/* O conteúdo surge depois de a área começar a crescer, e some sem atraso ao recolher. */}
           <span className={`flex flex-col items-center transition-[opacity,translate] ${CURVA} motion-reduce:translate-y-0 ${areaAberta ? "translate-y-0 opacity-100 delay-[80ms] duration-300" : "translate-y-1 opacity-0 duration-150"}`}>
-            <UploadFileIcon aria-hidden="true" className="mb-4 h-11 w-9 text-[#454442]" />
-            <span className="text-base font-medium text-[#454442]">{t("dragSpreadsheet")} <span className="text-primary underline underline-offset-4">{t("chooseSpreadsheet")}</span></span>
+            <UploadFileIcon aria-hidden="true" className="mb-4 h-11 w-9 text-body" />
+            <span className="text-base font-medium text-body">{t("dragSpreadsheet")} <span className="text-accent-text underline underline-offset-4">{t("chooseSpreadsheet")}</span></span>
           </span>
         </button>
-        <div className="mt-2.5 flex justify-between gap-4 px-2 text-sm leading-5 text-[#777777]"><p>{t("spreadsheetFormats")}</p><p className="shrink-0">{t("spreadsheetMaxSize")}</p></div>
+        <div className="mt-2.5 flex justify-between gap-4 px-2 text-sm leading-5 text-subtle"><p>{t("spreadsheetFormats")}</p><p className="shrink-0">{t("spreadsheetMaxSize")}</p></div>
         {leitura.recusa && <p className="mt-1.5 px-2 text-sm text-destructive">{t(MENSAGEM_RECUSA[leitura.recusa])}</p>}
       </div>
     </div>
@@ -111,10 +111,10 @@ export function UploadPlanilha({ leitura, onBaixarModelo }: { leitura: Leitura; 
 
     {cardModelo.montado && <div data-saindo={cardModelo.saindo || undefined} className={`upload-surgir ${CARD} flex flex-wrap items-center justify-between gap-4`}>
       <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-2 text-base font-medium leading-6 text-[#454442]"><ExcelIcon aria-hidden="true" className="size-6 shrink-0" />{t("spreadsheetTemplateTitle")}</p>
-        <p className="mt-1.5 max-w-[28rem] text-sm leading-5 text-[#777777]">{t("spreadsheetTemplateDescription")}</p>
+        <p className="flex items-center gap-2 text-base font-medium leading-6 text-body"><ExcelIcon aria-hidden="true" className="size-6 shrink-0" />{t("spreadsheetTemplateTitle")}</p>
+        <p className="mt-1.5 max-w-[28rem] text-sm leading-5 text-subtle">{t("spreadsheetTemplateDescription")}</p>
       </div>
-      <Button variant="outline" onPress={onBaixarModelo} className="h-9 rounded-[10px] bg-white px-4 text-sm font-medium text-[#454442]">{t("downloadTemplate")}</Button>
+      <Button variant="outline" onPress={onBaixarModelo} className="h-9 rounded-[10px] bg-surface px-4 text-sm font-medium text-body">{t("downloadTemplate")}</Button>
     </div>}
 
     {cardArquivo.montado && exibida.arquivo && <CardArquivo arquivo={exibida.arquivo} leitura={exibida} saindo={cardArquivo.saindo} onRemover={remover} />}
@@ -133,21 +133,21 @@ function CardArquivo({ arquivo, leitura, saindo, onRemover }: { arquivo: File; l
   const erro = fase === "erro";
 
   return <div data-saindo={saindo || undefined} className={`upload-surgir relative ${CARD}`}>
-    <Button isIconOnly variant="ghost" size="sm" aria-label={t("removeFile")} onPress={onRemover} className="absolute right-3 top-3 size-8 text-[#777777]"><X aria-hidden="true" className="size-4" /></Button>
+    <Button isIconOnly variant="ghost" size="sm" aria-label={t("removeFile")} onPress={onRemover} className="absolute right-3 top-3 size-8 text-subtle"><X aria-hidden="true" className="size-4" /></Button>
     <div className="flex items-center gap-4 pr-8">
-      <span className="flex size-11 shrink-0 items-center justify-center rounded-[10px] border border-[#E5E7EB] bg-white"><ExcelIcon aria-hidden="true" className="size-6" /></span>
+      <span className="flex size-11 shrink-0 items-center justify-center rounded-[10px] border border-separator bg-surface"><ExcelIcon aria-hidden="true" className="size-6" /></span>
       <div className="min-w-0">
-        <p className="truncate text-base font-medium text-[#454442]">{arquivo.name}</p>
-        <p className="mt-0.5 text-sm text-[#777777]">{fase === "concluida" ? `${megabytes(arquivo.size)} · ${t("testCaseCount", { count: casos, countLabel: formatNumber(casos) })}` : megabytes(arquivo.size)}</p>
+        <p className="truncate text-base font-medium text-body">{arquivo.name}</p>
+        <p className="mt-0.5 text-sm text-subtle">{fase === "concluida" ? `${megabytes(arquivo.size)} · ${t("testCaseCount", { count: casos, countLabel: formatNumber(casos) })}` : megabytes(arquivo.size)}</p>
       </div>
     </div>
     <div className="mt-4 flex items-center gap-3">
-      <div role="progressbar" aria-label={t("spreadsheetProgressLabel")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progresso} className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#E5E9F0]">
+      <div role="progressbar" aria-label={t("spreadsheetProgressLabel")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progresso} className="h-1.5 flex-1 overflow-hidden rounded-full bg-default">
         {/* transform em vez de width: a barra anima sem recalcular o layout. */}
         <div style={{ transform: `scaleX(${progresso / 100})` }} className={`h-full origin-left rounded-full transition-[transform,background-color] duration-300 ${CURVA} motion-reduce:duration-150 ${erro ? "bg-destructive" : "bg-primary"}`} />
       </div>
-      <span className="flex w-10 justify-end text-sm tabular-nums text-[#777777]">
-        {fase === "concluida" ? <Check aria-hidden="true" className="size-4 text-emerald-600" /> : erro ? <CircleAlert aria-hidden="true" className="size-4 text-destructive" /> : `${progresso} %`}
+      <span className="flex w-10 justify-end text-sm tabular-nums text-subtle">
+        {fase === "concluida" ? <Check aria-hidden="true" className="size-4 text-success" /> : erro ? <CircleAlert aria-hidden="true" className="size-4 text-destructive" /> : `${progresso} %`}
       </span>
     </div>
     {erro && <p className="mt-2 text-sm text-destructive">{t(mensagemDeErro(erros))}</p>}

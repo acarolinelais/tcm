@@ -6,7 +6,7 @@ import { statusBadgeBase, statusBadges } from "./status-badge-estilos";
 function StatusBadgeContent({ status, label }: { status: StatusCasoTeste; label: string }) {
   const { icon, Icon } = statusBadges[status];
   return <span className="inline-flex items-center gap-1.5">
-    <span aria-hidden="true" className={`flex size-4 shrink-0 items-center justify-center rounded-full text-white ${icon}`}><Icon className="size-2.5 stroke-[3]" /></span>
+    <span aria-hidden="true" className={`flex size-4 shrink-0 items-center justify-center rounded-full text-status-glyph ${icon}`}><Icon className="size-2.5 stroke-[3]" /></span>
     <span>{label}</span>
   </span>;
 }

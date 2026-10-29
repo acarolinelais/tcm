@@ -187,7 +187,7 @@ export function ProjetosPage() {
   ];
   const colunas: DataTableColumn<Projeto>[] = [
     { id: "numero", header: "", className: "w-12 text-right tabular-nums text-muted after:hidden", cell: (project) => String(primeiraDaPagina + projetosFiltrados.indexOf(project) + 1).padStart(2, "0") },
-    { id: "nome", isRowHeader: true, header: <DataTableFilter label={t("project")} value={filtrosProjeto.nome} onChange={(value) => alterarFiltroProjeto("nome", value)} />, cell: (project) => <Link to={`/projetos/${project.id}`} className="hover:text-accent focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{project.nome}</Link> },
+    { id: "nome", isRowHeader: true, header: <DataTableFilter label={t("project")} value={filtrosProjeto.nome} onChange={(value) => alterarFiltroProjeto("nome", value)} />, cell: (project) => <Link to={`/projetos/${project.id}`} className="hover:text-accent-text focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{project.nome}</Link> },
     { id: "time", header: <DataTableFilter label={t("team")} value={filtrosProjeto.time} onChange={(value) => alterarFiltroProjeto("time", value)} />, cell: (project) => nomeTime[project.time_id] ?? "—" },
     { id: "app", header: <DataTableFilter label={t("app")} value={filtrosProjeto.app} onChange={(value) => alterarFiltroProjeto("app", value)} />, cell: (project) => project.app },
     { id: "oneUi", header: <DataTableFilter label={t("oneUi")} value={filtrosProjeto.oneUi} onChange={(value) => alterarFiltroProjeto("oneUi", value)} />, cell: (project) => project.one_ui },
@@ -218,7 +218,7 @@ export function ProjetosPage() {
     filtered: { title: t("noResults"), hint: t("noProjectResults") },
   });
 
-  return <section className={criacaoAberta ? "relative flex h-full min-h-0 flex-col" : "flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10"}>
+  return <section className={criacaoAberta ? "relative flex h-full min-h-0 flex-col" : "flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-separator bg-card px-7 py-8 sm:px-11 sm:py-10"}>
     {!criacaoAberta ? <>
       <header className="mb-7 flex shrink-0 items-center justify-between gap-4">
         <h1 className="text-2xl font-medium text-foreground">{t("myProjects")}</h1>
@@ -236,23 +236,23 @@ export function ProjetosPage() {
       <div className="absolute -top-11 left-0 z-10">
         <HeroButton variant="ghost" className="h-auto gap-1 px-1 py-1 text-base font-normal text-foreground hover:bg-transparent" onPress={() => { setCriacaoAberta(false); limparFormulario(); }}><ChevronLeft aria-hidden="true" className="size-4" />{t("projectsNav")}</HeroButton>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[42px] border border-separator bg-card px-7 py-8 sm:px-11 sm:py-10">
       <div className="thin-scroll min-h-0 flex-1 overflow-auto">
         <div className="flex min-h-full w-full flex-col">
           <header className="mb-4 flex items-center justify-between gap-4">
             <h1 className="text-2xl font-medium text-foreground">{t("newProject")}</h1>
-            <div className="relative grid w-52 shrink-0 grid-cols-2 rounded-xl bg-[#F7F8FA] p-1" role="tablist" aria-label={t("projectCreationMethod")}>
-              <span aria-hidden="true" className="pointer-events-none absolute inset-y-1 left-1 right-1 grid grid-cols-2"><span className={`col-start-1 rounded-lg bg-white shadow-sm transition-transform duration-150 ease-out motion-reduce:transition-none ${modo === "manual" ? "translate-x-full" : "translate-x-0"}`} /></span>
-              <button id="project-import-tab" role="tab" aria-controls={modo === "planilha" ? "project-import-panel" : undefined} aria-selected={modo === "planilha"} type="button" onClick={() => setModo("planilha")} className={`relative z-10 rounded-lg px-3 py-2 text-sm transition-colors duration-150 motion-reduce:transition-none ${modo === "planilha" ? "font-medium text-primary" : "text-muted-foreground hover:text-foreground"}`}>{t("import")}</button>
-              <button id="project-manual-tab" role="tab" aria-controls={modo === "manual" ? "project-manual-panel" : undefined} aria-selected={modo === "manual"} type="button" onClick={() => setModo("manual")} className={`relative z-10 rounded-lg px-3 py-2 text-sm transition-colors duration-150 motion-reduce:transition-none ${modo === "manual" ? "font-medium text-primary" : "text-muted-foreground hover:text-foreground"}`}>{t("manual")}</button>
+            <div className="relative grid w-52 shrink-0 grid-cols-2 rounded-xl bg-panel p-1" role="tablist" aria-label={t("projectCreationMethod")}>
+              <span aria-hidden="true" className="pointer-events-none absolute inset-y-1 left-1 right-1 grid grid-cols-2"><span className={`col-start-1 rounded-lg bg-surface shadow-sm transition-transform duration-150 ease-out motion-reduce:transition-none ${modo === "manual" ? "translate-x-full" : "translate-x-0"}`} /></span>
+              <button id="project-import-tab" role="tab" aria-controls={modo === "planilha" ? "project-import-panel" : undefined} aria-selected={modo === "planilha"} type="button" onClick={() => setModo("planilha")} className={`relative z-10 rounded-lg px-3 py-2 text-sm transition-colors duration-150 motion-reduce:transition-none ${modo === "planilha" ? "font-medium text-accent-text" : "text-muted-foreground hover:text-foreground"}`}>{t("import")}</button>
+              <button id="project-manual-tab" role="tab" aria-controls={modo === "manual" ? "project-manual-panel" : undefined} aria-selected={modo === "manual"} type="button" onClick={() => setModo("manual")} className={`relative z-10 rounded-lg px-3 py-2 text-sm transition-colors duration-150 motion-reduce:transition-none ${modo === "manual" ? "font-medium text-accent-text" : "text-muted-foreground hover:text-foreground"}`}>{t("manual")}</button>
             </div>
           </header>
           {/* Só o modo escolhido fica na tela: um campo Time por vez, sem nomes repetidos (spec 031, RN-08). */}
           <section id={modo === "planilha" ? "project-import-panel" : "project-manual-panel"} role="tabpanel" aria-labelledby={modo === "planilha" ? "project-import-tab" : "project-manual-tab"} className="flex min-w-0 flex-1 flex-col">
             {modo === "planilha" ? <section aria-label={t("uploadSpreadsheet")} className="flex flex-1 flex-col">
-              <h2 className="mb-3 text-lg font-medium leading-6 text-[#454442]">{t("uploadSpreadsheet")}</h2>
+              <h2 className="mb-3 text-lg font-medium leading-6 text-body">{t("uploadSpreadsheet")}</h2>
               <UploadPlanilha leitura={leitura} onBaixarModelo={downloadTemplate} />
-            </section> : <section className="rounded-2xl border border-border bg-white p-5 sm:p-7">
+            </section> : <section className="rounded-2xl border border-border bg-surface p-5 sm:p-7">
               <div className="mb-6"><h2 className="text-base font-semibold">{t("projectDetails")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("projectNameFormulaHint")}</p></div>
               <div className="grid items-start gap-5 sm:grid-cols-2">
                 <div className="sm:col-span-2"><TextInputField label={t("projectNamePreview")} value={nomeProjeto || (app.trim() && oneUi.trim() ? `${app.trim()} ${oneUi.trim()}` : "")} onChange={setNomeProjeto} maxLength={150} /></div>
@@ -285,7 +285,7 @@ export function ProjetosPage() {
 function ContagemModelos({ modelos, rotulo }: { modelos: string[]; rotulo: string }) {
   return (
     <Tooltip delay={300} closeDelay={0}>
-      <HeroButton variant="ghost" aria-label={`${rotulo}: ${modelos.length}`} className="h-7 min-h-0 gap-1.5 rounded-lg px-1.5 text-[14px] text-[#454442]">
+      <HeroButton variant="ghost" aria-label={`${rotulo}: ${modelos.length}`} className="h-7 min-h-0 gap-1.5 rounded-lg px-1.5 text-[14px] text-body">
         <Smartphone aria-hidden="true" absoluteStrokeWidth strokeWidth={1} className="size-3.5" /><span className="tabular-nums">{modelos.length}</span>
       </HeroButton>
       {modelos.length > 0 && <Tooltip.Content className="max-w-64 text-[13px]">

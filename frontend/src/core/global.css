@@ -9,14 +9,18 @@
 @import "@heroui/styles/utilities";
 @import "@heroui/styles/variants";
 
+/* Tema escuro só pela classe no <html>, sem o fallback de prefers-color-scheme do HeroUI (ADR 0040). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Tokens com o mesmo nome no shadcn e no HeroUI: um valor só, em cor completa. Ficam fora de camada para
    vencer o tema do HeroUI. --muted segue o HeroUI (texto secundário); o fundo cinza do shadcn é bg-secondary. */
 :root {
   --background: hsl(0 0% 100%);
   --foreground: hsl(222 47% 11%);
   --border: hsl(214 32% 91%);
-  --muted: #71717a;
-  --accent: #3672f2;
+  --muted: #6d6d76; /* zinc-500 do HeroUI, escurecido para o AA sobre a moldura das tabelas */
+  --accent: #2f6ae6; /* azul do Figma (#3672F2) escurecido o mínimo para o texto branco passar no AA */
+  --accent-text: var(--accent); /* texto e ícones de acento; no escuro é um passo próprio da rampa */
   --focus: var(--accent);
   --radius: 0.5rem;
   /* Campos do HeroUI vêm sem borda; num painel branco ficariam invisíveis. */
@@ -24,11 +28,40 @@
   --field-border-width: 1px;
 }
 
+/* Tema escuro (ADR 0040): os tokens acima também ficam fora de camada, então precisam do valor escuro aqui.
+   Os demais tokens do HeroUI (surface, overlay, success...) já mudam pelo tema dele. */
+:root.dark {
+  color-scheme: dark;
+  /* Dark Mode segundo a HIG da Apple (macOS Dark Aqua + cores de sistema do iOS), docs/specs/034 plan.md:
+     cinzas neutros do sistema, fundo da janela mais claro que o conteúdo (#323232 / #1E1E1E, como no macOS),
+     o que flutua um passo acima da janela (elevated #3A3A3C), rótulos em branco com opacidade (85% e 55%) e as
+     cores de sistema no lugar dos tons do claro. Contraste mínimo 4,5:1, medido par a par. */
+  --background: #323232;                  /* windowBackgroundColor */
+  --foreground: rgb(255 255 255 / 0.85);  /* labelColor */
+  --surface: #1e1e1e;                     /* controlBackgroundColor: cartões, tabelas, sidebar */
+  --surface-secondary: #2c2c2e;           /* systemGray5 */
+  --surface-tertiary: #3a3a3c;            /* systemGray4 */
+  --overlay: #3a3a3c;                     /* fundo elevado: menus, popovers, drawers */
+  --default: #3a3a3c;
+  --field-background: #333336;            /* tertiarySystemFill (#767680 a 24%) sobre o conteúdo */
+  --separator: #38383a;                   /* opaqueSeparator */
+  --border: #48484a;                      /* systemGray3 */
+  --muted: rgb(255 255 255 / 0.55);       /* secondaryLabelColor */
+  --accent: oklch(56% 0.189 262);         /* azul da marca como preenchimento, texto branco por cima (≥ 4,6:1) */
+  --accent-foreground: var(--snow);
+  --accent-text: #5baaff;                /* linkColor (#409CFF) clareado o mínimo para 4,6:1 sobre menus */
+  --accent-soft-foreground: var(--accent-text);
+  --focus: #409cff;                       /* keyboardFocusIndicatorColor */
+  --success: #30d158;
+  --warning: #ff9f0a;
+  --danger: #ff453a;
+}
+
 /* Tokens só do shadcn, em tripla HSL. */
 :root {
   --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
-  --primary: 219 92% 58%;
+  --primary: 221 83% 53%; /* 219 92% 58% do Figma, escurecido para o AA sobre branco */
   --primary-foreground: 0 0% 100%;
   --secondary: 210 20% 96%;
   --secondary-foreground: 222 47% 11%;
@@ -36,7 +69,176 @@
   --input: 214 32% 91%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --ring: 219 92% 58%;
+  --ring: 221 83% 53%;
+}
+
+:root.dark {
+  --card: 0 0% 11.8%;               /* #1E1E1E, o mesmo da --surface */
+  --card-foreground: 0 0% 87%;
+  --primary: 220 74% 53.5%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 212 100% 63%;             /* #409CFF */
+  --secondary: 240 2% 18%;          /* #2C2C2E */
+  --secondary-foreground: 0 0% 87%;
+  --muted-foreground: 0 0% 60%;
+  --input: 240 1% 28.6%;            /* #48484A */
+  --destructive: 3 100% 61%;        /* #FF453A */
+  --destructive-foreground: 0 0% 100%;
+}
+
+/* Tokens do projeto (ADR 0041): cores do Figma sem equivalente no HeroUI, nomeadas pelo papel. */
+:root {
+  --page: #fbfbfb;        /* fundo das páginas, atrás dos cartões */
+  --accent-tint: #eaf1ff; /* fundo azul claro do Figma: item ativo da sidebar, ilustração do login, dropzone */
+  --body: #454442;        /* texto corrido das telas do Figma */
+  --subtle: #6d6d6d;      /* texto de apoio (Figma #7E7E7E/#777777, escurecido para o AA) */
+  --panel: #f3f5f7;       /* moldura das tabelas e painéis */
+  --table-row-divider: #efeff0; /* divisórias entre linhas */
+  --avatar: #8880f7;
+  --strong-foreground: #ffffff; /* texto e ícones sobre uma cor forte (avatar, círculo do status) */
+  --chart-1: #5588f5;     /* série principal dos gráficos do overview */
+  --chart-2: #c9daff;
+  --chart-3: #b9c4e8;
+}
+
+:root.dark {
+  --page: var(--background);
+  --accent-tint: color-mix(in srgb, #0a84ff 18%, var(--surface)); /* seleção: azul do sistema a 18% sobre o conteúdo */
+  --body: rgb(255 255 255 / 0.85);
+  --subtle: rgb(255 255 255 / 0.55);
+  --panel: #1a1a1a;                 /* moldura e cabeçalho da tabela, um passo abaixo do conteúdo */
+  --table-row-divider: #2c2c2e;
+  --avatar: #5e5ce6;                /* systemIndigo */
+  --chart-1: #0a84ff;
+  --chart-2: #5e5ce6;
+  --chart-3: #8e8e93;               /* systemGray: 5,1:1 sobre o cartão (gráfico com significado pede ≥ 3:1) */
+}
+
+/* Tons das etiquetas e dos status (ADR 0041). No claro, os pares do Figma (texto `--x`/`-fg`, fundo `-bg`), com o
+   texto escurecido onde não passava no AA; no status do Test Case, `--x` é o círculo do ícone. No escuro, o fundo vira
+   a cor forte translúcida e o texto, a cor forte clareada. */
+:root {
+  --etiqueta-todo: #3470c6;
+  --etiqueta-todo-bg: #edfaff;
+  --etiqueta-todo-fg: var(--etiqueta-todo);
+  --etiqueta-progress: #855f2e;
+  --etiqueta-progress-bg: #fef2de;
+  --etiqueta-progress-fg: var(--etiqueta-progress);
+  --etiqueta-review: #6664bc;
+  --etiqueta-review-bg: #f0f4ff;
+  --etiqueta-review-fg: var(--etiqueta-review);
+  --etiqueta-validation: #b33e91;
+  --etiqueta-validation-bg: #f7eff3;
+  --etiqueta-validation-fg: var(--etiqueta-validation);
+  --etiqueta-fixes: #bf3f44;
+  --etiqueta-fixes-bg: #fdeeee;
+  --etiqueta-fixes-fg: var(--etiqueta-fixes);
+  --etiqueta-cancelled: #5f6068;
+  --etiqueta-cancelled-bg: #f1f1f4;
+  --etiqueta-cancelled-fg: var(--etiqueta-cancelled);
+  --etiqueta-ativo: #37794e;
+  --etiqueta-ativo-bg: #dcf7e8;
+  --etiqueta-ativo-fg: var(--etiqueta-ativo);
+  --etiqueta-neutro: #6a6a6a;
+  --etiqueta-neutro-bg: #edeff1;
+  --etiqueta-neutro-fg: var(--etiqueta-neutro);
+  --projeto-created: #195ef0;
+  --projeto-created-bg: #e6efff;
+  --projeto-created-fg: var(--projeto-created);
+  --projeto-todo: #686b70;
+  --projeto-todo-bg: #eff0f2;
+  --projeto-todo-fg: var(--projeto-todo);
+  --projeto-progress: #9e5d11;
+  --projeto-progress-bg: #fff1dd;
+  --projeto-progress-fg: var(--projeto-progress);
+  --projeto-completed: #237c44;
+  --projeto-completed-bg: #e3f6e9;
+  --projeto-completed-fg: var(--projeto-completed);
+  --projeto-canceled: #b64646;
+  --projeto-canceled-bg: #fde8e8;
+  --projeto-canceled-fg: var(--projeto-canceled);
+  --status-todo: #64748b;
+  --status-todo-bg: #f1f5f9;
+  --status-todo-fg: #334155;
+  --status-progress: #1d4ed8;
+  --status-progress-bg: #eff6ff;
+  --status-progress-fg: #1e40af;
+  --status-review: #d97706;
+  --status-review-bg: #fffbeb;
+  --status-review-fg: #92400e;
+  --status-validation: #7c3aed;
+  --status-validation-bg: #f5f3ff;
+  --status-validation-fg: #5b21b6;
+  --status-done: #166534;
+  --status-done-bg: #f0fdf4;
+  --status-done-fg: #166534;
+  --status-fixes: #ea580c;
+  --status-fixes-bg: #fff7ed;
+  --status-fixes-fg: #9a3412;
+  --status-cancelled: #475569;
+  --status-cancelled-bg: #f1f5f9;
+  --status-cancelled-fg: #334155;
+  --status-todo-icon: var(--status-todo);
+  --status-progress-icon: var(--status-progress);
+  --status-review-icon: var(--status-review);
+  --status-validation-icon: var(--status-validation);
+  --status-done-icon: var(--status-done);
+  --status-fixes-icon: var(--status-fixes);
+  --status-cancelled-icon: var(--status-cancelled);
+  --status-glyph: var(--strong-foreground);
+}
+
+:root.dark {
+  /* Cada tom vira a cor de sistema da Apple equivalente: o texto usa a variante de contraste aumentado (clareada
+     onde não chegava a 4,6:1) e o fundo é a cor a 18% sobre o conteúdo. O círculo do status usa a cor cheia. */
+  --etiqueta-todo-bg: #1a3046; /* blue */
+  --etiqueta-todo-fg: #409cff;
+  --etiqueta-progress-bg: #46351a; /* orange */
+  --etiqueta-progress-fg: #ffb340;
+  --etiqueta-review-bg: #2a2942; /* indigo */
+  --etiqueta-review-fg: #8a87ff;
+  --etiqueta-validation-bg: #46232a; /* pink */
+  --etiqueta-validation-fg: #ff6482;
+  --etiqueta-fixes-bg: #462523; /* red */
+  --etiqueta-fixes-fg: #ff6961;
+  --etiqueta-cancelled-bg: #323233; /* gray */
+  --etiqueta-cancelled-fg: #aeaeb2;
+  --etiqueta-ativo-bg: #213e28; /* green */
+  --etiqueta-ativo-fg: #30db5b;
+  --etiqueta-neutro-bg: #323233; /* gray */
+  --etiqueta-neutro-fg: #aeaeb2;
+  --projeto-created-bg: #1a3046; /* blue */
+  --projeto-created-fg: #409cff;
+  --projeto-todo-bg: #323233; /* gray */
+  --projeto-todo-fg: #aeaeb2;
+  --projeto-progress-bg: #46351a; /* orange */
+  --projeto-progress-fg: #ffb340;
+  --projeto-completed-bg: #213e28; /* green */
+  --projeto-completed-fg: #30db5b;
+  --projeto-canceled-bg: #462523; /* red */
+  --projeto-canceled-fg: #ff6961;
+  --status-todo-bg: #323233; /* gray */
+  --status-todo-fg: #aeaeb2;
+  --status-todo-icon: #8e8e93;
+  --status-progress-bg: #1a3046; /* blue */
+  --status-progress-fg: #409cff;
+  --status-progress-icon: #0a84ff;
+  --status-review-bg: #463f1a; /* yellow */
+  --status-review-fg: #ffd426;
+  --status-review-icon: #ffd60a;
+  --status-validation-bg: #3b2944; /* purple */
+  --status-validation-fg: #da8fff;
+  --status-validation-icon: #bf5af2;
+  --status-done-bg: #213e28; /* green */
+  --status-done-fg: #30db5b;
+  --status-done-icon: #30d158;
+  --status-fixes-bg: #46351a; /* orange */
+  --status-fixes-fg: #ffb340;
+  --status-fixes-icon: #ff9f0a;
+  --status-cancelled-bg: #323233; /* gray */
+  --status-cancelled-fg: #aeaeb2;
+  --status-cancelled-icon: #8e8e93;
+  --status-glyph: var(--surface);
 }
 
 @theme inline {
@@ -57,6 +259,70 @@
   --color-destructive: hsl(var(--destructive));
   --color-destructive-foreground: hsl(var(--destructive-foreground));
   --color-ring: hsl(var(--ring));
+  --color-page: var(--page);
+  --color-accent-text: var(--accent-text);
+  --color-accent-tint: var(--accent-tint);
+  --color-body: var(--body);
+  --color-subtle: var(--subtle);
+  --color-panel: var(--panel);
+  --color-avatar: var(--avatar);
+  --color-strong-foreground: var(--strong-foreground);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-status-todo: var(--status-todo);
+  --color-status-todo-bg: var(--status-todo-bg);
+  --color-status-todo-fg: var(--status-todo-fg);
+  --color-status-progress: var(--status-progress);
+  --color-status-progress-bg: var(--status-progress-bg);
+  --color-status-progress-fg: var(--status-progress-fg);
+  --color-status-review: var(--status-review);
+  --color-status-review-bg: var(--status-review-bg);
+  --color-status-review-fg: var(--status-review-fg);
+  --color-status-validation: var(--status-validation);
+  --color-status-validation-bg: var(--status-validation-bg);
+  --color-status-validation-fg: var(--status-validation-fg);
+  --color-status-done: var(--status-done);
+  --color-status-done-bg: var(--status-done-bg);
+  --color-status-done-fg: var(--status-done-fg);
+  --color-status-fixes: var(--status-fixes);
+  --color-status-fixes-bg: var(--status-fixes-bg);
+  --color-status-fixes-fg: var(--status-fixes-fg);
+  --color-status-cancelled: var(--status-cancelled);
+  --color-status-cancelled-bg: var(--status-cancelled-bg);
+  --color-status-cancelled-fg: var(--status-cancelled-fg);
+  --color-status-todo-icon: var(--status-todo-icon);
+  --color-status-progress-icon: var(--status-progress-icon);
+  --color-status-review-icon: var(--status-review-icon);
+  --color-status-validation-icon: var(--status-validation-icon);
+  --color-status-done-icon: var(--status-done-icon);
+  --color-status-fixes-icon: var(--status-fixes-icon);
+  --color-status-cancelled-icon: var(--status-cancelled-icon);
+  --color-status-glyph: var(--status-glyph);
+}
+
+/* Increase Contrast no escuro (HIG): bordas e separadores mais visíveis e rótulos secundários mais fortes. */
+@media (prefers-contrast: more) {
+  :root.dark {
+    --separator: #545458;
+    --border: #7c7c80;
+    --muted: rgb(255 255 255 / 0.7);
+    --subtle: rgb(255 255 255 / 0.7);
+    --foreground: #ffffff;
+    --body: #ffffff;
+  }
+}
+
+/* Texto claro sobre fundo escuro parece mais grosso com o antialiasing de subpixel: no escuro, suaviza. */
+:root.dark body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Pausa as transições enquanto o tema troca (core/theme/use-theme.ts). */
+.sem-transicao,
+.sem-transicao * {
+  transition: none !important;
 }
 
 body {
@@ -72,7 +338,7 @@ body {
 
 .thin-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
 .thin-scroll::-webkit-scrollbar {
@@ -86,11 +352,11 @@ body {
 
 .thin-scroll::-webkit-scrollbar-thumb {
   border-radius: 9999px;
-  background: #cbd5e1;
+  background: var(--scrollbar-thumb);
 }
 
 .thin-scroll::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: color-mix(in oklch, var(--foreground) 30%, transparent);
 }
 
 .thin-scroll::-webkit-scrollbar-button {
@@ -100,16 +366,27 @@ body {
 }
 
 /* Área de soltar arquivo do Figma: traço tracejado com cantos arredondados, que border-dashed não reproduz.
-   O stroke de 2px fica metade fora do retângulo, então aparece com 1px. */
+   O stroke de 2px fica metade fora do retângulo, então aparece com 1px. O SVG vira máscara de um ::before, para o
+   traço usar um token (ADR 0041) e mudar com o tema. */
 .dropzone-tracejada {
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='20' ry='20' stroke='%23CBCFD3' stroke-width='2' stroke-dasharray='8 8'/%3e%3c/svg%3e");
+  --dropzone-traco: var(--border-tertiary);
+  position: relative;
   border-radius: 20px;
+}
+
+.dropzone-tracejada::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-color: var(--dropzone-traco);
+  mask: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='20' ry='20' stroke='black' stroke-width='2' stroke-dasharray='8 8'/%3e%3c/svg%3e");
 }
 
 .dropzone-tracejada[data-arrastando="true"],
 .dropzone-tracejada:hover,
 .dropzone-tracejada:focus-visible {
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='20' ry='20' stroke='%233672F2' stroke-width='2' stroke-dasharray='8 8'/%3e%3c/svg%3e");
+  --dropzone-traco: var(--accent);
 }
 
 /* Upload da planilha (spec 016): cards e prévia surgem subindo alguns pixels e saem pelo mesmo caminho. */
@@ -209,6 +486,6 @@ body {
 @media (prefers-reduced-transparency: reduce) {
   .dialog-overlay {
     backdrop-filter: none;
-    background-color: rgb(2 6 23 / 0.6);
+    background-color: color-mix(in oklab, var(--backdrop) 80%, black);
   }
 }

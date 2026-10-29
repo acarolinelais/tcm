@@ -27,7 +27,7 @@ export function AlertConfirm({ open, onOpenChange, title, description, confirmLa
           <AlertDialog.Dialog>
             <AlertDialog.Header>
               <AlertDialog.Icon status={variant === "destructive" ? "danger" : "accent"} />
-              <AlertDialog.Heading className="text-[18px] font-medium text-[#454442]">{title}</AlertDialog.Heading>
+              <AlertDialog.Heading className="text-[18px] font-medium text-body">{title}</AlertDialog.Heading>
             </AlertDialog.Header>
             <AlertDialog.Body>
               <p className="text-[14px] leading-6 text-muted">{description}</p>

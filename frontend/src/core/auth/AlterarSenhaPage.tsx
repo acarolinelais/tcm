@@ -49,7 +49,7 @@ export function AlterarSenhaPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#FBFBFB] p-4">
+    <main className="flex min-h-screen items-center justify-center bg-page p-4">
       <form noValidate onSubmit={enviar} className="w-full max-w-md space-y-5 rounded-2xl border border-border bg-card p-6">
         <div>
           <h1 className="text-xl font-semibold">{t("createPassword")}</h1>

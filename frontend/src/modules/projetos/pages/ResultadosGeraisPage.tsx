@@ -85,8 +85,8 @@ export function ResultadosGeraisPage() {
     return <PageCard>
       {cabecalho}
       <div role="status" className="mx-auto mt-10 max-w-md text-center">
-        <div className="mx-auto mb-4 flex size-11 items-center justify-center rounded-full bg-accent/10 text-accent"><FolderOpen aria-hidden="true" className="size-5" /></div>
-        <h2 className="text-[15px] font-medium text-[#454442]">{t("noAccessibleProjects")}</h2>
+        <div className="mx-auto mb-4 flex size-11 items-center justify-center rounded-full bg-accent/10 text-accent-text"><FolderOpen aria-hidden="true" className="size-5" /></div>
+        <h2 className="text-[15px] font-medium text-body">{t("noAccessibleProjects")}</h2>
         <p className="mt-1.5 text-[14px] leading-6 text-muted">{t("noAccessibleProjectsHint")}</p>
       </div>
     </PageCard>;

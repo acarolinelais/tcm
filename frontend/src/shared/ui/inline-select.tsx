@@ -27,9 +27,9 @@ interface InlineSelectProps {
 export function InlineSelect({ value, options, onChange, children, isDisabled, className, ...props }: InlineSelectProps) {
   return (
     <Select aria-label={props["aria-label"]} value={value || null} onChange={(valor) => { if (valor !== null && String(valor) !== value) onChange(String(valor)); }} isDisabled={isDisabled} className="w-full">
-      <Select.Trigger className={cn("h-7 min-h-0 w-full items-center justify-between gap-2 rounded-full border-0 bg-transparent px-0 py-0 pe-0 text-[14px] leading-5 text-[#454442] shadow-none hover:bg-transparent data-[focus-visible]:ring-2 data-[focus-visible]:ring-focus", className)}>
+      <Select.Trigger className={cn("h-7 min-h-0 w-full items-center justify-between gap-2 rounded-full border-0 bg-transparent px-0 py-0 pe-0 text-[14px] leading-5 text-body shadow-none hover:bg-transparent data-[focus-visible]:ring-2 data-[focus-visible]:ring-focus", className)}>
         {children}
-        <Select.Indicator className="static my-0 self-center"><EditableChevronIcon className="text-[#D0D0D0]" /></Select.Indicator>
+        <Select.Indicator className="static my-0 self-center"><EditableChevronIcon className="text-border-tertiary" /></Select.Indicator>
       </Select.Trigger>
       <Select.Popover className="min-w-36">
         <ListBox>

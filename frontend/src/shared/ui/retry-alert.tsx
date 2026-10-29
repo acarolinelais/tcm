@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 export function RetryAlert({ message, onRetry }: { message: string; onRetry: () => void }) {
   const { t } = useTranslation();
   return (
-    <div role="alert" className="flex flex-col items-start gap-3 text-[14px] leading-6 text-[#454442]">
+    <div role="alert" className="flex flex-col items-start gap-3 text-[14px] leading-6 text-body">
       <p>{message}</p>
       <Button variant="outline" onPress={onRetry}>{t("retryQuery")}</Button>
     </div>

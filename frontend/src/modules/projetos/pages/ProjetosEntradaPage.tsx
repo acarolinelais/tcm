@@ -18,7 +18,7 @@ export function ProjetosEntradaPage({ projetoSemCasosId }: { projetoSemCasosId?:
   const primeiro = projetos.data?.items[0];
   return <PageCard>
     {projetos.isPending || projetos.isFetching ? <p role="status" className="text-[14px] text-muted">{t("loadingProjects")}</p>
-      : projetos.isError || (projetoSemCasosId && primeiro?.id === projetoSemCasosId) ? <div role="alert" className="flex flex-col items-start gap-3 text-[14px] text-[#454442]"><p>{t("projectsLoadError")}</p><Button variant="outline" onPress={() => void projetos.refetch()}>{t("retryQuery")}</Button></div>
+      : projetos.isError || (projetoSemCasosId && primeiro?.id === projetoSemCasosId) ? <div role="alert" className="flex flex-col items-start gap-3 text-[14px] text-body"><p>{t("projectsLoadError")}</p><Button variant="outline" onPress={() => void projetos.refetch()}>{t("retryQuery")}</Button></div>
         : primeiro ? <Navigate replace to={`/projetos/${primeiro.id}`} /> : <ProjetosDevEmptyState />}
   </PageCard>;
 }

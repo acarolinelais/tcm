@@ -3,6 +3,8 @@ import { expect, type APIRequestContext, type Page } from "@playwright/test";
 // e2e que preparam os dados pela API real. Usar uma API/banco dedicados aos testes; não executar contra produção.
 export const api = process.env.SDF_E2E_API_URL ?? "http://127.0.0.1:8000";
 export const senha = "tcm@123";
+export const adminEmail = "admin@sdfmanager.com";
+export const adminSenha = process.env.SDF_E2E_ADMIN_PASSWORD ?? "mude-esta-senha";
 
 export async function post(request: APIRequestContext, path: string, data: object, token?: string) {
   const response = await request.post(`${api}/api/${path}`, { data, headers: token ? { Authorization: `Bearer ${token}` } : {} });
@@ -15,7 +17,7 @@ export async function post(request: APIRequestContext, path: string, data: objec
  * Os nomes levam um sufixo aleatório, para os testes não colidirem entre si.
  */
 export async function prepararTimeComDev(request: APIRequestContext, page: Page, membros = 3) {
-  const admin = await post(request, "auth/login", { email: "admin@sdfmanager.com", senha: process.env.SDF_E2E_ADMIN_PASSWORD ?? "mude-esta-senha" });
+  const admin = await post(request, "auth/login", { email: adminEmail, senha: adminSenha });
   const sufixo = crypto.randomUUID();
   const usuarios = [];
   for (let i = 0; i < membros; i++) {
@@ -31,4 +33,13 @@ export async function prepararTimeComDev(request: APIRequestContext, page: Page,
     sessionStorage.setItem("sdf.refresh", tokens.refresh_token);
   }, dev);
   return { admin, dev, usuarios, setor, time };
+}
+
+/** Abre no navegador a sessão do administrador existente, sem passar pela tela de login e sem criar dados. */
+export async function entrarComoAdmin(request: APIRequestContext, page: Page) {
+  const admin = await post(request, "auth/login", { email: adminEmail, senha: adminSenha });
+  await page.addInitScript((tokens) => {
+    sessionStorage.setItem("sdf.access", tokens.access_token);
+    sessionStorage.setItem("sdf.refresh", tokens.refresh_token);
+  }, admin);
 }

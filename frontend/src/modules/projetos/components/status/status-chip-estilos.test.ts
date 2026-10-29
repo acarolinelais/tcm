@@ -5,11 +5,11 @@ import { TONS_ETIQUETA } from "@/shared/ui/tag-chip";
 import { statusChipTons } from "./status-chip-estilos";
 
 describe("statusChipTons", () => {
-  it("cobre todos os status com as cores do Figma", () => {
+  it("cobre todos os status com os tokens de cada tom", () => {
     expect(Object.keys(statusChipTons).sort()).toEqual([...STATUS_CASO_TESTE].sort());
-    expect(statusChipTons.Done).toEqual({ fundo: "#DCF7E8", texto: "#3C8355" });
-    expect(statusChipTons["To-Do"]).toEqual({ fundo: "#EDFAFF", texto: "#5B8DD4" });
-    expect(statusChipTons.InFixes).toEqual({ fundo: "#FDEEEE", texto: "#C2474B" });
+    expect(statusChipTons.Done).toEqual({ fundo: "var(--etiqueta-ativo-bg)", texto: "var(--etiqueta-ativo-fg)" });
+    expect(statusChipTons["To-Do"]).toEqual({ fundo: "var(--etiqueta-todo-bg)", texto: "var(--etiqueta-todo-fg)" });
+    expect(statusChipTons.InFixes).toEqual({ fundo: "var(--etiqueta-fixes-bg)", texto: "var(--etiqueta-fixes-fg)" });
   });
 
   it("nenhum status usa o tom neutro da TC Situation", () => {

@@ -22,16 +22,16 @@ export function ResultadoExecucaoModal({ resultado: aberto, onFechar }: Props) {
         <Modal.Dialog>
           {resultado && <>
             <Modal.Header>
-              <Modal.Heading className="text-[18px] font-medium text-[#454442]">
+              <Modal.Heading className="text-[18px] font-medium text-body">
                 {resultado.tcId} · {resultado.device} · {formatarDia(resultado.dia)}
               </Modal.Heading>
             </Modal.Header>
             <Modal.Body>
               <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-[14px] leading-5">
                 <dt className="text-muted">{t("sdfId")}</dt>
-                <dd className="text-[#454442]">{resultado.resultado.sdf_id ?? <span className="text-muted">—</span>}</dd>
+                <dd className="text-body">{resultado.resultado.sdf_id ?? <span className="text-muted">—</span>}</dd>
                 <dt className="text-muted">{t("origin")}</dt>
-                <dd className="text-[#454442]">{t(resultado.resultado.origem === "MANUAL" ? "resultOriginManual" : "resultOriginImported")}</dd>
+                <dd className="text-body">{t(resultado.resultado.origem === "MANUAL" ? "resultOriginManual" : "resultOriginImported")}</dd>
               </dl>
             </Modal.Body>
             <Modal.Footer>

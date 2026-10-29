@@ -29,10 +29,10 @@ export function estadoDaTabela(e: EstadoDaTabela): ReactNode {
   const conteudo = e.hasFilters ? e.filtered : e.empty;
   return (
     <div role="status" className="w-full max-w-md text-center">
-      <div className="mx-auto mb-4 flex size-11 items-center justify-center rounded-full bg-accent/10 text-accent">
+      <div className="mx-auto mb-4 flex size-11 items-center justify-center rounded-full bg-accent/10 text-accent-text">
         {e.hasFilters ? <SearchX aria-hidden="true" className="size-5" /> : e.empty.icon}
       </div>
-      <h2 className="text-[15px] font-medium text-[#454442]">{conteudo.title}</h2>
+      <h2 className="text-[15px] font-medium text-body">{conteudo.title}</h2>
       <p className="mx-auto mt-1.5 max-w-xs text-[14px] leading-6 text-muted">{conteudo.hint}</p>
       {e.hasFilters && <Button variant="outline" size="sm" className="mt-5" onPress={e.onClearFilters}>{e.clearFiltersLabel}</Button>}
     </div>

@@ -39,7 +39,7 @@ export function MultiSelectCombobox({ label, placeholder, options, value, onValu
 
   return (
     <div className="flex flex-col gap-2">
-      <Label id={labelId} className="text-[14px] font-medium text-[#454442]">{label}</Label>
+      <Label id={labelId} className="text-[14px] font-medium text-body">{label}</Label>
       <Popover isOpen={aberto} onOpenChange={(open) => { setAberto(open); if (!open) setBusca(""); }}>
         <Button
           ref={gatilho}

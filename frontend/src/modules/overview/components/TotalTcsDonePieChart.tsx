@@ -20,9 +20,9 @@ export function TotalTcsDonePieChart({ breakdown }: { breakdown: StatusBreakdown
   const { t } = useTranslation();
 
   const segments: Segment[] = [
-    { key: "completed", label: t("completed"), pct: breakdown.completedPct, color: "#5588F5" },
-    { key: "todo", label: t("toDo"), pct: breakdown.todoPct, color: "#C9DAFF" },
-    { key: "inProgress", label: t("inProgress"), pct: breakdown.inProgressPct, color: "#B9C4E8" },
+    { key: "completed", label: t("completed"), pct: breakdown.completedPct, color: "var(--chart-1)" },
+    { key: "todo", label: t("toDo"), pct: breakdown.todoPct, color: "var(--chart-2)" },
+    { key: "inProgress", label: t("inProgress"), pct: breakdown.inProgressPct, color: "var(--chart-3)" },
   ];
 
   let acc = 0;
@@ -47,7 +47,7 @@ export function TotalTcsDonePieChart({ breakdown }: { breakdown: StatusBreakdown
           role="img"
           aria-label={t("doughnutChartLabel")}
         >
-          <circle cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} fill="none" stroke="#F2F2F2" strokeWidth={STROKE} />
+          <circle cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} fill="none" className="stroke-separator" strokeWidth={STROKE} />
           {arcs.map((s) => (
             <circle
               key={s.key}
@@ -55,7 +55,7 @@ export function TotalTcsDonePieChart({ breakdown }: { breakdown: StatusBreakdown
               cy={SIZE / 2}
               r={RADIUS}
               fill="none"
-              stroke={s.color}
+              style={{ stroke: s.color }}
               strokeWidth={STROKE}
               strokeLinecap="round"
               strokeDasharray={s.strokeDasharray}

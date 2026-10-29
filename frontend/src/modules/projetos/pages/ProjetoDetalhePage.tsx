@@ -303,10 +303,10 @@ function ProjetoDetalhe() {
         disallowEmptySelection
         selectedKeys={[visaoFormFactor]}
         onSelectionChange={(chaves) => { const [chave] = chaves; if (chave) { setVisaoFormFactor(chave as "summary" | "results"); setPagina(1); } }}
-        className="w-fit gap-0 rounded-xl bg-[#F3F5F7] p-1"
+        className="w-fit gap-0 rounded-xl bg-panel p-1"
       >
         {(["results", "summary"] as const).map((visao) => (
-          <ToggleButton key={visao} id={visao} className="h-8 min-w-24 rounded-lg border-0 bg-transparent px-5 text-[13px] font-medium text-[#454442] shadow-none data-[selected=true]:bg-white data-[selected=true]:text-accent data-[selected=true]:shadow-sm">
+          <ToggleButton key={visao} id={visao} className="h-8 min-w-24 rounded-lg border-0 bg-transparent px-5 text-[13px] font-medium text-body shadow-none data-[selected=true]:bg-surface data-[selected=true]:text-accent-text data-[selected=true]:shadow-sm">
             {t(visao === "results" ? "formFactorResults" : "formFactorSummary")}
           </ToggleButton>
         ))}

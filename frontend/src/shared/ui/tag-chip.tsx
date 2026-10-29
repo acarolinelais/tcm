@@ -1,18 +1,15 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Chip } from "@heroui/react";
 
+import { tomDoToken, type TomEtiqueta } from "@/shared/lib/tom-etiqueta";
 import { cn } from "@/shared/lib/utils";
 
-/** Par de cores de uma etiqueta do Figma: fundo claro e texto na cor forte. */
-export interface TomEtiqueta {
-  fundo: string;
-  texto: string;
-}
+export type { TomEtiqueta };
 
 /** Tons sem domínio (spec 022, referência visual). Status de domínio ficam no módulo dono. */
 export const TONS_ETIQUETA = {
-  ativo: { fundo: "#DCF7E8", texto: "#3C8355" },
-  neutro: { fundo: "#EDEFF1", texto: "#777777" },
+  ativo: tomDoToken("etiqueta-ativo"),
+  neutro: tomDoToken("etiqueta-neutro"),
 } satisfies Record<string, TomEtiqueta>;
 
 // 17px de altura, raio pleno, Inter 500 12px. O texto sempre acompanha a cor.

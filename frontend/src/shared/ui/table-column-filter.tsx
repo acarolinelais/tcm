@@ -118,7 +118,7 @@ export function TableColumnFilter({
         aria-label={t("filterBy", { label: accessibleLabel ?? label })}
         aria-haspopup="dialog"
         aria-expanded={aberto}
-        className={`group inline-flex min-h-9 items-center gap-1.5 rounded-md px-1 text-left text-sm font-semibold uppercase tracking-wide transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${ativo ? "text-primary" : "text-foreground hover:text-primary"}`}
+        className={`group inline-flex min-h-9 items-center gap-1.5 rounded-md px-1 text-left text-sm font-semibold uppercase tracking-wide transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${ativo ? "text-accent-text" : "text-foreground hover:text-accent-text"}`}
         onClick={alternarMenu}
       >
         {label}
@@ -138,7 +138,7 @@ export function TableColumnFilter({
             if (proximoAlvo instanceof Node && (menuRef.current?.contains(proximoAlvo) || triggerRef.current?.contains(proximoAlvo))) return;
             setAberto(false);
           }}
-          className="popover-enter z-50 max-h-[calc(100dvh-1rem)] w-[min(18rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] overflow-y-auto rounded-xl border border-border bg-card p-1.5 shadow-lg"
+          className="popover-enter z-50 max-h-[calc(100dvh-1rem)] w-[min(18rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] overflow-y-auto rounded-xl border border-border bg-overlay p-1.5 shadow-overlay"
         >
           {options ? (
             <div>
@@ -161,7 +161,7 @@ export function TableColumnFilter({
                   type="button"
                   role={multiple ? "menuitemcheckbox" : "menuitemradio"}
                   aria-checked={multiple ? selectedValues.includes(option.value) : value === option.value}
-                  className={`w-full truncate rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-secondary active:bg-secondary ${(multiple ? selectedValues.includes(option.value) : value === option.value) ? "font-medium text-primary" : "text-foreground"}`}
+                  className={`w-full truncate rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-secondary active:bg-secondary ${(multiple ? selectedValues.includes(option.value) : value === option.value) ? "font-medium text-accent-text" : "text-foreground"}`}
                   onClick={() => {
                     if (multiple) {
                       const next = selectedValues.includes(option.value)
@@ -178,7 +178,7 @@ export function TableColumnFilter({
                 </button>
               ))}
               </div>
-              {multiple && <div className="sticky bottom-0 flex justify-end border-t border-border bg-card px-2 py-1.5"><button type="button" className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary" onClick={() => onSelectedValuesChange?.([])}>{t("clearFilters")}</button></div>}
+              {multiple && <div className="sticky bottom-0 flex justify-end border-t border-border bg-overlay px-2 py-1.5"><button type="button" className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-secondary" onClick={() => onSelectedValuesChange?.([])}>{t("clearFilters")}</button></div>}
             </div>
           ) : type === "date" ? (
             <div>

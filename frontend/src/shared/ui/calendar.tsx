@@ -32,7 +32,7 @@ export function Calendar({ className, classNames, showOutsideDays = true, ...pro
         week: "mt-1 flex w-full",
         day: "size-8 p-0 text-center text-sm",
         day_button: "inline-flex size-8 items-center justify-center rounded-lg tabular-nums transition-colors hover:bg-secondary active:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        today: "font-semibold text-primary",
+        today: "font-semibold text-accent-text",
         selected: "[&>button]:bg-primary [&>button]:text-primary-foreground [&>button]:hover:bg-primary [&>button]:active:bg-primary",
         outside: "text-muted-foreground/60",
         disabled: "text-muted-foreground opacity-50",

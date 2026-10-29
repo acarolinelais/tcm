@@ -19,7 +19,7 @@ export function FormFactorCriarRodadaDialog({ aberto, onAbertoChange, salvando, 
         <Modal.Dialog>
           <Modal.CloseTrigger />
           <Modal.Header className="flex-col items-start gap-1">
-            <Modal.Heading className="text-[18px] font-medium text-[#454442]">{t("createTestRound")}</Modal.Heading>
+            <Modal.Heading className="text-[18px] font-medium text-body">{t("createTestRound")}</Modal.Heading>
             <p className="text-[14px] leading-relaxed text-muted">{t("createTestRoundHint")}</p>
           </Modal.Header>
           {/* Montado só com o modal aberto: cada abertura começa com o SDF ID vazio. */}

@@ -28,7 +28,7 @@ export function TextInputField({ label, error, description, isRequired, isDisabl
 }) {
   return (
     <TextField value={value} onChange={onChange} isInvalid={Boolean(error)} isRequired={isRequired} isDisabled={isDisabled} isReadOnly={isReadOnly} validationBehavior="aria" type={type} name={name} autoComplete={autoComplete} className="flex flex-col gap-2">
-      <Label className="text-[14px] font-medium text-[#454442]">{label}</Label>
+      <Label className="text-[14px] font-medium text-body">{label}</Label>
       <Input ref={ref} maxLength={maxLength} autoFocus={autoFocus} placeholder={placeholder} className="h-10 text-[14px]" />
       {error ? <FieldError className="text-[12px]"><span role="alert">{error}</span></FieldError> : description ? <Description className="text-[12px] text-muted">{description}</Description> : null}
     </TextField>
@@ -46,7 +46,7 @@ export function TextAreaField({ label, error, description, isRequired, isDisable
   const { t } = useTranslation();
   return (
     <TextField value={value} onChange={onChange} isInvalid={Boolean(error)} isRequired={isRequired} isDisabled={isDisabled} validationBehavior="aria" className="flex flex-col gap-2">
-      <Label className="text-[14px] font-medium text-[#454442]">{label}</Label>
+      <Label className="text-[14px] font-medium text-body">{label}</Label>
       <TextArea maxLength={maxLength} autoFocus={autoFocus} rows={4} className="min-h-24 resize-y text-[14px]" />
       <div className="flex items-start justify-between gap-3">
         {error ? <FieldError className="text-[12px]"><span role="alert">{error}</span></FieldError> : description ? <Description className="text-[12px] text-muted">{description}</Description> : <span />}
@@ -91,7 +91,7 @@ export function SelectField({ label, error, description, isRequired, isDisabled,
       validationBehavior="aria"
       className="flex flex-col gap-2"
     >
-      <Label className="text-[14px] font-medium text-[#454442]">{label}</Label>
+      <Label className="text-[14px] font-medium text-body">{label}</Label>
       <Select.Trigger className="h-10 text-[14px]">
         <Select.Value />
         <Select.Indicator />

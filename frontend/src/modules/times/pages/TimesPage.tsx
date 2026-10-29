@@ -92,7 +92,7 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
         const integrantes = (integrantesPorTime.get(time.id) ?? []).map((membro) => usuarioNome(membro.usuario_id));
         return (
           <Tooltip delay={300} closeDelay={0}>
-            <Button variant="ghost" aria-label={t("teamMembersCount", { count: integrantes.length })} className="h-7 min-h-0 gap-1.5 rounded-lg px-1.5 text-[14px] text-[#454442]">
+            <Button variant="ghost" aria-label={t("teamMembersCount", { count: integrantes.length })} className="h-7 min-h-0 gap-1.5 rounded-lg px-1.5 text-[14px] text-body">
               <UsersRound aria-hidden="true" absoluteStrokeWidth strokeWidth={1} className="size-3.5" /><span className="tabular-nums">{integrantes.length}</span>
             </Button>
             <Tooltip.Content className="max-w-64 text-[13px]">
@@ -121,7 +121,7 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
   const membrosAtivos = (membros.data ?? []).filter((membro) => membro.ativo);
 
   return <PageCard>
-    <header className="mb-5 flex shrink-0 items-start justify-between gap-4"><div className="min-w-0"><PageTitle className="text-accent">{t("teams")}</PageTitle><p className="mt-1.5 text-[14px] leading-5 text-muted">{t("teamsSubtitle")}</p></div>{podeGerenciar && <Button variant="primary" onPress={() => setCriarAberto(true)}><Plus aria-hidden="true" absoluteStrokeWidth strokeWidth={1.5} className="size-4" />{t("newTeam")}</Button>}</header>
+    <header className="mb-5 flex shrink-0 items-start justify-between gap-4"><div className="min-w-0"><PageTitle className="text-accent-text">{t("teams")}</PageTitle><p className="mt-1.5 text-[14px] leading-5 text-muted">{t("teamsSubtitle")}</p></div>{podeGerenciar && <Button variant="primary" onPress={() => setCriarAberto(true)}><Plus aria-hidden="true" absoluteStrokeWidth strokeWidth={1.5} className="size-4" />{t("newTeam")}</Button>}</header>
     <DataTable
       aria-label={t("teams")}
       columns={colunas}
@@ -132,17 +132,17 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
     <NovoTimeDrawer isOpen={criarAberto} onOpenChange={setCriarAberto} setoresAtivos={setoresAtivos} setorUnico={setorUnicoGerenciado} carregandoSetores={!admin && ehGerenteComEscopo && setores.isLoading} />
     <SideDrawer isOpen={Boolean(timeAtual)} onOpenChange={(open) => { if (!open) setTimeAtual(null); }} title={timeAtual ? t("memberTitle", { name: timeAtual.nome }) : t("members")} subtitle={t("teamMembersCount", { count: membrosAtivos.length })}>
       <div className="flex-1 space-y-7 px-7 py-6">
-        <form className="space-y-4 rounded-2xl border border-separator bg-[#FBFBFB] p-4" onSubmit={(event) => { event.preventDefault(); adicionar.mutate(); }}>
-          <h3 className="text-[14px] font-medium text-[#454442]">{t("addMemberToTeam")}</h3>
+        <form className="space-y-4 rounded-2xl border border-separator bg-page p-4" onSubmit={(event) => { event.preventDefault(); adicionar.mutate(); }}>
+          <h3 className="text-[14px] font-medium text-body">{t("addMemberToTeam")}</h3>
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
             <SelectField label={t("selectUser")} value={usuarioId} onChange={setUsuarioId} placeholder={t("selectUser")} options={(usuarios.data ?? []).filter((usuario) => usuario.ativo && !membrosAtivos.some((membro) => membro.usuario_id === usuario.id)).map((usuario) => ({ value: usuario.id, label: `${usuario.nome} · ${usuario.email}`, textValue: usuario.nome }))} />
-            <Button type="submit" variant="outline" isIconOnly aria-label={adicionar.isPending ? t("pleaseWait") : t("add")} isDisabled={!usuarioId || adicionar.isPending} className="size-10 text-accent">
+            <Button type="submit" variant="outline" isIconOnly aria-label={adicionar.isPending ? t("pleaseWait") : t("add")} isDisabled={!usuarioId || adicionar.isPending} className="size-10 text-accent-text">
               <Plus aria-hidden="true" className="size-4" />
             </Button>
           </div>
         </form>
         <section className="space-y-3" aria-label={t("members")}>
-          <h3 className="text-[14px] font-medium text-[#454442]">{t("members")}</h3>
+          <h3 className="text-[14px] font-medium text-body">{t("members")}</h3>
           {membros.isLoading ? <p role="status" className="py-5 text-center text-[14px] text-muted">{t("loading")}</p>
             : membros.isError ? <p role="alert" className="py-5 text-center text-[14px] text-danger">{t("teamMembersLoadError")}</p>
               : membrosAtivos.length === 0 ? <p className="rounded-xl border border-dashed border-separator px-4 py-8 text-center text-[14px] text-muted">{t("noTeamMembers")}</p>
@@ -150,9 +150,9 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
                   {membrosAtivos.map((membro) => {
                     const nomeMembro = membro.usuario_nome ?? usuarioNome(membro.usuario_id);
                     const perfilNome = rotuloPerfil(t, membro.usuario_perfil_codigo, membro.usuario_perfil);
-                    return <div key={membro.id} className="flex items-center gap-3 rounded-xl border border-separator bg-white px-3 py-3">
-                      <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#EAF1FF] text-[14px] font-medium text-accent">{nomeMembro.slice(0, 1).toLocaleUpperCase()}</span>
-                      <div className="min-w-0 flex-1"><p className="truncate text-[14px] font-medium text-[#454442]" title={nomeMembro}>{nomeMembro}</p><p className="mt-0.5 text-[12px] text-muted">{perfilNome}</p></div>
+                    return <div key={membro.id} className="flex items-center gap-3 rounded-xl border border-separator bg-surface px-3 py-3">
+                      <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-tint text-[14px] font-medium text-accent-text">{nomeMembro.slice(0, 1).toLocaleUpperCase()}</span>
+                      <div className="min-w-0 flex-1"><p className="truncate text-[14px] font-medium text-body" title={nomeMembro}>{nomeMembro}</p><p className="mt-0.5 text-[12px] text-muted">{perfilNome}</p></div>
                       <Button variant="ghost" isIconOnly aria-label={`${t("removeTeamMemberTitle")} ${nomeMembro}`} className="shrink-0 text-danger" onPress={() => setMembroParaRemover(membro.usuario_id)}>
                         <Trash2 aria-hidden="true" className="size-4" />
                       </Button>

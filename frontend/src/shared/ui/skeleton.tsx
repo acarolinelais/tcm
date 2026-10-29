@@ -10,7 +10,7 @@ export function Skeleton({ className }: { className?: string }) {
 export function PageSkeleton({ label }: { label?: string }) {
   const { t } = useTranslation();
   return (
-    <section role="status" className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
+    <section role="status" className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[42px] border border-separator bg-card px-7 py-8 sm:px-11 sm:py-10">
       <span className="sr-only">{label ?? t("loading")}</span>
       <Skeleton className="h-8 w-48" />
       <div className="mt-7 space-y-3">

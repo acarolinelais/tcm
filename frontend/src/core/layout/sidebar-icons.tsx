@@ -2,7 +2,7 @@ import type { SVGProps } from "react";
 
 // Ícones da sidebar exportados do Figma (TCM, frames "Sidebar - Admin/Manager/KP/Dev", nodes 2216:614…).
 // Use no tamanho nativo do viewBox (SIDEBAR_ICON_SIZE): o traço de 1px do Figma engrossa se o ícone for ampliado.
-// A cor vem de `currentColor`, para o item ativo herdar `text-primary`.
+// A cor vem de `currentColor`, para o item ativo herdar `text-accent-text`.
 type IconProps = SVGProps<SVGSVGElement>;
 
 export function OverviewIcon(props: IconProps) {

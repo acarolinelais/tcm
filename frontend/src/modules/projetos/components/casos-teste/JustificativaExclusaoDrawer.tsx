@@ -13,8 +13,8 @@ export function JustificativaExclusaoDrawer({ caso, onFechar }: { caso: CasoTest
   return (
     <SideDrawer isOpen={Boolean(caso)} onOpenChange={(aberto) => { if (!aberto) onFechar(); }} title={exibido?.tc_id ?? ""} subtitle={t("statusCancelled")}>
       <dl className="space-y-2 px-7 py-6">
-        <dt className="text-[14px] font-medium text-[#454442]">{t("exclusionJustification")}</dt>
-        <dd className="whitespace-pre-wrap break-words text-[14px] leading-6 text-[#454442]">{exibido?.justificativa_exclusao}</dd>
+        <dt className="text-[14px] font-medium text-body">{t("exclusionJustification")}</dt>
+        <dd className="whitespace-pre-wrap break-words text-[14px] leading-6 text-body">{exibido?.justificativa_exclusao}</dd>
       </dl>
     </SideDrawer>
   );

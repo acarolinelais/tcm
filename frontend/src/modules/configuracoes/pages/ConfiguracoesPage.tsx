@@ -9,12 +9,12 @@ export function ConfiguracoesPage() {
   const perfil = useOutletContext<PerfilAtual>();
 
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
-      <h1 className="mb-8 text-2xl font-medium text-primary">{t("settings")}</h1>
+    <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-separator bg-card px-7 py-8 sm:px-11 sm:py-10">
+      <h1 className="mb-8 text-2xl font-medium text-accent-text">{t("settings")}</h1>
       <div className="max-w-3xl rounded-2xl border border-border">
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
           <div>
-            <h2 className="text-[15px] font-medium text-[#454442]">{t("settingsLanguageTitle")}</h2>
+            <h2 className="text-[15px] font-medium text-body">{t("settingsLanguageTitle")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("settingsLanguageHint")}</p>
           </div>
           {/* Grava o idioma preferido da conta, como no cabeçalho. */}

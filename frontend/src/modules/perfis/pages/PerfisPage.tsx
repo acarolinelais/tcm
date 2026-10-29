@@ -314,7 +314,7 @@ export function PerfisPage() {
                     {criando && <p className="mt-3 text-sm text-muted-foreground">{t("profileActionsHint")}</p>}
                     {!criando && atual?.codigo && <p className="mt-2 text-sm text-muted-foreground">{t("systemPermissionsHint")}</p>}
                   </div>
-                  {!criando && dirty && <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-900">{t("unsavedChanges")}</span>}
+                  {!criando && dirty && <span className="rounded-full bg-warning-soft px-3 py-1 text-xs font-medium text-warning-soft-foreground">{t("unsavedChanges")}</span>}
                 </div>
 
                 <div className="space-y-2.5">
