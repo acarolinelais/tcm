@@ -59,7 +59,7 @@ export function PullRequestsCasoTeste({ casoId, perfil }: { casoId: string; perf
 
   return (
     <section aria-labelledby={`pull-requests-${casoId}`} className="mt-8">
-      <h3 id={`pull-requests-${casoId}`} className="text-[18px] font-medium leading-6 text-[#454442]">{t("pullRequests")}</h3>
+      <h3 id={`pull-requests-${casoId}`} className="text-[18px] font-medium leading-6 text-body">{t("pullRequests")}</h3>
       <form noValidate onSubmit={(evento) => void onSubmit(evento)} className="mt-3 flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <Controller

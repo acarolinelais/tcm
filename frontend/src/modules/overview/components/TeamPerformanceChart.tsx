@@ -7,6 +7,7 @@ import { localeForLanguage } from "@/core/i18n";
 const WIDTH = 941;
 const HEIGHT = 90;
 const PADDING_Y = 12;
+const sombraDaLinha = { filter: "drop-shadow(0 6px 18px color-mix(in oklab, var(--chart-1) 45%, transparent))" };
 
 function buildPath(points: TeamPerformancePoint[], max: number, stepX: number) {
   return points
@@ -53,11 +54,11 @@ export function TeamPerformanceChart({
         <path
           d={path}
           fill="none"
-          stroke="#5588F5"
           strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
-          style={{ filter: "drop-shadow(0 6px 18px rgba(7, 58, 188, 0.45))" }}
+          className="stroke-chart-1"
+          style={sombraDaLinha}
         />
         {points.map((p, i) => {
           const x = i * stepX;
@@ -76,8 +77,8 @@ export function TeamPerformanceChart({
               />
               {hoverIndex === i && (
                 <>
-                  <line x1={x} y1={0} x2={x} y2={HEIGHT} stroke="#ECEFF2" strokeWidth={1} />
-                  <circle cx={x} cy={y} r={5} fill="#FFFFFF" stroke="#3C77F8" strokeWidth={2} />
+                  <line x1={x} y1={0} x2={x} y2={HEIGHT} className="stroke-separator" strokeWidth={1} />
+                  <circle cx={x} cy={y} r={5} className="fill-surface stroke-chart-1" strokeWidth={2} />
                 </>
               )}
             </g>

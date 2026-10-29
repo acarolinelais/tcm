@@ -91,7 +91,7 @@ export function TimeDetalhePage({ modoAdmin = false }: { modoAdmin?: boolean }) 
     <header className="mb-5 flex shrink-0 items-start gap-4">
       <div className="min-w-0 flex-1">
         <p className="text-[14px] font-medium leading-5 text-muted">{t("teamDetails")}</p>
-        <PageTitle className="mt-1 text-accent">{time?.nome ?? t("team")}</PageTitle>
+        <PageTitle className="mt-1 text-accent-text">{time?.nome ?? t("team")}</PageTitle>
       </div>
       {podeGerenciarMembros && time && <div className="ml-auto flex flex-wrap justify-end gap-2">
         <Button variant="outline" isIconOnly aria-label={t("addMemberToTeam")} onPress={() => setAdicionarMembroAberto(true)}>
@@ -103,11 +103,11 @@ export function TimeDetalhePage({ modoAdmin = false }: { modoAdmin?: boolean }) 
 
     {times.isLoading ? <p role="status" className="py-8 text-[14px] text-muted">{t("loadingTeams")}</p> : !time || !escopoPermitido ? <p role="alert" className="py-8 text-[14px] text-muted">{t("teamNotFound")}</p> : <>
       {/* Linha de dados do Figma: rótulo em cinza, valor em #454442, "Ativo" em verde e "·" entre os itens. */}
-      <div className="mb-5 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-b border-[#EFEFF0] px-2.5 pb-5 text-[14px] font-medium leading-5 text-muted">
-        <span>{t("sector")}: <span className="ms-1 text-[#454442]">{setorNome}</span></span>
-        <span aria-hidden="true" className="font-semibold text-[#7E7E7E]">·</span>
-        <span>{t("status")}: <span className={time.ativo ? "ms-1 text-[#007A55]" : "ms-1 text-muted"}>{time.ativo ? t("active") : t("inactive")}</span></span>
-        <span aria-hidden="true" className="font-semibold text-[#7E7E7E]">·</span>
+      <div className="mb-5 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-b border-separator px-2.5 pb-5 text-[14px] font-medium leading-5 text-muted">
+        <span>{t("sector")}: <span className="ms-1 text-body">{setorNome}</span></span>
+        <span aria-hidden="true" className="font-semibold text-subtle">·</span>
+        <span>{t("status")}: <span className={time.ativo ? "ms-1 text-success-soft-foreground" : "ms-1 text-muted"}>{time.ativo ? t("active") : t("inactive")}</span></span>
+        <span aria-hidden="true" className="font-semibold text-subtle">·</span>
         <span>{t("teamMembersCount", { count: membrosAtivos.length })}</span>
       </div>
 

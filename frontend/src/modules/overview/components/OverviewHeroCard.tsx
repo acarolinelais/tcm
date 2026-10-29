@@ -28,7 +28,7 @@ export function OverviewHeroCard({
           icon={assigned}
           label={t("assigned")}
           value={`${formatNumber(stats.assigned)} ${t("testCases")}`}
-          iconBg="bg-[#EDF2FF]"
+          iconBg="bg-accent-tint"
         />
         <StatCard icon={note} label={t("inProgress")} value={`${formatNumber(stats.inProgress)} ${t("testCases")}`} />
         <StatCard icon={memoCheck} label={t("allTests")} value={`${formatNumber(stats.all)} ${t("testCases")}`} />

@@ -8,14 +8,14 @@ describe("TagChip", () => {
     render(<TagChip tom={TONS_ETIQUETA.ativo}>Active</TagChip>);
     const chip = screen.getByText("Active").closest(".chip") as HTMLElement;
     expect(chip).not.toBeNull();
-    expect(chip.style.getPropertyValue("--chip-bg")).toBe("#DCF7E8");
-    expect(chip.style.getPropertyValue("--chip-fg")).toBe("#3C8355");
+    expect(chip.style.getPropertyValue("--chip-bg")).toBe("var(--etiqueta-ativo-bg)");
+    expect(chip.style.getPropertyValue("--chip-fg")).toBe("var(--etiqueta-ativo-fg)");
   });
 
   it("o tom neutro usa o cinza da situação", () => {
     render(<TagChip tom={TONS_ETIQUETA.neutro}>Inactive</TagChip>);
     const chip = screen.getByText("Inactive").closest(".chip") as HTMLElement;
-    expect(chip.style.getPropertyValue("--chip-bg")).toBe("#EDEFF1");
-    expect(chip.style.getPropertyValue("--chip-fg")).toBe("#777777");
+    expect(chip.style.getPropertyValue("--chip-bg")).toBe("var(--etiqueta-neutro-bg)");
+    expect(chip.style.getPropertyValue("--chip-fg")).toBe("var(--etiqueta-neutro-fg)");
   });
 });

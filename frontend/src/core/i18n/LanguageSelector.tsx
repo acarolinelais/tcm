@@ -7,10 +7,10 @@ import { atualizarIdiomaPreferido, type PerfilAtual } from "@/core/auth/api";
 import i18n, { TEMP_LANGUAGE_KEY } from "@/core/i18n";
 import { getAccessToken } from "@/core/auth/session";
 import { languages, type LanguageCode } from "./resources";
-import iconeIdioma from "@/shared/assets/figma/icons/language.svg";
 import { cn } from "@/shared/lib/utils";
 import { toast } from "@/shared/lib/toast";
 import { useDismiss } from "@/shared/lib/use-dismiss";
+import { LanguageIcon } from "@/shared/ui/figma-icons";
 
 export function LanguageSelector({ perfil, className }: { perfil?: PerfilAtual; className?: string }) {
   const { t } = useTranslation();
@@ -44,10 +44,10 @@ export function LanguageSelector({ perfil, className }: { perfil?: PerfilAtual; 
 
   return <div ref={menuRef} className="relative">
     <button type="button" aria-haspopup="menu" aria-expanded={aberto} onClick={() => setAberto((value) => !value)} className={cn("flex items-center gap-1.5 text-sm text-foreground", className)}>
-      <img src={iconeIdioma} alt="" aria-hidden="true" className="size-[1.1em]" />{atual}<ChevronDown aria-hidden="true" className="h-3.5 w-3.5 text-muted-foreground" />
+      <LanguageIcon className="size-[1.1em]" />{atual}<ChevronDown aria-hidden="true" className="h-3.5 w-3.5 text-muted-foreground" />
     </button>
-    {aberto && <div role="menu" className="popover-enter absolute right-0 top-8 z-50 min-w-36 rounded-xl border border-border bg-card p-1.5 shadow-lg">
-      {languages.map(({ code, label }) => <button key={code} role="menuitem" type="button" onClick={() => void selecionar(code)} className={`w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-secondary ${code === i18n.resolvedLanguage ? "font-medium text-primary" : ""}`}>{label}</button>)}
+    {aberto && <div role="menu" className="popover-enter absolute right-0 top-8 z-50 min-w-36 rounded-xl border border-border bg-overlay p-1.5 shadow-overlay">
+      {languages.map(({ code, label }) => <button key={code} role="menuitem" type="button" onClick={() => void selecionar(code)} className={`w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-secondary ${code === i18n.resolvedLanguage ? "font-medium text-accent-text" : ""}`}>{label}</button>)}
     </div>}
   </div>;
 }

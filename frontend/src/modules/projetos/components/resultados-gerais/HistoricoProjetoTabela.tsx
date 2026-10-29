@@ -44,7 +44,7 @@ interface Props {
 const SEM_CASOS: CasoHistorico[] = [];
 
 // TC ID e Form Factor ficam fixos ao rolar para os lados (RN-05); a largura fixa do TC ID dá o recuo do Form Factor.
-const fixa = "sticky z-[1] bg-white [thead_&]:bg-surface-secondary";
+const fixa = "sticky z-[1] bg-surface [thead_&]:bg-surface-secondary";
 
 /** Resultados Gerais de um projeto (spec 032): todos os casos, sem paginação (ADR 0038), e até 7 datas. */
 export function HistoricoProjetoTabela(props: Props) {

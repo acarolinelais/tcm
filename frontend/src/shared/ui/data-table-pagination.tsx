@@ -16,7 +16,7 @@ interface DataTablePaginationProps {
 }
 
 // Figma (TCM 2070:1476): total à esquerda; "Prev", números e "Next" à direita; Inter 500 12px.
-const botaoPagina = "inline-flex h-[26px] min-w-[26px] items-center justify-center gap-1.5 rounded-full px-1.5 text-[12px] font-medium leading-[17px] text-[#454442] outline-none transition-colors hover:bg-[#EBEBEC]/60 data-[disabled]:cursor-not-allowed data-[disabled]:text-[#909092] data-[disabled]:hover:bg-transparent data-[focus-visible]:ring-2 data-[focus-visible]:ring-focus";
+const botaoPagina = "inline-flex h-[26px] min-w-[26px] items-center justify-center gap-1.5 rounded-full px-1.5 text-[12px] font-medium leading-[17px] text-body outline-none transition-colors hover:bg-default/60 data-[disabled]:cursor-not-allowed data-[disabled]:text-subtle data-[disabled]:hover:bg-transparent data-[focus-visible]:ring-2 data-[focus-visible]:ring-focus";
 
 export function DataTablePagination({
   page,
@@ -32,12 +32,12 @@ export function DataTablePagination({
 
   return (
     <div className={cn("flex w-full shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 px-6 py-3", className)}>
-      <div className="flex items-center gap-3 text-[12px] font-medium leading-[17px] text-[#909092]">
+      <div className="flex items-center gap-3 text-[12px] font-medium leading-[17px] text-subtle">
         <span aria-live="polite">{t("totalItems", { count: totalCount })}</span>
         <Select aria-label={t("pageSize")} value={pageSize} onChange={(valor) => { if (valor !== null) onPageSizeChange(Number(valor)); }} className="w-auto">
-          <Select.Trigger className="h-[22px] min-h-0 items-center gap-1 rounded-full border-0 bg-transparent px-1.5 py-0 pe-1.5 text-[12px] font-medium text-[#909092] shadow-none hover:bg-[#EBEBEC]/60">
+          <Select.Trigger className="h-[22px] min-h-0 items-center gap-1 rounded-full border-0 bg-transparent px-1.5 py-0 pe-1.5 text-[12px] font-medium text-subtle shadow-none hover:bg-default/60">
             <Select.Value className="leading-[17px]" />
-            <Select.Indicator className="static my-0"><EditableChevronIcon className="text-[#909092]" /></Select.Indicator>
+            <Select.Indicator className="static my-0"><EditableChevronIcon className="text-subtle" /></Select.Indicator>
           </Select.Trigger>
           <Select.Popover className="min-w-20">
             <ListBox>
@@ -58,12 +58,12 @@ export function DataTablePagination({
           </Pagination.Item>
           {paginasVisiveis(page, totalPaginas).map((item, indice) => (
             <Pagination.Item key={item === "reticencias" ? `reticencias-${indice}` : item}>
-              {item === "reticencias" ? <Pagination.Ellipsis className="text-[12px] text-[#909092]" /> : (
+              {item === "reticencias" ? <Pagination.Ellipsis className="text-[12px] text-subtle" /> : (
                 <Pagination.Link
                   isActive={item === page}
                   aria-label={t("goToPage", { page: item })}
                   onPress={() => onPageChange(item)}
-                  className={cn(botaoPagina, "tabular-nums", item === page && "bg-[#EBEBEC] hover:bg-[#EBEBEC]")}
+                  className={cn(botaoPagina, "tabular-nums", item === page && "bg-default hover:bg-default")}
                 >
                   {item}
                 </Pagination.Link>

@@ -66,7 +66,7 @@ export function DataTableFilter({ label, accessibleLabel, value, onChange, optio
         aria-label={t("filterBy", { label: nome })}
         className={cn(
           "h-8 min-h-0 w-full justify-between gap-2 rounded-lg px-0 text-[14px] font-medium leading-5 hover:bg-transparent data-[focus-visible]:ring-2 data-[focus-visible]:ring-focus",
-          ativo ? "text-accent" : "text-muted hover:text-[#454442]",
+          ativo ? "text-accent-text" : "text-muted hover:text-body",
         )}
       >
         <span className="truncate">{label}</span>
@@ -175,7 +175,7 @@ export function DataTableMultiFilter({ label, accessibleLabel, values, onChange,
         aria-label={t("filterBy", { label: nome })}
         className={cn(
           "h-8 min-h-0 w-full justify-between gap-2 rounded-lg px-0 text-[14px] font-medium leading-5 hover:bg-transparent data-[focus-visible]:ring-2 data-[focus-visible]:ring-focus",
-          ativo ? "text-accent" : "text-muted hover:text-[#454442]",
+          ativo ? "text-accent-text" : "text-muted hover:text-body",
         )}
       >
         <span className="truncate">{label}</span>
@@ -191,16 +191,16 @@ export function DataTableMultiFilter({ label, accessibleLabel, values, onChange,
             onKeyDownCapture={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setAberto(false); } }}
           >
           <div className="flex items-center justify-between gap-2">
-            <Button variant="ghost" aria-label={t("closeFilter")} onPress={() => setAberto(false)} className="h-7 min-h-0 gap-1 rounded-lg px-1 text-[14px] font-medium text-[#454442]">
+            <Button variant="ghost" aria-label={t("closeFilter")} onPress={() => setAberto(false)} className="h-7 min-h-0 gap-1 rounded-lg px-1 text-[14px] font-medium text-body">
               <ChevronLeft aria-hidden="true" absoluteStrokeWidth strokeWidth={1.5} className="size-4" />{label}
             </Button>
-            <Button variant="ghost" isDisabled={!ativo} onPress={() => onChange([])} className="h-7 min-h-0 rounded-lg px-1.5 text-[14px] text-accent">
+            <Button variant="ghost" isDisabled={!ativo} onPress={() => onChange([])} className="h-7 min-h-0 rounded-lg px-1.5 text-[14px] text-accent-text">
               {t("clear")}
             </Button>
           </div>
           {searchable && (
             <SearchField aria-label={t("searchOptions")} value={busca} onChange={setBusca} autoFocus className="w-full min-w-0">
-              <SearchField.Group className="h-9 w-full min-w-0 rounded-xl bg-[#F3F5F7]">
+              <SearchField.Group className="h-9 w-full min-w-0 rounded-xl bg-panel">
                 <SearchField.SearchIcon />
                 <SearchField.Input className="text-[13px]" />
               </SearchField.Group>

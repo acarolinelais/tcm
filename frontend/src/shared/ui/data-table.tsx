@@ -31,16 +31,15 @@ interface DataTableProps<T extends object> {
   className?: string;
 }
 
-// Figma TCM 2070:1476: moldura #F3F5F7 (raio 30px), corpo branco (raio 25px, 5px de recuo), cabeçalho
-// Inter 500 14px `text-muted` com divisórias #E4E4E7, linhas de 40px com divisória #EFEFF0, texto 14px #454442.
+// Figma TCM 2070:1476: moldura `--panel` (raio 30px), corpo na superfície (raio 25px, 5px de recuo), cabeçalho
+// Inter 500 14px `text-muted` com divisórias, linhas de 40px com divisória mais clara, texto 14px `text-body`.
 const tokensMoldura = {
-  "--surface-secondary": "#F3F5F7",
-  "--separator": "#E4E4E7",
-  "--separator-tertiary": "#EFEFF0",
+  "--surface-secondary": "var(--panel)",
+  "--separator-tertiary": "var(--table-row-divider)",
 } as CSSProperties;
 
 // O corpo branco tem raio de 25px no topo e continua embaixo das linhas, então a última linha não arredonda.
-const cantosCorpo = "bg-white [&>tr:first-child>td:first-child]:rounded-ss-[25px] [&>tr:first-child>td:last-child]:rounded-se-[25px] [&>tr:last-child>td]:rounded-es-none [&>tr:last-child>td]:rounded-ee-none";
+const cantosCorpo = "bg-surface [&>tr:first-child>td:first-child]:rounded-ss-[25px] [&>tr:first-child>td:last-child]:rounded-se-[25px] [&>tr:last-child>td]:rounded-es-none [&>tr:last-child>td]:rounded-ee-none";
 
 const chavePorId = (item: object) => (item as { id: string }).id;
 
@@ -69,7 +68,7 @@ export function DataTable<T extends object>({ columns, items, getKey = chavePorI
               {(item) => (
                 <Table.Row id={getKey(item)} className="h-10">
                   {columns.map((coluna) => (
-                    <Table.Cell key={coluna.id} className={cn("whitespace-nowrap px-2.5 py-0 text-[14px] leading-5 text-[#454442] first:ps-5", coluna.className)}>
+                    <Table.Cell key={coluna.id} className={cn("whitespace-nowrap px-2.5 py-0 text-[14px] leading-5 text-body first:ps-5", coluna.className)}>
                       {coluna.cell(item)}
                     </Table.Cell>
                   ))}
@@ -78,7 +77,7 @@ export function DataTable<T extends object>({ columns, items, getKey = chavePorI
             </Table.Body>
           </Table.Content>
           {/* Corpo branco até o fim da moldura: com poucas linhas, ou no lugar delas quando há um estado. */}
-          <div className={cn("flex min-h-6 flex-1 flex-col rounded-b-[25px] bg-white", !items.length && "rounded-t-[25px]")}>
+          <div className={cn("flex min-h-6 flex-1 flex-col rounded-b-[25px] bg-surface", !items.length && "rounded-t-[25px]")}>
             {state ? <div className="flex flex-1 items-center justify-center p-6 text-center text-[14px] text-muted">{state}</div> : null}
           </div>
         </div>

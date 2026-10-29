@@ -59,6 +59,7 @@ ser registradas em ADR antes de serem introduzidas. A única exceção à pagina
 | 030 | Links de PR do Test Case (histórico no painel de detalhes) e painel em todas as tabelas de projetos | Concluída (e2e simulados; validação manual no navegador pendente) |
 | 031 | Painéis laterais e listas de seleção no padrão HeroUI (Setores, Usuários, Modelos e Projetos) | Em andamento (9 e2e com API real pendentes) |
 | 032 | Resultados Gerais por projeto, com histórico de execuções por data (abas, Form Factor por linha, ADR 0038) | Aprovada |
+| 033 | Tema claro e escuro (toggle no navbar e no login, escolha no navegador, ADRs 0039 e 0040) | Concluída (4 e2e com API real a reexecutar após a code-review) |
 
 > As duas specs 012 foram criadas em paralelo. Os diretórios e históricos foram preservados nesta integração; a harmonização da numeração está registrada no backlog da spec de perfil Dev.
 

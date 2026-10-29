@@ -22,14 +22,14 @@ interface PageTabsProps {
 // ela divide a barra com as ações, então o sublinhado e o fundo transparente vão nas classes.
 // O anel de foco do HeroUI fica por fora da aba e a área de rolagem da lista o corta (sobrava só uma linha vertical):
 // aqui ele é desenhado por dentro, inteiro.
-const classeAba = "h-auto w-auto rounded-none px-0.5 pb-2 pt-0 text-[18px] font-normal leading-[25px] text-muted data-[selected=true]:font-medium data-[selected=true]:text-[#2D72E4] data-[focus-visible=true]:rounded-md data-[focus-visible=true]:outline-none data-[focus-visible=true]:[box-shadow:inset_0_0_0_2px_var(--focus)]";
-const classeIndicador = "top-auto bottom-0 h-[1.5px] rounded-none bg-[#2D72E4] shadow-none";
+const classeAba = "h-auto w-auto rounded-none px-0.5 pb-2 pt-0 text-[18px] font-normal leading-[25px] text-muted data-[selected=true]:font-medium data-[selected=true]:text-accent-text data-[focus-visible=true]:rounded-md data-[focus-visible=true]:outline-none data-[focus-visible=true]:[box-shadow:inset_0_0_0_2px_var(--focus)]";
+const classeIndicador = "top-auto bottom-0 h-[1.5px] rounded-none bg-accent shadow-none";
 
 /** Abas de página (spec 022) sobre o `Tabs` do HeroUI, com espaço para as ações da aba na mesma barra. */
 export function PageTabs({ tabs, selectedKey, onSelectionChange, actions, children, ...props }: PageTabsProps) {
   return (
     <Tabs variant="secondary" selectedKey={selectedKey} onSelectionChange={(chave: Key) => onSelectionChange(String(chave))} className="flex min-h-0 flex-1 flex-col gap-0">
-      <div className="mb-5 flex shrink-0 flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-[#ECEFF2]">
+      <div className="mb-5 flex shrink-0 flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-separator">
         <Tabs.ListContainer className="rounded-none bg-transparent p-0">
           <Tabs.List aria-label={props["aria-label"]} className="gap-4 bg-transparent p-0">
             {tabs.map((aba) => <Tabs.Tab key={aba.id} id={aba.id} className={classeAba}>{aba.label}<Tabs.Indicator className={classeIndicador} /></Tabs.Tab>)}

@@ -118,3 +118,23 @@ describe("avatar do usuário logado", () => {
     await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
   });
 });
+
+describe("tema na navbar", () => {
+  afterEach(() => {
+    window.localStorage.clear();
+    document.documentElement.classList.remove("dark");
+  });
+
+  it("alterna o tema sem perder o texto digitado na busca", async () => {
+    await i18n.changeLanguage("en");
+    const user = userEvent.setup();
+    renderEm("/overview");
+    const busca = screen.getByRole("searchbox", { name: "Search keyword..." });
+    await user.type(busca, "login");
+
+    await user.click(screen.getByRole("button", { name: "Dark theme" }));
+
+    expect(document.documentElement).toHaveClass("dark");
+    expect(busca).toHaveValue("login");
+  });
+});

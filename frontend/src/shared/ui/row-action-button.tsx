@@ -25,12 +25,12 @@ export function RowActionButton({ action, identificador }: { action: RowAction; 
         aria-label={`${action.label} ${identificador}`}
         isDisabled={action.disabled}
         onPress={action.onPress}
-        className="group/acao size-6 min-w-0 rounded-full bg-transparent p-0 text-[#3F3F46] hover:bg-transparent data-[pressed]:scale-95 data-[focus-visible]:ring-2 data-[focus-visible]:ring-focus"
+        className="group/acao size-6 min-w-0 rounded-full bg-transparent p-0 text-foreground hover:bg-transparent data-[pressed]:scale-95 data-[focus-visible]:ring-2 data-[focus-visible]:ring-focus"
       >
         <span
           aria-hidden="true"
           className={cn(
-            "flex size-[19px] items-center justify-center rounded-full bg-[#E4E4E7] transition-colors group-hover/acao:bg-[#D4D4D8]",
+            "flex size-[19px] items-center justify-center rounded-full bg-default transition-colors group-hover/acao:bg-default-hover",
             action.destructive && "bg-danger/10 text-danger group-hover/acao:bg-danger/20",
           )}
         >

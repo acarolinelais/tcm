@@ -51,7 +51,7 @@ export function WeekPickerHero({ label, value, onChange, className, permitirDia 
     const valor = semanaIso(week.days[0].date);
     return (
       <th {...props}>
-        <button type="button" aria-label={t("weekValue", { week: week.weekNumber, year: valor.slice(0, 4) })} className={cn(botaoDia, "text-[12px] text-muted", valor === value && "font-semibold text-accent")} onClick={() => escolher(valor)}>
+        <button type="button" aria-label={t("weekValue", { week: week.weekNumber, year: valor.slice(0, 4) })} className={cn(botaoDia, "text-[12px] text-muted", valor === value && "font-semibold text-accent-text")} onClick={() => escolher(valor)}>
           {week.weekNumber}
         </button>
       </th>
@@ -63,11 +63,11 @@ export function WeekPickerHero({ label, value, onChange, className, permitirDia 
       <Button
         variant="outline"
         aria-label={`${label}: ${descricao}`}
-        className={cn("h-9 min-h-0 gap-2.5 rounded-[10px] border border-[#F2F2F2] bg-white px-3.5 text-[15px] font-medium leading-[21px] text-[#454442] shadow-none hover:bg-[#FBFBFB]", className)}
+        className={cn("h-9 min-h-0 gap-2.5 rounded-[10px] border border-separator bg-surface px-3.5 text-[15px] font-medium leading-[21px] text-body shadow-none hover:bg-page", className)}
       >
-        <CalendarIcon className="text-[#454442]" />
+        <CalendarIcon className="text-body" />
         <span>{texto}</span>
-        <SmallChevronIcon className={cn("text-[#454442] transition-transform duration-200 motion-reduce:transition-none", aberto && "rotate-180")} />
+        <SmallChevronIcon className={cn("text-body transition-transform duration-200 motion-reduce:transition-none", aberto && "rotate-180")} />
       </Button>
       <Popover.Content placement="bottom end" className="p-1.5">
         <Popover.Dialog aria-label={label} className="outline-none">
@@ -87,7 +87,7 @@ export function WeekPickerHero({ label, value, onChange, className, permitirDia 
               button_previous: cn(botaoDia, "text-muted"),
               button_next: cn(botaoDia, "text-muted"),
               month_caption: "flex h-8 items-center justify-center px-8",
-              caption_label: "select-none text-[14px] font-medium capitalize text-[#454442]",
+              caption_label: "select-none text-[14px] font-medium capitalize text-body",
               month_grid: "w-full border-collapse",
               weekdays: "flex",
               weekday: "w-8 select-none text-[12px] font-normal text-muted",
@@ -96,7 +96,7 @@ export function WeekPickerHero({ label, value, onChange, className, permitirDia 
               week: "mt-1 flex w-full",
               day: "size-8 p-0 text-center",
               day_button: botaoDia,
-              today: "font-semibold text-accent",
+              today: "font-semibold text-accent-text",
               outside: "text-muted/60",
               hidden: "invisible",
             }}
@@ -106,7 +106,7 @@ export function WeekPickerHero({ label, value, onChange, className, permitirDia 
           />
           <div className="flex justify-between border-t border-separator px-1 pt-1.5">
             <Button variant="ghost" className={botaoRodape} onPress={() => escolher("")}>{t("clearFilters")}</Button>
-            <Button variant="ghost" className={cn(botaoRodape, "text-accent")} onPress={() => escolher(semanaIso(new Date()))}>{t("thisWeek")}</Button>
+            <Button variant="ghost" className={cn(botaoRodape, "text-accent-text")} onPress={() => escolher(semanaIso(new Date()))}>{t("thisWeek")}</Button>
           </div>
         </Popover.Dialog>
       </Popover.Content>

@@ -47,14 +47,14 @@ export function DetalhesCasoTesteDrawer({ caso, perfil, onFechar }: { caso: Caso
           <dl className="space-y-8">
             {SECOES.map(({ rotulo, campo }) => (
               <div key={campo}>
-                <dt className="text-[18px] font-medium leading-6 text-[#454442]">{t(rotulo)}</dt>
+                <dt className="text-[18px] font-medium leading-6 text-body">{t(rotulo)}</dt>
                 <dd className="mt-3 whitespace-pre-wrap break-words text-[14px] leading-5 text-muted">{detalhe.data[campo] ?? "—"}</dd>
               </div>
             ))}
           </dl>
           {/* `key`: outro caso começa com o campo vazio; uma URL digitada e não adicionada não passa adiante. */}
           <PullRequestsCasoTeste key={detalhe.data.id} casoId={detalhe.data.id} perfil={perfil} />
-        </>) : ehNaoEncontrado(detalhe.error) ? <p role="alert" className="text-[14px] leading-6 text-[#454442]">{t("caseNotFound")}</p>
+        </>) : ehNaoEncontrado(detalhe.error) ? <p role="alert" className="text-[14px] leading-6 text-body">{t("caseNotFound")}</p>
           : detalhe.isError ? (
             <RetryAlert message={t("caseDetailsLoadError")} onRetry={() => void detalhe.refetch()} />
           )

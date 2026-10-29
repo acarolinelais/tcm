@@ -32,17 +32,17 @@ export function ResumoExecucoesDrawer({ caso, perfil, onFechar, onAbrirResultado
     if (!dados.datas.length) return <p className="text-[14px] text-muted">{t("noCaseRuns")}</p>;
     return <div className="thin-scroll overflow-x-auto">
       {/* Grade de leitura dentro do painel, sem filtros nem paginação: exceção ao DataTable (docs/tables-rules.md). */}
-      <table className="w-max min-w-full border-collapse text-[14px] leading-5 text-[#454442]">
+      <table className="w-max min-w-full border-collapse text-[14px] leading-5 text-body">
         <caption className="sr-only">{t("executionSummary")} {dados.tc_id}</caption>
         <thead>
           <tr className="border-b border-separator">
-            <th scope="col" className="sticky left-0 bg-white py-2 pe-4 text-start font-medium text-muted">{t("device")}</th>
+            <th scope="col" className="sticky left-0 bg-surface py-2 pe-4 text-start font-medium text-muted">{t("device")}</th>
             {dados.datas.map((dia) => <th key={dia} scope="col" className="whitespace-nowrap px-2 py-2 text-start font-medium text-muted">{formatarDia(dia)}</th>)}
           </tr>
         </thead>
         <tbody>
-          {dados.modelos.map((modelo) => <tr key={modelo.id} className="border-b border-[#EFEFF0]">
-            <th scope="row" className="sticky left-0 whitespace-nowrap bg-white py-2 pe-4 text-start font-normal">{modelo.nome}</th>
+          {dados.modelos.map((modelo) => <tr key={modelo.id} className="border-b border-separator">
+            <th scope="row" className="sticky left-0 whitespace-nowrap bg-surface py-2 pe-4 text-start font-normal">{modelo.nome}</th>
             {dados.datas.map((dia) => {
               const execucoes = dados.resultados[dia]?.[modelo.id] ?? [];
               return <td key={dia} className="px-2 py-2 align-top">
@@ -75,7 +75,7 @@ export function ResumoExecucoesDrawer({ caso, perfil, onFechar, onAbrirResultado
     <div className="grid gap-5 px-7 pb-7">
       <p className="text-[14px]">
         <span className="text-muted">{t("testerId")}: </span>
-        <span className="text-[#454442]">{exibido?.responsavel_identificador ?? "—"}</span>
+        <span className="text-body">{exibido?.responsavel_identificador ?? "—"}</span>
       </p>
       {exibido && conteudo()}
     </div>

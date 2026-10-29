@@ -21,9 +21,9 @@ export function ProjetoSwitcher({ projetoId, nome }: { projetoId: string; nome: 
   return (
     <h1 className="min-w-0">
       <Dropdown>
-        <Button variant="ghost" className="h-auto min-h-0 max-w-full gap-1 rounded-lg px-0 text-[22px] font-medium leading-[27px] text-[#454442] hover:bg-transparent data-[focus-visible]:ring-2 data-[focus-visible]:ring-focus">
+        <Button variant="ghost" className="h-auto min-h-0 max-w-full gap-1 rounded-lg px-0 text-[22px] font-medium leading-[27px] text-body hover:bg-transparent data-[focus-visible]:ring-2 data-[focus-visible]:ring-focus">
           <span className="truncate">{nome}</span>
-          <SmallChevronIcon className="h-[23px] w-[23px] text-[#454442]" />
+          <SmallChevronIcon className="h-[23px] w-[23px] text-body" />
         </Button>
         <Dropdown.Popover placement="bottom start" className="max-h-80 min-w-56 overflow-y-auto">
           <Dropdown.Menu
