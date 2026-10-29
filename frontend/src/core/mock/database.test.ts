@@ -619,32 +619,37 @@ describe("base mock de projetos", () => {
     expect(migrado.casosTeste.map((testCase: { status: string }) => testCase.status)).toEqual(["InFixes", "InReview"]);
   });
 
-  it("Form Factor global agrega Resumo e todas as execuções apenas nos projetos do KP", () => {
-    const projeto1 = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.8", modelos_ids: ["mock-model-s27-ultra"] });
-    const projeto2 = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Gallery", one_ui: "9.8", modelos_ids: ["mock-model-s26-ultra"] });
-    const caso1 = mockCasosTesteApi.criar(projeto1.id, { tc_id: "TC-GLOBAL", category: "A", difficulty: "Low", situation: "New", responsavel_id: "mock-user-kp", backup_id: "mock-user-dev" });
-    mockCasosTesteApi.criar(projeto2.id, { tc_id: "TC-EMPTY", category: "A", difficulty: "Low", situation: "New", responsavel_id: "mock-user-kp", backup_id: "mock-user-dev" });
-    mockTimesApi.adicionar("mock-team-platform", "mock-user-kp");
+  it("Resultados Gerais por projeto: 7 datas mais recentes, modelo padrão e resumo com as execuções do dia (spec 032)", () => {
+    const projeto = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: ["mock-model-s26-ultra", "mock-model-s27-ultra"] });
+    const caso = mockCasosTesteApi.criar(projeto.id, { tc_id: "Clock_001", category: "A", difficulty: "Low", situation: "New", responsavel_id: "mock-user-kp", backup_id: "mock-user-dev" });
+    const semExecucao = mockCasosTesteApi.criar(projeto.id, { tc_id: "Clock_002", category: "A", difficulty: "Low", situation: "New", responsavel_id: "mock-user-kp", backup_id: "mock-user-dev" });
     const database = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
-    database.formFactor.push(
-      { execucao_id: "run-old", caso_teste_id: caso1.id, tc_id: caso1.tc_id, responsavel_id: caso1.responsavel_id, sdf_id: "SDF-1", modelo_dispositivo_id: "mock-model-s27-ultra", resultado: "FAIL", data_reportada: "2026-10-24T12:00:00Z", origem: "SDF" },
-      { execucao_id: "run-new", caso_teste_id: caso1.id, tc_id: caso1.tc_id, responsavel_id: caso1.responsavel_id, sdf_id: "SDF-2", modelo_dispositivo_id: "mock-model-s27-ultra", resultado: "PASS", data_reportada: "2026-10-25T12:00:00Z", origem: "SDF" },
-    );
+    const resultado = (execucao_id: string, dia: number, modelo: string, valor: string, hora = 12, origem: "SDF" | "MANUAL" = "SDF") => ({
+      execucao_id, caso_teste_id: caso.id, tc_id: caso.tc_id, sdf_id: origem === "SDF" ? `SDF-${execucao_id}` : null, modelo_dispositivo_id: modelo, resultado: valor,
+      data_reportada: new Date(2026, 9, dia, hora).toISOString(), origem,
+    });
+    for (let dia = 1; dia <= 10; dia++) database.formFactor.push(resultado(`e${dia}`, dia, "mock-model-s26-ultra", "PASS"));
+    database.formFactor.push(resultado("manual", 10, "mock-model-s26-ultra", "FAIL", 15, "MANUAL"), resultado("ultima", 10, "mock-model-s27-ultra", "PASS", 16));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(database));
+    mockTimesApi.adicionar("mock-team-platform", "mock-user-kp");
     entrar("kaique.pereira@example.com");
 
-    const resumo = mockFormFactorApi.listarGlobal();
-    const historico = mockFormFactorApi.listarResultadosGlobais({ tcId: "TC-GLOBAL" });
+    const historico = mockFormFactorApi.historicoProjeto(projeto.id);
+    const daSemana = mockFormFactorApi.historicoProjeto(projeto.id, { periodo: "2026-W40" });
+    const porDevice = mockFormFactorApi.historicoProjeto(projeto.id, { busca: "s27" });
+    const resumo = mockFormFactorApi.resumoExecucoes(caso.id);
 
-    expect(resumo.total_count).toBe(2);
-    expect(resumo.modelos.map((modelo) => modelo.id)).toEqual(["mock-model-s26-ultra", "mock-model-s27-ultra"]);
-    expect(resumo.items.find((item) => item.tc_id === "TC-GLOBAL")?.resultados["mock-model-s27-ultra"]).toBe("PASS");
-    expect(resumo.items.find((item) => item.tc_id === "TC-EMPTY")?.resultados).toEqual({});
-    expect(historico.total_count).toBe(2);
-    expect(historico.items.map((item) => item.execucao_id)).toEqual(["run-new", "run-old"]);
-    expect(historico.responsaveis).toContainEqual({ id: "mock-user-kp", identificador: "Kaique Pereira" });
+    expect(historico.datas).toEqual(["2026-10-10", "2026-10-09", "2026-10-08", "2026-10-07", "2026-10-06", "2026-10-05", "2026-10-04"]);
+    expect(historico.casos.map((item) => [item.tc_id, item.modelo_padrao_id])).toEqual([["Clock_001", "mock-model-s27-ultra"], ["Clock_002", historico.modelos[0].id]]);
+    expect(historico.casos[0].resultados["2026-10-10"]["mock-model-s26-ultra"]).toMatchObject({ execucao_id: "manual", origem: "MANUAL", sdf_id: null });
+    expect(historico.casos[1].caso_teste_id).toBe(semExecucao.id);
+    expect(daSemana.datas).toEqual(["2026-10-04", "2026-10-03", "2026-10-02", "2026-10-01"]);
+    expect(daSemana.casos.map((item) => item.tc_id)).toEqual(["Clock_001"]);
+    expect(porDevice.modelo_destacado_id).toBe("mock-model-s27-ultra");
+    expect(resumo.datas[0]).toBe("2026-10-01");
+    expect(resumo.resultados["2026-10-10"]["mock-model-s26-ultra"].map((item) => item.execucao_id)).toEqual(["e10", "manual"]);
     entrar("daniel.oliveira@example.com");
-    expect(() => mockFormFactorApi.listarGlobal()).toThrow("permissão");
+    expect(() => mockFormFactorApi.historicoProjeto(projeto.id)).toThrow("permissão");
   });
 
   it("migra casos antigos: o progresso vai para status e TC Situation vira New", () => {

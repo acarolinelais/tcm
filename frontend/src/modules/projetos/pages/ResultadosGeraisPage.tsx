@@ -1,104 +1,142 @@
-import { useEffect, useState } from "react";
-import { Button } from "@heroui/react";
+import { useCallback, useEffect, useState } from "react";
+import { Button, SearchField } from "@heroui/react";
+import { FolderOpen, Search } from "lucide-react";
 import { useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import type { PerfilAtual } from "@/core/auth/api";
-import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
+import { ErroComRetry } from "@/shared/ui/erro-com-retry";
 import { PageCard, PageTitle } from "@/shared/ui/page-card";
 import { PageTabPanel, PageTabs } from "@/shared/ui/page-tabs";
 import { WeekPickerHero } from "@/shared/ui/week-picker-hero";
-import { useFormFactorGlobal, useFormFactorResultadosGlobais, useProjetosSeletor } from "../hooks/useProjetos";
-import type { CasoTesteResumo, FiltrosFormFactorGlobal } from "../model/projeto";
-import { FormFactorGlobalResultadosTabela, FormFactorGlobalTabela } from "../components/form-factor/FormFactorGlobalTabela";
+import { useHistoricoProjeto, useProjetosSeletor } from "../hooks/useProjetos";
+import type { CasoHistorico, CasoTesteResumo, FiltrosHistoricoProjeto } from "../model/projeto";
 import { DetalhesCasoTesteDrawer } from "../components/casos-teste/DetalhesCasoTesteDrawer";
+import { HistoricoProjetoTabela, type ResultadoAberto } from "../components/resultados-gerais/HistoricoProjetoTabela";
+import { ResultadoExecucaoModal } from "../components/resultados-gerais/ResultadoExecucaoModal";
+import { ResumoExecucoesDrawer } from "../components/resultados-gerais/ResumoExecucoesDrawer";
 
-type Visao = "summary" | "results";
+const SEM_FILTROS: FiltrosHistoricoProjeto = {};
 
-const filtrosIniciais: FiltrosFormFactorGlobal = {
-  page: 1,
-  pageSize: DEFAULT_TABLE_PAGE_SIZE,
-  projetoId: "",
-  responsavelId: "",
-  tcId: "",
-  sdfId: "",
-  modeloDispositivoId: "",
-  resultado: "",
-  origem: undefined,
-};
-
+/** Resultados Gerais (spec 032): uma aba por projeto, com o histórico por data e o modelo escolhido em cada linha. */
 export function ResultadosGeraisPage() {
   const { t } = useTranslation();
   const perfil = useOutletContext<PerfilAtual>();
   const permitido = ["ADMIN_UNIDADE", "GERENTE", "KP"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("form_factor.consultar");
-  const [visao, setVisao] = useState<Visao>("summary");
-  const [semana, setSemana] = useState("");
-  const [filtros, setFiltros] = useState(filtrosIniciais);
-  const [casoDetalhado, setCasoDetalhado] = useState<CasoTesteResumo | null>(null);
   const projetosQuery = useProjetosSeletor(perfil, permitido);
   const projetos = projetosQuery.data?.pages.flatMap((pagina) => pagina.items) ?? [];
   const { fetchNextPage, hasNextPage, isFetchingNextPage } = projetosQuery;
   useEffect(() => {
-    if (permitido && hasNextPage && !isFetchingNextPage) {
-      void fetchNextPage();
-    }
+    if (permitido && hasNextPage && !isFetchingNextPage) void fetchNextPage();
   }, [permitido, fetchNextPage, hasNextPage, isFetchingNextPage]);
-  const consulta = {
-    ...filtros,
-    semana: semana || undefined,
-    page: filtros.page ?? 1,
-    pageSize: filtros.pageSize ?? DEFAULT_TABLE_PAGE_SIZE,
-  };
-  const resumo = useFormFactorGlobal(consulta, perfil, permitido && visao === "summary");
-  const historico = useFormFactorResultadosGlobais(consulta, perfil, permitido && visao === "results");
 
-  function alterarFiltro(campo: keyof FiltrosFormFactorGlobal, valor: string) {
-    setFiltros((atual) => ({ ...atual, [campo]: valor, page: 1 }));
+  const [abaEscolhida, setAbaEscolhida] = useState("");
+  const projetoId = projetos.some((projeto) => projeto.id === abaEscolhida) ? abaEscolhida : projetos[0]?.id ?? "";
+  const [filtros, setFiltros] = useState(SEM_FILTROS);
+  const [rascunhoBusca, setRascunhoBusca] = useState("");
+  const [buscaAberta, setBuscaAberta] = useState(false);
+  // Modelo escolhido por linha (RN-03): só estado de tela, esquecido ao trocar de aba e ao mudar a consulta.
+  const [escolhas, setEscolhas] = useState<Record<string, string>>({});
+  const [resultadoAberto, setResultadoAberto] = useState<ResultadoAberto | null>(null);
+  const [casoDoResumo, setCasoDoResumo] = useState<CasoHistorico | null>(null);
+  const [casoDetalhado, setCasoDetalhado] = useState<CasoTesteResumo | null>(null);
+  const historico = useHistoricoProjeto(projetoId, filtros, perfil);
+  const dados = historico.data;
+
+  function alterarFiltros(proximos: FiltrosHistoricoProjeto) {
+    setFiltros(proximos);
+    setEscolhas({});
   }
 
   function limparFiltros() {
-    setSemana("");
-    setFiltros({ ...filtrosIniciais });
+    setRascunhoBusca("");
+    setBuscaAberta(false);
+    alterarFiltros(SEM_FILTROS);
   }
 
-  const temFiltros = Boolean(semana || filtros.projetoId || filtros.responsavelId || filtros.tcId || filtros.sdfId || filtros.modeloDispositivoId || filtros.resultado || filtros.origem);
+  const modeloDaLinha = useCallback(
+    (caso: CasoHistorico) => escolhas[caso.caso_teste_id] ?? caso.modelo_padrao_id ?? "",
+    [escolhas],
+  );
+  const temFiltros = Object.values(filtros).some(Boolean);
 
   if (!permitido) return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
 
-  const paginacao = {
-    page: filtros.page ?? 1,
-    pageSize: filtros.pageSize ?? DEFAULT_TABLE_PAGE_SIZE,
-    onPageChange: (page: number) => setFiltros((atual) => ({ ...atual, page })),
-    onPageSizeChange: (pageSize: number) => setFiltros((atual) => ({ ...atual, page: 1, pageSize })),
-  };
-  const comuns = { projetos, filtros, onFiltroChange: alterarFiltro, onAbrirDetalhes: setCasoDetalhado, temFiltros, onLimparFiltros: limparFiltros, ...paginacao };
+  const cabecalho = <header className="mb-[25px] flex shrink-0 flex-wrap items-start gap-4">
+    <div className="min-w-0 flex-1">
+      <PageTitle>{t("generalResults")}</PageTitle>
+      <p className="mt-1.5 text-[14px] leading-5 text-muted">{t("generalResultsDescription")}</p>
+    </div>
+  </header>;
+
+  if (projetosQuery.isError) {
+    return <PageCard>{cabecalho}<ErroComRetry mensagem={t("resultsLoadError")} retry={{ label: t("retryQuery"), onRetry: () => void projetosQuery.refetch() }} /></PageCard>;
+  }
+  if (projetosQuery.isLoading) return <PageCard>{cabecalho}<p role="status" className="text-[14px] text-muted">{t("loading")}</p></PageCard>;
+  if (!projetos.length) {
+    return <PageCard>
+      {cabecalho}
+      <div role="status" className="mx-auto mt-10 max-w-md text-center">
+        <div className="mx-auto mb-4 flex size-11 items-center justify-center rounded-full bg-accent/10 text-accent"><FolderOpen aria-hidden="true" className="size-5" /></div>
+        <h2 className="text-[15px] font-medium text-[#454442]">{t("noAccessibleProjects")}</h2>
+        <p className="mt-1.5 text-[14px] leading-6 text-muted">{t("noAccessibleProjectsHint")}</p>
+      </div>
+    </PageCard>;
+  }
+
+  const barra = <div className="flex items-center gap-2">
+    {buscaAberta || filtros.busca
+      ? <form className="w-72" role="search" onSubmit={(evento) => { evento.preventDefault(); alterarFiltros({ ...filtros, busca: rascunhoBusca.trim() || undefined }); }}>
+        <SearchField
+          aria-label={t("generalResultsSearch")}
+          value={rascunhoBusca}
+          onChange={setRascunhoBusca}
+          onClear={() => alterarFiltros({ ...filtros, busca: undefined })}
+          autoFocus={!filtros.busca}
+        >
+          <SearchField.Group className="h-9">
+            <SearchField.SearchIcon />
+            <SearchField.Input placeholder={t("generalResultsSearch")} className="text-[13px]" />
+            <SearchField.ClearButton aria-label={t("clearText")} />
+          </SearchField.Group>
+        </SearchField>
+      </form>
+      : <Button isIconOnly variant="ghost" aria-label={t("generalResultsSearch")} onPress={() => setBuscaAberta(true)} className="size-9 min-w-0 rounded-[10px]">
+        <Search aria-hidden="true" className="size-4" />
+      </Button>}
+    <WeekPickerHero permitirDia label={t("dayOrWeek")} value={filtros.periodo ?? ""} onChange={(valor) => alterarFiltros({ ...filtros, periodo: valor || undefined })} />
+    {temFiltros && <Button variant="ghost" size="sm" onPress={limparFiltros}>{t("clearFilters")}</Button>}
+  </div>;
 
   return <PageCard>
-    <header className="mb-[25px] flex shrink-0 flex-wrap items-start gap-4">
-      <div className="min-w-0 flex-1">
-        <PageTitle>{t("generalResults")}</PageTitle>
-        <p className="mt-1.5 text-[14px] leading-5 text-muted">{t("generalResultsDescription")}</p>
-      </div>
-      <WeekPickerHero label={t("week")} value={semana} onChange={(value) => { setSemana(value); setFiltros((atual) => ({ ...atual, page: 1 })); }} className="ml-auto" />
-    </header>
-
+    {cabecalho}
     <PageTabs
-      aria-label={t("generalResultsViews")}
-      tabs={[{ id: "summary", label: t("formFactorSummary") }, { id: "results", label: t("generalResultsAll") }]}
-      selectedKey={visao}
-      onSelectionChange={(chave) => { setVisao(chave as Visao); setFiltros((atual) => ({ ...atual, page: 1 })); }}
-      actions={<>
-        <p className="text-[14px] text-muted">{t(visao === "summary" ? "formFactorSummaryHint" : "generalResultsAllHint")}</p>
-        {temFiltros && <Button variant="ghost" size="sm" onPress={limparFiltros}>{t("clearFilters")}</Button>}
-      </>}
+      aria-label={t("generalResultsProjects")}
+      tabs={projetos.map((projeto) => ({ id: projeto.id, label: projeto.nome }))}
+      selectedKey={projetoId}
+      onSelectionChange={(id) => { setAbaEscolhida(id); limparFiltros(); }}
+      actions={barra}
     >
-      <PageTabPanel id="summary" className="flex min-h-0 flex-1 flex-col p-0">
-        <FormFactorGlobalTabela dados={resumo.data} carregando={resumo.isLoading} erro={resumo.isError || projetosQuery.isError} {...comuns} />
-      </PageTabPanel>
-      <PageTabPanel id="results" className="flex min-h-0 flex-1 flex-col p-0">
-        <FormFactorGlobalResultadosTabela dados={historico.data} carregando={historico.isLoading} erro={historico.isError || projetosQuery.isError} {...comuns} />
-      </PageTabPanel>
+      {projetos.map((projeto) => <PageTabPanel key={projeto.id} id={projeto.id} className="flex min-h-0 flex-1 flex-col p-0">
+        {projeto.id === projetoId && <HistoricoProjetoTabela
+          dados={dados}
+          carregando={historico.isLoading}
+          erro={historico.isError}
+          onTentarDeNovo={() => void historico.refetch()}
+          filtros={filtros}
+          onFiltroChange={(campo, valor) => alterarFiltros({ ...filtros, [campo]: valor || undefined })}
+          temFiltros={temFiltros}
+          onLimparFiltros={limparFiltros}
+          modeloDaLinha={modeloDaLinha}
+          onModeloChange={(casoId, modeloId) => setEscolhas((atuais) => ({ ...atuais, [casoId]: modeloId }))}
+          onAbrirResultado={setResultadoAberto}
+          onAbrirResumo={setCasoDoResumo}
+          onAbrirDetalhes={setCasoDetalhado}
+        />}
+      </PageTabPanel>)}
     </PageTabs>
+    <ResumoExecucoesDrawer caso={casoDoResumo} perfil={perfil} onFechar={() => setCasoDoResumo(null)} onAbrirResultado={setResultadoAberto} />
+    <ResultadoExecucaoModal resultado={resultadoAberto} onFechar={() => setResultadoAberto(null)} />
     <DetalhesCasoTesteDrawer caso={casoDetalhado} perfil={perfil} onFechar={() => setCasoDetalhado(null)} />
   </PageCard>;
 }

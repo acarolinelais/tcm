@@ -178,31 +178,54 @@ export interface FormFactorResultados extends PagedResult<FormFactorExecucao> {
   modelos: ModeloFormFactor[];
 }
 
-export interface LinhaFormFactorGlobal extends LinhaFormFactor {
-  projeto_id: string;
-  projeto_nome: string;
-  modelos_ids: string[];
+/** Resultado de um modelo numa data da tela Resultados Gerais (spec 032). */
+export interface ResultadoNaData {
+  execucao_id: string;
+  resultado: string;
+  sdf_id: string | null;
+  origem: "SDF" | "MANUAL";
 }
 
-export interface FormFactorGlobal extends PagedResult<LinhaFormFactorGlobal> {
+export interface ExecucaoNaData extends ResultadoNaData {
+  data_reportada: string;
+}
+
+export interface CasoHistorico {
+  caso_teste_id: string;
+  tc_id: string;
+  responsavel_id: string;
+  /** ID do tester (spec 012); null quando o responsável não tem. */
+  responsavel_identificador: string | null;
+  /** Device da busca ou do filtro, se o caso tem resultado nele; senão, o da execução mais recente (RN-04, RN-10). */
+  modelo_padrao_id: string | null;
+  /** Por data (`AAAA-MM-DD`) e por modelo: a execução mais recente do dia. */
+  resultados: Record<string, Record<string, ResultadoNaData>>;
+}
+
+/** Histórico de um projeto: todos os casos e até 7 datas, da mais recente para a mais antiga (spec 032). */
+export interface HistoricoProjeto {
   modelos: ModeloFormFactor[];
-  responsaveis: { id: string; identificador: string }[];
+  datas: string[];
+  modelo_destacado_id: string | null;
+  casos: CasoHistorico[];
 }
 
-export interface FormFactorExecucaoGlobal extends FormFactorExecucao {
-  projeto_id: string;
-  projeto_nome: string;
-  modelos_ids: string[];
-}
-
-export interface FormFactorResultadosGlobais extends PagedResult<FormFactorExecucaoGlobal> {
+export interface ResumoExecucoes {
+  caso_teste_id: string;
+  tc_id: string;
+  responsavel_identificador: string | null;
   modelos: ModeloFormFactor[];
-  responsaveis: { id: string; identificador: string }[];
+  /** Todas as datas do caso, em ordem cronológica. */
+  datas: string[];
+  resultados: Record<string, Record<string, ExecucaoNaData[]>>;
 }
 
-export interface FiltrosFormFactorGlobal extends FiltrosFormFactor {
-  projetoId?: string;
-  responsavelId?: string;
+export interface FiltrosHistoricoProjeto {
+  busca?: string;
+  tcId?: string;
+  modeloDispositivoId?: string;
+  /** Um dia (`AAAA-MM-DD`) ou uma semana ISO (`AAAA-Www`). */
+  periodo?: string;
 }
 
 export interface FiltrosFormFactor {

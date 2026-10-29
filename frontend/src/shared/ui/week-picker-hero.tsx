@@ -5,7 +5,8 @@ import { DayPicker, type ChevronProps, type WeekNumberProps } from "react-day-pi
 import { enUS, ko, ptBR } from "react-day-picker/locale";
 import { useTranslation } from "react-i18next";
 
-import { cn, diasDaSemana, semanaIso } from "@/shared/lib/utils";
+import { formatDate } from "@/core/i18n/format";
+import { cn, diasDaSemana, formatarDiaIso, lerDiaIso, semanaIso } from "@/shared/lib/utils";
 import { CalendarIcon, SmallChevronIcon } from "@/shared/ui/figma-icons";
 
 interface WeekPickerHeroProps {
@@ -13,7 +14,11 @@ interface WeekPickerHeroProps {
   value: string;
   onChange: (value: string) => void;
   className?: string;
+  /** Dia ou semana (spec 032): o dia escolhe o dia (`AAAA-MM-DD`) e o número da semana, a semana ISO. */
+  permitirDia?: boolean;
 }
+
+const DIA = /^\d{4}-\d{2}-\d{2}$/;
 
 const botaoDia = "inline-flex size-8 items-center justify-center rounded-lg text-[13px] tabular-nums transition-colors hover:bg-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 const botaoRodape = "h-7 min-h-0 rounded-lg px-3 text-[12px]";
@@ -26,12 +31,15 @@ function Chevron({ orientation }: ChevronProps) {
  * Filtro por semana ISO (spec 022) com o botão do Figma (TCM 2070:1476). O calendário é o `react-day-picker`,
  * o único que já seleciona a semana ISO; ele vive no Popover do HeroUI, sem o invólucro do shadcn.
  */
-export function WeekPickerHero({ label, value, onChange, className }: WeekPickerHeroProps) {
+export function WeekPickerHero({ label, value, onChange, className, permitirDia = false }: WeekPickerHeroProps) {
   const { t, i18n } = useTranslation();
   const [aberto, setAberto] = useState(false);
-  const selecionada = value ? diasDaSemana(value) : null;
-  const texto = selecionada ? `${t("week")} ${selecionada.semana}` : t("week");
-  const descricao = selecionada ? t("weekValue", { week: selecionada.semana, year: selecionada.ano }) : t("selectWeek");
+  const dia = permitirDia && DIA.test(value) ? lerDiaIso(value) : null;
+  const selecionada = value && !dia ? diasDaSemana(value) : null;
+  const diaFormatado = dia ? formatDate(dia, { dateStyle: "medium" }) : "";
+  const vazio = permitirDia ? label : t("week");
+  const texto = dia ? diaFormatado : selecionada ? `${t("week")} ${selecionada.semana}` : vazio;
+  const descricao = dia ? diaFormatado : selecionada ? t("weekValue", { week: selecionada.semana, year: selecionada.ano }) : t(permitirDia ? "selectDayOrWeek" : "selectWeek");
 
   const escolher = useCallback((proximo: string) => {
     onChange(proximo);
@@ -68,9 +76,9 @@ export function WeekPickerHero({ label, value, onChange, className }: WeekPicker
             showWeekNumber
             ISOWeek
             locale={i18n.language?.startsWith("pt") ? ptBR : i18n.language?.startsWith("ko") ? ko : enUS}
-            defaultMonth={selecionada?.segunda}
-            modifiers={selecionada ? { semana: { from: selecionada.segunda, to: selecionada.domingo }, inicioSemana: selecionada.segunda, fimSemana: selecionada.domingo } : undefined}
-            modifiersClassNames={{ semana: "bg-accent text-accent-foreground", inicioSemana: "rounded-l-lg", fimSemana: "rounded-r-lg" }}
+            defaultMonth={dia ?? selecionada?.segunda}
+            modifiers={dia ? { diaEscolhido: dia } : selecionada ? { semana: { from: selecionada.segunda, to: selecionada.domingo }, inicioSemana: selecionada.segunda, fimSemana: selecionada.domingo } : undefined}
+            modifiersClassNames={{ semana: "bg-accent text-accent-foreground", inicioSemana: "rounded-l-lg", fimSemana: "rounded-r-lg", diaEscolhido: "rounded-lg bg-accent text-accent-foreground" }}
             classNames={{
               root: "w-fit p-2",
               months: "relative flex flex-col gap-4",
@@ -93,7 +101,7 @@ export function WeekPickerHero({ label, value, onChange, className }: WeekPicker
               hidden: "invisible",
             }}
             components={{ WeekNumber: NumeroDaSemana, Chevron }}
-            onDayClick={(dia) => escolher(semanaIso(dia))}
+            onDayClick={(clicado) => escolher(permitirDia ? formatarDiaIso(clicado) : semanaIso(clicado))}
             autoFocus
           />
           <div className="flex justify-between border-t border-separator px-1 pt-1.5">
