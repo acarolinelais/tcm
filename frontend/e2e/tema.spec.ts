@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { adminEmail, adminSenha, entrarComoAdmin } from "./api-fixtures";
 
-// Spec 033. Só entra com o administrador existente e navega: não cria dados na API.
+// Spec 034. Só entra com o administrador existente e navega: não cria dados na API.
 const rotas = ["/overview", "/projetos", "/admin/usuarios", "/admin/setores", "/admin/times", "/configuracoes"];
 const html = (page: Page) => page.locator("html");
 const toggleTema = (page: Page) => page.getByRole("button", { name: "Dark theme" });

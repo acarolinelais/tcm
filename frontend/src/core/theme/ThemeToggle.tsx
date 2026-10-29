@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/shared/lib/utils";
 import { useTheme } from "./use-theme";
 
-/** Liga e desliga o tema escuro (spec 033). O ícone mostra o tema em uso; `aria-pressed`, se o escuro está ligado. */
+/** Liga e desliga o tema escuro (spec 034). O ícone mostra o tema em uso; `aria-pressed`, se o escuro está ligado. */
 export function ThemeToggle({ className }: { className?: string }) {
   const { t } = useTranslation();
   const { tema, alternar } = useTheme();

@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { comOpcaoTodos } from "@/shared/lib/opcoes";
 import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
 import { DataTableFilter } from "@/shared/ui/data-table-filter";
+import { DataTablePagination } from "@/shared/ui/data-table-pagination";
 import { estadoDaTabela } from "@/shared/ui/data-table-state";
 import { InlineSelect } from "@/shared/ui/inline-select";
 import { RowActions } from "@/shared/ui/row-action-button";
@@ -39,6 +40,10 @@ interface Props {
   onAbrirResultado: (resultado: ResultadoAberto) => void;
   onAbrirResumo: (caso: CasoHistorico) => void;
   onAbrirDetalhes: (caso: CasoTesteResumo) => void;
+  page: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
 }
 
 const SEM_CASOS: CasoHistorico[] = [];
@@ -46,12 +51,12 @@ const SEM_CASOS: CasoHistorico[] = [];
 // TC ID e Form Factor ficam fixos ao rolar para os lados (RN-05); a largura fixa do TC ID dá o recuo do Form Factor.
 const fixa = "sticky z-[1] bg-surface [thead_&]:bg-surface-secondary";
 
-/** Resultados Gerais de um projeto (spec 032): todos os casos, sem paginação (ADR 0038), e até 7 datas. */
+/** Resultados Gerais de um projeto (specs 032 e 033): uma página de casos e até 7 datas, as mesmas em todas as páginas (ADR 0039). */
 export function HistoricoProjetoTabela(props: Props) {
   const { t } = useTranslation();
   const { dados, filtros, modeloDaLinha } = props;
-  const casos = props.erro ? SEM_CASOS : dados?.casos ?? SEM_CASOS;
-  // Sem paginação (ADR 0038), o nome do modelo é lido em cada célula: o mapa evita uma busca por célula.
+  const casos = props.erro ? SEM_CASOS : dados?.items ?? SEM_CASOS;
+  // O nome do modelo é lido em cada célula: o mapa evita uma busca por célula.
   const { nomes, opcoesModelos } = useMemo(() => {
     const modelos = dados?.modelos ?? [];
     return {
@@ -122,6 +127,7 @@ export function HistoricoProjetoTabela(props: Props) {
       empty: { icon: <History aria-hidden="true" className="size-5" />, title: t("noProjectCases"), hint: t("noProjectCasesHint") },
       filtered: { title: t("noResults"), hint: t("noGlobalResultsFiltered") },
     })}
+    pagination={<DataTablePagination page={props.page} pageSize={props.pageSize} totalCount={dados?.total_count ?? 0} onPageChange={props.onPageChange} onPageSizeChange={props.onPageSizeChange} />}
     rowDependencies={[t, dados, modeloDaLinha]}
   />;
 }

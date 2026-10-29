@@ -1,14 +1,14 @@
-# 0040. Cores somente por tokens semânticos
+# 0041. Cores somente por tokens semânticos
 
 - **Status:** Aceito
 - **Data:** 2026-10-29
-- **Contexto:** Spec 033 — Tema claro e escuro
-- **Relacionado:** ADR 0037 (HeroUI), ADR 0039 (tema)
+- **Contexto:** Spec 034 — Tema claro e escuro
+- **Relacionado:** ADR 0037 (HeroUI), ADR 0040 (tema)
 
 ## Contexto
 Cerca de 50 arquivos do frontend usam cores fixas: hex vindo do Figma (`text-[#454442]`, `bg-[#8880F7]`,
 tokens do HeroUI sobrescritos com hex em `style`), paleta crua do Tailwind (`bg-white`, `text-slate-700`,
-`bg-blue-50`) e hex em SVG. Com o tema escuro (ADR 0039), cada cor fixa vira um pedaço da tela preso ao
+`bg-blue-50`) e hex em SVG. Com o tema escuro (ADR 0040), cada cor fixa vira um pedaço da tela preso ao
 visual claro. Sem uma regra, o problema volta a cada tela portada do Figma.
 
 ## Decisão

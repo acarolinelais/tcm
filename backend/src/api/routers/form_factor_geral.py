@@ -23,11 +23,22 @@ async def historico_projeto(
     dia: str | None = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
     semana: str | None = Query(None, pattern=r"^\d{4}-W\d{2}$"),
     fuso_horario: str = Query("UTC", min_length=1, max_length=64),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     service: FormFactorService = Depends(get_form_factor_service),
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
     return await service.historico_projeto(
-        usuario_atual, projeto_id, busca, tc_id, modelo_dispositivo_id, dia, semana, fuso_horario
+        usuario_atual,
+        projeto_id,
+        busca=busca,
+        tc_id=tc_id,
+        modelo_dispositivo_id=modelo_dispositivo_id,
+        dia=dia,
+        semana=semana,
+        fuso_horario=fuso_horario,
+        page=page,
+        page_size=page_size,
     )
 
 

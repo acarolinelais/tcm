@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from src.application.validators.semana import intervalo_semana_iso
 from src.domain.entities.execucao_sdf import ExecucaoSdf
 from src.domain.entities.resultado_form_factor import ResultadoFormFactor
+from src.domain.queries.historico_form_factor import FiltrosCasoHistorico
 from src.infrastructure.data.models.usuario_model import UsuarioModel
 from src.infrastructure.repositories.execucao_sdf_repository import ExecucaoSdfRepositoryImpl
 from src.infrastructure.repositories.historico_form_factor_repository import (
@@ -47,6 +48,12 @@ def _repo(cenario):
     return HistoricoFormFactorRepositoryImpl(cenario.session)
 
 
+async def _listar(repo, cenario, page=1, page_size=20, **filtros):
+    return await repo.listar_casos(
+        cenario.unidade_id, cenario.projeto_id, FiltrosCasoHistorico(**filtros), page, page_size
+    )
+
+
 async def _manual(cenario, caso_id, data, resultados, sdf_id=None):
     """Execução manual avulsa (sem rodada e sem SDF ID), como o registro manual antigo."""
     execucao = ExecucaoSdf(cenario.unidade_id, None, caso_id, sdf_id, data, "9.5", origem="MANUAL")
@@ -67,7 +74,9 @@ async def test_datas_sao_as_7_mais_recentes_da_mais_nova_para_a_mais_antiga(cena
             caso, f"SDF-{dia}", INICIO + timedelta(days=dia), {cenario.s26: "PASS"}
         )
 
-    datas = await _repo(cenario).listar_datas(cenario.unidade_id, cenario.projeto_id, [caso], "UTC")
+    datas = await _repo(cenario).listar_datas(
+        cenario.unidade_id, cenario.projeto_id, FiltrosCasoHistorico(), "UTC"
+    )
 
     assert datas == tuple(date(2026, 10, 10) - timedelta(days=n) for n in range(7))
 
@@ -86,14 +95,16 @@ async def test_datas_respeitam_o_periodo_e_o_fuso(cenario):
     repo = _repo(cenario)
     inicio, fim = intervalo_semana_iso("2026-W40", "UTC")  # 28/09 a 04/10
 
+    sem_filtro = FiltrosCasoHistorico()
+
     na_semana = await repo.listar_datas(
-        cenario.unidade_id, cenario.projeto_id, [caso], "UTC", inicio, fim
+        cenario.unidade_id, cenario.projeto_id, FiltrosCasoHistorico(inicio=inicio, fim=fim), "UTC"
     )
     em_utc = await repo.listar_datas(
-        cenario.unidade_id, cenario.projeto_id, [caso], "UTC", limite=1
+        cenario.unidade_id, cenario.projeto_id, sem_filtro, "UTC", limite=1
     )
     em_manaus = await repo.listar_datas(
-        cenario.unidade_id, cenario.projeto_id, [caso], "America/Manaus", limite=1
+        cenario.unidade_id, cenario.projeto_id, sem_filtro, "America/Manaus", limite=1
     )
 
     assert na_semana == (date(2026, 10, 4), date(2026, 10, 3), date(2026, 10, 2), date(2026, 10, 1))
@@ -170,10 +181,10 @@ async def test_casos_com_busca_filtros_e_periodo(cenario):
     repo = _repo(cenario)
 
     async def ids(**filtros):
-        casos = await repo.listar_casos(cenario.unidade_id, cenario.projeto_id, **filtros)
-        return [caso.caso_teste_id for caso in casos]
+        casos = await _listar(repo, cenario, **filtros)
+        return [caso.caso_teste_id for caso in casos.items]
 
-    todos = await repo.listar_casos(cenario.unidade_id, cenario.projeto_id)
+    todos = (await _listar(repo, cenario)).items
     assert [caso.tc_id for caso in todos] == ["Clock_001", "Clock_002", "Clock_003"]
     assert todos[0].responsavel_identificador == "ANA-001"
     assert await ids(busca="ana-0") == [caso_ana]
@@ -184,7 +195,10 @@ async def test_casos_com_busca_filtros_e_periodo(cenario):
     inicio, fim = intervalo_semana_iso("2026-W40", "UTC")
     assert await ids(inicio=inicio, fim=fim) == [caso_ana]
     assert await ids(busca="nada-parecido") == []
-    assert await repo.listar_casos(uuid4(), cenario.projeto_id) == ()
+    outra_unidade = await repo.listar_casos(
+        uuid4(), cenario.projeto_id, FiltrosCasoHistorico(), 1, 20
+    )
+    assert (outra_unidade.items, outra_unidade.total_count) == ([], 0)
 
 
 @pytest.mark.asyncio
@@ -217,13 +231,55 @@ async def test_filtro_e_periodo_casam_com_a_mesma_execucao_e_datas_seguem_o_mode
     inicio, fim = intervalo_semana_iso("2026-W40", "UTC")
 
     async def ids(**filtros):
-        casos = await repo.listar_casos(cenario.unidade_id, cenario.projeto_id, **filtros)
-        return [item.caso_teste_id for item in casos]
+        casos = await _listar(repo, cenario, **filtros)
+        return [item.caso_teste_id for item in casos.items]
 
     assert await ids(modelo_dispositivo_id=cenario.s26, inicio=inicio, fim=fim) == []
     assert await ids(busca="SDF-ANTIGO", inicio=inicio, fim=fim) == []
     assert await ids(modelo_dispositivo_id=cenario.s25, inicio=inicio, fim=fim) == [caso]
     datas_s26 = await repo.listar_datas(
-        cenario.unidade_id, cenario.projeto_id, [caso], "UTC", modelo_dispositivo_id=cenario.s26
+        cenario.unidade_id,
+        cenario.projeto_id,
+        FiltrosCasoHistorico(modelo_dispositivo_id=cenario.s26),
+        "UTC",
     )
     assert datas_s26 == ((INICIO - timedelta(days=20)).date(),)
+
+
+@pytest.mark.asyncio
+async def test_casos_paginados_por_tc_id_com_total(cenario):
+    for numero in range(45, 0, -1):  # criados fora de ordem: a página segue o TC ID
+        await cenario.caso(f"Clock_{numero:03d}")
+    repo = _repo(cenario)
+
+    primeira = await _listar(repo, cenario, page=1, page_size=20)
+    ultima = await _listar(repo, cenario, page=3, page_size=20)
+    alem = await _listar(repo, cenario, page=4, page_size=20)
+
+    assert [caso.tc_id for caso in primeira.items] == [f"Clock_{n:03d}" for n in range(1, 21)]
+    assert (primeira.total_count, primeira.total_pages) == (45, 3)
+    assert [caso.tc_id for caso in ultima.items] == [f"Clock_{n:03d}" for n in range(41, 46)]
+    # Página além da última (CA-09): vazia, com o total correto.
+    assert (alem.items, alem.total_count) == ([], 45)
+
+
+@pytest.mark.asyncio
+async def test_datas_consideram_os_casos_de_todas_as_paginas(cenario):
+    primeiro = await cenario.caso("Clock_001")
+    ultimo = await cenario.caso("Clock_099")
+    fora_do_filtro = await cenario.caso("Other_001")
+    await cenario.importar(primeiro, "SDF-1", INICIO, {cenario.s26: "PASS"})
+    # Só o último caso, que cai noutra página com `page_size` 1, tem execução nesta data (CA-03).
+    await cenario.importar(ultimo, "SDF-2", INICIO + timedelta(days=3), {cenario.s26: "FAIL"})
+    await cenario.importar(
+        fora_do_filtro, "SDF-3", INICIO + timedelta(days=5), {cenario.s26: "PASS"}
+    )
+    repo = _repo(cenario)
+    filtros = FiltrosCasoHistorico(tc_id="Clock")
+
+    pagina = await repo.listar_casos(cenario.unidade_id, cenario.projeto_id, filtros, 1, 1)
+    datas = await repo.listar_datas(cenario.unidade_id, cenario.projeto_id, filtros, "UTC")
+
+    assert [caso.caso_teste_id for caso in pagina.items] == [primeiro]
+    # A data do caso fora do filtro de TC ID não entra.
+    assert datas == (date(2026, 10, 4), date(2026, 10, 1))

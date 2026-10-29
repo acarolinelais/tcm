@@ -103,7 +103,7 @@ export const usuarioApi = {
 - UI com HeroUI v3 + Tailwind em telas novas ou redesenhadas; shadcn/ui só nas telas ainda não migradas (ADR 0037). Textos de interface em português (skill `better-writing`) e acessibilidade
   básica: labels, foco e botões com texto (skill `better-accessibility`).
 - Dados de servidor só via hooks TanStack Query; nunca `fetch` solto no componente.
-- Cores só por token com valor no claro e no escuro (ADRs 0039 e 0040): os do HeroUI (`bg-surface`, `text-muted`,
+- Cores só por token com valor no claro e no escuro (ADRs 0040 e 0041): os do HeroUI (`bg-surface`, `text-muted`,
   `border-separator`, `bg-accent-soft`...) ou os do projeto em `core/global.css` (`text-body`, `bg-page`, `bg-panel`...).
   Nada de hex (`text-[#454442]`), paleta crua do Tailwind (`bg-white`, `text-slate-700`) nem `rgb()`. Ao portar do
   Figma, mapeie cada hex para um token ou crie um com nome de papel nos dois temas. O teste

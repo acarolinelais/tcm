@@ -5,6 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from src.application.schemas.form_factor import FormFactorModeloResponse
+from src.domain.common.paged_result import PagedResult
 from src.domain.queries.historico_form_factor import CasoHistorico, LinhaHistoricoExecucao
 from src.domain.queries.modelo_do_projeto import ModeloDoProjeto
 
@@ -33,7 +34,11 @@ class HistoricoProjetoResponse(BaseModel):
     modelos: list[FormFactorModeloResponse]
     datas: list[date]
     modelo_destacado_id: UUID | None
-    casos: list[CasoHistoricoResponse]
+    items: list[CasoHistoricoResponse]
+    page: int
+    page_size: int
+    total_count: int
+    total_pages: int
 
 
 class ResumoExecucoesResponse(BaseModel):
@@ -62,7 +67,7 @@ def to_historico_response(
     modelos: Sequence[ModeloDoProjeto],
     datas: Sequence[date],
     modelo_destacado_id: UUID | None,
-    casos: Sequence[CasoHistorico],
+    casos: PagedResult[CasoHistorico],
     linhas: Sequence[LinhaHistoricoExecucao],
     modelos_padrao: dict[UUID, UUID | None],
 ) -> HistoricoProjetoResponse:
@@ -78,7 +83,7 @@ def to_historico_response(
         modelos=_modelos_response(modelos),
         datas=list(datas),
         modelo_destacado_id=modelo_destacado_id,
-        casos=[
+        items=[
             CasoHistoricoResponse(
                 caso_teste_id=caso.caso_teste_id,
                 tc_id=caso.tc_id,
@@ -87,8 +92,12 @@ def to_historico_response(
                 modelo_padrao_id=modelos_padrao.get(caso.caso_teste_id),
                 resultados=resultados.get(caso.caso_teste_id, {}),
             )
-            for caso in casos
+            for caso in casos.items
         ],
+        page=casos.page,
+        page_size=casos.page_size,
+        total_count=casos.total_count,
+        total_pages=casos.total_pages,
     )
 
 

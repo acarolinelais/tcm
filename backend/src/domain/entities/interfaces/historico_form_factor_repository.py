@@ -1,9 +1,14 @@
 from collections.abc import Sequence
-from datetime import date, datetime
+from datetime import date
 from typing import Protocol
 from uuid import UUID
 
-from src.domain.queries.historico_form_factor import CasoHistorico, LinhaHistoricoExecucao
+from src.domain.common.paged_result import PagedResult
+from src.domain.queries.historico_form_factor import (
+    CasoHistorico,
+    FiltrosCasoHistorico,
+    LinhaHistoricoExecucao,
+)
 
 
 class HistoricoFormFactorRepository(Protocol):
@@ -13,12 +18,10 @@ class HistoricoFormFactorRepository(Protocol):
         self,
         unidade_id: UUID,
         projeto_id: UUID,
-        busca: str | None = None,
-        tc_id: str | None = None,
-        modelo_dispositivo_id: UUID | None = None,
-        inicio: datetime | None = None,
-        fim: datetime | None = None,
-    ) -> tuple[CasoHistorico, ...]: ...
+        filtros: FiltrosCasoHistorico,
+        page: int,
+        page_size: int,
+    ) -> PagedResult[CasoHistorico]: ...
 
     async def obter_caso(self, unidade_id: UUID, caso_teste_id: UUID) -> CasoHistorico | None: ...
 
@@ -26,12 +29,9 @@ class HistoricoFormFactorRepository(Protocol):
         self,
         unidade_id: UUID,
         projeto_id: UUID,
-        caso_ids: Sequence[UUID],
+        filtros: FiltrosCasoHistorico,
         fuso_horario: str,
-        inicio: datetime | None = None,
-        fim: datetime | None = None,
         limite: int = 7,
-        modelo_dispositivo_id: UUID | None = None,
     ) -> tuple[date, ...]: ...
 
     async def listar_resultados(

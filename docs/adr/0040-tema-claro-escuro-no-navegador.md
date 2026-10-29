@@ -1,15 +1,15 @@
-# 0039. Tema claro e escuro por classe no `<html>`, guardado no navegador
+# 0040. Tema claro e escuro por classe no `<html>`, guardado no navegador
 
 - **Status:** Aceito
 - **Data:** 2026-10-29
-- **Contexto:** Spec 033 — Tema claro e escuro
+- **Contexto:** Spec 034 — Tema claro e escuro
 - **Relacionado:** ADR 0037 (HeroUI)
 
 ## Contexto
 O HeroUI v3 (ADR 0037) já traz um tema escuro: seus tokens mudam quando o `<html>` tem a classe `dark` (ou
 `data-theme="dark"`). Mas o `core/global.css` sobrescreve parte desses tokens em `:root`, fora de camada,
 o que prende essas cores ao claro, e a variante `dark:` do HeroUI cai em `prefers-color-scheme` quando
-não há classe. A spec 033 pede o claro como padrão mesmo com o sistema operacional escuro, a escolha
+não há classe. A spec 034 pede o claro como padrão mesmo com o sistema operacional escuro, a escolha
 guardada no navegador (não na conta) e nenhuma piscada no tema errado ao carregar.
 
 ## Decisão

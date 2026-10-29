@@ -9,7 +9,7 @@
 @import "@heroui/styles/utilities";
 @import "@heroui/styles/variants";
 
-/* Tema escuro só pela classe no <html>, sem o fallback de prefers-color-scheme do HeroUI (ADR 0039). */
+/* Tema escuro só pela classe no <html>, sem o fallback de prefers-color-scheme do HeroUI (ADR 0040). */
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* Tokens com o mesmo nome no shadcn e no HeroUI: um valor só, em cor completa. Ficam fora de camada para
@@ -28,11 +28,11 @@
   --field-border-width: 1px;
 }
 
-/* Tema escuro (ADR 0039): os tokens acima também ficam fora de camada, então precisam do valor escuro aqui.
+/* Tema escuro (ADR 0040): os tokens acima também ficam fora de camada, então precisam do valor escuro aqui.
    Os demais tokens do HeroUI (surface, overlay, success...) já mudam pelo tema dele. */
 :root.dark {
   color-scheme: dark;
-  /* Dark Mode segundo a HIG da Apple (macOS Dark Aqua + cores de sistema do iOS), docs/specs/033 plan.md:
+  /* Dark Mode segundo a HIG da Apple (macOS Dark Aqua + cores de sistema do iOS), docs/specs/034 plan.md:
      cinzas neutros do sistema, fundo da janela mais claro que o conteúdo (#323232 / #1E1E1E, como no macOS),
      o que flutua um passo acima da janela (elevated #3A3A3C), rótulos em branco com opacidade (85% e 55%) e as
      cores de sistema no lugar dos tons do claro. Contraste mínimo 4,5:1, medido par a par. */
@@ -86,7 +86,7 @@
   --destructive-foreground: 0 0% 100%;
 }
 
-/* Tokens do projeto (ADR 0040): cores do Figma sem equivalente no HeroUI, nomeadas pelo papel. */
+/* Tokens do projeto (ADR 0041): cores do Figma sem equivalente no HeroUI, nomeadas pelo papel. */
 :root {
   --page: #fbfbfb;        /* fundo das páginas, atrás dos cartões */
   --accent-tint: #eaf1ff; /* fundo azul claro do Figma: item ativo da sidebar, ilustração do login, dropzone */
@@ -114,7 +114,7 @@
   --chart-3: #8e8e93;               /* systemGray: 5,1:1 sobre o cartão (gráfico com significado pede ≥ 3:1) */
 }
 
-/* Tons das etiquetas e dos status (ADR 0040). No claro, os pares do Figma (texto `--x`/`-fg`, fundo `-bg`), com o
+/* Tons das etiquetas e dos status (ADR 0041). No claro, os pares do Figma (texto `--x`/`-fg`, fundo `-bg`), com o
    texto escurecido onde não passava no AA; no status do Test Case, `--x` é o círculo do ícone. No escuro, o fundo vira
    a cor forte translúcida e o texto, a cor forte clareada. */
 :root {
@@ -367,7 +367,7 @@ body {
 
 /* Área de soltar arquivo do Figma: traço tracejado com cantos arredondados, que border-dashed não reproduz.
    O stroke de 2px fica metade fora do retângulo, então aparece com 1px. O SVG vira máscara de um ::before, para o
-   traço usar um token (ADR 0040) e mudar com o tema. */
+   traço usar um token (ADR 0041) e mudar com o tema. */
 .dropzone-tracejada {
   --dropzone-traco: var(--border-tertiary);
   position: relative;

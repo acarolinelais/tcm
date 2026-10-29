@@ -1,6 +1,6 @@
 # 0038. Resultados Gerais sem paginação de Test Cases
 
-- **Status:** Aceito
+- **Status:** Substituído por [0039](0039-resultados-gerais-com-paginacao.md)
 - **Data:** 2026-10-28
 - **Relacionado:** ADRs 0022 e 0034, spec 032
 - **Exceção a:** a regra de paginação de 20 itens do ADR 0034 (e da composição de tabela do ADR 0022), só na tela

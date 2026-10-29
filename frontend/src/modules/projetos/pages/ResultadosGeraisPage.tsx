@@ -5,6 +5,7 @@ import { useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import type { PerfilAtual } from "@/core/auth/api";
+import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { ErroComRetry } from "@/shared/ui/erro-com-retry";
 import { PageCard, PageTitle } from "@/shared/ui/page-card";
 import { PageTabPanel, PageTabs } from "@/shared/ui/page-tabs";
@@ -33,18 +34,25 @@ export function ResultadosGeraisPage() {
   const [abaEscolhida, setAbaEscolhida] = useState("");
   const projetoId = projetos.some((projeto) => projeto.id === abaEscolhida) ? abaEscolhida : projetos[0]?.id ?? "";
   const [filtros, setFiltros] = useState(SEM_FILTROS);
+  // Página e tamanho (spec 033): fora de `filtros`, que só guarda o que a pessoa filtrou.
+  const [pagina, setPagina] = useState(1);
+  const [tamanhoPagina, setTamanhoPagina] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const [rascunhoBusca, setRascunhoBusca] = useState("");
   const [buscaAberta, setBuscaAberta] = useState(false);
-  // Modelo escolhido por linha (RN-03): só estado de tela, esquecido ao trocar de aba e ao mudar a consulta.
+  // Modelo escolhido por linha (RN-03): só estado de tela, esquecido ao trocar de aba ou de filtro e mantido ao trocar de página.
   const [escolhas, setEscolhas] = useState<Record<string, string>>({});
   const [resultadoAberto, setResultadoAberto] = useState<ResultadoAberto | null>(null);
   const [casoDoResumo, setCasoDoResumo] = useState<CasoHistorico | null>(null);
   const [casoDetalhado, setCasoDetalhado] = useState<CasoTesteResumo | null>(null);
-  const historico = useHistoricoProjeto(projetoId, filtros, perfil);
+  const historico = useHistoricoProjeto(projetoId, { ...filtros, page: pagina, pageSize: tamanhoPagina }, perfil);
   const dados = historico.data;
+  const totalPaginas = Math.max(1, Math.ceil((dados?.total_count ?? 0) / tamanhoPagina));
+  // Casos removidos encolhem a lista: volta para a última página que existe, como nas outras telas.
+  useEffect(() => { if (dados && !historico.isPlaceholderData && pagina > totalPaginas) setPagina(totalPaginas); }, [dados, historico.isPlaceholderData, pagina, totalPaginas]);
 
   function alterarFiltros(proximos: FiltrosHistoricoProjeto) {
     setFiltros(proximos);
+    setPagina(1);
     setEscolhas({});
   }
 
@@ -132,6 +140,10 @@ export function ResultadosGeraisPage() {
           onAbrirResultado={setResultadoAberto}
           onAbrirResumo={setCasoDoResumo}
           onAbrirDetalhes={setCasoDetalhado}
+          page={pagina}
+          pageSize={tamanhoPagina}
+          onPageChange={setPagina}
+          onPageSizeChange={(tamanho) => { setTamanhoPagina(tamanho); setPagina(1); }}
         />}
       </PageTabPanel>)}
     </PageTabs>

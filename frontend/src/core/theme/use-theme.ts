@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 
 export type Tema = "light" | "dark";
 
-/** Mesma chave e mesma regra do script inline do `index.html` (ADR 0039): só "dark" liga o tema escuro. */
+/** Mesma chave e mesma regra do script inline do `index.html` (ADR 0040): só "dark" liga o tema escuro. */
 export const THEME_KEY = "sdf.theme";
 
 const ouvintes = new Set<() => void>();

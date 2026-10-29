@@ -1,9 +1,9 @@
-# 033. Tema claro e escuro: Spec
+# 034. Tema claro e escuro: Spec
 
 - **Status:** Concluída
 - **Data:** 2026-10-29
 - **Specs relacionadas:** 007
-- **ADRs relacionados:** 0037, 0039, 0040
+- **ADRs relacionados:** 0037, 0040, 0041
 
 ## Problema
 

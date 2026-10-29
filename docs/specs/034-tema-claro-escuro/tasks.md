@@ -1,4 +1,4 @@
-# 033. Tema claro e escuro: Tasks
+# 034. Tema claro e escuro: Tasks
 
 - **Spec:** [spec.md](spec.md) · **Plan:** [plan.md](plan.md)
 
@@ -39,7 +39,7 @@
   - Detalhe: `ThemeToggle` ao lado do `LanguageSelector`; cores fixas dos dois arquivos viram tokens.
   - Verificação: `cd frontend && npx vitest run src/core/layout src/core/auth` → verde
 
-## Fase 2: Cores fixas para tokens (ADR 0040)
+## Fase 2: Cores fixas para tokens (ADR 0041)
 - [x] **T06. Teste de varredura de cores fixas**
   - Arquivos: `frontend/src/core/theme/cores-por-token.test.ts`
   - Cobre: CA-06
@@ -99,7 +99,7 @@
   - Verificação: `cd frontend && npm test && npm run build` → verde
 - [x] **T16. Regra de cores na skill `react-crud`**
   - Arquivos: `.claude/skills/react-crud/SKILL.md`
-  - Cobre: — (ADR 0040)
+  - Cobre: — (ADR 0041)
   - Verificação: `git diff --check` → sem erros
 
 ## Backlog

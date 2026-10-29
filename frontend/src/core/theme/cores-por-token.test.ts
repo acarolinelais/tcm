@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-// ADR 0040: cor no código só por token com valor nos dois temas. Este teste acha as cores fixas que escapam.
+// ADR 0041: cor no código só por token com valor nos dois temas. Este teste acha as cores fixas que escapam.
 const paleta = "white|black|slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose";
 const padroes = [
   /\[#[0-9a-fA-F]{3,8}\]/, // classe arbitrária com hex: text-[#454442]
@@ -23,7 +23,7 @@ export function coresFixas(arquivo: string, codigo: string) {
 
 const fontes = import.meta.glob(["/src/**/*.{ts,tsx}", "!/src/**/*.test.{ts,tsx}"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 
-describe("cores por token (ADR 0040)", () => {
+describe("cores por token (ADR 0041)", () => {
   it("nenhum arquivo de src/ usa cor fixa", () => {
     const achados = Object.entries(fontes).flatMap(([arquivo, codigo]) => coresFixas(arquivo, codigo));
     expect(achados).toEqual([]);

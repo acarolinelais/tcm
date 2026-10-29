@@ -20,8 +20,8 @@ carregando, erro ou vazio vem de `estadoDaTabela`, os filtros de coluna de `Data
 `DataTablePagination` fica ao final, com 20 itens por página como padrão ([ADR 0034](../adr/0034-paginacao-padrao-vinte-itens.md)). O conteúdo
 das colunas e os filtros dependem do domínio, mas a estrutura, espaçamento, estados de carregamento/vazio
 e paginação são comuns a todas as tabelas. A coluna de ações não recebe filtro. Exceções visuais devem
-ser registradas em ADR antes de serem introduzidas. A única exceção à paginação é a tela Resultados Gerais
-([ADR 0038](../adr/0038-resultados-gerais-sem-paginacao.md)).
+ser registradas em ADR antes de serem introduzidas. Não há exceção à paginação: a tela Resultados Gerais, antes
+sem paginação, também pagina ([ADR 0039](../adr/0039-resultados-gerais-com-paginacao.md)).
 
 ## Roadmap
 | # | Spec | Status |
@@ -59,7 +59,8 @@ ser registradas em ADR antes de serem introduzidas. A única exceção à pagina
 | 030 | Links de PR do Test Case (histórico no painel de detalhes) e painel em todas as tabelas de projetos | Concluída (e2e simulados; validação manual no navegador pendente) |
 | 031 | Painéis laterais e listas de seleção no padrão HeroUI (Setores, Usuários, Modelos e Projetos) | Em andamento (9 e2e com API real pendentes) |
 | 032 | Resultados Gerais por projeto, com histórico de execuções por data (abas, Form Factor por linha, ADR 0038) | Aprovada |
-| 033 | Tema claro e escuro (toggle no navbar e no login, escolha no navegador, ADRs 0039 e 0040) | Concluída (4 e2e com API real a reexecutar após a code-review) |
+| 033 | Paginação na tela Resultados Gerais (ADR 0039, substitui o 0038) | Concluída (e2e simulados; validação manual no navegador pendente) |
+| 034 | Tema claro e escuro (toggle no navbar e no login, escolha no navegador, ADRs 0040 e 0041) | Concluída |
 
 > As duas specs 012 foram criadas em paralelo. Os diretórios e históricos foram preservados nesta integração; a harmonização da numeração está registrada no backlog da spec de perfil Dev.
 
