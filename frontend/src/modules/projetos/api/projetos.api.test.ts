@@ -72,16 +72,16 @@ describe("APIs de projetos", () => {
   });
 
   it("envia filtros do Form Factor, consulta Results e opera rodadas", async () => {
-    await formFactorApi.listarGlobal({ page: 2, pageSize: 10, semana: "2026-W13", projetoId: "project-1", responsavelId: "user-1", tcId: "TC-001" });
+    const fuso = encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    await formFactorApi.historicoProjeto("project-1", { busca: "S26", tcId: "TC-001", modeloDispositivoId: "model-1", periodo: "2026-W13" });
     expect(fetch).toHaveBeenLastCalledWith(
-      "/api/form-factor/general?page=2&page_size=10&semana=2026-W13&projeto_id=project-1&responsavel_id=user-1&tc_id=TC-001",
+      `/api/form-factor/general/projetos/project-1/historico?fuso_horario=${fuso}&busca=S26&tc_id=TC-001&modelo_dispositivo_id=model-1&semana=2026-W13`,
       expect.any(Object),
     );
-    await formFactorApi.listarResultadosGlobais({ page: 1, origem: "MANUAL", resultado: "FAIL" });
-    expect(fetch).toHaveBeenLastCalledWith(
-      "/api/form-factor/general/results?page=1&page_size=20&resultado=FAIL&origem=MANUAL",
-      expect.any(Object),
-    );
+    await formFactorApi.historicoProjeto("project-1", { periodo: "2026-03-25" });
+    expect(fetch).toHaveBeenLastCalledWith(`/api/form-factor/general/projetos/project-1/historico?fuso_horario=${fuso}&dia=2026-03-25`, expect.any(Object));
+    await formFactorApi.resumoExecucoes("case-1");
+    expect(fetch).toHaveBeenLastCalledWith(`/api/form-factor/general/casos/case-1/execucoes?fuso_horario=${fuso}`, expect.any(Object));
     await formFactorApi.listar("project-1", {
       page: 2,
       pageSize: 10,

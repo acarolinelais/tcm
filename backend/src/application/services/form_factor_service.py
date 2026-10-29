@@ -7,29 +7,36 @@ from src.application.schemas.form_factor import (
     CriarRodadaFormFactorRequest,
     EnviarResultadosRodadaRequest,
     FormFactorExecucaoResponse,
-    FormFactorGlobalResponse,
     FormFactorResponse,
-    FormFactorResultadosGlobaisResponse,
     FormFactorResultadosResponse,
     RodadaFormFactorCasosResponse,
     RodadaFormFactorResponse,
-    to_global_response,
-    to_global_resultados_response,
     to_response,
     to_resultados_response,
     to_rodada_casos_response,
     to_rodada_response,
 )
+from src.application.schemas.form_factor_historico import (
+    HistoricoProjetoResponse,
+    ResumoExecucoesResponse,
+    to_historico_response,
+    to_resumo_response,
+)
+from src.application.validators.semana import fuso_horario_valido, intervalo_dia
 from src.application.validators.semana import intervalo_semana_iso as _intervalo_semana_iso
 from src.domain.common.exceptions import (
     ConflictException,
     ForbiddenException,
+    InvalidInputException,
     NotFoundException,
 )
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.execucao_sdf import ExecucaoSdf
 from src.domain.entities.interfaces.caso_teste_repository import CasoTesteRepository
 from src.domain.entities.interfaces.execucao_sdf_repository import ExecucaoSdfRepository
+from src.domain.entities.interfaces.historico_form_factor_repository import (
+    HistoricoFormFactorRepository,
+)
 from src.domain.entities.interfaces.projeto_modelo_repository import ProjetoModeloRepository
 from src.domain.entities.interfaces.projeto_repository import ProjetoRepository
 from src.domain.entities.interfaces.resultado_form_factor_repository import (
@@ -38,6 +45,7 @@ from src.domain.entities.interfaces.resultado_form_factor_repository import (
 from src.domain.entities.interfaces.rodada_form_factor_repository import RodadaFormFactorRepository
 from src.domain.entities.interfaces.time_repository import TimeRepository
 from src.domain.entities.interfaces.unit_of_work import UnitOfWork
+from src.domain.entities.projeto import Projeto
 from src.domain.entities.resultado_form_factor import ResultadoFormFactor
 from src.domain.entities.rodada_form_factor import RodadaFormFactor
 
@@ -53,6 +61,7 @@ class FormFactorServiceImpl:
         execucao_repo: ExecucaoSdfRepository,
         uow: UnitOfWork,
         rodada_repo: RodadaFormFactorRepository | None = None,
+        historico_repo: HistoricoFormFactorRepository | None = None,
     ) -> None:
         self._projeto_repo = projeto_repo
         self._time_repo = time_repo
@@ -62,99 +71,112 @@ class FormFactorServiceImpl:
         self._execucao_repo = execucao_repo
         self._uow = uow
         self._rodada_repo = rodada_repo
+        self._historico_repo = historico_repo
 
-    async def listar_global(
+    async def historico_projeto(
         self,
         usuario_atual: UsuarioAutenticado,
-        page: int,
-        page_size: int,
-        semana: str | None = None,
-        projeto_id: UUID | None = None,
-        responsavel_id: UUID | None = None,
+        projeto_id: UUID,
+        busca: str | None = None,
         tc_id: str | None = None,
-        sdf_id: str | None = None,
         modelo_dispositivo_id: UUID | None = None,
-        resultado: str | None = None,
-    ) -> FormFactorGlobalResponse:
-        time_ids = self._time_ids_form_factor_global(usuario_atual)
-        inicio, fim = _intervalo_semana_iso(semana)
-        dados = await self._resultado_repo.listar_form_factor_global(
-            usuario_atual.unidade_id,
-            time_ids,
-            page,
-            page_size,
+        dia: str | None = None,
+        semana: str | None = None,
+        fuso_horario: str = "UTC",
+    ) -> HistoricoProjetoResponse:
+        """Resultados Gerais de um projeto (spec 032): todos os casos e até 7 datas do período."""
+        self._exigir_consulta_resultados_gerais(usuario_atual)
+        if dia is not None and semana is not None:
+            raise InvalidInputException("Escolha um dia ou uma semana, não os dois.")
+        fuso_horario_valido(fuso_horario)
+        inicio, fim = (
+            intervalo_dia(dia, fuso_horario) if dia else _intervalo_semana_iso(semana, fuso_horario)
+        )
+        projeto = await self._obter_projeto_ativo_no_escopo(usuario_atual, projeto_id)
+        unidade_id = usuario_atual.unidade_id
+        modelos = await self._projeto_modelo_repo.listar_modelos_do_projeto(unidade_id, projeto.id)
+        casos = await self._historico_repo.listar_casos(
+            unidade_id, projeto.id, busca, tc_id, modelo_dispositivo_id, inicio, fim
+        )
+        caso_ids = [caso.caso_teste_id for caso in casos]
+        datas = await self._historico_repo.listar_datas(
+            unidade_id,
+            projeto.id,
+            caso_ids,
+            fuso_horario,
             inicio,
             fim,
-            projeto_id,
-            responsavel_id,
-            tc_id,
-            sdf_id,
-            modelo_dispositivo_id,
-            resultado,
+            modelo_dispositivo_id=modelo_dispositivo_id,
         )
-        modelos = await self._resultado_repo.listar_modelos_form_factor_global(
-            usuario_atual.unidade_id, time_ids, projeto_id
+        linhas = await self._historico_repo.listar_resultados(
+            unidade_id, projeto.id, caso_ids, fuso_horario, datas
         )
-        responsaveis = await self._resultado_repo.listar_responsaveis_form_factor_global(
-            usuario_atual.unidade_id, time_ids, projeto_id
+        ultimos = await self._historico_repo.listar_modelos_da_ultima_execucao(
+            unidade_id, projeto.id, caso_ids
         )
-        return to_global_response(modelos, responsaveis, dados)
+        ordem = [modelo.id for modelo in modelos]
+        termo = busca.strip().lower() if busca and busca.strip() else None
+        destacados = (
+            [modelo_dispositivo_id]
+            if modelo_dispositivo_id
+            else [modelo.id for modelo in modelos if termo and termo in modelo.nome.lower()]
+        )
+        com_resultado: dict[UUID, set[UUID]] = {}
+        for linha in linhas:
+            com_resultado.setdefault(linha.caso_teste_id, set()).add(linha.modelo_dispositivo_id)
+        primeiro = ordem[0] if ordem else None
 
-    async def listar_resultados_global(
-        self,
-        usuario_atual: UsuarioAutenticado,
-        page: int,
-        page_size: int,
-        semana: str | None = None,
-        projeto_id: UUID | None = None,
-        responsavel_id: UUID | None = None,
-        tc_id: str | None = None,
-        sdf_id: str | None = None,
-        modelo_dispositivo_id: UUID | None = None,
-        resultado: str | None = None,
-        origem: str | None = None,
-    ) -> FormFactorResultadosGlobaisResponse:
-        time_ids = self._time_ids_form_factor_global(usuario_atual)
-        inicio, fim = _intervalo_semana_iso(semana)
-        dados = await self._resultado_repo.listar_execucoes_form_factor_global(
-            usuario_atual.unidade_id,
-            time_ids,
-            page,
-            page_size,
-            inicio,
-            fim,
-            projeto_id,
-            responsavel_id,
-            tc_id,
-            sdf_id,
-            modelo_dispositivo_id,
-            resultado,
-            origem,
-        )
-        modelos = await self._resultado_repo.listar_modelos_form_factor_global(
-            usuario_atual.unidade_id, time_ids, projeto_id
-        )
-        responsaveis = await self._resultado_repo.listar_responsaveis_form_factor_global(
-            usuario_atual.unidade_id, time_ids, projeto_id
-        )
-        return to_global_resultados_response(modelos, responsaveis, dados)
+        def modelo_padrao(caso_id: UUID) -> UUID | None:
+            # Busca ou filtro por device (RN-10): a linha abre no device encontrado, se ele tem
+            # resultado nas datas da tabela. Senão (RN-04), o da execução mais recente (o primeiro
+            # do projeto, se ela teve vários); sem execução, o primeiro do projeto.
+            casados = com_resultado.get(caso_id, set())
+            return next((m for m in destacados if m in casados), None) or next(
+                (m for m in ordem if m in ultimos.get(caso_id, ())), primeiro
+            )
 
-    def _time_ids_form_factor_global(
-        self, usuario_atual: UsuarioAutenticado
-    ) -> tuple[UUID, ...] | None:
+        modelo_destacado_id = destacados[0] if destacados else None
+        modelos_padrao = {caso_id: modelo_padrao(caso_id) for caso_id in caso_ids}
+        return to_historico_response(
+            modelos, datas, modelo_destacado_id, casos, linhas, modelos_padrao
+        )
+
+    async def resumo_execucoes(
+        self, usuario_atual: UsuarioAutenticado, caso_teste_id: UUID, fuso_horario: str = "UTC"
+    ) -> ResumoExecucoesResponse:
+        """Todas as execuções de um caso, por dia e modelo (spec 032, RN-13)."""
+        self._exigir_consulta_resultados_gerais(usuario_atual)
+        fuso_horario_valido(fuso_horario)
+        caso = await self._historico_repo.obter_caso(usuario_atual.unidade_id, caso_teste_id)
+        if caso is None:
+            raise NotFoundException("Test Case não encontrado.")
+        try:
+            projeto = await self._obter_projeto_ativo_no_escopo(usuario_atual, caso.projeto_id)
+        except NotFoundException as erro:
+            raise NotFoundException("Test Case não encontrado.") from erro
+        modelos = await self._projeto_modelo_repo.listar_modelos_do_projeto(
+            usuario_atual.unidade_id, projeto.id
+        )
+        linhas = await self._historico_repo.listar_resultados(
+            usuario_atual.unidade_id, projeto.id, [caso.caso_teste_id], fuso_horario
+        )
+        return to_resumo_response(caso, modelos, linhas)
+
+    @staticmethod
+    def _exigir_consulta_resultados_gerais(usuario_atual: UsuarioAutenticado) -> None:
         if (
             usuario_atual.perfil_codigo not in {"ADMIN_UNIDADE", "GERENTE", "KP"}
             or "form_factor.consultar" not in usuario_atual.permissoes
         ):
             raise ForbiddenException("Você não tem permissão para consultar Resultados Gerais.")
-        if usuario_atual.perfil_codigo == "ADMIN_UNIDADE":
-            return None  # None instrui o repositório a consultar todos os times da unidade.
-        time_ids = (
-            usuario_atual.times_gerenciados
-            if usuario_atual.perfil_codigo == "GERENTE"
-            else usuario_atual.time_ids
-        )
-        return time_ids
+
+    async def _obter_projeto_ativo_no_escopo(
+        self, usuario_atual: UsuarioAutenticado, projeto_id: UUID
+    ) -> Projeto:
+        projeto = await self._obter_projeto_no_escopo(usuario_atual, projeto_id)
+        if not projeto.ativo:
+            raise NotFoundException("Projeto não encontrado.")
+        return projeto
 
     async def listar(
         self,

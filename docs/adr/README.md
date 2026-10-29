@@ -49,3 +49,4 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0035](0035-commits-diretos-na-dev.md) | Commits diretos na `dev` | Aceito |
 | [0036](0036-escopo-gerente-inclui-times-em-que-participa.md) | Escopo do gerente inclui os times em que ele participa | Aceito |
 | [0037](0037-heroui-como-base-de-ui.md) | HeroUI como base de UI, com migração gradual a partir do shadcn/ui | Aceito |
+| [0038](0038-resultados-gerais-sem-paginacao.md) | Resultados Gerais sem paginação de Test Cases (exceção aos ADRs 0022 e 0034) | Aceito |

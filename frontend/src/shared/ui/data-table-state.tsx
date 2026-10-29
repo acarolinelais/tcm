@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { Button } from "@heroui/react";
 import { SearchX } from "lucide-react";
 
+import { ErroComRetry } from "./erro-com-retry";
+
 interface EstadoDaTabela {
   isLoading: boolean;
   isError: boolean;
@@ -15,12 +17,14 @@ interface EstadoDaTabela {
   empty: { icon: ReactNode; title: string; hint: string };
   /** Vazio com filtro: título e dica; o ícone é sempre `SearchX` e o botão limpa os filtros. */
   filtered: { title: string; hint: string };
+  /** Tentar de novo no estado de erro (ex.: `query.refetch`). */
+  retry?: { label: string; onRetry: () => void };
 }
 
 /** Os quatro estados da listagem (docs/tables-rules.md), para a prop `state`; `null` quando há linhas. */
 export function estadoDaTabela(e: EstadoDaTabela): ReactNode {
   if (e.isLoading) return <p role="status">{e.loadingLabel}</p>;
-  if (e.isError) return <p role="alert" className="text-danger">{e.errorLabel}</p>;
+  if (e.isError) return e.retry ? <ErroComRetry mensagem={e.errorLabel} retry={e.retry} /> : <p role="alert" className="text-danger">{e.errorLabel}</p>;
   if (!e.isEmpty) return null;
   const conteudo = e.hasFilters ? e.filtered : e.empty;
   return (

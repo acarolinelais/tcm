@@ -17,17 +17,17 @@ import type {
   CriarProjetoInput,
   FormFactorMatriz,
   FormFactorResultados,
-  FormFactorGlobal,
-  FormFactorResultadosGlobais,
   FormFactorExecucao,
   FiltrosFormFactor,
-  FiltrosFormFactorGlobal,
+  FiltrosHistoricoProjeto,
   CriarRodadaFormFactorInput,
   EnviarResultadosRodadaInput,
+  HistoricoProjeto,
   ImportacaoProjeto,
   ImportacaoSdf,
   LinkPullRequest,
   LinksPullRequest,
+  ResumoExecucoes,
   OpcaoModeloDispositivo,
   Projeto,
   StatusProjeto,
@@ -45,13 +45,12 @@ export type {
   DificuldadeCasoTeste,
   FormFactorMatriz,
   FormFactorResultados,
-  FormFactorGlobal,
-  FormFactorResultadosGlobais,
   FormFactorExecucao,
   FiltrosFormFactor,
-  FiltrosFormFactorGlobal,
+  FiltrosHistoricoProjeto,
   CriarRodadaFormFactorInput,
   EnviarResultadosRodadaInput,
+  HistoricoProjeto,
   ImportacaoProjeto,
   ImportacaoSdf,
   LinhaFormFactor,
@@ -159,38 +158,26 @@ export const modelosDispositivoApi = {
   },
 };
 
+const fusoHorario = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+
 export const formFactorApi = {
-  listarGlobal(filtros: FiltrosFormFactorGlobal = {}) {
-    const { page = 1, pageSize = 20, semana, projetoId, responsavelId, tcId, sdfId, modeloDispositivoId, resultado } = filtros;
+  historicoProjeto(projetoId: string, filtros: FiltrosHistoricoProjeto = {}) {
+    const { busca, tcId, modeloDispositivoId, periodo } = filtros;
     return useMock
-      ? Promise.resolve(mockFormFactorApi.listarGlobal(filtros))
-      : httpGet<FormFactorGlobal>("/api/form-factor/general", {
-        page,
-        page_size: pageSize,
-        ...(semana ? { semana } : {}),
-        ...(projetoId ? { projeto_id: projetoId } : {}),
-        ...(responsavelId ? { responsavel_id: responsavelId } : {}),
+      ? Promise.resolve(mockFormFactorApi.historicoProjeto(projetoId, filtros))
+      : httpGet<HistoricoProjeto>(`/api/form-factor/general/projetos/${projetoId}/historico`, {
+        fuso_horario: fusoHorario(),
+        ...(busca ? { busca } : {}),
         ...(tcId ? { tc_id: tcId } : {}),
-        ...(sdfId ? { sdf_id: sdfId } : {}),
         ...(modeloDispositivoId ? { modelo_dispositivo_id: modeloDispositivoId } : {}),
-        ...(resultado ? { resultado } : {}),
+        ...(periodo ? { [periodo.includes("-W") ? "semana" : "dia"]: periodo } : {}),
       });
   },
-  listarResultadosGlobais(filtros: FiltrosFormFactorGlobal = {}) {
-    const { page = 1, pageSize = 20, semana, projetoId, responsavelId, tcId, sdfId, modeloDispositivoId, resultado, origem } = filtros;
+  resumoExecucoes(casoTesteId: string) {
     return useMock
-      ? Promise.resolve(mockFormFactorApi.listarResultadosGlobais(filtros))
-      : httpGet<FormFactorResultadosGlobais>("/api/form-factor/general/results", {
-        page,
-        page_size: pageSize,
-        ...(semana ? { semana } : {}),
-        ...(projetoId ? { projeto_id: projetoId } : {}),
-        ...(responsavelId ? { responsavel_id: responsavelId } : {}),
-        ...(tcId ? { tc_id: tcId } : {}),
-        ...(sdfId ? { sdf_id: sdfId } : {}),
-        ...(modeloDispositivoId ? { modelo_dispositivo_id: modeloDispositivoId } : {}),
-        ...(resultado ? { resultado } : {}),
-        ...(origem ? { origem } : {}),
+      ? Promise.resolve(mockFormFactorApi.resumoExecucoes(casoTesteId))
+      : httpGet<ResumoExecucoes>(`/api/form-factor/general/casos/${casoTesteId}/execucoes`, {
+        fuso_horario: fusoHorario(),
       });
   },
   listar(projetoId: string, filtros: FiltrosFormFactor = {}) {

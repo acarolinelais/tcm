@@ -16,6 +16,8 @@ o `Table` do HeroUI (ADR 0037) pelas composições de `frontend/src/shared/ui`:
 **Use essas composições; não crie um `<table>` cru, um `Table` do HeroUI montado direto na tela nem um
 paginador próprio.** Se uma regra daqui precisar mudar, mude a composição compartilhada (e este documento),
 não a tela isolada.
+Exceção: a grade do **Resumo de execuções** (spec 032), uma tabela de leitura devices × datas dentro de um
+painel, sem filtros, ações nem paginação, usa `<table>` semântico (`caption`, `th scope`).
 
 > **Telas ainda em shadcn** (ADR 0037, migração gradual): até migrarem, elas continuam com
 > `shared/ui/table.tsx`, `table-row-actions.tsx` e `table-column-filter.tsx` e seguem
@@ -65,6 +67,8 @@ não a tela isolada.
 - A paginação é feita pelo servidor quando o endpoint devolve `PagedResult` (ADR 0004). Página e tamanho entram na `queryKey` do TanStack Query.
 - Paginação no cliente só para listas pequenas que já chegam inteiras (ex.: membros de um time).
 - Testes não fixam `10`/`20` à mão: importam `DEFAULT_TABLE_PAGE_SIZE`.
+- **Exceção:** a tela Resultados Gerais lista todos os Test Cases de cada projeto, sem paginação, com no máximo 7
+  colunas de data ([ADR 0038](adr/0038-resultados-gerais-sem-paginacao.md)). Outra tela sem paginação precisa de ADR próprio.
 
 ## 3. Filtros
 

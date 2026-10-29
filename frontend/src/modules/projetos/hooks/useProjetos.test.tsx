@@ -3,13 +3,13 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { casosTesteApi, formFactorApi, projetosApi } from "../api/projetos.api";
-import { useCasosTeste, useCriarProjeto, useCriarRodadaFormFactor, useFormFactor, useFormFactorResultados, useFormFactorGlobal, useFormFactorResultadosGlobais, useProjetosPessoais, useTransferirCasoTeste } from "./useProjetos";
+import { useCasosTeste, useCriarProjeto, useCriarRodadaFormFactor, useFormFactor, useFormFactorResultados, useHistoricoProjeto, useProjetosPessoais, useResumoExecucoes, useTransferirCasoTeste } from "./useProjetos";
 import type { PerfilAtual } from "@/core/auth/api";
 
 vi.mock("../api/projetos.api", () => ({
   casosTesteApi: { listar: vi.fn(), transferirParaBackup: vi.fn() },
   projetosApi: { criar: vi.fn(), listar: vi.fn() },
-  formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), listarGlobal: vi.fn(), listarResultadosGlobais: vi.fn(), criarRodada: vi.fn(), registrarResultadosRodada: vi.fn() }, modelosDispositivoApi: {},
+  formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), historicoProjeto: vi.fn(), resumoExecucoes: vi.fn(), criarRodada: vi.fn(), registrarResultadosRodada: vi.fn() }, modelosDispositivoApi: {},
 }));
 
 function criarWrapper() {
@@ -74,18 +74,19 @@ describe("hooks de projetos", () => {
     await waitFor(() => expect(formFactorApi.listarResultados).toHaveBeenCalledTimes(chamadasAntesDaCriacao + 1));
   });
 
-  it("separa as consultas globais de resumo e histórico por filtros e perfil", async () => {
-    vi.mocked(formFactorApi.listarGlobal).mockResolvedValue({ modelos: [], responsaveis: [], items: [], total_count: 0, page: 1, page_size: 20 });
-    vi.mocked(formFactorApi.listarResultadosGlobais).mockResolvedValue({ modelos: [], responsaveis: [], items: [], total_count: 0, page: 1, page_size: 20 });
+  it("consulta o histórico do projeto com os filtros e o resumo só com um caso escolhido (spec 032)", async () => {
+    vi.mocked(formFactorApi.historicoProjeto).mockResolvedValue({ modelos: [], datas: [], modelo_destacado_id: null, casos: [] });
+    vi.mocked(formFactorApi.resumoExecucoes).mockResolvedValue({ caso_teste_id: "c1", tc_id: "TC-1", responsavel_identificador: null, modelos: [], datas: [], resultados: {} });
     const perfil = { id: "manager", unidade_id: "u" } as PerfilAtual;
     const wrapper = criarWrapper();
-    const filtros = { page: 1, pageSize: 20, projetoId: "p1" };
-    const resumo = renderHook(() => useFormFactorGlobal(filtros, perfil), { wrapper });
-    await waitFor(() => expect(resumo.result.current.isSuccess).toBe(true));
-    const historico = renderHook(() => useFormFactorResultadosGlobais(filtros, perfil), { wrapper });
+    const filtros = { busca: "S26" };
+    const historico = renderHook(() => useHistoricoProjeto("p1", filtros, perfil), { wrapper });
     await waitFor(() => expect(historico.result.current.isSuccess).toBe(true));
-    expect(formFactorApi.listarGlobal).toHaveBeenCalledWith(filtros);
-    expect(formFactorApi.listarResultadosGlobais).toHaveBeenCalledWith(filtros);
+    renderHook(() => useResumoExecucoes(null, perfil), { wrapper });
+    const resumo = renderHook(() => useResumoExecucoes("c1", perfil), { wrapper });
+    await waitFor(() => expect(resumo.result.current.isSuccess).toBe(true));
+    expect(formFactorApi.historicoProjeto).toHaveBeenCalledWith("p1", filtros);
+    expect(formFactorApi.resumoExecucoes).toHaveBeenCalledTimes(1);
   });
 
   it("invalida consultas de casos, entrada e seletor após transferência", async () => {

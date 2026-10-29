@@ -25,4 +25,18 @@ describe("WeekPickerHero", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Clear filters" }));
     expect(onChange).toHaveBeenLastCalledWith("");
   });
+
+  it("com permitirDia, o dia escolhe o dia e o número da semana escolhe a semana (spec 032)", async () => {
+    const onChange = vi.fn();
+    const { rerender } = render(<WeekPickerHero label="Day or week" value="2026-03-25" onChange={onChange} permitirDia />);
+    expect(screen.getByRole("button", { name: /^Day or week: Mar 25, 2026/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /^Day or week: / }));
+    await userEvent.click(await screen.findByRole("button", { name: /March 24/ }));
+    expect(onChange).toHaveBeenLastCalledWith("2026-03-24");
+
+    rerender(<WeekPickerHero label="Day or week" value="2026-W12" onChange={onChange} permitirDia />);
+    await userEvent.click(screen.getByRole("button", { name: /^Day or week: / }));
+    await userEvent.click(await screen.findByRole("button", { name: "Week 13, 2026" }));
+    expect(onChange).toHaveBeenLastCalledWith("2026-W13");
+  });
 });

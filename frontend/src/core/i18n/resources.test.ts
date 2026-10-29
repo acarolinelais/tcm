@@ -106,4 +106,14 @@ describe("translation resources", () => {
     expect([resources["pt-BR"].translation.statusInFixes, resources["pt-BR"].translation.statusCancelled]).toEqual(["Em correção", "Excluído"]);
     expect([resources.ko.translation.statusInFixes, resources.ko.translation.statusCancelled]).toEqual(["수정 중", "제외됨"]);
   });
+
+  it("has the General Results texts (spec 032) in every language", () => {
+    const chaves = ["sdfResult", "resultOriginImported", "resultOriginManual", "executionSummary", "testerId", "device", "formFactorOfCase", "resultChipLabel", "noRunLabel", "generalResultsSearch", "generalResultsProjects", "noAccessibleProjects", "noProjectCases", "noCaseRuns", "dayOrWeek"] as const;
+    for (const language of ["en", "pt-BR", "ko"] as const) {
+      for (const key of chaves) expect(resources[language].translation[key], `${language} ${key}`).toBeTruthy();
+      expect(resources[language].translation.sdfResult).toBe("SDF Result");
+    }
+    expect(resources["pt-BR"].translation.resultOriginImported).toBe("Importado da planilha");
+    expect(resources["pt-BR"].translation.resultOriginManual).toBe("Adicionado manualmente");
+  });
 });

@@ -10,7 +10,7 @@ import {
   type CriarCasoTesteInput,
   type CriarProjetoInput,
   type FiltrosFormFactor,
-  type FiltrosFormFactorGlobal,
+  type FiltrosHistoricoProjeto,
   type CriarRodadaFormFactorInput,
   type EnviarResultadosRodadaInput,
   type StatusProjeto,
@@ -158,19 +158,19 @@ export function useFormFactor(projetoId: string, filtros: FiltrosFormFactor, per
   });
 }
 
-export function useFormFactorGlobal(filtros: FiltrosFormFactorGlobal, perfil?: PerfilAtual, enabled = true) {
+export function useHistoricoProjeto(projetoId: string, filtros: FiltrosHistoricoProjeto, perfil?: PerfilAtual) {
   return useQuery({
-    queryKey: ["form-factor", "global", filtros, perfil?.unidade_id, perfil?.id],
-    queryFn: () => formFactorApi.listarGlobal(filtros),
-    enabled,
+    queryKey: ["form-factor", "historico", projetoId, filtros, perfil?.unidade_id, perfil?.id],
+    queryFn: () => formFactorApi.historicoProjeto(projetoId, filtros),
+    enabled: Boolean(projetoId),
   });
 }
 
-export function useFormFactorResultadosGlobais(filtros: FiltrosFormFactorGlobal, perfil?: PerfilAtual, enabled = true) {
+export function useResumoExecucoes(casoTesteId: string | null, perfil?: PerfilAtual) {
   return useQuery({
-    queryKey: ["form-factor", "global-results", filtros, perfil?.unidade_id, perfil?.id],
-    queryFn: () => formFactorApi.listarResultadosGlobais(filtros),
-    enabled,
+    queryKey: ["form-factor", "resumo-execucoes", casoTesteId, perfil?.unidade_id, perfil?.id],
+    queryFn: () => formFactorApi.resumoExecucoes(casoTesteId!),
+    enabled: Boolean(casoTesteId),
   });
 }
 
