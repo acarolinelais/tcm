@@ -48,6 +48,7 @@ from src.domain.entities.interfaces.unit_of_work import UnitOfWork
 from src.domain.entities.projeto import Projeto
 from src.domain.entities.resultado_form_factor import ResultadoFormFactor
 from src.domain.entities.rodada_form_factor import RodadaFormFactor
+from src.domain.queries.historico_form_factor import FiltrosCasoHistorico
 
 
 class FormFactorServiceImpl:
@@ -83,8 +84,10 @@ class FormFactorServiceImpl:
         dia: str | None = None,
         semana: str | None = None,
         fuso_horario: str = "UTC",
+        page: int = 1,
+        page_size: int = 20,
     ) -> HistoricoProjetoResponse:
-        """Resultados Gerais de um projeto (spec 032): todos os casos e até 7 datas do período."""
+        """Resultados Gerais de um projeto (specs 032 e 033): uma página de casos e até 7 datas."""
         self._exigir_consulta_resultados_gerais(usuario_atual)
         if dia is not None and semana is not None:
             raise InvalidInputException("Escolha um dia ou uma semana, não os dois.")
@@ -95,18 +98,21 @@ class FormFactorServiceImpl:
         projeto = await self._obter_projeto_ativo_no_escopo(usuario_atual, projeto_id)
         unidade_id = usuario_atual.unidade_id
         modelos = await self._projeto_modelo_repo.listar_modelos_do_projeto(unidade_id, projeto.id)
-        casos = await self._historico_repo.listar_casos(
-            unidade_id, projeto.id, busca, tc_id, modelo_dispositivo_id, inicio, fim
-        )
-        caso_ids = [caso.caso_teste_id for caso in casos]
-        datas = await self._historico_repo.listar_datas(
-            unidade_id,
-            projeto.id,
-            caso_ids,
-            fuso_horario,
-            inicio,
-            fim,
+        filtros = FiltrosCasoHistorico(
+            busca=busca,
+            tc_id=tc_id,
             modelo_dispositivo_id=modelo_dispositivo_id,
+            inicio=inicio,
+            fim=fim,
+        )
+        casos = await self._historico_repo.listar_casos(
+            unidade_id, projeto.id, filtros, page, page_size
+        )
+        caso_ids = [caso.caso_teste_id for caso in casos.items]
+        datas = (
+            await self._historico_repo.listar_datas(unidade_id, projeto.id, filtros, fuso_horario)
+            if casos.total_count
+            else ()
         )
         linhas = await self._historico_repo.listar_resultados(
             unidade_id, projeto.id, caso_ids, fuso_horario, datas

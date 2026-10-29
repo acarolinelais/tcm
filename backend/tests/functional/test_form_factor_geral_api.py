@@ -36,7 +36,7 @@ async def test_historico_repassa_filtros_e_devolve_o_pivo(api_client):
         modelos=[FormFactorModeloResponse(id=modelo_id, nome="SM-S26")],
         datas=[date(2026, 10, 10)],
         modelo_destacado_id=modelo_id,
-        casos=[
+        items=[
             CasoHistoricoResponse(
                 caso_teste_id=caso_id,
                 tc_id="Clock_001",
@@ -52,21 +52,35 @@ async def test_historico_repassa_filtros_e_devolve_o_pivo(api_client):
                 },
             )
         ],
+        page=2,
+        page_size=10,
+        total_count=11,
+        total_pages=2,
     )
     _usar(service)
 
     response = await api_client.get(
         f"/api/form-factor/general/projetos/{projeto_id}/historico?busca=S26&tc_id=001"
-        f"&modelo_dispositivo_id={modelo_id}&semana=2026-W41&fuso_horario=America/Manaus"
+        f"&modelo_dispositivo_id={modelo_id}&semana=2026-W41&fuso_horario=America/Manaus&page=2&page_size=10"
     )
 
     assert response.status_code == 200
     service.historico_projeto.assert_awaited_once_with(
-        USUARIO, projeto_id, "S26", "001", modelo_id, None, "2026-W41", "America/Manaus"
+        USUARIO,
+        projeto_id,
+        busca="S26",
+        tc_id="001",
+        modelo_dispositivo_id=modelo_id,
+        dia=None,
+        semana="2026-W41",
+        fuso_horario="America/Manaus",
+        page=2,
+        page_size=10,
     )
     corpo = response.json()
     assert corpo["datas"] == ["2026-10-10"]
-    assert corpo["casos"][0]["resultados"]["2026-10-10"][str(modelo_id)]["origem"] == "MANUAL"
+    assert (corpo["page"], corpo["total_count"], corpo["total_pages"]) == (2, 11, 2)
+    assert corpo["items"][0]["resultados"]["2026-10-10"][str(modelo_id)]["origem"] == "MANUAL"
 
 
 @pytest.mark.parametrize(
@@ -77,6 +91,9 @@ async def test_historico_repassa_filtros_e_devolve_o_pivo(api_client):
         "semana=2026-41",
         "fuso_horario=Inexistente/Teste",
         "modelo_dispositivo_id=nao-e-uuid",
+        "page=0",
+        "page_size=0",
+        "page_size=101",
     ],
 )
 async def test_periodo_ou_filtro_invalido_retorna_422_problem_details(api_client, consulta):
@@ -106,7 +123,9 @@ async def test_403_e_404_saem_como_problem_details(api_client, erro, status):
     service.resumo_execucoes.side_effect = erro
     _usar(service)
 
-    historico = await api_client.get(f"/api/form-factor/general/projetos/{uuid4()}/historico")
+    historico = await api_client.get(
+        f"/api/form-factor/general/projetos/{uuid4()}/historico?page=2"
+    )
     resumo = await api_client.get(f"/api/form-factor/general/casos/{uuid4()}/execucoes")
 
     for response in (historico, resumo):
