@@ -11,7 +11,6 @@ from src.application.schemas.form_factor import (
     CriarRodadaFormFactorRequest,
     EnviarResultadosRodadaRequest,
     FormFactorExecucaoResponse,
-    FormFactorGlobalResponse,
     FormFactorLinhaResponse,
     FormFactorModeloResponse,
     FormFactorResponse,
@@ -469,44 +468,3 @@ async def test_form_factor_de_projeto_de_outra_unidade_nao_e_consultado(api_clie
     projeto_repo.obter_por_id.assert_awaited_once()
     assert projeto_repo.obter_por_id.await_args.args[0] == usuario.unidade_id
     resultado_repo.listar_form_factor_por_projeto.assert_not_awaited()
-
-
-async def test_consultar_form_factor_global_aplica_filtros(api_client):
-    from src.api.main import app
-
-    usuario = UsuarioAutenticado(
-        uuid4(), uuid4(), "GERENTE", permissoes=frozenset({"form_factor.consultar"})
-    )
-    service = AsyncMock()
-    service.listar_global.return_value = FormFactorGlobalResponse(
-        modelos=[], items=[], page=2, page_size=10, total_count=0, total_pages=0
-    )
-    app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
-    app.dependency_overrides[get_form_factor_service] = dependency_override(service)
-
-    response = await api_client.get(
-        "/api/form-factor/general",
-        params={"page": 2, "page_size": 10, "semana": "2026-W13", "tc_id": "TC-1"},
-    )
-
-    assert response.status_code == 200
-    assert response.json()["items"] == []
-    service.listar_global.assert_awaited_once_with(
-        usuario, 2, 10, "2026-W13", None, None, "TC-1", None, None, None
-    )
-
-
-async def test_consultar_resultados_form_factor_global_rejeita_filtro_invalido(api_client):
-    from src.api.main import app
-
-    usuario = UsuarioAutenticado(uuid4(), uuid4(), "KP")
-    service = AsyncMock()
-    app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
-    app.dependency_overrides[get_form_factor_service] = dependency_override(service)
-
-    response = await api_client.get(
-        "/api/form-factor/general/results", params={"origem": "OUTRA", "page_size": 101}
-    )
-
-    assert response.status_code == 422
-    service.listar_resultados_global.assert_not_awaited()

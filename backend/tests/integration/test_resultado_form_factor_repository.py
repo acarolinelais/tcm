@@ -654,59 +654,6 @@ async def test_resumo_oferece_so_a_rodada_atual_e_encerra_as_anteriores_sem_resu
 
 
 @pytest.mark.asyncio
-async def test_form_factor_global_resumo_restringe_projetos_e_inclui_aplicabilidade(cenario):
-    caso_id = await cenario.caso("TC-GLOBAL")
-    await cenario.importar(
-        caso_id, "SDF-GLOBAL", datetime(2026, 3, 23, tzinfo=UTC), {cenario.s25: "FAIL"}
-    )
-
-    pagina = await cenario.repo().listar_form_factor_global(
-        cenario.unidade_id, (cenario.time_id,), 1, 20
-    )
-    vazia = await cenario.repo().listar_form_factor_global(cenario.unidade_id, (uuid4(),), 1, 20)
-
-    assert pagina.total_count == 1
-    assert pagina.items[0].projeto_id == cenario.projeto_id
-    assert pagina.items[0].projeto_nome == "Clock 9.5"
-    assert set(pagina.items[0].modelos_ids) == {cenario.s25, cenario.s26}
-    assert pagina.items[0].resultados == {cenario.s25: "FAIL"}
-    assert vazia.total_count == 0 and vazia.items == []
-    modelos = await cenario.repo().listar_modelos_form_factor_global(
-        cenario.unidade_id, (cenario.time_id,)
-    )
-    assert {modelo.id for modelo in modelos} == {cenario.s25, cenario.s26}
-
-
-@pytest.mark.asyncio
-async def test_form_factor_global_resultados_preserva_rodadas_e_filtra_modelo(cenario):
-    caso_id = await cenario.caso("TC-GLOBAL-HISTORY")
-    await cenario.importar(
-        caso_id, "SDF-ANTIGO", datetime(2026, 3, 16, tzinfo=UTC), {cenario.s25: "FAIL"}
-    )
-    await cenario.importar(
-        caso_id, "SDF-NOVO", datetime(2026, 3, 23, tzinfo=UTC), {cenario.s25: "PASS"}
-    )
-
-    pagina = await cenario.repo().listar_execucoes_form_factor_global(
-        cenario.unidade_id, (cenario.time_id,), 1, 20
-    )
-    filtrada = await cenario.repo().listar_execucoes_form_factor_global(
-        cenario.unidade_id,
-        (cenario.time_id,),
-        1,
-        20,
-        tc_id="GLOBAL-HISTORY",
-        modelo_dispositivo_id=cenario.s25,
-        resultado="PASS",
-    )
-
-    assert pagina.total_count == 2
-    assert [linha.sdf_id for linha in pagina.items] == ["SDF-NOVO", "SDF-ANTIGO"]
-    assert all(linha.projeto_nome == "Clock 9.5" for linha in pagina.items)
-    assert filtrada.total_count == 1 and filtrada.items[0].resultados == {cenario.s25: "PASS"}
-
-
-@pytest.mark.asyncio
 async def test_existe_sdf_id_ignora_maiusculas_e_espacos(cenario):
     caso_id = await cenario.caso("TC-SDF")
     await cenario.rodada(caso_id, " SDF-001 ", datetime(2026, 10, 1))

@@ -30,6 +30,9 @@ from src.infrastructure.data.session import get_session as get_session
 from src.infrastructure.data.unit_of_work import UnitOfWorkImpl
 from src.infrastructure.repositories.caso_teste_repository import CasoTesteRepositoryImpl
 from src.infrastructure.repositories.execucao_sdf_repository import ExecucaoSdfRepositoryImpl
+from src.infrastructure.repositories.historico_form_factor_repository import (
+    HistoricoFormFactorRepositoryImpl,
+)
 from src.infrastructure.repositories.importacao_sdf_repository import ImportacaoSdfRepositoryImpl
 from src.infrastructure.repositories.link_pull_request_repository import (
     LinkPullRequestRepositoryImpl,
@@ -302,4 +305,5 @@ async def get_form_factor_service(
         ExecucaoSdfRepositoryImpl(session),
         UnitOfWorkImpl(session),
         RodadaFormFactorRepositoryImpl(session),
+        HistoricoFormFactorRepositoryImpl(session),
     )
