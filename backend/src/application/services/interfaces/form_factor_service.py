@@ -30,6 +30,8 @@ class FormFactorService(Protocol):
         dia: str | None = None,
         semana: str | None = None,
         fuso_horario: str = "UTC",
+        page: int = 1,
+        page_size: int = 20,
     ) -> HistoricoProjetoResponse: ...
 
     async def resumo_execucoes(

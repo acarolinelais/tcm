@@ -38,6 +38,7 @@ import { lerPlanilhaProjeto, PlanilhaProjetoError, type PessoasDaLinha, type Pla
 import { ApiError, type ProblemDetailsError } from "@/shared/api/problem-details";
 import type { PagedResult } from "@/shared/types/paged-result";
 import { formatarDiaIso } from "@/shared/lib/utils";
+import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 
 const STORAGE_KEY = "sdf.mock.database.v1";
 const UNIT_ID = "mock-unit-manaus";
@@ -1150,6 +1151,7 @@ export const mockFormFactorApi = {
         (!filtros.modeloDispositivoId || doCaso.some((item) => item.modelo_dispositivo_id === filtros.modeloDispositivoId)) &&
         (!filtros.periodo || doCaso.length > 0);
     }).sort((a, b) => a.tc_id.localeCompare(b.tc_id));
+    // As datas valem para todos os casos filtrados; só os da página entram nas linhas (spec 033, RN-03).
     const ids = new Set(selecionados.map((testCase) => testCase.id));
     const doFiltro = execucoes.filter((item) => ids.has(item.caso_teste_id));
     const datas = [...new Set(doFiltro
@@ -1160,13 +1162,15 @@ export const mockFormFactorApi = {
     const ordem = modelos.map((model) => model.id);
     const destacados = filtros.modeloDispositivoId ? [filtros.modeloDispositivoId]
       : termo ? modelos.filter((model) => model.nome.toLocaleLowerCase().includes(termo)).map((model) => model.id) : [];
+    const pagina = page(selecionados, filtros.page ?? 1, filtros.pageSize ?? DEFAULT_TABLE_PAGE_SIZE);
     return {
+      ...pagina,
       modelos,
       datas,
       modelo_destacado_id: destacados[0] ?? null,
-      casos: selecionados.map((testCase) => {
+      items: pagina.items.map((testCase) => {
         const doCaso = doFiltro.filter((item) => item.caso_teste_id === testCase.id);
-        const resultados: HistoricoProjeto["casos"][number]["resultados"] = {};
+        const resultados: HistoricoProjeto["items"][number]["resultados"] = {};
         doCaso.filter((item) => datas.includes(item.dia)).forEach(({ execucao_id, resultado, sdf_id, origem, dia, modelo_dispositivo_id }) => {
           (resultados[dia] ??= {})[modelo_dispositivo_id] = { execucao_id, resultado, sdf_id, origem };
         });

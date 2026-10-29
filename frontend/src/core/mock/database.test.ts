@@ -640,16 +640,41 @@ describe("base mock de projetos", () => {
     const resumo = mockFormFactorApi.resumoExecucoes(caso.id);
 
     expect(historico.datas).toEqual(["2026-10-10", "2026-10-09", "2026-10-08", "2026-10-07", "2026-10-06", "2026-10-05", "2026-10-04"]);
-    expect(historico.casos.map((item) => [item.tc_id, item.modelo_padrao_id])).toEqual([["Clock_001", "mock-model-s27-ultra"], ["Clock_002", historico.modelos[0].id]]);
-    expect(historico.casos[0].resultados["2026-10-10"]["mock-model-s26-ultra"]).toMatchObject({ execucao_id: "manual", origem: "MANUAL", sdf_id: null });
-    expect(historico.casos[1].caso_teste_id).toBe(semExecucao.id);
+    expect(historico.items.map((item) => [item.tc_id, item.modelo_padrao_id])).toEqual([["Clock_001", "mock-model-s27-ultra"], ["Clock_002", historico.modelos[0].id]]);
+    expect(historico.items[0].resultados["2026-10-10"]["mock-model-s26-ultra"]).toMatchObject({ execucao_id: "manual", origem: "MANUAL", sdf_id: null });
+    expect(historico.items[1].caso_teste_id).toBe(semExecucao.id);
     expect(daSemana.datas).toEqual(["2026-10-04", "2026-10-03", "2026-10-02", "2026-10-01"]);
-    expect(daSemana.casos.map((item) => item.tc_id)).toEqual(["Clock_001"]);
+    expect(daSemana.items.map((item) => item.tc_id)).toEqual(["Clock_001"]);
     expect(porDevice.modelo_destacado_id).toBe("mock-model-s27-ultra");
     expect(resumo.datas[0]).toBe("2026-10-01");
     expect(resumo.resultados["2026-10-10"]["mock-model-s26-ultra"].map((item) => item.execucao_id)).toEqual(["e10", "manual"]);
     entrar("daniel.oliveira@example.com");
     expect(() => mockFormFactorApi.historicoProjeto(projeto.id)).toThrow("permissão");
+  });
+
+  it("Resultados Gerais paginam os casos e mantêm as datas de todos os filtrados (spec 033)", () => {
+    const projeto = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: ["mock-model-s26-ultra"] });
+    const casos = Array.from({ length: 45 }, (_, indice) => mockCasosTesteApi.criar(projeto.id, { tc_id: `Clock_${String(45 - indice).padStart(3, "0")}`, category: "A", difficulty: "Low", situation: "New", responsavel_id: "mock-user-kp", backup_id: "mock-user-dev" }));
+    const ultimo = casos[0]; // Clock_045, que cai na última página
+    const database = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+    database.formFactor.push({ execucao_id: "e1", caso_teste_id: ultimo.id, tc_id: ultimo.tc_id, sdf_id: "SDF-1", modelo_dispositivo_id: "mock-model-s26-ultra", resultado: "PASS", data_reportada: new Date(2026, 9, 10, 12).toISOString(), origem: "SDF" });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(database));
+    mockTimesApi.adicionar("mock-team-platform", "mock-user-kp");
+    entrar("kaique.pereira@example.com");
+
+    const primeira = mockFormFactorApi.historicoProjeto(projeto.id);
+    const ultima = mockFormFactorApi.historicoProjeto(projeto.id, { page: 3 });
+    const alem = mockFormFactorApi.historicoProjeto(projeto.id, { page: 4 });
+    const de50 = mockFormFactorApi.historicoProjeto(projeto.id, { pageSize: 50 });
+
+    expect(primeira.items.map((item) => item.tc_id)).toEqual(Array.from({ length: 20 }, (_, indice) => `Clock_${String(indice + 1).padStart(3, "0")}`));
+    expect([primeira.page, primeira.page_size, primeira.total_count]).toEqual([1, 20, 45]);
+    // A data só existe num caso da página 3, mas vale para todas (RN-03).
+    expect(primeira.datas).toEqual(["2026-10-10"]);
+    expect(ultima.items.map((item) => item.tc_id)).toEqual(["Clock_041", "Clock_042", "Clock_043", "Clock_044", "Clock_045"]);
+    expect(ultima.items.at(-1)!.resultados["2026-10-10"]["mock-model-s26-ultra"].resultado).toBe("PASS");
+    expect([alem.items, alem.total_count, alem.datas]).toEqual([[], 45, ["2026-10-10"]]);
+    expect(de50.items).toHaveLength(45);
   });
 
   it("migra casos antigos: o progresso vai para status e TC Situation vira New", () => {

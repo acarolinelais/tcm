@@ -26,3 +26,14 @@ class LinhaHistoricoExecucao:
     sdf_id: str | None
     origem: str
     data_reportada: datetime
+
+
+@dataclass(frozen=True, kw_only=True)
+class FiltrosCasoHistorico:
+    """Busca, filtros de coluna e período da tela Resultados Gerais: valem para casos e datas."""
+
+    busca: str | None = None
+    tc_id: str | None = None
+    modelo_dispositivo_id: UUID | None = None
+    inicio: datetime | None = None
+    fim: datetime | None = None
