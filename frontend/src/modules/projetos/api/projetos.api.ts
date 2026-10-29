@@ -7,6 +7,7 @@ import {
   mockProjetosApi,
 } from "@/core/mock/database";
 import type { PagedResult } from "@/shared/types/paged-result";
+import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 
 import type {
   AtualizarCasoTesteInput,
@@ -162,11 +163,13 @@ const fusoHorario = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 export const formFactorApi = {
   historicoProjeto(projetoId: string, filtros: FiltrosHistoricoProjeto = {}) {
-    const { busca, tcId, modeloDispositivoId, periodo } = filtros;
+    const { page = 1, pageSize = DEFAULT_TABLE_PAGE_SIZE, busca, tcId, modeloDispositivoId, periodo } = filtros;
     return useMock
       ? Promise.resolve(mockFormFactorApi.historicoProjeto(projetoId, filtros))
       : httpGet<HistoricoProjeto>(`/api/form-factor/general/projetos/${projetoId}/historico`, {
         fuso_horario: fusoHorario(),
+        page,
+        page_size: pageSize,
         ...(busca ? { busca } : {}),
         ...(tcId ? { tc_id: tcId } : {}),
         ...(modeloDispositivoId ? { modelo_dispositivo_id: modeloDispositivoId } : {}),

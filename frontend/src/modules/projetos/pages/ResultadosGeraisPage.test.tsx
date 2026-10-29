@@ -4,8 +4,9 @@ import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PerfilAtual } from "@/core/auth/api";
+import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { useCasoTeste, useHistoricoProjeto, useProjetosSeletor, useResumoExecucoes } from "../hooks/useProjetos";
-import type { HistoricoProjeto, ResumoExecucoes } from "../model/projeto";
+import type { FiltrosHistoricoProjeto, HistoricoProjeto, ResumoExecucoes } from "../model/projeto";
 import { formatarDia } from "../components/resultados-gerais/formatar-dia";
 import { ResultadosGeraisPage } from "./ResultadosGeraisPage";
 
@@ -35,7 +36,10 @@ const historico: HistoricoProjeto = {
   modelos: [{ id: "s26", nome: "SM-S26" }, { id: "s27", nome: "SM-S27" }],
   datas: [DIA],
   modelo_destacado_id: null,
-  casos: [
+  page: 1,
+  page_size: DEFAULT_TABLE_PAGE_SIZE,
+  total_count: 45,
+  items: [
     { caso_teste_id: "c1", tc_id: "Clock_001", responsavel_id: "u1", responsavel_identificador: "ANA-001", modelo_padrao_id: "s27", resultados: { [DIA]: { s26: resultado("e1", "PASS"), s27: resultado("e2", "FAIL") } } },
     { caso_teste_id: "c2", tc_id: "Clock_002", responsavel_id: "u1", responsavel_identificador: null, modelo_padrao_id: "s26", resultados: { [DIA]: { s26: resultado("e3", "PASS", "MANUAL"), s27: resultado("e4", "PASS") } } },
   ],
@@ -57,6 +61,9 @@ function renderPage(currentProfile: PerfilAtual = perfil) {
   return render(<RouterProvider router={router} />);
 }
 
+/** Filtros enviados ao hook: os da tela mais a página (spec 033). */
+const comPagina = (filtros: FiltrosHistoricoProjeto = {}, page = 1, pageSize = DEFAULT_TABLE_PAGE_SIZE): FiltrosHistoricoProjeto => ({ ...filtros, page, pageSize });
+
 const linha = (tcId: string) => screen.getByRole("row", { name: new RegExp(tcId) });
 
 describe("ResultadosGeraisPage", () => {
@@ -75,10 +82,10 @@ describe("ResultadosGeraisPage", () => {
     expect(screen.getByRole("tab", { name: "Clock 9.5" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tab", { name: "Gallery 9.5" })).toBeInTheDocument();
     expect(screen.getAllByRole("row")).toHaveLength(3);
-    expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", {}, perfil);
+    expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina(), perfil);
 
     await user.click(screen.getByRole("tab", { name: "Gallery 9.5" }));
-    expect(useHistoricoProjeto).toHaveBeenLastCalledWith("gallery", {}, perfil);
+    expect(useHistoricoProjeto).toHaveBeenLastCalledWith("gallery", comPagina(), perfil);
   });
 
   it("abre cada linha no modelo padrão e guarda a escolha de cada linha, esquecida ao trocar de aba (CA-05, CA-06)", async () => {
@@ -94,7 +101,7 @@ describe("ResultadosGeraisPage", () => {
 
     expect(within(linha("Clock_001")).getByRole("button", { name: `PASS on SM-S26, ${formatarDia(DIA)}` })).toBeInTheDocument();
     expect(within(linha("Clock_002")).getByRole("button", { name: `PASS on SM-S27, ${formatarDia(DIA)}` })).toBeInTheDocument();
-    expect(vi.mocked(useHistoricoProjeto).mock.calls.slice(chamadas).every(([projetoId, filtros]) => projetoId === "clock" && Object.keys(filtros).length === 0)).toBe(true);
+    for (const [projetoId, filtros] of vi.mocked(useHistoricoProjeto).mock.calls.slice(chamadas)) expect([projetoId, filtros]).toEqual(["clock", comPagina()]);
 
     await user.click(screen.getByRole("tab", { name: "Gallery 9.5" }));
     await user.click(screen.getByRole("tab", { name: "Clock 9.5" }));
@@ -107,22 +114,65 @@ describe("ResultadosGeraisPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Search by tester ID, SDF ID or device" }));
     await user.type(screen.getByRole("searchbox", { name: "Search by tester ID, SDF ID or device" }), "s26{Enter}");
-    await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", { busca: "s26" }, perfil));
+    await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina({ busca: "s26" }), perfil));
 
-    const casosNoS26 = historico.casos.map((caso) => ({ ...caso, modelo_padrao_id: "s26" }));
-    vi.mocked(useHistoricoProjeto).mockReturnValue({ data: { ...historico, modelo_destacado_id: "s26", casos: casosNoS26 }, isLoading: false, isError: false, refetch: vi.fn() } as never);
+    const casosNoS26 = historico.items.map((caso) => ({ ...caso, modelo_padrao_id: "s26" }));
+    vi.mocked(useHistoricoProjeto).mockReturnValue({ data: { ...historico, modelo_destacado_id: "s26", items: casosNoS26 }, isLoading: false, isError: false, refetch: vi.fn() } as never);
     await user.click(screen.getByRole("button", { name: "Filter by TC ID" }));
     await user.type(await screen.findByRole("searchbox", { name: "TC ID" }), "001{Enter}");
-    await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", { busca: "s26", tcId: "001" }, perfil));
+    await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina({ busca: "s26", tcId: "001" }), perfil));
     expect(within(linha("Clock_001")).getByRole("button", { name: "Form Factor Clock_001" })).toHaveTextContent("SM-S26");
 
     await user.click(screen.getByRole("button", { name: "Filter by Form Factor" }));
     await user.click(await screen.findByRole("option", { name: "SM-S27" }));
-    await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", { busca: "s26", tcId: "001", modeloDispositivoId: "s27" }, perfil));
+    await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina({ busca: "s26", tcId: "001", modeloDispositivoId: "s27" }), perfil));
+  });
+
+  it("pagina os casos; filtro, tamanho e aba voltam à página 1 e a escolha da linha sobrevive à troca de página (spec 033)", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: "Next page" }));
+    expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina({}, 2), perfil);
+
+    // CA-06: a escolha é por caso, então volta igual ao ir e voltar de página.
+    await user.click(within(linha("Clock_001")).getByRole("button", { name: "Form Factor Clock_001" }));
+    await user.click(await screen.findByRole("option", { name: "SM-S26" }));
+    await user.click(screen.getByRole("button", { name: "Page 1" }));
+    expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina(), perfil);
+    expect(within(linha("Clock_001")).getByRole("button", { name: "Form Factor Clock_001" })).toHaveTextContent("SM-S26");
+
+    // CA-04: filtro volta para a página 1.
+    await user.click(screen.getByRole("button", { name: "Page 3" }));
+    await user.click(screen.getByRole("button", { name: "Filter by TC ID" }));
+    await user.type(await screen.findByRole("searchbox", { name: "TC ID" }), "001{Enter}");
+    await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina({ tcId: "001" }), perfil));
+
+    // CA-05: a outra aba abre na página 1.
+    await user.click(screen.getByRole("button", { name: "Page 2" }));
+    await user.click(screen.getByRole("tab", { name: "Gallery 9.5" }));
+    expect(useHistoricoProjeto).toHaveBeenLastCalledWith("gallery", comPagina(), perfil);
+
+    // CA-04: trocar o tamanho também.
+    await user.click(screen.getByRole("button", { name: "Page 2" }));
+    await user.click(screen.getByRole("button", { name: /Items per page/ }));
+    await user.click(await screen.findByRole("option", { name: "50" }));
+    await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("gallery", comPagina({}, 1, 50), perfil));
+  });
+
+  it("se o total encolhe, volta para a última página que existe (spec 033)", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: "Page 3" }));
+    vi.mocked(useHistoricoProjeto).mockReturnValue({ data: { ...historico, page: 3, items: [], total_count: 30 }, isLoading: false, isError: false, refetch: vi.fn() } as never);
+    await user.click(screen.getByRole("button", { name: "Search by tester ID, SDF ID or device" })); // só para renderizar de novo
+
+    await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina({}, 2), perfil));
   });
 
   it("sem correspondência mostra nenhum resultado e limpar volta a tudo (CA-11, RN-12)", async () => {
-    vi.mocked(useHistoricoProjeto).mockReturnValue({ data: { ...historico, casos: [] }, isLoading: false, isError: false, refetch: vi.fn() } as never);
+    vi.mocked(useHistoricoProjeto).mockReturnValue({ data: { ...historico, items: [], total_count: 0 }, isLoading: false, isError: false, refetch: vi.fn() } as never);
     const user = userEvent.setup();
     renderPage();
 
@@ -131,7 +181,7 @@ describe("ResultadosGeraisPage", () => {
     expect(await screen.findByText("No results found")).toBeInTheDocument();
     await user.click(screen.getAllByRole("button", { name: "Clear filters" }).at(-1)!);
 
-    await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", {}, perfil));
+    await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina(), perfil));
   });
 
   it("o calendário envia a semana escolhida como período e limpar volta às datas recentes (CA-12)", async () => {
@@ -140,10 +190,10 @@ describe("ResultadosGeraisPage", () => {
 
     await user.click(screen.getByRole("button", { name: /^Day or week: / }));
     await user.click((await screen.findAllByRole("button", { name: /^Week \d+, \d{4}$/ }))[0]);
-    await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", { periodo: expect.stringMatching(/^\d{4}-W\d{2}$/) }, perfil));
+    await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina({ periodo: expect.stringMatching(/^\d{4}-W\d{2}$/) }), perfil));
 
     await user.click(screen.getByRole("button", { name: "Clear filters" }));
-    await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", {}, perfil));
+    await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina(), perfil));
   });
 
   it("o resultado abre a janela com SDF ID, origem e só Fechar; manual sem SDF ID mostra o marcador vazio (CA-09)", async () => {
@@ -193,6 +243,6 @@ describe("ResultadosGeraisPage", () => {
 
     renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO" });
     expect(screen.getByRole("alert")).toHaveTextContent("You do not have permission");
-    expect(useHistoricoProjeto).toHaveBeenLastCalledWith("", {}, expect.anything());
+    expect(useHistoricoProjeto).toHaveBeenLastCalledWith("", comPagina(), expect.anything());
   });
 });

@@ -2,18 +2,22 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { managerId, project, setupProjectSession } from "./projetos-fixtures";
 
-/** Spec 032: Resultados Gerais por projeto, com a API simulada. */
+/** Specs 032 e 033: Resultados Gerais por projeto, paginados, com a API simulada. */
 const gallery = { ...project, id: "project-2", nome: "Gallery 9.5", app: "Gallery" };
 const modelos = [{ id: "s26", nome: "S26 Ultra" }, { id: "s27", nome: "S27 Ultra" }];
 const DIAS = ["2026-10-10", "2026-10-09", "2026-10-08", "2026-10-07", "2026-10-06", "2026-10-05", "2026-10-04"];
 const resultado = (execucao_id: string, valor: string, origem = "SDF") => ({ execucao_id, resultado: valor, sdf_id: origem === "SDF" ? `SDF-${execucao_id}` : null, origem });
 
+const TOTAL_CASOS = 45;
+
 function historico(params: URLSearchParams) {
   const semana = params.get("semana");
   const datas = semana ? ["2026-09-30"] : DIAS;
-  const casos = Array.from({ length: 3 }, (_, indice) => ({
+  const pagina = Number(params.get("page") ?? 1);
+  const tamanho = Number(params.get("page_size") ?? 20);
+  const casos = Array.from({ length: TOTAL_CASOS }, (_, indice) => ({
     caso_teste_id: `case-${indice + 1}`,
-    tc_id: `Clock_00${indice + 1}`,
+    tc_id: `Clock_${String(indice + 1).padStart(3, "0")}`,
     responsavel_id: managerId,
     responsavel_identificador: "GER-001",
     modelo_padrao_id: "s27",
@@ -22,15 +26,18 @@ function historico(params: URLSearchParams) {
       s27: resultado(`e27-${indice}-${posicao}`, "PASS", posicao === 0 ? "MANUAL" : "SDF"),
     }])),
   }));
-  return { modelos, datas, modelo_destacado_id: null, casos };
+  const primeiro = (pagina - 1) * tamanho;
+  return { modelos, datas, modelo_destacado_id: null, items: casos.slice(primeiro, primeiro + tamanho), page: pagina, page_size: tamanho, total_count: TOTAL_CASOS };
 }
 
 async function rotas(page: Page) {
   const consultas: string[] = [];
+  const paginas: string[] = [];
   await page.route("**/api/projetos?*", (route) => route.fulfill({ json: { items: [project, gallery], page: 1, page_size: 100, total_count: 2 } }));
   await page.route("**/api/form-factor/general/projetos/*/historico?*", (route) => {
     const url = new URL(route.request().url());
     consultas.push(`${url.pathname.split("/")[5]}?${url.searchParams.get("semana") ?? ""}`);
+    paginas.push(url.searchParams.get("page") ?? "");
     return route.fulfill({ json: historico(url.searchParams) });
   });
   await page.route("**/api/form-factor/general/casos/case-1/execucoes?*", (route) => route.fulfill({ json: {
@@ -38,12 +45,12 @@ async function rotas(page: Page) {
     datas: ["2026-10-09", "2026-10-10"],
     resultados: { "2026-10-10": { s26: [{ ...resultado("a", "FAIL"), data_reportada: "2026-10-10T09:00:00Z" }, { ...resultado("b", "PASS", "MANUAL"), data_reportada: "2026-10-10T15:00:00Z" }] } },
   } }));
-  return consultas;
+  return { consultas, paginas };
 }
 
 test("troca de aba e de modelo, abre o resultado e o resumo e filtra por semana", async ({ page }) => {
   await setupProjectSession(page);
-  const consultas = await rotas(page);
+  const { consultas } = await rotas(page);
   await page.goto("/resultados-gerais");
 
   await expect(page.getByRole("tab", { name: "Clock 9.5" })).toHaveAttribute("aria-selected", "true");
@@ -102,4 +109,22 @@ test("numa janela estreita, TC ID e Form Factor continuam visíveis ao rolar par
   await expect.poll(async () => rolagem.evaluate((elemento) => elemento.scrollLeft)).toBeGreaterThan(0);
   expect(Math.abs((await tcId.boundingBox())!.x - inicio)).toBeLessThan(2);
   await expect(page.getByRole("button", { name: "Form Factor Clock_001" })).toBeInViewport();
+});
+
+test("navega até a última página com as mesmas colunas de data (spec 033)", async ({ page }) => {
+  await setupProjectSession(page);
+  const { paginas } = await rotas(page);
+  await page.goto("/resultados-gerais");
+
+  await expect(page.getByRole("row", { name: /Clock_001/ })).toBeVisible();
+  await expect(page.getByRole("row")).toHaveCount(1 + 20);
+  await expect(page.getByText("45 no total")).toBeVisible();
+  const datas = await page.getByRole("columnheader").allTextContents();
+
+  await page.getByRole("button", { name: "Página 3" }).click();
+  await expect(page.getByRole("row", { name: /Clock_045/ })).toBeVisible();
+  await expect(page.getByRole("row")).toHaveCount(1 + 5);
+  await expect(page.getByRole("button", { name: "Próxima página" })).toBeDisabled();
+  expect(await page.getByRole("columnheader").allTextContents()).toEqual(datas);
+  expect(paginas.at(-1)).toBe("3");
 });

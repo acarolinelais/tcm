@@ -75,11 +75,11 @@ describe("hooks de projetos", () => {
   });
 
   it("consulta o histórico do projeto com os filtros e o resumo só com um caso escolhido (spec 032)", async () => {
-    vi.mocked(formFactorApi.historicoProjeto).mockResolvedValue({ modelos: [], datas: [], modelo_destacado_id: null, casos: [] });
+    vi.mocked(formFactorApi.historicoProjeto).mockResolvedValue({ modelos: [], datas: [], modelo_destacado_id: null, items: [], page: 1, page_size: 20, total_count: 0 });
     vi.mocked(formFactorApi.resumoExecucoes).mockResolvedValue({ caso_teste_id: "c1", tc_id: "TC-1", responsavel_identificador: null, modelos: [], datas: [], resultados: {} });
     const perfil = { id: "manager", unidade_id: "u" } as PerfilAtual;
     const wrapper = criarWrapper();
-    const filtros = { busca: "S26" };
+    const filtros = { busca: "S26", page: 2, pageSize: 20 };
     const historico = renderHook(() => useHistoricoProjeto("p1", filtros, perfil), { wrapper });
     await waitFor(() => expect(historico.result.current.isSuccess).toBe(true));
     renderHook(() => useResumoExecucoes(null, perfil), { wrapper });
@@ -87,6 +87,33 @@ describe("hooks de projetos", () => {
     await waitFor(() => expect(resumo.result.current.isSuccess).toBe(true));
     expect(formFactorApi.historicoProjeto).toHaveBeenCalledWith("p1", filtros);
     expect(formFactorApi.resumoExecucoes).toHaveBeenCalledTimes(1);
+  });
+
+  it("ao trocar de página mantém a anterior até a nova chegar, mas outro projeto não herda os dados (spec 033)", async () => {
+    const pagina = (projeto: string, page: number) => ({ modelos: [], datas: [], modelo_destacado_id: null, items: [], page, page_size: 20, total_count: 45, projeto });
+    let liberar: () => void = () => {};
+    vi.mocked(formFactorApi.historicoProjeto).mockImplementation((projetoId, filtros) => {
+      const resposta = pagina(projetoId, filtros?.page ?? 1);
+      return projetoId === "p1" && filtros?.page === 1 ? Promise.resolve(resposta) : new Promise((resolve) => { liberar = () => resolve(resposta); });
+    });
+    const perfil = { id: "manager", unidade_id: "u" } as PerfilAtual;
+    const { result, rerender } = renderHook(({ projetoId, page, quem = perfil }) => useHistoricoProjeto(projetoId, { page }, quem), { wrapper: criarWrapper(), initialProps: { projetoId: "p1", page: 1 } as { projetoId: string; page: number; quem?: PerfilAtual } });
+    await waitFor(() => expect(result.current.data?.page).toBe(1));
+
+    rerender({ projetoId: "p1", page: 2 });
+    expect(result.current.data?.page).toBe(1);
+    expect(result.current.isPlaceholderData).toBe(true);
+    liberar();
+    await waitFor(() => expect(result.current.data?.page).toBe(2));
+
+    rerender({ projetoId: "p1", page: 2, quem: { id: "outro", unidade_id: "u2" } as PerfilAtual });
+    expect(result.current.data).toBeUndefined();
+    liberar();
+    await waitFor(() => expect(result.current.data?.page).toBe(2));
+
+    rerender({ projetoId: "p2", page: 1 });
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.isLoading).toBe(true);
   });
 
   it("invalida consultas de casos, entrada e seletor após transferência", async () => {

@@ -202,12 +202,12 @@ export interface CasoHistorico {
   resultados: Record<string, Record<string, ResultadoNaData>>;
 }
 
-/** Histórico de um projeto: todos os casos e até 7 datas, da mais recente para a mais antiga (spec 032). */
-export interface HistoricoProjeto {
+/** Histórico de um projeto: uma página de casos e até 7 datas, da mais recente para a mais antiga (specs 032 e 033).
+ * As datas valem para todos os casos filtrados, não só para os da página (ADR 0039). */
+export interface HistoricoProjeto extends PagedResult<CasoHistorico> {
   modelos: ModeloFormFactor[];
   datas: string[];
   modelo_destacado_id: string | null;
-  casos: CasoHistorico[];
 }
 
 export interface ResumoExecucoes {
@@ -221,6 +221,8 @@ export interface ResumoExecucoes {
 }
 
 export interface FiltrosHistoricoProjeto {
+  page?: number;
+  pageSize?: number;
   busca?: string;
   tcId?: string;
   modeloDispositivoId?: string;
