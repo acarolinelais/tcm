@@ -91,7 +91,7 @@
 
 ## Fase 5: Board na navegação lateral
 
-- [ ] **T11. `BoardPage` com escolha em cascata**
+- [x] **T11. `BoardPage` com escolha em cascata**
   - Arquivos: `frontend/src/modules/projetos/pages/BoardPage.tsx`, `frontend/src/modules/projetos/routes.tsx`,
     `frontend/src/core/router.tsx`, `BoardPage.test.tsx`, `resources.ts`
   - Cobre: CA-15, CA-16, CA-17, CA-18, CA-19
