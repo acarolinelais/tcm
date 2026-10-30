@@ -19,6 +19,10 @@ import {
   type FiltrosFormFactor,
   type FiltrosHistoricoProjeto,
   type CriarRodadaFormFactorInput,
+  type KanbanCard,
+  type KanbanProjeto,
+  type NavegacaoBoard,
+  ORDEM_KANBAN,
   type ExecucaoNaData,
   type HistoricoProjeto,
   type ResumoExecucoes,
@@ -678,10 +682,41 @@ function garantirUserIdUnico(db: Database, userId: string | null, ignorarId?: st
   return userId?.trim() || null;
 }
 
+/** Mesma regra de `_pode_consultar` em ProjetoService: admin, ou quem consulta projetos ou Test Cases. */
+function podeConsultarProjetosMock(profile: Perfil | undefined) {
+  return profile?.codigo === "ADMIN_UNIDADE" || Boolean(profile?.permissoes.includes("projetos.consultar") || profile?.permissoes.includes("test_cases.consultar"));
+}
+
 export const mockProjetosApi = {
+  /** Igual a GET /api/projetos/navegacao: setores e times ativos do escopo, projetos encerrados por último. */
+  navegacao(): NavegacaoBoard {
+    const { db, user, profile } = mockProfile();
+    if (!podeConsultarProjetosMock(profile)) {
+      return { setores: [] };
+    }
+    const porNome = (a: { nome: string }, b: { nome: string }) => a.nome.localeCompare(b.nome);
+    const encerrado = (status: StatusProjeto) => (status === "Completed" || status === "Canceled" ? 1 : 0);
+    const times = db.times.filter((team) => team.ativo && teamInMockScope(db, user.id, profile?.codigo, team));
+    const setores = db.setores
+      .filter((sector) => sector.ativo && times.some((team) => team.setor_id === sector.id))
+      .sort(porNome)
+      .map((sector) => ({
+        id: sector.id,
+        nome: sector.nome,
+        times: times.filter((team) => team.setor_id === sector.id).sort(porNome).map((team) => ({
+          id: team.id,
+          nome: team.nome,
+          projetos: db.projetos
+            .filter((project) => project.ativo && project.time_id === team.id)
+            .sort((a, b) => encerrado(a.status) - encerrado(b.status) || porNome(a, b))
+            .map(({ id, nome, status }) => ({ id, nome, status })),
+        })),
+      }));
+    return { setores };
+  },
   listar(pageNumber: number, pageSize: number, associadosAMim = false) {
     const { profile } = mockProfile();
-    if (profile?.codigo !== "ADMIN_UNIDADE" && !profile?.permissoes.includes("projetos.consultar") && !profile?.permissoes.includes("test_cases.consultar")) {
+    if (!podeConsultarProjetosMock(profile)) {
       throw new Error("Você não tem permissão para consultar projetos.");
     }
     const { db, user } = mockProfile();
@@ -702,7 +737,7 @@ export const mockProjetosApi = {
   },
   obter(projectId: string) {
     const { profile } = mockProfile();
-    if (profile?.codigo !== "ADMIN_UNIDADE" && !profile?.permissoes.includes("projetos.consultar") && !profile?.permissoes.includes("test_cases.consultar")) {
+    if (!podeConsultarProjetosMock(profile)) {
       throw new Error("Você não tem permissão para consultar projetos.");
     }
     const { db } = mockProfile();
@@ -865,6 +900,31 @@ function getMockCase(db: Database, caseId: string) {
 }
 
 export const mockCasosTesteApi = {
+  /** Igual a GET /api/projetos/{id}/kanban, com a mesma regra de `destinos` da API. */
+  kanban(projectId: string): KanbanProjeto {
+    requireMockPermission("test_cases.consultar");
+    const { db, user, profile } = mockProfile();
+    const project = getMockProject(db, projectId);
+    if (!project.ativo) throw new Error("Projeto não encontrado.");
+    const gestor = podeGerenciarCasosMock(db, user, profile, project);
+    const casosDoProjeto = db.casosTeste
+      .filter((item) => item.projeto_id === projectId && item.ativo && item.unidade_id === db.unidade.id)
+      .sort((a, b) => a.tc_id.localeCompare(b.tc_id));
+    const nomes = new Map(db.usuarios.map((usuario) => [usuario.id, usuario.nome]));
+    const card = (item: CasoTeste): KanbanCard => ({
+      id: item.id, tc_id: item.tc_id, category: item.category, difficulty: item.difficulty, situation: item.situation,
+      responsavel_id: item.responsavel_id,
+      responsavel_nome: nomes.get(item.responsavel_id) ?? "",
+      destinos: gestor || item.responsavel_id === user.id
+        ? ORDEM_KANBAN.filter((status) => status !== item.status)
+        : item.backup_id === user.id && item.status !== "Cancelled" ? ["Cancelled"] : [],
+    });
+    const colunas = ORDEM_KANBAN.map((status) => {
+      const casos = casosDoProjeto.filter((item) => item.status === status).map(card);
+      return { status, total: casos.length, casos };
+    });
+    return { projeto_id: projectId, total: casosDoProjeto.length, colunas };
+  },
   listar(projectId: string, pageNumber: number, pageSize: number, filtros: { responsavelIds?: string[]; associadosAMim?: boolean; semana?: string } = {}) {
     requireMockPermission("test_cases.consultar");
     const { db, user } = mockProfile();

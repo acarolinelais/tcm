@@ -26,8 +26,10 @@ import type {
   HistoricoProjeto,
   ImportacaoProjeto,
   ImportacaoSdf,
+  KanbanProjeto,
   LinkPullRequest,
   LinksPullRequest,
+  NavegacaoBoard,
   ResumoExecucoes,
   OpcaoModeloDispositivo,
   Projeto,
@@ -101,9 +103,15 @@ export const projetosApi = {
   excluir(id: string) {
     return useMock ? Promise.resolve(mockProjetosApi.excluir(id)) : httpDelete<void>(`/api/projetos/${id}`);
   },
+  navegacao() {
+    return useMock ? Promise.resolve(mockProjetosApi.navegacao()) : httpGet<NavegacaoBoard>("/api/projetos/navegacao");
+  },
 };
 
 export const casosTesteApi = {
+  kanban(projetoId: string) {
+    return useMock ? Promise.resolve(mockCasosTesteApi.kanban(projetoId)) : httpGet<KanbanProjeto>(`/api/projetos/${projetoId}/kanban`);
+  },
   listar(projetoId: string, page = 1, pageSize = 20, filtros: { responsavelIds?: string[]; associadosAMim?: boolean; semana?: string } = {}) {
     return useMock
       ? Promise.resolve(mockCasosTesteApi.listar(projetoId, page, pageSize, filtros))

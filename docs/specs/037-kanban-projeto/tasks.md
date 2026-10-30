@@ -49,13 +49,13 @@
 
 ## Fase 3: base do frontend (modelo, API, mock e hooks)
 
-- [ ] **T06. Tipos, cliente HTTP e mock do Kanban e da navegação**
+- [x] **T06. Tipos, cliente HTTP e mock do Kanban e da navegação**
   - Arquivos: `frontend/src/modules/projetos/model/projeto.ts`, `frontend/src/modules/projetos/api/projetos.api.ts`,
     `frontend/src/core/mock/database.ts` e os testes de ambos
   - Cobre: CA-01, CA-02, CA-07, CA-09, CA-15, CA-19
   - Verificação: `cd frontend && npm test -- projetos.api database` → o mock aplica o mesmo escopo e os mesmos
     `destinos` do backend e devolve as 7 colunas na ordem.
-- [ ] **T07. Hooks `useKanban` (mutation otimista) e `useNavegacaoBoard`**
+- [x] **T07. Hooks `useKanban` (mutation otimista) e `useNavegacaoBoard`**
   - Arquivos: `frontend/src/modules/projetos/hooks/useKanban.ts`, `frontend/src/modules/projetos/hooks/useNavegacaoBoard.ts`, os testes
   - Cobre: CA-03, CA-10
   - Verificação: `cd frontend && npm test -- useKanban` → a mutation move o card e ajusta os totais na hora;
@@ -131,3 +131,9 @@
   `test_usuario_user_id_persistence.py` grava unidades sem o perfil `USUARIO_PADRAO` e não as apaga, e a
   migration de perfil KP reaplicada pelo `test_bootstrap` recusa essas unidades. A suíte passa num banco recém-
   migrado.
+- **Chaves de query como literais** (simplify da fase 3): as chaves `["projetos", …]` estão espalhadas por
+  `useProjetos.ts` e `useKanban.ts`. Uma fábrica `projetosKeys` no módulo evitaria que um mutador invalide a
+  chave errada.
+- **Filtro de casos ativos repetido no mock** (simplify da fase 3): `mockCasosTesteApi.kanban` e `listar`
+  repetem `getMockProject` + `.ativo` + o filtro por projeto, ativo e unidade. Um `casosAtivosDoProjetoMock`
+  serviria aos dois.

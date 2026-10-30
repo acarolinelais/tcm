@@ -73,6 +73,31 @@ export interface CasoTeste {
   updated_at: string | null;
 }
 
+/** Colunas do Kanban na ordem do ciclo (spec 037, RN-02): In Fixes antes de Done. */
+export const ORDEM_KANBAN: readonly StatusCasoTeste[] = ["To-Do", "InProgress", "InReview", "InValidation", "InFixes", "Done", "Cancelled"];
+
+export interface KanbanCard extends Pick<CasoTeste, "id" | "tc_id" | "category" | "difficulty" | "situation" | "responsavel_id"> {
+  responsavel_nome: string;
+  /** Status para os quais quem consulta pode mover o card; vazio = só leitura. */
+  destinos: StatusCasoTeste[];
+}
+
+export interface KanbanColuna {
+  status: StatusCasoTeste;
+  total: number;
+  casos: KanbanCard[];
+}
+
+export interface KanbanProjeto {
+  projeto_id: string;
+  total: number;
+  colunas: KanbanColuna[];
+}
+
+export interface NavegacaoBoard {
+  setores: { id: string; nome: string; times: { id: string; nome: string; projetos: Pick<Projeto, "id" | "nome" | "status">[] }[] }[];
+}
+
 /** Basta o id e o TC ID para abrir o painel de detalhes pelas tabelas de Test Cases, Form Factor e Resultados gerais (spec 030). */
 export type CasoTesteResumo = Pick<CasoTeste, "id" | "tc_id">;
 

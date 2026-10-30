@@ -27,6 +27,14 @@ export function useProjetosPessoais(perfil: PerfilAtual, enabled = true) {
   });
 }
 
+/** Árvore setor → time → projeto do escopo, para a escolha em cascata do Board (spec 037). */
+export function useNavegacaoBoard(perfil: PerfilAtual) {
+  return useQuery({
+    queryKey: ["projetos", "navegacao", perfil.unidade_id, perfil.id],
+    queryFn: () => projetosApi.navegacao(),
+  });
+}
+
 export function useProjetosSeletor(perfil: PerfilAtual, enabled = true) {
   const pessoal = perfil.perfil_codigo === "USUARIO_PADRAO";
   return useInfiniteQuery({

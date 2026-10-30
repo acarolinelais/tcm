@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as XLSX from "@e965/xlsx";
 
 import { ApiError } from "@/shared/api/problem-details";
+import { ORDEM_KANBAN, STATUS_CASO_TESTE } from "@/modules/projetos/model/projeto";
 import { mockAuth, mockCasosTesteApi, mockFormFactorApi, mockModelosDispositivoApi, mockProjetosApi, mockTimesApi, mockUsuarioApi, resetMockDatabase } from "./database";
 
 const STORAGE_KEY = "sdf.mock.database.v1";
@@ -800,5 +801,62 @@ describe("base mock de projetos", () => {
     const gerente = migrado.perfis.find((profile: { codigo: string }) => profile.codigo === "GERENTE");
     expect(kp.permissoes).toContain("form_factor.consultar");
     expect(gerente.permissoes).toContain("form_factor.consultar");
+  });
+});
+
+describe("mock do Kanban e da navegação do Board", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    resetMockDatabase();
+    entrar("admin@sdfmanager.com");
+  });
+
+  it("agrupa os casos nas sete colunas e calcula os destinos pela posse", () => {
+    mockTimesApi.adicionar("mock-team-platform", "mock-user-manager");
+    const projeto = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Kanban", one_ui: "9.5", modelos_ids: [] });
+    const base = { category: "A" as const, difficulty: "Low" as const, situation: "New" as const };
+    const proprio = mockCasosTesteApi.criar(projeto.id, { ...base, tc_id: "Kanban_001", responsavel_id: "mock-user-dev", backup_id: "mock-user-kp" });
+    mockCasosTesteApi.criar(projeto.id, { ...base, tc_id: "Kanban_002", responsavel_id: "mock-user-kp", backup_id: "mock-user-dev" });
+    mockCasosTesteApi.criar(projeto.id, { ...base, tc_id: "Kanban_003", responsavel_id: "mock-user-kp", backup_id: "mock-user-manager" });
+    mockCasosTesteApi.atualizar(proprio.id, { status: "InReview" });
+
+    const doAdmin = mockCasosTesteApi.kanban(projeto.id);
+    expect(doAdmin.colunas.map((coluna) => coluna.status)).toEqual(["To-Do", "InProgress", "InReview", "InValidation", "InFixes", "Done", "Cancelled"]);
+    expect(doAdmin.colunas.map((coluna) => coluna.total)).toEqual([2, 0, 1, 0, 0, 0, 0]);
+    expect(doAdmin.colunas[2].casos[0].destinos).toHaveLength(6);
+
+    entrar("daniel.oliveira@example.com");
+    const destinos = Object.fromEntries(mockCasosTesteApi.kanban(projeto.id).colunas.flatMap((coluna) => coluna.casos).map((card) => [card.tc_id, card.destinos]));
+    expect(destinos.Kanban_001).toHaveLength(6);
+    expect(destinos.Kanban_002).toEqual(["Cancelled"]);
+    expect(destinos.Kanban_003).toEqual([]);
+  });
+
+  it("tem uma coluna para cada Status do catálogo", () => {
+    expect([...ORDEM_KANBAN].sort()).toEqual([...STATUS_CASO_TESTE].sort());
+  });
+
+  it("recusa o Kanban de projeto fora do escopo", () => {
+    const projeto = mockProjetosApi.criar({ time_id: "mock-team-operations", app: "Fora", one_ui: "9.5", modelos_ids: [] });
+    entrar("daniel.oliveira@example.com");
+    expect(() => mockCasosTesteApi.kanban(projeto.id)).toThrow();
+  });
+
+  it("monta a navegação do escopo com os projetos encerrados por último", () => {
+    const ativo = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Zeta", one_ui: "9.5", modelos_ids: [] });
+    const encerrado = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Alpha", one_ui: "9.5", modelos_ids: [] });
+    mockProjetosApi.atualizarStatus(encerrado.id, "Completed");
+
+    const admin = mockProjetosApi.navegacao();
+    const plataforma = admin.setores.flatMap((setor) => setor.times).find((time) => time.id === "mock-team-platform");
+    const ids = plataforma?.projetos.map((projeto) => projeto.id) ?? [];
+    expect(ids.indexOf(ativo.id)).toBeLessThan(ids.indexOf(encerrado.id));
+    expect(admin.setores.flatMap((setor) => setor.times).some((time) => time.id === "mock-team-inactive")).toBe(false);
+
+    entrar("daniel.oliveira@example.com");
+    const times = mockProjetosApi.navegacao().setores.flatMap((setor) => setor.times).map((time) => time.id);
+    expect(times).toContain("mock-team-platform");
+    expect(times).not.toContain("mock-team-operations");
   });
 });
