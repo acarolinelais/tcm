@@ -10,7 +10,7 @@ import { MAX_JUSTIFICATIVA_EXCLUSAO, type CasoTeste } from "../../model/projeto"
  * redesenha só o diálogo, sem refazer as colunas e as linhas da tabela.
  */
 export function ExcluirCasoTesteDialog({ caso, podeGerenciar, isPending, onConfirmar, onFechar }: {
-  caso: CasoTeste | null;
+  caso: Pick<CasoTeste, "tc_id"> | null;
   podeGerenciar: boolean;
   isPending: boolean;
   onConfirmar: (justificativa: string) => void;

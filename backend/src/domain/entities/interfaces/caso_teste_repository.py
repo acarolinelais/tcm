@@ -6,6 +6,7 @@ from uuid import UUID
 from src.domain.common.paged_result import PagedResult
 from src.domain.entities.caso_teste import CasoTeste
 from src.domain.entities.interfaces.repository_base import RepositoryBase
+from src.domain.queries.caso_teste_com_responsavel import CasoTesteComResponsavel
 
 
 class CasoTesteRepository(RepositoryBase[CasoTeste], Protocol):
@@ -31,3 +32,7 @@ class CasoTesteRepository(RepositoryBase[CasoTeste], Protocol):
     async def listar_em_validacao(
         self, unidade_id: UUID, projeto_id: UUID
     ) -> tuple[CasoTeste, ...]: ...
+
+    async def listar_cards_por_projeto(
+        self, unidade_id: UUID, projeto_id: UUID
+    ) -> tuple[CasoTesteComResponsavel, ...]: ...

@@ -8,6 +8,7 @@ from alembic.runtime.migration import MigrationContext
 from sqlalchemy import insert, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from src.domain.common.cor_avatar import CorAvatar
 from src.domain.entities.caso_teste import (
     CasoTeste,
     CategoriaCasoTeste,
@@ -312,5 +313,91 @@ async def test_migration_preserva_progresso_em_status_e_preenche_situation_new()
                 assert linha.status == "InProgress"
             finally:
                 await transaction.rollback()
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_listar_cards_por_projeto_traz_ativos_com_nome_do_responsavel():
+    engine = create_async_engine(os.environ["SDF_TEST_DATABASE_URL"])
+    unidade_id, setor_id, time_id, perfil_id, usuario_id = (uuid4() for _ in range(5))
+    projeto_id, outro_projeto_id = uuid4(), uuid4()
+    try:
+        async with async_sessionmaker(engine, expire_on_commit=False)() as session:
+            session.add(UnidadeModel(id=unidade_id, nome=f"Kanban {unidade_id}"))
+            await session.flush()
+            session.add_all(
+                [
+                    PerfilModel(id=perfil_id, unidade_id=unidade_id, nome=f"Perfil {perfil_id}"),
+                    SetorModel(id=setor_id, unidade_id=unidade_id, nome="Mobile"),
+                ]
+            )
+            await session.flush()
+            session.add(TimeModel(id=time_id, unidade_id=unidade_id, setor_id=setor_id, nome="T"))
+            await session.flush()
+            session.add_all(
+                [
+                    ProjetoModel(
+                        id=id_,
+                        unidade_id=unidade_id,
+                        time_id=time_id,
+                        nome=nome,
+                        app="Clock",
+                        one_ui=versao,
+                    )
+                    for id_, nome, versao in (
+                        (projeto_id, "Clock 9.5", "9.5"),
+                        (outro_projeto_id, "Clock 9.0", "9.0"),
+                    )
+                ]
+                + [
+                    UsuarioModel(
+                        id=usuario_id,
+                        unidade_id=unidade_id,
+                        nome="Afonso Fagundes",
+                        email=f"afonso-{usuario_id}@example.com",
+                        perfil_id=perfil_id,
+                        cor_avatar="verde",
+                    )
+                ]
+            )
+            await session.flush()
+
+            repository = CasoTesteRepositoryImpl(session)
+
+            def caso(projeto: object, tc_id: str) -> CasoTeste:
+                return CasoTeste(
+                    unidade_id,
+                    projeto,
+                    tc_id,
+                    CategoriaCasoTeste.A,
+                    DificuldadeCasoTeste.LOW,
+                    usuario_id,
+                    None,
+                    SituacaoCasoTeste.NEW,
+                    exigir_backup=False,
+                )
+
+            inativo = caso(projeto_id, "Clock_003")
+            for novo in (
+                caso(projeto_id, "Clock_002"),
+                caso(projeto_id, "Clock_001"),
+                inativo,
+                caso(outro_projeto_id, "Clock_009"),
+            ):
+                await repository.adicionar(novo)
+            await session.flush()
+            await session.execute(
+                text("UPDATE casos_teste SET ativo = false WHERE id = :id"), {"id": inativo.id}
+            )
+
+            cards = await repository.listar_cards_por_projeto(unidade_id, projeto_id)
+            assert [card.caso.tc_id for card in cards] == ["Clock_001", "Clock_002"]
+            assert {card.responsavel_nome for card in cards} == {"Afonso Fagundes"}
+            assert {card.responsavel_cor_avatar for card in cards} == {CorAvatar.VERDE}
+
+            # Outra unidade não enxerga os casos, mesmo com o id do projeto certo.
+            assert await repository.listar_cards_por_projeto(uuid4(), projeto_id) == ()
+            await session.rollback()
     finally:
         await engine.dispose()

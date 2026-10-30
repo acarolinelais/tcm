@@ -14,6 +14,13 @@ describe("APIs de projetos", () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
+  it("consulta o Kanban do projeto e a navegação do Board", async () => {
+    await casosTesteApi.kanban("project-1");
+    expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/kanban", expect.any(Object));
+    await projetosApi.navegacao();
+    expect(fetch).toHaveBeenLastCalledWith("/api/projetos/navegacao", expect.any(Object));
+  });
+
   it("lista projetos com paginação", async () => {
     await projetosApi.listar(2, 10);
     expect(fetch).toHaveBeenCalledWith("/api/projetos?page=2&page_size=10", expect.any(Object));

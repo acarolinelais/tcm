@@ -1,9 +1,14 @@
 import { z } from "zod";
 
+import type { CorAvatar, PerfilAtual } from "@/core/auth/api";
 import type { PagedResult } from "@/shared/types/paged-result";
 
 export type StatusProjeto = "Created" | "To Do" | "InProgress" | "Completed" | "Canceled";
+/** Chaves i18n dos rótulos do status do projeto. */
+export const ROTULO_STATUS_PROJETO: Record<StatusProjeto, string> = { Created: "projectCreated", "To Do": "toDo", InProgress: "inProgress", Completed: "completed", Canceled: "projectCanceled" };
 export const CATEGORIAS_CASO_TESTE = ["A", "B", "C"] as const;
+/** Category não tem tradução: o rótulo é o próprio valor. */
+export const OPCOES_CATEGORIA = CATEGORIAS_CASO_TESTE.map((valor) => ({ value: valor, label: valor }));
 export const DIFICULDADES_CASO_TESTE = ["Low", "Medium", "High"] as const;
 export type CategoriaCasoTeste = (typeof CATEGORIAS_CASO_TESTE)[number];
 export type DificuldadeCasoTeste = (typeof DIFICULDADES_CASO_TESTE)[number];
@@ -71,6 +76,38 @@ export interface CasoTeste {
   ativo: boolean;
   created_at: string | null;
   updated_at: string | null;
+}
+
+/** Gestão de Test Cases (ADR 0015): admin, ou gerente/KP com `test_cases.gerenciar`. O escopo do time a API confere. */
+export function perfilGerenciaCasos(perfil: Pick<PerfilAtual, "perfil_codigo" | "permissoes">) {
+  return perfil.perfil_codigo === "ADMIN_UNIDADE" || (["GERENTE", "KP"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("test_cases.gerenciar"));
+}
+
+/** Colunas do Kanban na ordem do ciclo (spec 037, RN-02): In Fixes antes de Done. */
+export const ORDEM_KANBAN: readonly StatusCasoTeste[] = ["To-Do", "InProgress", "InReview", "InValidation", "InFixes", "Done", "Cancelled"];
+
+export interface KanbanCard extends Pick<CasoTeste, "id" | "tc_id" | "category" | "difficulty" | "situation" | "responsavel_id"> {
+  responsavel_nome: string;
+  /** Cor que o responsável escolheu para o avatar nas Configurações (spec 036). */
+  responsavel_cor_avatar: CorAvatar;
+  /** Status para os quais quem consulta pode mover o card; vazio = só leitura. */
+  destinos: StatusCasoTeste[];
+}
+
+export interface KanbanColuna {
+  status: StatusCasoTeste;
+  total: number;
+  casos: KanbanCard[];
+}
+
+export interface KanbanProjeto {
+  projeto_id: string;
+  total: number;
+  colunas: KanbanColuna[];
+}
+
+export interface NavegacaoBoard {
+  setores: { id: string; nome: string; times: { id: string; nome: string; membros: number; projetos: Pick<Projeto, "id" | "nome" | "status">[] }[] }[];
 }
 
 /** Basta o id e o TC ID para abrir o painel de detalhes pelas tabelas de Test Cases, Form Factor e Resultados gerais (spec 030). */

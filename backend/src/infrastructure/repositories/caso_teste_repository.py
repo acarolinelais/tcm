@@ -4,6 +4,7 @@ from uuid import UUID
 
 from sqlalchemy import case, func, or_, select
 
+from src.domain.common.cor_avatar import CorAvatar
 from src.domain.common.paged_result import PagedResult
 from src.domain.entities.caso_teste import (
     CasoTeste,
@@ -13,7 +14,9 @@ from src.domain.entities.caso_teste import (
     SituacaoCasoTeste,
     StatusCasoTeste,
 )
+from src.domain.queries.caso_teste_com_responsavel import CasoTesteComResponsavel
 from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
+from src.infrastructure.data.models.usuario_model import UsuarioModel
 from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
 
 
@@ -131,6 +134,26 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             .all()
         )
         return tuple(self._to_entity(modelo) for modelo in modelos)
+
+    async def listar_cards_por_projeto(
+        self, unidade_id: UUID, projeto_id: UUID
+    ) -> tuple[CasoTesteComResponsavel, ...]:
+        # shortcut: sem paginação, cabe até alguns milhares de casos por projeto (spec 037, RN-10);
+        # paginar por coluna se um projeto passar disso.
+        linhas = await self.session.execute(
+            select(CasoTesteModel, UsuarioModel.nome, UsuarioModel.cor_avatar)
+            .join(UsuarioModel, UsuarioModel.id == CasoTesteModel.responsavel_id)
+            .where(
+                CasoTesteModel.unidade_id == unidade_id,
+                CasoTesteModel.projeto_id == projeto_id,
+                CasoTesteModel.ativo.is_(True),
+            )
+            .order_by(CasoTesteModel.tc_id, CasoTesteModel.id)
+        )
+        return tuple(
+            CasoTesteComResponsavel(self._to_entity(modelo), nome, CorAvatar(cor or CorAvatar.AZUL))
+            for modelo, nome, cor in linhas
+        )
 
     def _to_entity(self, model: CasoTesteModel) -> CasoTeste:
         caso = CasoTeste(

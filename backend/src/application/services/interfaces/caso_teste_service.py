@@ -8,6 +8,7 @@ from src.application.schemas.caso_teste import (
     CasoTesteResponse,
     CriarCasoTesteRequest,
 )
+from src.application.schemas.kanban import KanbanResponse
 from src.application.schemas.link_pull_request import (
     AdicionarLinkPullRequestRequest,
     LinkPullRequestResponse,
@@ -33,6 +34,10 @@ class CasoTesteService(Protocol):
         semana: str | None = None,
         fuso_horario: str = "UTC",
     ) -> PagedResult[CasoTesteResponse]: ...
+
+    async def obter_kanban(
+        self, usuario_atual: UsuarioAutenticado, projeto_id: UUID
+    ) -> KanbanResponse: ...
 
     async def criar(
         self,

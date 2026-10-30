@@ -1,5 +1,9 @@
 from uuid import UUID
 
+from src.application.schemas.navegacao_board import (
+    NavegacaoBoardResponse,
+    to_navegacao_response,
+)
 from src.application.schemas.projeto import (
     AtualizarProjetoRequest,
     AtualizarStatusProjetoRequest,
@@ -105,6 +109,16 @@ class ProjetoServiceImpl:
                 list(ids_modelos.get(projeto.id, ())),
             )
         )
+
+    async def listar_navegacao(self, usuario_atual: UsuarioAutenticado) -> NavegacaoBoardResponse:
+        # Sem permissão ou sem times, a árvore vem vazia: o Board mostra o aviso em vez de um erro.
+        if not self._pode_consultar(usuario_atual):
+            return NavegacaoBoardResponse(setores=[])
+        linhas = await self._projeto_repo.listar_navegacao(
+            usuario_atual.unidade_id,
+            None if usuario_atual.eh_administrador else usuario_atual.times_no_escopo,
+        )
+        return to_navegacao_response(linhas)
 
     async def obter(self, usuario_atual: UsuarioAutenticado, projeto_id: UUID) -> ProjetoResponse:
         if not usuario_atual.eh_administrador:
@@ -226,10 +240,14 @@ class ProjetoServiceImpl:
             raise ForbiddenException("Você não tem permissão para gerenciar projetos.")
 
     @staticmethod
-    def _exigir_consulta(usuario_atual: UsuarioAutenticado) -> None:
-        if not usuario_atual.pode("projetos.consultar") and not usuario_atual.pode(
+    def _pode_consultar(usuario_atual: UsuarioAutenticado) -> bool:
+        return usuario_atual.pode("projetos.consultar") or usuario_atual.pode(
             "test_cases.consultar"
-        ):
+        )
+
+    @classmethod
+    def _exigir_consulta(cls, usuario_atual: UsuarioAutenticado) -> None:
+        if not cls._pode_consultar(usuario_atual):
             raise ForbiddenException("Você não tem permissão para consultar projetos.")
 
     @staticmethod

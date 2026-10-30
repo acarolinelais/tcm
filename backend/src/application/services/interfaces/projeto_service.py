@@ -1,6 +1,7 @@
 from typing import Protocol
 from uuid import UUID
 
+from src.application.schemas.navegacao_board import NavegacaoBoardResponse
 from src.application.schemas.projeto import (
     AtualizarProjetoRequest,
     AtualizarStatusProjetoRequest,
@@ -23,6 +24,10 @@ class ProjetoService(Protocol):
         page_size: int,
         associados_a_mim: bool = False,
     ) -> PagedResult[ProjetoResponse]: ...
+
+    async def listar_navegacao(
+        self, usuario_atual: UsuarioAutenticado
+    ) -> NavegacaoBoardResponse: ...
 
     async def obter(
         self, usuario_atual: UsuarioAutenticado, projeto_id: UUID

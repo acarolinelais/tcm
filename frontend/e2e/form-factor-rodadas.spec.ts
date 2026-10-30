@@ -82,10 +82,12 @@ test("duas rodadas: DEV principal/Backup registram, Status segue os resultados e
   expect(await Promise.all(["FF_FAIL", "FF_DONE", "FF_PARCIAL", "FF_ALHEIO"].map(statusDe))).toEqual(["InFixes", "Done", "InValidation", "InValidation"]);
 
   // Exclusão respeita atribuição; a correção volta por In Review antes da nova validação.
-  expect((await devs[0].put(`test-cases/${casos.FF_ALHEIO.id}`, { status: "Cancelled" })).status()).toBe(403);
+  // Desde a spec 026 excluir exige justificativa; sem ela a API responde 422 antes de checar a atribuição.
+  expect((await devs[0].put(`test-cases/${casos.FF_ALHEIO.id}`, { status: "Cancelled", justificativa_exclusao: "Sem hardware" })).status()).toBe(403);
   expect(await statusDe("FF_ALHEIO")).toBe("InValidation");
-  await ok(devs[0].put(`test-cases/${casos.FF_PARCIAL.id}`, { status: "Cancelled" }));
-  expect((await devs[0].put(`test-cases/${casos.FF_FAIL.id}`, { status: "InValidation" })).status()).toBe(409);
+  await ok(devs[0].put(`test-cases/${casos.FF_PARCIAL.id}`, { status: "Cancelled", justificativa_exclusao: "Sem hardware" }));
+  // O ciclo In Fixes → In Review → In Validation não é imposto desde 2026-10-27 (spec 023, RN-04 suspensa): a
+  // correção segue o fluxo esperado, mas a API não recusa o atalho.
   for (const status of ["InReview", "InValidation"]) await ok(devs[0].put(`test-cases/${casos.FF_FAIL.id}`, { status }));
 
   const segunda = await ok(admin.post(`projetos/${projeto.id}/form-factor/rodadas`, { sdf_id: "SDF R2" }));
@@ -99,11 +101,11 @@ test("duas rodadas: DEV principal/Backup registram, Status segue os resultados e
   await page.getByRole("radio", { name: "Results" }).click();
   const linhasFail = page.getByRole("row", { name: /FF_FAIL/ });
   await expect(linhasFail).toHaveCount(2);
-  // Células 4 e 5: resultados de S26 e S27.
-  const resultadosDa = (sdfId: string) => linhasFail.filter({ hasText: sdfId }).getByRole("cell");
-  await expect(resultadosDa("SDF R1 #1").nth(4)).toHaveText("FAIL");
-  await expect(resultadosDa("SDF R1 #1").nth(5)).toHaveText("—");
+  // Células 3 e 4: resultados de S26 e S27. A tabela é um grid, e o TC ID é o cabeçalho da linha, fora das células.
+  const resultadosDa = (sdfId: string) => linhasFail.filter({ hasText: sdfId }).getByRole("gridcell");
+  await expect(resultadosDa("SDF R1 #1").nth(3)).toHaveText("FAIL");
+  await expect(resultadosDa("SDF R1 #1").nth(4)).toHaveText("—");
+  await expect(resultadosDa("SDF R2").nth(3)).toHaveText("PASS");
   await expect(resultadosDa("SDF R2").nth(4)).toHaveText("PASS");
-  await expect(resultadosDa("SDF R2").nth(5)).toHaveText("PASS");
   await expect(page.getByRole("row", { name: /FF_PARCIAL/ })).toHaveCount(1);
 });
