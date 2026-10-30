@@ -40,7 +40,7 @@ export function TotalTcsDonePieChart({ dados }: { dados: OverviewData }) {
   const centerPct = hover ? segments.find((s) => s.key === hover)?.pct : completedPct;
 
   return (
-    <div className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card p-5">
+    <div className="flex flex-col items-center gap-4 rounded-3xl border border-edge bg-card p-5">
       <h2 className="self-start text-sm font-semibold text-foreground">{t("totalTcsDone")}</h2>
       <div className="relative h-[140px] w-[140px]">
         <svg

@@ -5,7 +5,7 @@ import { useOverview } from "../hooks/useOverview";
 import { useOutletContext } from "react-router";
 import type { PerfilAtual } from "@/core/auth/api";
 import { useTranslation } from "react-i18next";
-import { Skeleton } from "@/shared/ui/skeleton";
+import { Skeleton } from "@heroui/react";
 import { ErroComRetry } from "@/shared/ui/erro-com-retry";
 import { InboxIcon } from "@/shared/ui/figma-icons";
 
@@ -17,7 +17,7 @@ export function OverviewPage() {
   // Um refetch que falha não esconde o que já foi carregado.
   if (isError && !data) {
     return (
-      <div className="rounded-3xl border border-border bg-card px-6 py-10">
+      <div className="rounded-3xl border border-edge bg-card px-6 py-10">
         <ErroComRetry mensagem={t("overviewLoadError")} retry={{ label: t("retryQuery"), onRetry: () => void refetch() }} />
       </div>
     );
@@ -39,7 +39,7 @@ export function OverviewPage() {
   // Sem casos no escopo: explica em vez de mostrar zeros soltos (spec 039, RN-05).
   if (data.total === 0) {
     return (
-      <div role="status" className="rounded-3xl border border-border bg-card px-6 py-10 text-center">
+      <div role="status" className="rounded-3xl border border-edge bg-card px-6 py-10 text-center">
         <InboxIcon className="mx-auto mb-3 text-body" />
         <h1 className="text-base font-medium text-foreground">{t("overviewEmpty")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("overviewEmptyHint")}</p>

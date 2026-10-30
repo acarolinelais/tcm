@@ -114,11 +114,11 @@
     "Criar manualmente", que se chama "Manual" desde antes desta spec). Decisão pendente com a usuária.
 
 ## Backlog
-- Modais centrais ainda em shadcn: o editor de permissões de `PerfisPage.tsx` (`DialogContent`) e
+- ✅ **Resolvido na spec 050:** modais centrais ainda em shadcn: o editor de permissões de `PerfisPage.tsx` (`DialogContent`) e
   `shared/ui/confirm-dialog.tsx` (usado por `UsuarioToggleAtivo`, na página de Usuários, que segue misturando
   as bases por causa dele). Quando migrarem, `shared/ui/dialog.tsx`, `confirm-dialog.tsx` e
   `@radix-ui/react-dialog` podem sair.
-- Telas de login e troca de senha ainda usam `Button`, `Input` e `Label` shadcn (e `@radix-ui/react-label` e
+- ✅ **Resolvido na spec 050:** telas de login e troca de senha ainda usam `Button`, `Input` e `Label` shadcn (e `@radix-ui/react-label` e
   `react-slot` por isso).
 - Setores: o campo de gerente usa "Selecionar gerente" como rótulo e como opção vazia, e o nome acessível fica
   repetido ("Selecionar gerente Selecionar gerente"). Um rótulo "Gerente" (chave nova em en/pt/ko), mantendo
@@ -127,7 +127,7 @@
 - Botões ao lado de uma lista (Associar em Setores, Adicionar nos links de PR) se alinham por `mt-[30px]`; um
   slot `endContent` no `SelectField`/`TextInputField` alinharia pela estrutura, inclusive com zoom (achado da
   revisão da fase 1).
-- Confirmação de inativar setor (`SetoresPage.tsx`): a descrição usa `sectorUpdateError` (mensagem de falha) e o
+- ✅ **Resolvido na spec 050:** confirmação de inativar setor (`SetoresPage.tsx`): a descrição usa `sectorUpdateError` (mensagem de falha) e o
   título e o botão são montados por concatenação. Chaves próprias com interpolação corrigem (modal central, fora
   do escopo; achado da revisão da fase 1).
 - Foco no primeiro campo inválido ao enviar um painel (skill `better-accessibility`): hoje o erro é anunciado

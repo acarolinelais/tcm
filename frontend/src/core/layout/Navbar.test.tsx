@@ -115,3 +115,15 @@ describe("tema na navbar", () => {
     expect(busca).toHaveValue("login");
   });
 });
+
+describe("layout da navbar (spec 050)", () => {
+  it("separa tema, idioma e usuário com duas divisórias decorativas", () => {
+    renderEm("/overview");
+    const divisorias = screen.getByRole("banner").querySelectorAll("span[aria-hidden=\"true\"].w-px");
+
+    expect(divisorias).toHaveLength(2);
+    expect(divisorias[0].previousElementSibling).toHaveAttribute("aria-pressed");
+    expect(divisorias[1].nextElementSibling?.querySelector("[aria-haspopup='menu']")).toHaveAttribute("title", "User menu");
+  });
+});
+

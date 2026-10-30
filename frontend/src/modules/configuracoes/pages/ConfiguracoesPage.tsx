@@ -10,7 +10,7 @@ export function ConfiguracoesPage() {
   const perfil = useOutletContext<PerfilAtual>();
 
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-separator bg-card px-7 py-8 sm:px-11 sm:py-10">
+    <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-edge bg-card px-7 py-8 sm:px-11 sm:py-10">
       <h1 className="mb-8 text-2xl font-medium text-accent-text">{t("settings")}</h1>
       <div className="max-w-3xl rounded-2xl border border-border">
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">

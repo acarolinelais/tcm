@@ -4,7 +4,7 @@ import css from "@/core/global.css?raw";
 
 // CA-10 da spec 036: cada cor do avatar se destaca do fundo (≥ 3:1, contraste de elemento gráfico do WCAG).
 // Fundos onde o avatar aparece: no claro, o cartão (branco) e a página; no escuro, o cartão e a página.
-const FUNDOS = { claro: ["#ffffff", "#fbfbfb"], escuro: ["#1e1e1e", "#323232"] };
+const FUNDOS = { claro: ["#ffffff", "#fbfbfb"], escuro: ["#1b1b1b", "#0a0a0a"] };
 
 function luminancia(hex: string) {
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)

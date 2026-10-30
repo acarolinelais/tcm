@@ -1,12 +1,10 @@
 import { useCallback, useState } from "react";
 import { Button, Popover } from "@heroui/react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { DayPicker, type ChevronProps, type WeekNumberProps } from "react-day-picker";
-import { enUS, ko, ptBR } from "react-day-picker/locale";
 import { useTranslation } from "react-i18next";
 
 import { formatDate } from "@/core/i18n/format";
-import { cn, diasDaSemana, formatarDiaIso, lerDiaIso, semanaIso } from "@/shared/lib/utils";
+import { cn, diasDaSemana, lerDiaIso, semanaIso } from "@/shared/lib/utils";
+import { Calendario } from "@/shared/ui/calendario";
 import { CalendarIcon, SmallChevronIcon } from "@/shared/ui/figma-icons";
 
 interface WeekPickerHeroProps {
@@ -20,19 +18,14 @@ interface WeekPickerHeroProps {
 
 const DIA = /^\d{4}-\d{2}-\d{2}$/;
 
-const botaoDia = "inline-flex size-8 items-center justify-center rounded-lg text-[13px] tabular-nums transition-colors hover:bg-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 const botaoRodape = "h-7 min-h-0 rounded-lg px-3 text-[12px]";
 
-function Chevron({ orientation }: ChevronProps) {
-  return orientation === "left" ? <ChevronLeft aria-hidden="true" className="size-4" /> : <ChevronRight aria-hidden="true" className="size-4" />;
-}
-
 /**
- * Filtro por semana ISO (spec 022) com o botão do Figma (TCM 2070:1476). O calendário é o `react-day-picker`,
- * o único que já seleciona a semana ISO; ele vive no Popover do HeroUI, sem o invólucro do shadcn.
+ * Filtro por semana ISO (spec 022) ou por dia ou semana (spec 032), com a pílula do Figma (TCM 2482-2966, spec 050).
+ * O calendário é o compartilhado (`Calendario`); o Popover do HeroUI parte do gatilho e respeita o movimento reduzido.
  */
 export function WeekPickerHero({ label, value, onChange, className, permitirDia = false }: WeekPickerHeroProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [aberto, setAberto] = useState(false);
   const dia = permitirDia && DIA.test(value) ? lerDiaIso(value) : null;
   const selecionada = value && !dia ? diasDaSemana(value) : null;
@@ -46,64 +39,20 @@ export function WeekPickerHero({ label, value, onChange, className, permitirDia 
     setAberto(false);
   }, [onChange]);
 
-  // Identidade estável: o DayPicker remontaria as células a cada render se o componente mudasse.
-  const NumeroDaSemana = useCallback(({ week, ...props }: WeekNumberProps) => {
-    const valor = semanaIso(week.days[0].date);
-    return (
-      <th {...props}>
-        <button type="button" aria-label={t("weekValue", { week: week.weekNumber, year: valor.slice(0, 4) })} className={cn(botaoDia, "text-[12px] text-muted", valor === value && "font-semibold text-accent-text")} onClick={() => escolher(valor)}>
-          {week.weekNumber}
-        </button>
-      </th>
-    );
-  }, [escolher, t, value]);
-
   return (
     <Popover isOpen={aberto} onOpenChange={setAberto}>
       <Button
         variant="outline"
         aria-label={`${label}: ${descricao}`}
-        className={cn("h-9 min-h-0 gap-2.5 rounded-[10px] border border-separator bg-surface px-3.5 text-[15px] font-medium leading-[21px] text-body shadow-none hover:bg-page", className)}
+        className={cn("h-9 min-h-0 gap-2.5 rounded-full border border-edge bg-surface px-4 text-[15px] font-medium leading-[21px] text-body shadow-none transition-[background-color,transform] duration-100 ease-out hover:bg-page data-[pressed]:scale-[0.97] motion-reduce:transition-none motion-reduce:data-[pressed]:scale-100 dark:text-muted", className)}
       >
-        <CalendarIcon className="text-body" />
+        <CalendarIcon className="text-body dark:text-muted" />
         <span>{texto}</span>
-        <SmallChevronIcon className={cn("text-body transition-transform duration-200 motion-reduce:transition-none", aberto && "rotate-180")} />
+        <SmallChevronIcon className={cn("text-body dark:text-muted transition-transform duration-200 motion-reduce:transition-none", aberto && "rotate-180")} />
       </Button>
       <Popover.Content placement="bottom end" className="p-1.5">
         <Popover.Dialog aria-label={label} className="outline-none">
-          <DayPicker
-            showOutsideDays
-            showWeekNumber
-            ISOWeek
-            locale={i18n.language?.startsWith("pt") ? ptBR : i18n.language?.startsWith("ko") ? ko : enUS}
-            defaultMonth={dia ?? selecionada?.segunda}
-            modifiers={dia ? { diaEscolhido: dia } : selecionada ? { semana: { from: selecionada.segunda, to: selecionada.domingo }, inicioSemana: selecionada.segunda, fimSemana: selecionada.domingo } : undefined}
-            modifiersClassNames={{ semana: "bg-accent text-accent-foreground", inicioSemana: "rounded-l-lg", fimSemana: "rounded-r-lg", diaEscolhido: "rounded-lg bg-accent text-accent-foreground" }}
-            classNames={{
-              root: "w-fit p-2",
-              months: "relative flex flex-col gap-4",
-              month: "flex w-full flex-col gap-3",
-              nav: "absolute inset-x-0 top-0 flex items-center justify-between",
-              button_previous: cn(botaoDia, "text-muted"),
-              button_next: cn(botaoDia, "text-muted"),
-              month_caption: "flex h-8 items-center justify-center px-8",
-              caption_label: "select-none text-[14px] font-medium capitalize text-body",
-              month_grid: "w-full border-collapse",
-              weekdays: "flex",
-              weekday: "w-8 select-none text-[12px] font-normal text-muted",
-              week_number_header: "w-8 select-none text-[12px] font-normal text-muted",
-              week_number: "size-8 p-0",
-              week: "mt-1 flex w-full",
-              day: "size-8 p-0 text-center",
-              day_button: botaoDia,
-              today: "font-semibold text-accent-text",
-              outside: "text-muted/60",
-              hidden: "invisible",
-            }}
-            components={{ WeekNumber: NumeroDaSemana, Chevron }}
-            onDayClick={(clicado) => escolher(permitirDia ? formatarDiaIso(clicado) : semanaIso(clicado))}
-            autoFocus
-          />
+          <Calendario modo={permitirDia ? "dia-ou-semana" : "semana"} valor={value} onEscolher={escolher} />
           <div className="flex justify-between border-t border-separator px-1 pt-1.5">
             <Button variant="ghost" className={botaoRodape} onPress={() => escolher("")}>{t("clearFilters")}</Button>
             <Button variant="ghost" className={cn(botaoRodape, "text-accent-text")} onPress={() => escolher(semanaIso(new Date()))}>{t("thisWeek")}</Button>

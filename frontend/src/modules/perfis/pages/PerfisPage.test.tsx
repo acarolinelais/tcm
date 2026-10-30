@@ -122,6 +122,26 @@ describe("PerfisPage", () => {
     await abrirPerfil(user, "Leitura", "Edit permissions");
   });
 
+  it("Esc fecha a confirmação sem descartar nada e devolve o foco ao botão que a abriu (spec 050)", async () => {
+    renderPage();
+    const user = userEvent.setup();
+    await screen.findByRole("grid");
+    await abrirPerfil(user, "Operação", "Edit permissions");
+    await abrirGrupo(user, "Users");
+    await user.click(screen.getByLabelText("View users in the allowed scope"));
+    const voltar = screen.getByRole("button", { name: "← Profiles and permissions" });
+    await user.click(voltar);
+
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(voltar).toHaveFocus());
+    expect(screen.getByLabelText("View users in the allowed scope")).not.toBeChecked();
+    expect(api.salvarPermissoes).not.toHaveBeenCalled();
+  });
+
   it("envia o conjunto completo e mantém o rascunho quando a gravação falha", async () => {
     api.salvarPermissoes.mockRejectedValue(new Error("Falha de rede"));
     renderPage();

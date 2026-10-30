@@ -64,9 +64,22 @@ describe("SetoresPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(await screen.findByRole("button", { name: "Deactivate Engenharia" }));
+    const acao = await screen.findByRole("button", { name: "Deactivate Engenharia" });
+    await user.click(acao);
     expect(setoresApi.atualizar).not.toHaveBeenCalled();
-    await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: /Deactivate/ }));
+    // Spec 050: título, descrição e botão próprios, com o nome do setor, sem a mensagem de erro de atualização.
+    const confirmacao = screen.getByRole("alertdialog");
+    expect(within(confirmacao).getByRole("heading")).toHaveTextContent("Deactivate Engenharia?");
+    expect(confirmacao).toHaveTextContent("Engenharia will no longer appear as an active sector.");
+    expect(confirmacao).not.toHaveTextContent("Could not update");
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+    // Na grade do React Aria, o clique leva o foco para a linha da ação, e é para ela que o foco volta.
+    await waitFor(() => expect(acao.closest("[role='row']")).toContainElement(document.activeElement as HTMLElement));
+    expect(setoresApi.atualizar).not.toHaveBeenCalled();
+
+    await user.click(acao);
+    await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Deactivate sector" }));
 
     await waitFor(() => expect(setoresApi.atualizar).toHaveBeenCalledWith("setor-1", { nome: undefined, ativo: false }));
   });

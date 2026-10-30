@@ -42,11 +42,13 @@ interface DataTableProps<T extends object> {
 // Inter 500 14px `text-muted` com divisórias, linhas de 40px com divisória mais clara, texto 14px `text-body`.
 const tokensMoldura = {
   "--surface-secondary": "var(--panel)",
+  // As células do HeroUI usam bg-surface: dentro da tabela, a superfície é o corpo (spec 050).
+  "--surface": "var(--table-body)",
   "--separator-tertiary": "var(--table-row-divider)",
 } as CSSProperties;
 
 // O corpo branco tem raio de 25px no topo e continua embaixo das linhas, então a última linha não arredonda.
-const cantosCorpo = "bg-surface [&>tr:first-child>td:first-child]:rounded-ss-[25px] [&>tr:first-child>td:last-child]:rounded-se-[25px] [&>tr:last-child>td]:rounded-es-none [&>tr:last-child>td]:rounded-ee-none";
+const cantosCorpo = "bg-table-body [&>tr:first-child>td:first-child]:rounded-ss-[25px] [&>tr:first-child>td:last-child]:rounded-se-[25px] [&>tr:last-child>td]:rounded-es-none [&>tr:last-child>td]:rounded-ee-none";
 
 const chavePorId = (item: object) => (item as { id: string }).id;
 
@@ -84,7 +86,7 @@ export function DataTable<T extends object>({ columns, items, getKey = chavePorI
             </Table.Body>
           </Table.Content>
           {/* Corpo branco até o fim da moldura: com poucas linhas, ou no lugar delas quando há um estado. */}
-          <div className={cn("flex min-h-6 flex-1 flex-col rounded-b-[25px] bg-surface", !items.length && "rounded-t-[25px]")}>
+          <div className={cn("flex min-h-6 flex-1 flex-col rounded-b-[25px] bg-table-body", !items.length && "rounded-t-[25px]")}>
             {state ? <div className="flex flex-1 items-center justify-center p-6 text-center text-[14px] text-muted">{state}</div> : null}
           </div>
         </div>

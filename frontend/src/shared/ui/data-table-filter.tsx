@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from "react";
-import { Button, Calendar, ListBox, Popover, SearchField } from "@heroui/react";
-import { parseDate } from "@internationalized/date";
+import { Button, ListBox, Popover, SearchField } from "@heroui/react";
 import { ChevronLeft, Filter } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { cn } from "@/shared/lib/utils";
+import { Calendario } from "@/shared/ui/calendario";
 import { ChevronDownIcon } from "@/shared/ui/figma-icons";
 
 export interface DataTableFilterOption {
@@ -109,17 +109,8 @@ export function DataTableFilter({ label, accessibleLabel, value, onChange, optio
             </div>
           ) : type === "date" ? (
             <div className="grid gap-1.5">
-              <Calendar aria-label={nome} value={value ? parseDate(value) : null} onChange={(dia) => aplicar(dia.toString())} autoFocus>
-                <Calendar.Header>
-                  <Calendar.NavButton slot="previous" />
-                  <Calendar.Heading />
-                  <Calendar.NavButton slot="next" />
-                </Calendar.Header>
-                <Calendar.Grid>
-                  <Calendar.GridHeader>{(dia) => <Calendar.HeaderCell>{dia}</Calendar.HeaderCell>}</Calendar.GridHeader>
-                  <Calendar.GridBody>{(data) => <Calendar.Cell date={data} />}</Calendar.GridBody>
-                </Calendar.Grid>
-              </Calendar>
+              {/* O mesmo calendário dos filtros de semana (spec 050, RN-18), aqui só com os dias. */}
+              <Calendario modo="dia" valor={value} onEscolher={aplicar} />
               <div className="flex justify-end border-t border-separator pt-1.5">
                 <Button variant="ghost" className={botaoRodape} onPress={() => aplicar("")}>{t("clearFilters")}</Button>
               </div>
@@ -200,7 +191,7 @@ export function DataTableMultiFilter({ label, accessibleLabel, values, onChange,
           </div>
           {searchable && (
             <SearchField aria-label={t("searchOptions")} value={busca} onChange={setBusca} autoFocus className="w-full min-w-0">
-              <SearchField.Group className="h-9 w-full min-w-0 rounded-xl bg-panel">
+              <SearchField.Group className="h-9 w-full min-w-0 bg-panel">
                 <SearchField.SearchIcon />
                 <SearchField.Input className="text-[13px]" />
               </SearchField.Group>
