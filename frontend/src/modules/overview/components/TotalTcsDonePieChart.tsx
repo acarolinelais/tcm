@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import type { StatusBreakdown } from "../model/overview";
+import type { OverviewData } from "../model/overview";
 import { useTranslation } from "react-i18next";
 
 const SIZE = 140;
@@ -15,14 +15,18 @@ interface Segment {
   color: string;
 }
 
-export function TotalTcsDonePieChart({ breakdown }: { breakdown: StatusBreakdown }) {
+export function TotalTcsDonePieChart({ dados }: { dados: OverviewData }) {
   const [hover, setHover] = useState<string | null>(null);
   const { t } = useTranslation();
+  // A tela só desenha o gráfico com casos. O restante fecha 100% sem buraco de arredondamento, mas
+  // não fica negativo quando as duas primeiras fatias arredondam para cima (ex.: 3 e 5 de 8).
+  const completedPct = Math.round((dados.concluidos / dados.total) * 100);
+  const todoPct = Math.round((dados.aFazer / dados.total) * 100);
 
   const segments: Segment[] = [
-    { key: "completed", label: t("completed"), pct: breakdown.completedPct, color: "var(--chart-1)" },
-    { key: "todo", label: t("toDo"), pct: breakdown.todoPct, color: "var(--chart-2)" },
-    { key: "inProgress", label: t("inProgress"), pct: breakdown.inProgressPct, color: "var(--chart-3)" },
+    { key: "completed", label: t("completed"), pct: completedPct, color: "var(--chart-1)" },
+    { key: "todo", label: t("toDo"), pct: todoPct, color: "var(--chart-2)" },
+    { key: "inProgress", label: t("inProgress"), pct: Math.max(0, 100 - completedPct - todoPct), color: "var(--chart-3)" },
   ];
 
   let acc = 0;
@@ -33,7 +37,7 @@ export function TotalTcsDonePieChart({ breakdown }: { breakdown: StatusBreakdown
     return { ...s, strokeDasharray: `${length} ${CIRCUMFERENCE}`, strokeDashoffset: offset };
   });
 
-  const centerPct = hover ? segments.find((s) => s.key === hover)?.pct : breakdown.completedPct;
+  const centerPct = hover ? segments.find((s) => s.key === hover)?.pct : completedPct;
 
   return (
     <div className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card p-5">

@@ -12,6 +12,7 @@ from src.application.services.form_factor_service import FormFactorServiceImpl
 from src.application.services.importacao_projeto_service import ImportacaoProjetoServiceImpl
 from src.application.services.importacao_sdf_service import ImportacaoSdfServiceImpl
 from src.application.services.modelo_dispositivo_service import ModeloDispositivoServiceImpl
+from src.application.services.overview_service import OverviewServiceImpl
 from src.application.services.projeto_service import ProjetoServiceImpl
 from src.application.services.setor_service import SetorServiceImpl
 from src.application.services.time_service import TimeServiceImpl
@@ -49,6 +50,7 @@ from src.infrastructure.repositories.link_pull_request_repository import (
 from src.infrastructure.repositories.modelo_dispositivo_repository import (
     ModeloDispositivoRepositoryImpl,
 )
+from src.infrastructure.repositories.overview_repository import OverviewRepositoryImpl
 from src.infrastructure.repositories.projeto_modelo_repository import ProjetoModeloRepositoryImpl
 from src.infrastructure.repositories.projeto_repository import ProjetoRepositoryImpl
 from src.infrastructure.repositories.resultado_form_factor_repository import (
@@ -268,6 +270,12 @@ async def get_caso_teste_service(
         UnitOfWorkImpl(session),
         HistoricoCasoTesteRepositoryImpl(session),
     )
+
+
+async def get_overview_service(
+    session: AsyncSession = Depends(get_session),
+) -> OverviewServiceImpl:
+    return OverviewServiceImpl(OverviewRepositoryImpl(session))
 
 
 async def get_modelo_dispositivo_service(
