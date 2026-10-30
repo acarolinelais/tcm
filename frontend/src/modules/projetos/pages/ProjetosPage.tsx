@@ -33,6 +33,7 @@ import { useLeituraPlanilha } from "../hooks/useLeituraPlanilha";
 import { statusProjetoTons } from "../components/status/status-projeto-estilos";
 import { timesApi } from "@/modules/times/api/times.api";
 import { modelosDispositivoApi, projetosApi, type Projeto, type StatusProjeto } from "../api/projetos.api";
+import { ROTULO_STATUS_PROJETO } from "../model/projeto";
 
 type ModoCriacao = "manual" | "planilha";
 const statusProjeto: StatusProjeto[] = ["Created", "To Do", "InProgress", "Completed", "Canceled"];
@@ -144,8 +145,7 @@ export function ProjetosPage() {
     baixarPlanilha(XLSX.write(workbook, { bookType: "xlsx", type: "array" }), "template-projeto-test-cases.xlsx");
   }
   function statusLabel(status: StatusProjeto) {
-    const keys: Record<StatusProjeto, string> = { Created: "projectCreated", "To Do": "toDo", InProgress: "inProgress", Completed: "completed", Canceled: "projectCanceled" };
-    return t(keys[status]);
+    return t(ROTULO_STATUS_PROJETO[status]);
   }
   function projectSetup(visivel: boolean) {
     if (!visivel) return null;

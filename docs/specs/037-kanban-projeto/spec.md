@@ -71,17 +71,20 @@ setor, time e projeto dentro do próprio escopo e chega ao Kanban desse projeto.
   o link mantém o mesmo recorte.
 
 ### Board na navegação lateral
-- RN-12: A opção Board abre uma escolha em cascata: Setor → Time → Projeto. Ao escolher o projeto, a pessoa
-  vai para uma tela só com o Kanban desse projeto, sem as abas Test Cases e Form Factor (decidido em
-  2026-10-30). A tela do projeto, aberta por Projects, continua com as três abas.
-- RN-13: Cada seletor só oferece opções do escopo da pessoa:
-  - administrador da unidade: todos os setores da unidade;
-  - gerente: os setores que gerencia e os setores dos times dos quais participa (ADR 0036);
-  - KP e dev: os setores dos times dos quais participam ativamente; no seletor de time, só esses times.
-- RN-14: Quando um seletor tem uma única opção, ela é escolhida automaticamente. Um gerente de um só setor
-  começa pelo time; quem tem um só time com um só projeto vai direto para o Kanban dele.
-- RN-15: Trocar o setor limpa time e projeto; trocar o time limpa o projeto.
-- RN-16: O seletor de projeto lista primeiro os projetos ativos e, depois deles, os `Completed` e `Canceled`.
+- RN-12: Do Board, a pessoa abre uma tela só com o Kanban do projeto, sem as abas Test Cases e Form Factor.
+  O título dessa tela troca de projeto entre os projetos do Board. A tela do projeto, aberta por Projects,
+  continua com as três abas. (Revisto em 2026-10-30: a escolha em cascata Setor → Time → Projeto saiu.)
+- RN-13: O Board só oferece times e projetos do escopo da pessoa:
+  - administrador da unidade: todos os times da unidade;
+  - gerente: os times dos setores que gerencia e os times dos quais participa (ADR 0036);
+  - KP e dev: os times dos quais participam ativamente.
+- RN-14: O dev, e qualquer pessoa com um time só, entra direto no Kanban: no último projeto que abriu pelo
+  Board ou, na primeira vez (ou se ele não existir mais), no primeiro projeto ativo. Sem nenhum projeto nos
+  seus times, vê um aviso.
+- RN-15: Admin, gerente e KP com mais de um time veem uma tela com um card por time, agrupados por setor. O
+  card mostra o nome do time, quantos membros ativos ele tem e os projetos com o status de cada um; um clique
+  no projeto abre o Kanban. Uma busca no topo filtra por nome de time ou de projeto.
+- RN-16: No card, os projetos ativos vêm primeiro e, depois deles, os `Completed` e `Canceled`, mais apagados.
   Um time sem projetos mostra um aviso de que ainda não há projetos nele.
 
 ### Escopo e textos
@@ -120,17 +123,17 @@ setor, time e projeto dentro do próprio escopo e chega ao Kanban desse projeto.
   os totais das colunas somam 1.000.
 - **CA-14:** Dado um link para a aba Kanban de um projeto do escopo, quando a pessoa o abre, então a tela do
   projeto já abre nessa aba.
-- **CA-15:** Dado um gerente de dois setores, quando abre o Board, então escolhe setor, time e projeto, cada
-  seletor lista só opções do escopo dele, e ao escolher o projeto ele vai para a tela do Kanban do projeto,
+- **CA-15:** Dado um gerente com times em dois setores, quando abre o Board, então vê um card por time do
+  escopo, agrupados por setor, com os membros e os projetos; e um clique num projeto abre a tela do Kanban dele,
   sem as abas Test Cases e Form Factor.
-- **CA-16:** Dado um gerente de um só setor, quando abre o Board, então o setor já vem escolhido e ele começa
-  pelo time.
-- **CA-17:** Dado um dev de um só time com um só projeto, quando abre o Board, então vai direto para a tela
-  do Kanban desse projeto.
-- **CA-18:** Dado setor, time e projeto escolhidos no Board, quando a pessoa troca o setor, então time e
-  projeto são limpos.
-- **CA-19 (falha):** Dado uma pessoa sem nenhum time no escopo, quando abre o Board, então vê um aviso de que
-  não há times disponíveis, sem seletores vazios.
+- **CA-16:** Dado a tela de cards, quando a pessoa busca pelo nome de um projeto, então só os times com
+  projetos que batem aparecem; e uma busca sem resultado mostra o aviso próprio.
+- **CA-17:** Dado um dev, mesmo com mais de um time, quando abre o Board, então entra direto no Kanban, sem a
+  tela de cards.
+- **CA-18:** Dado alguém que entra direto no Kanban e já abriu outro projeto pelo Board, quando abre o Board de
+  novo, então volta a esse projeto; se ele não existir mais, entra no primeiro projeto ativo.
+- **CA-19 (falha):** Dado uma pessoa sem nenhum time no escopo, ou um dev cujos times não têm projetos,
+  quando abre o Board, então vê o aviso correspondente, sem cards nem Kanban vazio.
 - **CA-21:** Dado um card que a pessoa pode mover, quando ela começa a arrastar, então o card acompanha o
   ponteiro com sombra, o lugar de origem fica marcado e só as colunas que aceitam o card ficam em destaque.
 - **CA-22:** Dado um arrasto perto da borda direita do quadro, quando o ponteiro fica ali, então as colunas

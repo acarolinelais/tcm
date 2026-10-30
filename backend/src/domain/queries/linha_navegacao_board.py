@@ -12,6 +12,7 @@ class LinhaNavegacaoBoard:
     setor_nome: str
     time_id: UUID
     time_nome: str
+    time_membros: int
     projeto_id: UUID | None
     projeto_nome: str | None
     projeto_status: StatusProjeto | None

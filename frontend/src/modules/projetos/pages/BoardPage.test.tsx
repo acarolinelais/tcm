@@ -1,32 +1,48 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Outlet, Route, Routes, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PerfilAtual } from "@/core/auth/api";
 
 import { projetosApi } from "../api/projetos.api";
-import type { NavegacaoBoard } from "../model/projeto";
+import type { NavegacaoBoard, StatusProjeto } from "../model/projeto";
+import { salvarUltimoProjetoBoard } from "../utils/ultimo-projeto-board";
 import { BoardPage } from "./BoardPage";
 
 vi.mock("../api/projetos.api", () => ({ projetosApi: { navegacao: vi.fn() }, casosTesteApi: {}, formFactorApi: {}, modelosDispositivoApi: {} }));
 
-const perfil = { id: "gerente", unidade_id: "u" } as PerfilAtual;
-const projeto = (id: string, nome: string) => ({ id, nome, status: "InProgress" as const });
+const gerente = { id: "gerente", unidade_id: "u", perfil_codigo: "GERENTE" } as PerfilAtual;
+const dev = { id: "dev", unidade_id: "u", perfil_codigo: "USUARIO_PADRAO" } as PerfilAtual;
+const projeto = (id: string, nome: string, status: StatusProjeto = "InProgress") => ({ id, nome, status });
+
+const variosTimes: NavegacaoBoard = {
+  setores: [
+    { id: "s1", nome: "SVP", times: [
+      { id: "t1", nome: "SDF Automation", membros: 11, projetos: [projeto("p1", "Clock 9.5"), projeto("p2", "Alarm 9.5", "Completed")] },
+      { id: "t2", nome: "QA Mobile", membros: 1, projetos: [] },
+    ] },
+    { id: "s2", nome: "Web", times: [{ id: "t3", nome: "Site", membros: 4, projetos: [projeto("p3", "Portal 2.0")] }] },
+  ],
+};
+const umTime: NavegacaoBoard = {
+  setores: [{ id: "s1", nome: "SVP", times: [{ id: "t1", nome: "SDF Automation", membros: 11, projetos: [
+    projeto("p2", "Alarm 9.5", "Completed"), projeto("p1", "Clock 9.5"), projeto("p4", "Weather 9.5"),
+  ] }] }],
+};
 
 function Destino() {
-  const local = useLocation();
-  return <p>{`destino ${local.pathname}${local.search}`}</p>;
+  return <p>{`destino ${useLocation().pathname}`}</p>;
 }
 
-function renderBoard(arvore: NavegacaoBoard | Error, url = "/board") {
+function renderBoard(perfil: PerfilAtual, arvore: NavegacaoBoard | Error) {
   if (arvore instanceof Error) vi.mocked(projetosApi.navegacao).mockRejectedValue(arvore);
   else vi.mocked(projetosApi.navegacao).mockResolvedValue(arvore);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   function Contexto() { return <Outlet context={perfil} />; }
   render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[url]}>
+      <MemoryRouter initialEntries={["/board"]}>
         <Routes>
           <Route element={<Contexto />}>
             <Route path="board" element={<BoardPage />} />
@@ -38,83 +54,76 @@ function renderBoard(arvore: NavegacaoBoard | Error, url = "/board") {
   );
 }
 
-const doisSetores: NavegacaoBoard = {
-  setores: [
-    { id: "s1", nome: "Mobile", times: [
-      { id: "t1", nome: "Clock", projetos: [projeto("p1", "Clock 9.5"), projeto("p2", "Alarm 9.5")] },
-      { id: "t2", nome: "Vazio", projetos: [] },
-    ] },
-    { id: "s2", nome: "Web", times: [{ id: "t3", nome: "Site", projetos: [projeto("p3", "Site 1.0")] }] },
-  ],
-};
-
-async function escolher(user: ReturnType<typeof userEvent.setup>, campo: string, opcao: string) {
-  await user.click(await screen.findByRole("button", { name: new RegExp(campo) }));
-  await user.click(await screen.findByRole("option", { name: opcao }));
-}
-
 describe("BoardPage", () => {
-  beforeEach(() => { vi.mocked(projetosApi.navegacao).mockReset(); });
+  beforeEach(() => {
+    vi.mocked(projetosApi.navegacao).mockReset();
+    localStorage.clear();
+  });
 
-  it("escolhe setor, time e projeto e abre a tela do Kanban do projeto", async () => {
-    renderBoard(doisSetores);
+  it("gerente com vários times vê os cards por setor e abre o Kanban num clique", async () => {
+    renderBoard(gerente, variosTimes);
     const user = userEvent.setup();
 
-    await escolher(user, "Sector", "Mobile");
-    await escolher(user, "Team", "Clock");
-    await escolher(user, "Project", "Alarm 9.5");
+    expect(await screen.findByRole("heading", { name: /^SVP/ })).toHaveTextContent("SVP2 teams");
+    expect(screen.getByRole("heading", { name: /^Web/ })).toBeInTheDocument();
+    const time = screen.getByRole("article", { name: "SDF Automation" });
+    expect(within(time).getByText(/11 members/)).toHaveTextContent("11 members·2 projects");
+    expect(within(screen.getByRole("article", { name: "QA Mobile" })).getByText("This team has no projects yet.")).toBeInTheDocument();
+    await user.click(within(time).getByRole("link", { name: /Clock 9\.5/ }));
 
-    expect(await screen.findByText("destino /board/p2")).toBeInTheDocument();
+    expect(await screen.findByText("destino /board/p1")).toBeInTheDocument();
   });
 
-  it("só oferece os setores do escopo e esconde time e projeto até a escolha", async () => {
-    renderBoard(doisSetores);
+  it("a busca filtra por time ou por projeto", async () => {
+    renderBoard(gerente, variosTimes);
     const user = userEvent.setup();
+    await screen.findByRole("article", { name: "Site" });
 
-    await user.click(await screen.findByRole("button", { name: /Sector/ }));
-    expect((await screen.findAllByRole("option")).map((opcao) => opcao.textContent)).toEqual(["Mobile", "Web"]);
-    expect(screen.queryByRole("button", { name: /Team/ })).not.toBeInTheDocument();
+    await user.type(screen.getByRole("searchbox", { name: "Search team or project" }), "portal");
+    expect(screen.getAllByRole("article").map((card) => card.getAttribute("aria-label"))).toEqual(["Site"]);
+    expect(screen.queryByRole("heading", { name: /^SVP/ })).not.toBeInTheDocument();
+
+    await user.clear(screen.getByRole("searchbox", { name: "Search team or project" }));
+    await user.type(screen.getByRole("searchbox", { name: "Search team or project" }), "nada disso");
+    expect(screen.getByText("No team or project matches the search.")).toBeInTheDocument();
   });
 
-  it("setor único já vem escolhido", async () => {
-    renderBoard({ setores: [doisSetores.setores[0]] });
+  it("dev vai direto para o primeiro projeto ativo, mesmo com vários times", async () => {
+    renderBoard(dev, variosTimes);
 
-    expect(await screen.findByRole("button", { name: /Team/ })).toBeInTheDocument();
+    expect(await screen.findByText("destino /board/p1")).toBeInTheDocument();
+    expect(screen.queryByRole("article")).not.toBeInTheDocument();
   });
 
-  it("um caminho só até um projeto só vai direto para o Kanban", async () => {
-    renderBoard({ setores: [doisSetores.setores[1]] });
+  it("quem tem um time só vai direto, e volta ao último Kanban que abriu", async () => {
+    salvarUltimoProjetoBoard("gerente", "p4");
+    renderBoard(gerente, umTime);
 
-    expect(await screen.findByText("destino /board/p3")).toBeInTheDocument();
+    expect(await screen.findByText("destino /board/p4")).toBeInTheDocument();
   });
 
-  it("trocar o setor limpa o time escolhido", async () => {
-    renderBoard(doisSetores, "/board?setor=s1&time=t1");
-    const user = userEvent.setup();
+  it("um último projeto que não existe mais cai no primeiro ativo, pulando os encerrados", async () => {
+    salvarUltimoProjetoBoard("dev", "removido");
+    renderBoard(dev, umTime);
 
-    expect(await screen.findByRole("button", { name: /Project/ })).toBeInTheDocument();
-    await escolher(user, "Sector", "Web");
-
-    // Web tem um time só com um projeto só: sem o time antigo, segue direto para o Kanban dele.
-    expect(await screen.findByText("destino /board/p3")).toBeInTheDocument();
+    expect(await screen.findByText("destino /board/p1")).toBeInTheDocument();
   });
 
-  it("time sem projetos mostra o aviso", async () => {
-    renderBoard(doisSetores, "/board?setor=s1&time=t2");
+  it("dev cujos times não têm projetos vê o aviso, sem cards", async () => {
+    renderBoard(dev, { setores: [{ id: "s1", nome: "SVP", times: [{ id: "t1", nome: "SDF Automation", membros: 3, projetos: [] }] }] });
 
-    expect(await screen.findByText("This team has no projects yet.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Project/ })).not.toBeInTheDocument();
+    expect(await screen.findByText("Your teams don't have any projects yet.")).toBeInTheDocument();
   });
 
-  it("sem times no escopo mostra o aviso, sem seletores vazios", async () => {
-    renderBoard({ setores: [] });
+  it("sem times no escopo mostra o aviso", async () => {
+    renderBoard(gerente, { setores: [] });
 
     expect(await screen.findByText("There are no teams available to you yet.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Sector/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
   });
 
   it("falha ao carregar mostra o erro com Tentar novamente", async () => {
-    renderBoard(new Error("500"));
+    renderBoard(gerente, new Error("500"));
 
     expect(await screen.findByText("Could not load the sectors and teams.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();

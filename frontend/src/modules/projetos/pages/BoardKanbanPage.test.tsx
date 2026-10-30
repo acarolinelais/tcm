@@ -35,7 +35,7 @@ describe("BoardKanbanPage", () => {
   beforeEach(() => {
     vi.mocked(projetosApi.obter).mockReset();
     vi.mocked(casosTesteApi.kanban).mockReset();
-    vi.mocked(projetosApi.navegacao).mockReset().mockResolvedValue({ setores: [{ id: "s1", nome: "SVP", times: [{ id: "t1", nome: "SDF Automation", projetos: [
+    vi.mocked(projetosApi.navegacao).mockReset().mockResolvedValue({ setores: [{ id: "s1", nome: "SVP", times: [{ id: "t1", nome: "SDF Automation", membros: 11, projetos: [
       { id: "p1", nome: "Weather 9.5", status: "Created" }, { id: "p2", nome: "Clock 9.5", status: "InProgress" },
     ] }] }] });
   });

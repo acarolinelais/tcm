@@ -4,6 +4,8 @@ import type { CorAvatar, PerfilAtual } from "@/core/auth/api";
 import type { PagedResult } from "@/shared/types/paged-result";
 
 export type StatusProjeto = "Created" | "To Do" | "InProgress" | "Completed" | "Canceled";
+/** Chaves i18n dos rótulos do status do projeto. */
+export const ROTULO_STATUS_PROJETO: Record<StatusProjeto, string> = { Created: "projectCreated", "To Do": "toDo", InProgress: "inProgress", Completed: "completed", Canceled: "projectCanceled" };
 export const CATEGORIAS_CASO_TESTE = ["A", "B", "C"] as const;
 /** Category não tem tradução: o rótulo é o próprio valor. */
 export const OPCOES_CATEGORIA = CATEGORIAS_CASO_TESTE.map((valor) => ({ value: valor, label: valor }));
@@ -105,7 +107,7 @@ export interface KanbanProjeto {
 }
 
 export interface NavegacaoBoard {
-  setores: { id: string; nome: string; times: { id: string; nome: string; projetos: Pick<Projeto, "id" | "nome" | "status">[] }[] }[];
+  setores: { id: string; nome: string; times: { id: string; nome: string; membros: number; projetos: Pick<Projeto, "id" | "nome" | "status">[] }[] }[];
 }
 
 /** Basta o id e o TC ID para abrir o painel de detalhes pelas tabelas de Test Cases, Form Factor e Resultados gerais (spec 030). */

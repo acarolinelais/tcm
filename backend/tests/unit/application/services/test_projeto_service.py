@@ -366,6 +366,7 @@ def linha(setor_id, setor, time_id, time, projeto=None, status=StatusProjeto.CRE
         setor,
         time_id,
         time,
+        3,
         uuid4() if projeto else None,
         projeto,
         status if projeto else None,

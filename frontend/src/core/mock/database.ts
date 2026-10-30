@@ -724,6 +724,7 @@ export const mockProjetosApi = {
         times: times.filter((team) => team.setor_id === sector.id).sort(porNome).map((team) => ({
           id: team.id,
           nome: team.nome,
+          membros: db.membrosTime.filter((member) => member.time_id === team.id && member.ativo).length,
           projetos: db.projetos
             .filter((project) => project.ativo && project.time_id === team.id)
             .sort((a, b) => encerrado(a.status) - encerrado(b.status) || porNome(a, b))

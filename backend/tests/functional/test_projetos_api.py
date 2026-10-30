@@ -328,7 +328,14 @@ async def test_listar_navegacao_retorna_arvore_e_nao_cai_na_rota_por_id(api_clie
     projeto_repo = AsyncMock()
     projeto_repo.listar_navegacao.return_value = (
         LinhaNavegacaoBoard(
-            setor_id, "SVP", time_id, "SDF Automation", uuid4(), "Clock 9.5", StatusProjeto.TO_DO
+            setor_id,
+            "SVP",
+            time_id,
+            "SDF Automation",
+            11,
+            uuid4(),
+            "Clock 9.5",
+            StatusProjeto.TO_DO,
         ),
     )
     service = ProjetoServiceImpl(projeto_repo, AsyncMock(), AsyncMock(), AsyncMock(), AsyncMock())
@@ -347,6 +354,7 @@ async def test_listar_navegacao_retorna_arvore_e_nao_cai_na_rota_por_id(api_clie
     assert response.status_code == 200
     [setor] = response.json()["setores"]
     assert setor["nome"] == "SVP"
+    assert setor["times"][0]["membros"] == 11
     assert setor["times"][0]["projetos"][0] == {
         "id": setor["times"][0]["projetos"][0]["id"],
         "nome": "Clock 9.5",

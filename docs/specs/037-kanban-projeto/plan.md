@@ -167,6 +167,16 @@ Sem alteração. O Kanban lê `CasoTeste.status` (`To-Do`, `InProgress`, `InRevi
   (`?responsavel=&status=&category=&difficulty=&situation=&tc=`). O `KanbanBoard` serve à aba do projeto e à
   tela do Board, então os dois ganham os filtros.
 
+## Ajuste: entrada do Board (2026-10-30)
+
+- A cascata de selects sai. `BoardPage` decide pela árvore da navegação:
+  - dev, ou um time só no total: `<Navigate>` para `/board/{id}`, com o último projeto aberto (guardado em
+    `localStorage` por pessoa, em `utils/ultimo-projeto-board.ts`, com `try/catch`) ou o primeiro ativo;
+  - os demais: cards por time, agrupados por setor, com `SearchField` do HeroUI filtrando no cliente.
+- `GET /api/projetos/navegacao` ganha `membros` por time: uma subconsulta conta os membros ativos na mesma query.
+- `BoardKanbanPage` grava o projeto aberto como o último. `ROTULO_STATUS_PROJETO` vai para `model/projeto.ts`
+  e é usado pela lista de Projects e pelos cards.
+
 ## Riscos e decisões pendentes
 
 - **Regras de Status suspensas:** as RN-04 e RN-05 da spec 023 estão suspensas desde 2026-10-27, e o

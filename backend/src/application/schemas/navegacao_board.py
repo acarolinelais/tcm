@@ -16,6 +16,7 @@ class ProjetoNavegacaoResponse(BaseModel):
 class TimeNavegacaoResponse(BaseModel):
     id: UUID
     nome: str
+    membros: int
     projetos: list[ProjetoNavegacaoResponse]
 
 
@@ -40,7 +41,7 @@ def to_navegacao_response(linhas: Iterable[LinhaNavegacaoBoard]) -> NavegacaoBoa
             )
         if linha.time_id not in times:
             times[linha.time_id] = TimeNavegacaoResponse(
-                id=linha.time_id, nome=linha.time_nome, projetos=[]
+                id=linha.time_id, nome=linha.time_nome, membros=linha.time_membros, projetos=[]
             )
             setores[linha.setor_id].times.append(times[linha.time_id])
         # O outer join traz id, nome e status do projeto nulos juntos.

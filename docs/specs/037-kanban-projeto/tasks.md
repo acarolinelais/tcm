@@ -149,6 +149,20 @@
 - [x] **T17. Suíte completa**
   - Verificação: `uv run pytest`, `npm test && npm run lint` e `npm run e2e` → tudo verde.
 
+## Fase 8: entrada do Board (ajuste de 2026-10-30)
+
+- [x] **T18. Membros ativos por time na navegação**
+  - Arquivos: `projeto_repository.py`, `linha_navegacao_board.py`, `schemas/navegacao_board.py`, os testes; no
+    frontend `model/projeto.ts` e `core/mock/database.ts`
+  - Cobre: CA-15
+  - Verificação: `uv run pytest -k navegacao` → só os membros ativos contam.
+- [x] **T19. Entrada direta para dev e time único, e cards por time para os demais**
+  - Arquivos: `pages/BoardPage.tsx`, `pages/BoardKanbanPage.tsx`, `utils/ultimo-projeto-board.ts`, `resources.ts`, os testes
+  - Cobre: CA-15, CA-16, CA-17, CA-18, CA-19
+  - Verificação: `npm test -- BoardPage BoardKanbanPage` → cards, busca, entrada direta e último projeto.
+- [x] **T20. Suíte completa**
+  - Verificação: `uv run pytest`, `npm test && npm run lint` e `npm run e2e` → tudo verde.
+
 ## Backlog
 - **`destinos` repetido em cada card** (simplify da fase 1): com 1.000 cards, a mesma lista de até 6 Status
   volta em quase todos. Trocar por destinos por coluna e uma marcação por card muda o contrato da API da spec
@@ -178,3 +192,10 @@
   em `model/` serviria aos dois.
 - **Fallback da cor do avatar repetido** (simplify da fase 7): `cor or CorAvatar.AZUL` aparece em
   `caso_teste_repository.py` e `usuario_repository.py`. Um `cor_avatar_de(valor)` no domínio serviria aos dois.
+- **Contagem de membros por linha de projeto** (simplify da fase 8): a subconsulta correlacionada em
+  `listar_navegacao` conta os membros uma vez por projeto do mesmo time. Com o volume atual não pesa; se
+  crescer, trocar por uma subconsulta agregada por `time_id` com `outerjoin`.
+- **Regra de projeto encerrado repetida** (simplify da fase 8): `BoardPage.tsx` e `ProjetosPage.tsx` decidem
+  "Completed ou Canceled" cada um do seu jeito. Um `projetoEncerrado` em `model/projeto.ts` serviria aos dois.
+- **Campo de busca repetido** (simplify da fase 8): o `SearchField` do Board é a terceira cópia (as outras em
+  `multi-select-combobox.tsx` e `data-table-filter.tsx`). Um `shared/ui/campo-busca.tsx` serviria a todas.

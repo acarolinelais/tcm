@@ -158,12 +158,19 @@ class ProjetoRepositoryImpl(RepositoryBaseImpl[Projeto, ProjetoModel]):
         encerrado = ProjetoModel.status.in_(
             (StatusProjeto.COMPLETED.value, StatusProjeto.CANCELED.value)
         )
+        membros = (
+            select(func.count())
+            .where(TimeMembroModel.time_id == TimeModel.id, TimeMembroModel.ativo.is_(True))
+            .correlate(TimeModel)
+            .scalar_subquery()
+        )
         stmt = (
             select(
                 SetorModel.id,
                 SetorModel.nome,
                 TimeModel.id,
                 TimeModel.nome,
+                membros,
                 ProjetoModel.id,
                 ProjetoModel.nome,
                 ProjetoModel.status,
@@ -189,18 +196,21 @@ class ProjetoRepositoryImpl(RepositoryBaseImpl[Projeto, ProjetoModel]):
         if time_ids is not None:
             stmt = stmt.where(TimeModel.id.in_(time_ids))
         linhas = await self.session.execute(stmt)
-        return tuple(
-            LinhaNavegacaoBoard(
-                setor_id,
-                setor_nome,
-                time_id,
-                time_nome,
-                projeto_id,
-                projeto_nome,
-                StatusProjeto(status) if status is not None else None,
+
+        def para_linha(setor_id, setor_nome, time_id, time_nome, membros, projeto_id, nome, status):
+            # Mesma ordem das colunas do select acima.
+            return LinhaNavegacaoBoard(
+                setor_id=setor_id,
+                setor_nome=setor_nome,
+                time_id=time_id,
+                time_nome=time_nome,
+                time_membros=membros,
+                projeto_id=projeto_id,
+                projeto_nome=nome,
+                projeto_status=StatusProjeto(status) if status is not None else None,
             )
-            for setor_id, setor_nome, time_id, time_nome, projeto_id, projeto_nome, status in linhas
-        )
+
+        return tuple(para_linha(*linha) for linha in linhas)
 
     async def desativar(self, unidade_id: UUID, projeto_id: UUID) -> None:
         model = (

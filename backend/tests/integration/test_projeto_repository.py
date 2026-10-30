@@ -6,8 +6,10 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from src.domain.entities.projeto import Projeto, StatusProjeto
 from src.domain.entities.projeto_modelo import ProjetoModelo
 from src.infrastructure.data.models.modelo_dispositivo_model import ModeloDispositivoModel
+from src.infrastructure.data.models.perfil_model import PerfilModel
 from src.infrastructure.data.models.projeto_model import ProjetoModel
 from src.infrastructure.data.models.setor_model import SetorModel
+from src.infrastructure.data.models.time_membro_model import TimeMembroModel
 from src.infrastructure.data.models.time_model import TimeModel
 from src.infrastructure.data.models.unidade_model import UnidadeModel
 from src.infrastructure.data.models.usuario_model import UsuarioModel  # noqa: F401
@@ -188,6 +190,35 @@ async def test_listar_navegacao_traz_ativos_no_escopo_e_encerrados_por_ultimo():
                 ]
             )
             await session.flush()
+            # Dois membros ativos e um inativo no time Clock: só os ativos contam.
+            perfil_id = uuid4()
+            session.add(
+                PerfilModel(id=perfil_id, unidade_id=unidade_id, nome=f"Perfil {perfil_id}")
+            )
+            await session.flush()
+            pessoas = [uuid4() for _ in range(3)]
+            session.add_all(
+                UsuarioModel(
+                    id=pessoa,
+                    unidade_id=unidade_id,
+                    nome=f"Pessoa {i}",
+                    email=f"p{i}-{pessoa}@example.com",
+                    perfil_id=perfil_id,
+                )
+                for i, pessoa in enumerate(pessoas)
+            )
+            await session.flush()
+            session.add_all(
+                TimeMembroModel(
+                    id=uuid4(),
+                    unidade_id=unidade_id,
+                    time_id=clock_id,
+                    usuario_id=pessoa,
+                    ativo=i < 2,
+                )
+                for i, pessoa in enumerate(pessoas)
+            )
+            await session.flush()
             repository = ProjetoRepositoryImpl(session)
 
             unidade = await repository.listar_navegacao(unidade_id, None)
@@ -201,6 +232,7 @@ async def test_listar_navegacao_traz_ativos_no_escopo_e_encerrados_por_ultimo():
                 ("Web", "Site", "Site 9.5"),
             ]
             assert unidade[2].projeto_status is StatusProjeto.COMPLETED
+            assert [linha.time_membros for linha in unidade] == [2, 2, 2, 0, 0]
 
             so_web = await repository.listar_navegacao(unidade_id, (web_time_id,))
             assert [linha.time_nome for linha in so_web] == ["Site"]
