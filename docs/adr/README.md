@@ -55,3 +55,4 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0041](0041-cores-somente-por-tokens-semanticos.md) | Cores somente por tokens semânticos | Aceito |
 | [0042](0042-exportacao-de-tabelas-para-excel-no-navegador.md) | Exportação de tabelas para Excel gerada no navegador | Aceito |
 | [0043](0043-cor-do-avatar-por-conta.md) | Cor do avatar por conta | Aceito |
+| [0044](0044-auditoria-por-triggers-no-postgresql.md) | Auditoria de alterações por triggers no PostgreSQL | Aceito |

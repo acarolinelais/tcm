@@ -2,7 +2,7 @@ import os
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import Depends
+from fastapi import Depends, Header
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +18,12 @@ from src.application.services.time_service import TimeServiceImpl
 from src.application.services.usuario_service import UsuarioServiceImpl
 from src.domain.common.exceptions import CredenciaisInvalidasException, ForbiddenException
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
+from src.infrastructure.data.auditoria import (
+    ContextoAuditoriaImpl,
+    tela_auditoria,
+    tela_da_requisicao,
+    usuario_auditoria,
+)
 from src.infrastructure.data.models.auth_sessao_model import AuthSessaoModel
 from src.infrastructure.data.models.perfil_model import PerfilModel
 from src.infrastructure.data.models.permissao_model import PerfilPermissaoModel, PermissaoModel
@@ -30,6 +36,9 @@ from src.infrastructure.data.session import get_session as get_session
 from src.infrastructure.data.unit_of_work import UnitOfWorkImpl
 from src.infrastructure.repositories.caso_teste_repository import CasoTesteRepositoryImpl
 from src.infrastructure.repositories.execucao_sdf_repository import ExecucaoSdfRepositoryImpl
+from src.infrastructure.repositories.historico_caso_teste_repository import (
+    HistoricoCasoTesteRepositoryImpl,
+)
 from src.infrastructure.repositories.historico_form_factor_repository import (
     HistoricoFormFactorRepositoryImpl,
 )
@@ -64,7 +73,10 @@ bearer = HTTPBearer(auto_error=False)
 async def get_usuario_atual(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
     session: AsyncSession = Depends(get_session),
+    x_tela: str | None = Header(default=None),
 ) -> UsuarioAutenticado:
+    # A tela de onde a operação veio entra no histórico de auditoria (spec 038, ADR 0044).
+    tela_auditoria.set(tela_da_requisicao(x_tela))
     return await _obter_usuario_atual(credentials, session, permitir_senha_inicial=False)
 
 
@@ -86,6 +98,9 @@ async def _obter_usuario_atual(
     payload = decodificar_token(credentials.credentials)
     if payload is None:
         raise CredenciaisInvalidasException("Credenciais inválidas.")
+    # Antes da primeira leitura: o listener after_begin grava o usuário na transação que ela abre
+    # e nas seguintes, e os triggers de auditoria o leem de lá (ADR 0044).
+    usuario_auditoria.set(payload.usuario_id)
     sessao = await session.get(AuthSessaoModel, payload.sessao_id)
     usuario = await session.get(UsuarioModel, payload.usuario_id)
     agora = datetime.now(UTC).replace(tzinfo=None)
@@ -251,6 +266,7 @@ async def get_caso_teste_service(
         UsuarioRepositoryImpl(session),
         LinkPullRequestRepositoryImpl(session),
         UnitOfWorkImpl(session),
+        HistoricoCasoTesteRepositoryImpl(session),
     )
 
 
@@ -306,4 +322,5 @@ async def get_form_factor_service(
         UnitOfWorkImpl(session),
         RodadaFormFactorRepositoryImpl(session),
         HistoricoFormFactorRepositoryImpl(session),
+        ContextoAuditoriaImpl(session),
     )
