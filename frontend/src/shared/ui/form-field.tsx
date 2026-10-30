@@ -47,7 +47,7 @@ export function TextAreaField({ label, error, description, isRequired, isDisable
   return (
     <TextField value={value} onChange={onChange} isInvalid={Boolean(error)} isRequired={isRequired} isDisabled={isDisabled} validationBehavior="aria" className="flex flex-col gap-2">
       <Label className="text-[14px] font-medium text-body">{label}</Label>
-      <TextArea maxLength={maxLength} autoFocus={autoFocus} rows={4} className="min-h-24 resize-y text-[14px]" />
+      <TextArea maxLength={maxLength} autoFocus={autoFocus} rows={4} className="min-h-24 resize-y rounded-2xl text-[14px]" />
       <div className="flex items-start justify-between gap-3">
         {error ? <FieldError className="text-[12px]"><span role="alert">{error}</span></FieldError> : description ? <Description className="text-[12px] text-muted">{description}</Description> : <span />}
         {/* Algarismos de largura fixa: o contador não "pula" enquanto a pessoa digita. */}

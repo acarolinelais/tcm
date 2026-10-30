@@ -267,7 +267,8 @@ describe("ProjetoDetalhePage", () => {
     await user.click(within(await screen.findByRole("dialog", { name: "Week" })).getByRole("button", { name: "Clear filters" }));
     await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("project-1", 1, DEFAULT_TABLE_PAGE_SIZE, { responsavelId: undefined, associadosAMim: true }));
     expect(await screen.findByRole("row", { name: /Clock_001/ })).toBeInTheDocument();
-  });
+    // Fluxo longo (dois calendários, troca de aba): sozinho leva ~3 s e, com a suíte inteira em paralelo, passava dos 5 s.
+  }, 15_000);
 
   it("erro de acesso prevalece sobre associação vazia antiga no cache", async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -364,7 +365,8 @@ describe("ProjetoDetalhePage", () => {
     const escolherDia = async (dia: Date) => {
       await user.click(screen.getByRole("button", { name: /Filter by End date/i }));
       const calendario = await screen.findByRole("dialog", { name: /End date/i });
-      const dataPorExtenso = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(dia);
+      // O calendário (spec 050) usa o ordinal no rótulo do dia: "Friday, October 30th, 2026".
+      const dataPorExtenso = `${dia.toLocaleString("en-US", { month: "long" })} ${dia.getDate()}(st|nd|rd|th)?, ${dia.getFullYear()}`;
       await user.click(within(calendario).getByRole("button", { name: new RegExp(dataPorExtenso) }));
     };
 

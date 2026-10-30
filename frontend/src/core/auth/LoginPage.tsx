@@ -3,11 +3,10 @@ import { useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { EyeOff } from "lucide-react";
+import { Button, Input } from "@heroui/react";
 
 import { ApiError } from "@/shared/api/problem-details";
-import { Button } from "@/shared/ui/button";
 import { PasswordEyeIcon } from "@/shared/ui/figma-icons";
-import { Input } from "@/shared/ui/input";
 import { toast } from "@/shared/lib/toast";
 import { login } from "./api";
 import { AuthLayout } from "./AuthLayout";
@@ -62,13 +61,13 @@ export function LoginPage() {
         <div className="mt-[41px] space-y-10">
           <label className="flex flex-col gap-2.5 text-[15px] font-medium leading-[21px] text-body">
             <span>{t("email")}</span>
-            <Input ref={emailRef} required type="email" autoComplete="username" spellCheck={false} value={email} onChange={(event) => { setEmail(event.target.value); setErros((atual) => ({ ...atual, email: undefined })); }} aria-invalid={Boolean(erros.email)} aria-describedby={erros.email ? "login-email-error" : undefined} className="h-10 rounded-full border-border bg-field px-4 font-normal text-body aria-[invalid=true]:border-destructive" />
+            <Input ref={emailRef} required type="email" autoComplete="username" spellCheck={false} value={email} onChange={(event) => { setEmail(event.target.value); setErros((atual) => ({ ...atual, email: undefined })); }} aria-invalid={Boolean(erros.email)} aria-describedby={erros.email ? "login-email-error" : undefined} className="h-10 w-full rounded-full border-border bg-field px-4 font-normal text-body aria-[invalid=true]:border-destructive" />
             {erros.email && <span id="login-email-error" role="alert" className="text-xs font-normal leading-4 text-destructive">{erros.email}</span>}
           </label>
           <label className="flex flex-col gap-2.5 text-[15px] font-medium leading-[21px] text-body">
             <span>{t("password")}</span>
             <span className="relative block">
-              <Input ref={senhaRef} required type={mostrarSenha ? "text" : "password"} autoComplete="current-password" value={senha} onChange={(event) => { setSenha(event.target.value); setErros((atual) => ({ ...atual, senha: undefined })); }} aria-invalid={Boolean(erros.senha)} aria-describedby={erros.senha ? "login-senha-error" : undefined} className="h-10 rounded-full border-border bg-field px-4 pr-11 font-normal text-body aria-[invalid=true]:border-destructive" />
+              <Input ref={senhaRef} required type={mostrarSenha ? "text" : "password"} autoComplete="current-password" value={senha} onChange={(event) => { setSenha(event.target.value); setErros((atual) => ({ ...atual, senha: undefined })); }} aria-invalid={Boolean(erros.senha)} aria-describedby={erros.senha ? "login-senha-error" : undefined} className="h-10 w-full rounded-full border-border bg-field px-4 pr-11 font-normal text-body aria-[invalid=true]:border-destructive" />
               <button type="button" onClick={() => setMostrarSenha((visivel) => !visivel)} aria-label={mostrarSenha ? t("hidePassword") : t("showPassword")} aria-pressed={mostrarSenha} className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-full text-muted transition-colors hover:text-body active:text-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                 {mostrarSenha ? <EyeOff aria-hidden="true" className="size-[13px]" strokeWidth={1.5} /> : <PasswordEyeIcon className="h-[11px] w-[13px]" />}
               </button>
@@ -77,7 +76,7 @@ export function LoginPage() {
           </label>
         </div>
 
-        <Button disabled={carregando} className="mt-[37px] h-[46px] w-full rounded-full bg-accent text-[15px] font-medium leading-[21px] text-accent-foreground hover:bg-accent-hover">
+        <Button type="submit" isDisabled={carregando} className="mt-[37px] h-[46px] w-full rounded-full bg-accent text-[15px] font-medium leading-[21px] text-accent-foreground hover:bg-accent-hover">
           {carregando ? t("signingIn") : t("signIn")}
         </Button>
       </form>

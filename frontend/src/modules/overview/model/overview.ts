@@ -1,24 +1,24 @@
-export interface OverviewStats {
-  completed: number;
-  assigned: number;
-  inProgress: number;
-  all: number;
-}
-
-export interface StatusBreakdown {
-  completedPct: number;
-  todoPct: number;
-  inProgressPct: number;
-}
-
-export interface TeamPerformancePoint {
-  month: string;
-  value: number;
+export interface PontoDesempenho {
+  /** AAAA-MM, no fuso do navegador. */
+  mes: string;
+  concluidos: number;
 }
 
 export interface OverviewData {
-  stats: OverviewStats;
-  statusBreakdown: StatusBreakdown;
-  teamPerformance: TeamPerformancePoint[];
-  teamPerformanceCurrentPct: number;
+  total: number;
+  concluidos: number;
+  emAndamento: number;
+  aFazer: number;
+  atribuidos: number;
+  /** Os últimos 6 meses, do mais antigo para o atual. */
+  desempenho: PontoDesempenho[];
+}
+
+export interface OverviewResponse {
+  total: number;
+  concluidos: number;
+  em_andamento: number;
+  a_fazer: number;
+  atribuidos: number;
+  desempenho: PontoDesempenho[];
 }

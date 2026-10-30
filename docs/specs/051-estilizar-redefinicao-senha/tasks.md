@@ -47,7 +47,8 @@
   Mapear o status para uma mensagem específica, ou redirecionar, quando a troca já tiver sido feita.
 - O ícone do olho (`EyeOff` ou `PasswordEyeIcon`, conforme o estado) se repete no `LoginPage` e no `CampoSenha`.
   Dá para extrair um `OlhoSenha` em `shared/ui/figma-icons.tsx`, que é só SVG e serve para shadcn e HeroUI.
-  Fazer quando aparecer um terceiro uso, por exemplo na spec 042.
+  Como o login agora também é HeroUI (spec 050), o login pode usar o próprio `CampoSenha`; mover para
+  `core/auth` ou `shared/ui` quando isso for feito ou quando a spec 042 precisar dele.
 - O olho do login troca o rótulo ("Show"/"Hide password") e usa `aria-pressed` ao mesmo tempo, e o leitor de
-  tela anuncia o estado duas vezes. Na tela de troca de senha o rótulo é fixo. Alinhar o login quando ele for
-  migrado para HeroUI.
+  tela anuncia o estado duas vezes. Na tela de troca de senha o rótulo é fixo. Resolve junto com o item
+  acima, quando o login passar a usar o `CampoSenha`.

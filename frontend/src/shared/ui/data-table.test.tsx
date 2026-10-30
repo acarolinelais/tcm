@@ -23,6 +23,13 @@ describe("DataTable", () => {
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   });
 
+  it("as células usam o corpo da tabela como superfície, iguais ao espaço abaixo das linhas (spec 050)", () => {
+    const { container } = render(<DataTable aria-label="Teams" columns={colunas} items={linhas} />);
+    const moldura = container.firstElementChild as HTMLElement;
+
+    expect(moldura.style.getPropertyValue("--surface")).toBe("var(--table-body)");
+  });
+
   it("mostra o estado no corpo no lugar das linhas", () => {
     render(<DataTable aria-label="Teams" columns={colunas} items={[]} state={<p role="alert">Could not load teams.</p>} />);
     expect(screen.getByRole("alert")).toHaveTextContent("Could not load teams.");

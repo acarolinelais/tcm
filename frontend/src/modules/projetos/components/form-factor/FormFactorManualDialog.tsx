@@ -67,7 +67,7 @@ function FormularioResultados({ tcId, modelos, salvando, onSalvar, onCancelar }:
             aria-label={t("resultForModel", { model: modelo.nome })}
             value={resultados[modelo.id] ?? NAO_DEFINIDO}
             onChange={(valor) => escolher(modelo.id, String(valor))}
-            className="grid grid-cols-[minmax(0,1fr)_9rem] items-center gap-3 rounded-xl border border-separator bg-page px-3 py-2.5"
+            className="grid grid-cols-[minmax(0,1fr)_9rem] items-center gap-3 rounded-xl border border-edge bg-page px-3 py-2.5"
           >
             <Label className="truncate text-[14px] font-medium text-body">{modelo.nome}</Label>
             <Select.Trigger className="h-9 text-[13px]">

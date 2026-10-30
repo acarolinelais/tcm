@@ -31,7 +31,7 @@ const dados: HistoricoProjeto = {
 };
 
 function renderizar(props: Partial<Parameters<typeof HistoricoProjetoTabela>[0]> = {}) {
-  const handlers = { onAbrirResultado: vi.fn(), onAbrirResumo: vi.fn(), onAbrirDetalhes: vi.fn(), onModeloChange: vi.fn(), onFiltroChange: vi.fn(), onTentarDeNovo: vi.fn(), onLimparFiltros: vi.fn(), onPageChange: vi.fn(), onPageSizeChange: vi.fn(), buscarTodos: vi.fn(async () => dados.items) };
+  const handlers = { onAbrirResultado: vi.fn(), onAbrirResumo: vi.fn(), onModeloChange: vi.fn(), onFiltroChange: vi.fn(), onTentarDeNovo: vi.fn(), onLimparFiltros: vi.fn(), onPageChange: vi.fn(), onPageSizeChange: vi.fn(), buscarTodos: vi.fn(async () => dados.items) };
   render(<HistoricoProjetoTabela
     dados={dados} carregando={false} erro={false} filtros={{}} temFiltros={false} page={1} pageSize={DEFAULT_TABLE_PAGE_SIZE}
     modeloDaLinha={(linha) => linha.modelo_padrao_id ?? ""}

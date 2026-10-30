@@ -67,6 +67,12 @@ Nenhum.
 | CA-10 | Unidade | `AlterarSenhaPage.test`: se a API falhar, a mensagem aparece, a tela continua e o botão volta a ficar habilitado |
 | — | Regressão | `LoginPage.test` e `Navbar.test` continuam verdes depois das extrações |
 
+## Atualização no merge com a `dev`
+A spec 050 (ajustes visuais e fim do shadcn) entrou na `dev` durante esta implementação: ela migrou o login para
+HeroUI e pôs o tema e o idioma numa linha acima do cartão. No merge, o `AuthLayout` adotou essa moldura nova
+e o login (já em HeroUI) passou a usá-lo. Por isso, a regra "login continua em shadcn" deste plano deixou de
+valer. O número desta spec passou de 050 para 051.
+
 ## Riscos e decisões pendentes
 - **Regressão visual do login** ao extrair o `AuthLayout`. Para evitar, as classes saem do login sem
   nenhuma mudança, o `LoginPage.test` serve de regressão e a tela é conferida no navegador nos dois temas.

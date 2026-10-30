@@ -1,15 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button as HeroButton } from "@heroui/react";
+import { Button, Input, Label, Modal } from "@heroui/react";
 import { ChevronDown, ChevronRight, Pencil, Plus, ShieldCheck } from "lucide-react";
 import { useBlocker } from "react-router";
 
 import { usePerfilAtual } from "@/core/auth/usePerfilAtual";
 import { ApiError } from "@/shared/api/problem-details";
-import { Button } from "@/shared/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
-import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
 import { DataTablePagination } from "@/shared/ui/data-table-pagination";
@@ -18,7 +14,7 @@ import { EyeIcon } from "@/shared/ui/figma-icons";
 import { PageCard, PageTitle } from "@/shared/ui/page-card";
 import { RowActions } from "@/shared/ui/row-action-button";
 import { rowActionIconProps } from "@/shared/ui/row-action-icon";
-import { PageSkeleton } from "@/shared/ui/skeleton";
+import { PageSkeleton } from "@/shared/ui/page-skeleton";
 import { criarPerfil, listarPerfis, listarPermissoes, salvarPermissoes } from "../api/perfis.api";
 import type { Perfil, Permissao } from "../api/perfis.api";
 import { useTranslation } from "react-i18next";
@@ -259,7 +255,7 @@ export function PerfisPage() {
     <PageCard>
       <header className="mb-[30px] flex shrink-0 items-center justify-between gap-4">
         <PageTitle>{t("profileTitle")}</PageTitle>
-        {!criando && <HeroButton variant="primary" onPress={() => pedirAcao({ tipo: "novo" })}><Plus aria-hidden="true" absoluteStrokeWidth strokeWidth={1.5} className="size-4" />{t("newProfile")}</HeroButton>}
+        {!criando && <Button variant="primary" onPress={() => pedirAcao({ tipo: "novo" })}><Plus aria-hidden="true" absoluteStrokeWidth strokeWidth={1.5} className="size-4" />{t("newProfile")}</Button>}
       </header>
 
       {!criando && modoEditor === null ? (
@@ -285,8 +281,8 @@ export function PerfisPage() {
         />
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
-          <Button type="button" variant="ghost" className="w-fit px-2" onClick={() => pedirAcao({ tipo: "lista" })}>← {t("profiles")}</Button>
-          <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card">
+          <Button type="button" variant="ghost" className="w-fit px-2" onPress={() => pedirAcao({ tipo: "lista" })}>← {t("profiles")}</Button>
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-edge bg-card">
           {criando || atual ? (
             <>
               <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
@@ -368,13 +364,13 @@ export function PerfisPage() {
                 <div className="flex shrink-0 gap-2">
                   {criando ? (
                     <>
-                      <Button type="button" variant="outline" disabled={mutacaoAtiva} onClick={() => pedirAcao({ tipo: "cancelar" })}>{t("cancel")}</Button>
-                      <Button type="button" disabled={mutacaoAtiva} onClick={() => { if (!nome.trim()) { setErroNome(t("requiredField")); return; } criar.mutate({ nome: nome.trim(), descricao: descricao.trim(), permissoes: marcadas }); }}>
+                      <Button type="button" variant="outline" isDisabled={mutacaoAtiva} onPress={() => pedirAcao({ tipo: "cancelar" })}>{t("cancel")}</Button>
+                      <Button variant="primary" type="button" isDisabled={mutacaoAtiva} onPress={() => { if (!nome.trim()) { setErroNome(t("requiredField")); return; } criar.mutate({ nome: nome.trim(), descricao: descricao.trim(), permissoes: marcadas }); }}>
                         {criar.isPending ? t("creatingProfile") : t("createProfile")}
                       </Button>
                     </>
                   ) : (
-                    <Button type="button" disabled={modoEditor !== "editar" || !dirty || mutacaoAtiva} onClick={() => salvar.mutate({ perfilId: selecionado, codigos: marcadas })}>
+                    <Button variant="primary" type="button" isDisabled={modoEditor !== "editar" || !dirty || mutacaoAtiva} onPress={() => salvar.mutate({ perfilId: selecionado, codigos: marcadas })}>
                       {salvar.isPending ? t("savingChanges") : t("saveChanges")}
                     </Button>
                   )}
@@ -386,7 +382,7 @@ export function PerfisPage() {
               <div className="max-w-sm">
                 <h2 className="font-semibold">{t("selectProfile")}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{t("selectProfileHint")}</p>
-                <Button className="mt-4" onClick={() => pedirAcao({ tipo: "novo" })}>{t("newProfile")}</Button>
+                <Button variant="primary" className="mt-4" onPress={() => pedirAcao({ tipo: "novo" })}>{t("newProfile")}</Button>
               </div>
             </div>
           )}
@@ -394,20 +390,24 @@ export function PerfisPage() {
         </div>
       )}
 
-      <Dialog open={confirmarMudanca} onOpenChange={(open) => { if (!open) cancelarMudanca(); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{titleDialog}</DialogTitle>
-            <p className="text-sm text-muted-foreground">{textoDialog}</p>
-          </DialogHeader>
-          {erroGravacao && <p role="alert" className="mb-3 text-sm text-destructive">{t("draftNotSaved")}</p>}
-          <div className="flex flex-wrap justify-end gap-2">
-            <Button type="button" variant="outline" disabled={mutacaoAtiva} onClick={cancelarMudanca}>{t("stay")}</Button>
-            <Button type="button" variant="outline" disabled={mutacaoAtiva} onClick={() => concluirMudanca(false)}>{labelDescartar}</Button>
-            <Button type="button" disabled={mutacaoAtiva || criando && !nome.trim()} onClick={() => concluirMudanca(true)}>{labelSalvarEContinuar}</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <Modal isOpen={confirmarMudanca} onOpenChange={(aberto) => { if (!aberto && !mutacaoAtiva) cancelarMudanca(); }}>
+        <Modal.Backdrop isDismissable={!mutacaoAtiva} isKeyboardDismissDisabled={mutacaoAtiva}>
+          <Modal.Container size="md">
+            <Modal.Dialog>
+              <Modal.Header className="flex-col items-start gap-1">
+                <Modal.Heading className="text-[18px] font-medium text-body">{titleDialog}</Modal.Heading>
+                <p className="text-sm text-muted">{textoDialog}</p>
+              </Modal.Header>
+              {erroGravacao && <Modal.Body><p role="alert" className="text-sm text-danger">{t("draftNotSaved")}</p></Modal.Body>}
+              <Modal.Footer className="flex flex-wrap justify-end gap-2">
+                <Button type="button" variant="outline" isDisabled={mutacaoAtiva} onPress={cancelarMudanca}>{t("stay")}</Button>
+                <Button type="button" variant="outline" isDisabled={mutacaoAtiva} onPress={() => concluirMudanca(false)}>{labelDescartar}</Button>
+                <Button variant="primary" type="button" isDisabled={mutacaoAtiva || criando && !nome.trim()} onPress={() => concluirMudanca(true)}>{labelSalvarEContinuar}</Button>
+              </Modal.Footer>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
     </PageCard>
   );
 }
@@ -435,7 +435,7 @@ function PermissionGroup({ codigo, nome, itens, marcadas, estado, aberto, disabl
   }, [estado]);
 
   return (
-    <section aria-label={t("profilePermissionLabel", { name: nome })} className="overflow-hidden rounded-xl border border-border bg-card">
+    <section aria-label={t("profilePermissionLabel", { name: nome })} className="overflow-hidden rounded-xl border border-edge bg-card">
       <div className="flex min-w-0 items-center gap-3 px-3 py-3 sm:px-4">
         <button type="button" aria-expanded={aberto} aria-controls={panelId} onClick={onToggleOpen} className="flex min-w-0 flex-1 items-center gap-3 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-primary">
           {aberto ? <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" /> : <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />}

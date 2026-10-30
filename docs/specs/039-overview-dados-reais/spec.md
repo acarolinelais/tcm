@@ -1,6 +1,6 @@
 # 039. Overview com dados reais: Spec
 
-- **Status:** Rascunho
+- **Status:** Concluída
 - **Data:** 2026-10-30
 
 ## Problema
@@ -26,11 +26,11 @@ seu perfil e o seu escopo.
   setores geridos e dos times em que participa para o gerente (ADR 0036); os próprios times para o KP; para o
   dev, os casos em que ele é responsável principal ou Backup.
 - RN-02: Os cards mostram: total de casos, concluídos (`Done`), em andamento (`In Progress`, `In Review`,
-  `In Validation` e `In Fixes`) e atribuídos (com responsável principal). Os casos `Excluded` não entram em
-  nenhum card.
+  `In Validation` e `In Fixes`) e atribuídos (casos do escopo em que a pessoa logada é o responsável
+  principal; ser Backup não conta). Os casos `Excluded` não entram em nenhum card.
 - RN-03: A distribuição por Status mostra a porcentagem de concluídos, a fazer (`To-Do`) e em andamento.
 - RN-04: O desempenho do time mostra, para cada um dos últimos 6 meses, quantos casos passaram para `Done`
-  naquele mês, a partir do histórico da spec 038.
+  naquele mês, a partir do histórico da spec 038. É uma série só, com o total do escopo, sem separar por time.
 - RN-05: Sem casos no escopo, a tela mostra um estado vazio explicando que ainda não há dados, em vez de zeros
   soltos.
 - RN-06: O modo de demonstração (spec 010) continua mostrando dados de exemplo.
@@ -54,8 +54,10 @@ seu perfil e o seu escopo.
 - Novos gráficos ou cards além dos que já existem.
 - Desempenho dos meses anteriores ao histórico (spec 038, RN-08).
 
-## Dúvidas em aberto
+## Decisões (2026-10-30)
 
-- "Atribuídos" deve contar só os casos com responsável principal ou também os casos com Backup?
-- O desempenho deve ser por time (uma série por time) ou um total do escopo?
-- Depende da spec 038 para o desempenho mensal. Liberar antes só com os cards?
+- "Atribuídos" conta os casos do escopo em que a pessoa logada é o responsável principal. Todo caso já nasce
+  com responsável principal, então a regra antiga repetiria o total (RN-02).
+- O desempenho é uma série só, com o total do escopo (RN-04).
+- O desempenho mensal sai da auditoria da spec 038 (ADR 0044), já na `dev`. Conta os casos que entraram em
+  `Done` no mês. Um caso excluído hoje não entra, como nos cards.
