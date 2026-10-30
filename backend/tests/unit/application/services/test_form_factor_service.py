@@ -191,6 +191,7 @@ async def test_registrar_resultado_fail_atualiza_status_e_salva_atomicamente():
         execucao_repo,
         uow,
         rodada_repo,
+        contexto_auditoria=(contexto := AsyncMock()),
     )
 
     response = await service.registrar_resultados_rodada(
@@ -207,6 +208,8 @@ async def test_registrar_resultado_fail_atualiza_status_e_salva_atomicamente():
     assert caso_repo.atualizar.await_args.args[0] is caso
     resultado_repo.adicionar.assert_awaited_once()
     uow.commit.assert_awaited_once()
+    # A mudança de Status entra no histórico com a origem Form Factor (spec 038, RN-04).
+    contexto.definir_origem.assert_awaited_once_with("form_factor")
 
 
 async def test_registrar_em_rodada_anterior_e_recusado_sem_gravar():
@@ -320,6 +323,7 @@ async def test_dev_nao_registra_resultado_de_tc_alheio():
         execucao_repo,
         uow,
         rodada_repo,
+        contexto_auditoria=(contexto := AsyncMock()),
     )
 
     with pytest.raises(ForbiddenException):
@@ -329,6 +333,7 @@ async def test_dev_nao_registra_resultado_de_tc_alheio():
 
     resultado_repo.adicionar.assert_not_awaited()
     uow.commit.assert_not_awaited()
+    contexto.definir_origem.assert_not_awaited()
 
 
 @pytest.mark.parametrize("vinculo", ["responsavel", "backup"])

@@ -1,6 +1,6 @@
 # 038. Histórico de alterações do Test Case: Spec
 
-- **Status:** Rascunho
+- **Status:** Aprovada
 - **Data:** 2026-10-30
 
 ## Problema
@@ -23,10 +23,15 @@ depois. Quem pode ver o caso consegue ler esse histórico no painel de detalhes.
 
 ## Regras de negócio
 
-- RN-01: Geram um registro no histórico: mudança de Status, troca do responsável principal, troca do Backup,
-  transferência para o Backup, exclusão (com a justificativa da spec 026), inclusão e remoção de link de PR
-  e criação do caso (manual ou por planilha).
-- RN-02: Cada registro guarda o tipo da mudança, o valor anterior, o novo valor, quem fez e a data e hora.
+- RN-01: Toda mudança em um Test Case gera um registro no histórico, venha de onde vier (tela, importação
+  de planilha, Form Factor ou manutenção): criação do caso, Status, responsável principal, Backup,
+  transferência para o Backup, exclusão (com a justificativa da spec 026), Category, Difficulty, TC Situation,
+  Automation Level, textos e inclusão e remoção de link de PR. Uma gravação que não muda nenhum valor não gera
+  registro.
+- RN-02: Cada registro guarda o tipo da mudança, o valor anterior, o novo valor, a data e hora, quem fez
+  (nome e perfil daquele momento: renomear a pessoa ou trocar o perfil depois não muda o registro) e a tela
+  de onde a operação saiu (só o caminho, sem filtros). O painel mostra o nome e o perfil; a tela fica só no
+  banco, para auditoria técnica.
 - RN-03: A mudança e o registro acontecem juntos: se a mudança falhar, nenhum registro é criado, e não
   existe mudança sem registro.
 - RN-04: Mudanças feitas pelo sistema (por exemplo, o Status que muda por um resultado de Form Factor, spec
@@ -36,6 +41,8 @@ depois. Quem pode ver o caso consegue ler esse histórico no painel de detalhes.
   é exibido.
 - RN-07: O painel de detalhes ganha a seção Histórico, com os registros do mais recente para o mais antigo.
 - RN-08: Os casos que já existem começam com o histórico vazio. Não há reconstrução do passado.
+- RN-09: O histórico é guardado sem prazo de validade. Uma política de limpeza fica para quando o volume
+  pedir.
 
 ## Critérios de aceite
 
@@ -52,16 +59,21 @@ depois. Quem pode ver o caso consegue ler esse histórico no painel de detalhes.
 - **CA-06 (falha):** Dado um usuário de outra unidade, quando ele tenta ler o histórico do caso, então o acesso
   é recusado como caso inexistente.
 - **CA-07 (falha):** Dado qualquer perfil, quando tenta alterar ou apagar um registro do histórico, então não
-  existe forma de fazer isso.
+  existe forma de fazer isso, nem direto no banco.
+- **CA-08:** Dado um KP que muda a Category de "A" para "B", quando alguém abre o histórico, então vê
+  "Category: A → B", o nome do KP e a data e hora.
+- **CA-09 (falha):** Dado uma gravação que repete os mesmos valores do caso, quando ela é salva, então nenhum
+  registro novo aparece no histórico.
+- **CA-10:** Dado a Ana, com perfil Key Person, que muda o Status no Kanban do projeto, quando ela é renomeada
+  depois, então o registro continua com "Ana", "Key Person" e o caminho da tela do Kanban.
 
 ## Fora de escopo
 
 - Histórico de projetos, rodadas, usuários, times e modelos.
-- Registrar a edição dos textos do caso (entra junto com a spec 040, se aprovada).
 - Linha do tempo agregada por projeto ou time (Timeline, ainda indefinida).
 - Exportar o histórico.
 
 ## Dúvidas em aberto
 
-- Mudanças de Category, Difficulty, TC Situation e Automation Level também entram no histórico?
-- Há prazo de retenção ou o histórico é guardado para sempre?
+- Nenhuma. Todos os campos entram (RN-01) e o histórico não expira (RN-09). A forma de registrar está no
+  [ADR 0044](../../adr/0044-auditoria-por-triggers-no-postgresql.md).

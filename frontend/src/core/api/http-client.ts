@@ -31,6 +31,8 @@ async function request<T>(path: string, init?: RequestInit, retry = true): Promi
     headers: {
       ...(!isFormData ? { "Content-Type": "application/json" } : {}),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      // Tela de onde a operação saiu, para o histórico de auditoria (spec 038, ADR 0044).
+      "X-Tela": window.location.pathname,
       ...init?.headers,
     },
   });
