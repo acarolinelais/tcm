@@ -23,6 +23,7 @@ from src.domain.entities.projeto import Projeto
 from src.domain.entities.time import Time
 from src.domain.entities.time_membro import TimeMembro
 from src.domain.entities.usuario import Usuario
+from src.domain.queries.caso_teste_com_responsavel import CasoTesteComResponsavel
 from src.domain.queries.link_pull_request_com_autor import LinkPullRequestComAutor
 
 
@@ -965,3 +966,91 @@ async def test_links_de_caso_inacessivel_retornam_nao_encontrado(links_contexto,
     links.listar_ativos_por_caso.assert_not_awaited()
     links.adicionar.assert_not_awaited()
     uow.commit.assert_not_awaited()
+
+
+def card(projeto, responsavel_id, status, tc_id, backup_id=None):
+    caso = CasoTeste(
+        projeto.unidade_id,
+        projeto.id,
+        tc_id,
+        CategoriaCasoTeste.A,
+        DificuldadeCasoTeste.LOW,
+        responsavel_id,
+        backup_id,
+        SituacaoCasoTeste.NEW,
+        status,
+        exigir_backup=False,
+    )
+    return CasoTesteComResponsavel(caso, f"Pessoa {responsavel_id}")
+
+
+async def test_obter_kanban_agrupa_nas_sete_colunas_na_ordem_do_ciclo(contexto):
+    service, casos, _, _, _, _, _, admin, projeto, _ = contexto
+    casos.listar_cards_por_projeto.return_value = (
+        card(projeto, uuid4(), StatusCasoTeste.IN_REVIEW, "Clock_001"),
+        card(projeto, uuid4(), StatusCasoTeste.IN_REVIEW, "Clock_002"),
+        card(projeto, uuid4(), StatusCasoTeste.DONE, "Clock_003"),
+    )
+
+    kanban = await service.obter_kanban(admin, projeto.id)
+
+    assert [coluna.status for coluna in kanban.colunas] == [
+        StatusCasoTeste.TO_DO,
+        StatusCasoTeste.IN_PROGRESS,
+        StatusCasoTeste.IN_REVIEW,
+        StatusCasoTeste.IN_VALIDATION,
+        StatusCasoTeste.IN_FIXES,
+        StatusCasoTeste.DONE,
+        StatusCasoTeste.CANCELLED,
+    ]
+    assert [coluna.total for coluna in kanban.colunas] == [0, 0, 2, 0, 0, 1, 0]
+    assert kanban.total == 3
+    # A gestão pode mover para qualquer outro Status.
+    destinos = kanban.colunas[2].casos[0].destinos
+    assert StatusCasoTeste.IN_REVIEW not in destinos
+    assert len(destinos) == 6
+
+
+async def test_obter_kanban_dev_ve_todos_e_destinos_seguem_a_posse(contexto):
+    service, casos, _, _, _, _, _, _, projeto, time = contexto
+    dev_id = uuid4()
+    dev = UsuarioAutenticado(
+        dev_id,
+        projeto.unidade_id,
+        "USUARIO_PADRAO",
+        permissoes=frozenset({"test_cases.consultar"}),
+        time_ids=(time.id,),
+    )
+    casos.listar_cards_por_projeto.return_value = (
+        card(projeto, dev_id, StatusCasoTeste.TO_DO, "Clock_001"),
+        card(projeto, uuid4(), StatusCasoTeste.IN_PROGRESS, "Clock_002", backup_id=dev_id),
+        card(projeto, uuid4(), StatusCasoTeste.CANCELLED, "Clock_003", backup_id=dev_id),
+        card(projeto, uuid4(), StatusCasoTeste.IN_REVIEW, "Clock_004"),
+    )
+
+    kanban = await service.obter_kanban(dev, projeto.id)
+    destinos = {c.tc_id: c.destinos for coluna in kanban.colunas for c in coluna.casos}
+
+    assert kanban.total == 4
+    assert len(destinos["Clock_001"]) == 6
+    assert destinos["Clock_002"] == [StatusCasoTeste.CANCELLED]
+    assert destinos["Clock_003"] == []
+    assert destinos["Clock_004"] == []
+
+
+async def test_obter_kanban_fora_do_escopo_ou_sem_permissao_falha(contexto):
+    service, casos, _, _, _, _, _, _, projeto, _ = contexto
+    fora = UsuarioAutenticado(
+        uuid4(),
+        projeto.unidade_id,
+        "USUARIO_PADRAO",
+        permissoes=frozenset({"test_cases.consultar"}),
+        time_ids=(uuid4(),),
+    )
+    sem_permissao = UsuarioAutenticado(uuid4(), projeto.unidade_id, "USUARIO_PADRAO")
+
+    with pytest.raises(NotFoundException):
+        await service.obter_kanban(fora, projeto.id)
+    with pytest.raises(ForbiddenException):
+        await service.obter_kanban(sem_permissao, projeto.id)
+    casos.listar_cards_por_projeto.assert_not_called()

@@ -2,12 +2,14 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 
 from src.api.dependencies import (
+    get_caso_teste_service,
     get_importacao_projeto_service,
     get_projeto_service,
     get_usuario_atual,
 )
 from src.application.schemas.importacao_projeto import ImportarProjetoPlanilhaResponse
 from src.application.schemas.projeto import ProjetoResponse
+from src.application.services.caso_teste_service import CasoTesteServiceImpl
 from src.application.services.projeto_service import ProjetoServiceImpl
 from src.application.validators.importacao_projeto import (
     ErroImportacaoPlanilha,
@@ -15,8 +17,16 @@ from src.application.validators.importacao_projeto import (
 )
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
+from src.domain.entities.caso_teste import (
+    CasoTeste,
+    CategoriaCasoTeste,
+    DificuldadeCasoTeste,
+    SituacaoCasoTeste,
+    StatusCasoTeste,
+)
 from src.domain.entities.projeto import Projeto
 from src.domain.entities.time import Time
+from src.domain.queries.caso_teste_com_responsavel import CasoTesteComResponsavel
 from tests.functional.conftest import dependency_override
 
 
@@ -212,3 +222,96 @@ async def test_projeto_de_outra_unidade_nao_e_encontrado(api_client):
     assert response.status_code == 404
     projeto_repo.obter_por_id.assert_awaited_once()
     assert projeto_repo.obter_por_id.await_args.args[0] == usuario.unidade_id
+
+
+def _kanban_service(unidade_id, setor_id, cards):
+    projeto_repo, time_repo, caso_repo = AsyncMock(), AsyncMock(), AsyncMock()
+    projeto = Projeto(unidade_id, uuid4(), "Clock", "9.5")
+    projeto_repo.obter_por_id.return_value = projeto
+    time_repo.obter_por_id.return_value = Time(unidade_id, setor_id, "Clock", uuid4())
+    caso_repo.listar_cards_por_projeto.return_value = tuple(
+        CasoTesteComResponsavel(
+            CasoTeste(
+                unidade_id,
+                projeto.id,
+                f"Clock_{i:04d}",
+                CategoriaCasoTeste.A,
+                DificuldadeCasoTeste.LOW,
+                uuid4(),
+                None,
+                SituacaoCasoTeste.NEW,
+                status,
+                exigir_backup=False,
+            ),
+            "Afonso Fagundes",
+        )
+        for i, status in enumerate(cards)
+    )
+    service = CasoTesteServiceImpl(
+        caso_repo, projeto_repo, time_repo, AsyncMock(), AsyncMock(), AsyncMock(), AsyncMock()
+    )
+    return service, caso_repo, projeto_repo
+
+
+async def test_obter_kanban_retorna_200_com_totais_de_1000_casos(api_client):
+    from src.api.main import app
+
+    unidade_id = uuid4()
+    status = list(StatusCasoTeste)
+    service, _, _ = _kanban_service(unidade_id, uuid4(), [status[i % 7] for i in range(1000)])
+    admin = UsuarioAutenticado(uuid4(), unidade_id, "ADMIN_UNIDADE")
+    app.dependency_overrides[get_usuario_atual] = dependency_override(admin)
+    app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
+
+    response = await api_client.get(f"/api/projetos/{uuid4()}/kanban")
+
+    assert response.status_code == 200
+    corpo = response.json()
+    assert corpo["total"] == 1000
+    assert [coluna["status"] for coluna in corpo["colunas"]] == [
+        "To-Do",
+        "InProgress",
+        "InReview",
+        "InValidation",
+        "InFixes",
+        "Done",
+        "Cancelled",
+    ]
+    assert sum(coluna["total"] for coluna in corpo["colunas"]) == 1000
+    card = corpo["colunas"][0]["casos"][0]
+    assert card["responsavel_nome"] == "Afonso Fagundes"
+    assert len(card["destinos"]) == 6
+
+
+async def test_obter_kanban_fora_do_escopo_retorna_404_e_sem_permissao_403(api_client):
+    from src.api.main import app
+
+    unidade_id = uuid4()
+    service, caso_repo, projeto_repo = _kanban_service(unidade_id, uuid4(), [StatusCasoTeste.TO_DO])
+    gerente = UsuarioAutenticado(
+        uuid4(),
+        unidade_id,
+        "GERENTE",
+        permissoes=frozenset({"test_cases.consultar"}),
+        setores_gerenciados=(uuid4(),),
+    )
+    app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
+    app.dependency_overrides[get_usuario_atual] = dependency_override(gerente)
+
+    fora = await api_client.get(f"/api/projetos/{uuid4()}/kanban")
+
+    sem_permissao = UsuarioAutenticado(uuid4(), unidade_id, "USUARIO_PADRAO")
+    app.dependency_overrides[get_usuario_atual] = dependency_override(sem_permissao)
+    proibido = await api_client.get(f"/api/projetos/{uuid4()}/kanban")
+
+    # Projeto inexistente ou de outra unidade: o repositório filtra pela unidade e não acha nada.
+    projeto_repo.obter_por_id.return_value = None
+    admin = UsuarioAutenticado(uuid4(), unidade_id, "ADMIN_UNIDADE")
+    app.dependency_overrides[get_usuario_atual] = dependency_override(admin)
+    inexistente = await api_client.get(f"/api/projetos/{uuid4()}/kanban")
+
+    assert fora.status_code == 404
+    assert inexistente.status_code == 404
+    assert projeto_repo.obter_por_id.await_args.args[0] == unidade_id
+    assert proibido.status_code == 403
+    caso_repo.listar_cards_por_projeto.assert_not_called()

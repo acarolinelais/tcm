@@ -27,6 +27,7 @@ from src.application.schemas.importacao_projeto import (
     ImportarProjetoPlanilhaResponse,
 )
 from src.application.schemas.importacao_sdf import ImportarRelatorioSdfResponse
+from src.application.schemas.kanban import KanbanResponse
 from src.application.schemas.projeto import (
     AtualizarProjetoRequest,
     AtualizarStatusProjetoRequest,
@@ -143,6 +144,15 @@ async def listar_test_cases(
         associados_a_mim,
         **({"semana": semana, "fuso_horario": fuso_horario} if semana else {}),
     )
+
+
+@router.get("/{projeto_id}/kanban", response_model=KanbanResponse)
+async def obter_kanban(
+    projeto_id: UUID,
+    service: CasoTesteService = Depends(get_caso_teste_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.obter_kanban(usuario_atual, projeto_id)
 
 
 @router.post("/{projeto_id}/test-cases", response_model=CasoTesteResponse, status_code=201)

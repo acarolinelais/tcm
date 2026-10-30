@@ -9,6 +9,12 @@ from src.application.schemas.caso_teste import (
     to_detalhe_response,
     to_response,
 )
+from src.application.schemas.kanban import (
+    KanbanCardResponse,
+    KanbanResponse,
+    to_card_response,
+    to_kanban_response,
+)
 from src.application.schemas.link_pull_request import (
     AdicionarLinkPullRequestRequest,
     LinkPullRequestResponse,
@@ -45,6 +51,16 @@ class CasoTesteServiceImpl:
         }
     )
     CAMPOS_GESTAO = CAMPOS_RESPONSAVEL | {"responsavel_id", "backup_id"}
+    # Colunas do Kanban na ordem do ciclo (spec 037, RN-02): In Fixes antes de Done.
+    ORDEM_KANBAN = (
+        StatusCasoTeste.TO_DO,
+        StatusCasoTeste.IN_PROGRESS,
+        StatusCasoTeste.IN_REVIEW,
+        StatusCasoTeste.IN_VALIDATION,
+        StatusCasoTeste.IN_FIXES,
+        StatusCasoTeste.DONE,
+        StatusCasoTeste.CANCELLED,
+    )
 
     def __init__(
         self,
@@ -95,6 +111,39 @@ class CasoTesteServiceImpl:
             **({"data_final_inicio": inicio, "data_final_fim": fim} if semana else {}),
         )
         return casos.map(to_response)
+
+    async def obter_kanban(
+        self, usuario_atual: UsuarioAutenticado, projeto_id: UUID
+    ) -> KanbanResponse:
+        self._exigir_permissao(usuario_atual, "test_cases.consultar")
+        _, time = await self._obter_projeto_visivel(usuario_atual, projeto_id)
+        eh_gestor = self._pode_gerenciar(usuario_atual, time)
+        cards = await self._caso_repo.listar_cards_por_projeto(usuario_atual.unidade_id, projeto_id)
+        por_status: dict[StatusCasoTeste, list[KanbanCardResponse]] = {
+            status: [] for status in self.ORDEM_KANBAN
+        }
+        for item in cards:
+            destinos = [
+                status
+                for status in self.ORDEM_KANBAN
+                if status is not item.caso.status
+                and self._pode_mudar_status(usuario_atual, item.caso, eh_gestor, status)
+            ]
+            por_status[item.caso.status].append(to_card_response(item, destinos))
+        return to_kanban_response(projeto_id, por_status)
+
+    @staticmethod
+    def _pode_mudar_status(
+        usuario_atual: UsuarioAutenticado,
+        caso: CasoTeste,
+        eh_gestor: bool,
+        destino: StatusCasoTeste,
+    ) -> bool:
+        # Usada por atualizar() e pelo Kanban: gestão e responsável principal mudam para qualquer
+        # Status; o backup só exclui (spec 026).
+        if eh_gestor or caso.responsavel_id == usuario_atual.id:
+            return True
+        return caso.backup_id == usuario_atual.id and destino is StatusCasoTeste.CANCELLED
 
     async def criar(
         self,
@@ -150,9 +199,9 @@ class CasoTesteServiceImpl:
                 raise ForbiddenException("Você não tem permissão para editar Test Cases.")
             if caso.responsavel_id != usuario_atual.id:
                 if (
-                    caso.backup_id != usuario_atual.id
-                    or campos_enviados - {"justificativa_exclusao"} != {"status"}
-                    or request.status is not StatusCasoTeste.CANCELLED
+                    campos_enviados - {"justificativa_exclusao"} != {"status"}
+                    or request.status is None
+                    or not self._pode_mudar_status(usuario_atual, caso, False, request.status)
                 ):
                     raise ForbiddenException("Você só pode editar Test Cases atribuídos a você.")
                 caso.cancelar(request.justificativa_exclusao)

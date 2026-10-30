@@ -7,13 +7,13 @@
 
 ## Fase 1: consulta do Kanban (backend)
 
-- [ ] **T01. Repositório: cards do projeto**
+- [x] **T01. Repositório: cards do projeto**
   - Arquivos: interface do repositório em `backend/src/domain/`, `backend/src/infrastructure/repositories/caso_teste_repository.py`,
     `backend/tests/integration/test_caso_teste_repository.py`
   - Cobre: CA-01, CA-13
   - Verificação: `cd backend && uv run pytest tests/integration/test_caso_teste_repository.py -k cards` → retorna
     todos os casos do projeto, com o nome do responsável e sem paginação, filtrados por `unidade_id`.
-- [ ] **T02. Service `obter_kanban` com `destinos`**
+- [x] **T02. Service `obter_kanban` com `destinos`**
   - Arquivos: `backend/src/application/schemas/kanban.py` (novo), `backend/src/application/services/caso_teste_service.py`,
     `backend/src/application/services/interfaces/`, `backend/tests/unit/application/services/test_caso_teste_service.py`
   - Cobre: CA-01, CA-02, CA-04, CA-07, CA-09, CA-20
@@ -23,7 +23,7 @@
       para os demais;
     - o dev vê todos os casos;
     - um projeto fora do escopo levanta `NotFound`.
-- [ ] **T03. Rota `GET /api/projetos/{id}/kanban`**
+- [x] **T03. Rota `GET /api/projetos/{id}/kanban`**
   - Arquivos: `backend/src/api/routers/projetos.py`, `backend/tests/functional/test_projetos_api.py`
   - Cobre: CA-01, CA-02, CA-13, CA-20
   - Verificação: `cd backend && uv run pytest tests/functional/test_projetos_api.py -k kanban` → 200 com os totais
@@ -121,3 +121,6 @@
   - Verificação: `cd backend && uv run pytest` e `cd frontend && npm test && npm run lint && npm run e2e` → tudo verde.
 
 ## Backlog
+- **`destinos` repetido em cada card** (simplify da fase 1): com 1.000 cards, a mesma lista de até 6 Status
+  volta em quase todos. Trocar por destinos por coluna e uma marcação por card muda o contrato da API da spec
+  037; vale só se o tamanho da resposta virar problema.
