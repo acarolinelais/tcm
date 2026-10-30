@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import css from "@/core/global.css?raw";
 
-// CA-10 da spec 036: cada cor do avatar se destaca do fundo (≥ 3:1) e as iniciais são legíveis sobre ela (≥ 4.5:1).
+// CA-10 da spec 036: cada cor do avatar se destaca do fundo (≥ 3:1, contraste de elemento gráfico do WCAG).
 // Fundos onde o avatar aparece: no claro, o cartão (branco) e a página; no escuro, o cartão e a página.
 const FUNDOS = { claro: ["#ffffff", "#fbfbfb"], escuro: ["#1e1e1e", "#323232"] };
 
@@ -19,20 +19,16 @@ function contraste(a: string, b: string) {
 
 function tokensDoAvatar(seletor: ":root" | ":root.dark") {
   const blocos = [...css.matchAll(/(:root(?:\.dark)?) \{([^}]*)\}/g)].filter(([, sel, corpo]) => sel === seletor && corpo.includes("--avatar-1:"));
-  return Object.fromEntries([...blocos[0][2].matchAll(/--(avatar-\d(?:-foreground)?): (#[0-9a-f]{6})/g)].map(([, nome, valor]) => [nome, valor]));
+  return Object.fromEntries([...blocos[0][2].matchAll(/--(avatar-\d): (#[0-9a-f]{6})/g)].map(([, nome, valor]) => [nome, valor]));
 }
 
 describe("contraste da paleta do avatar (ADR 0043)", () => {
-  it.each([["claro", ":root"], ["escuro", ":root.dark"]] as const)("tema %s: 8 cores legíveis sobre o fundo e com as iniciais", (tema, seletor) => {
+  it.each([["claro", ":root"], ["escuro", ":root.dark"]] as const)("tema %s: as 8 cores se destacam do fundo", (tema, seletor) => {
     const tokens = tokensDoAvatar(seletor);
     const falhas = Array.from({ length: 8 }, (_, i) => i + 1).flatMap((n) => {
       const cor = tokens[`avatar-${n}`];
-      const iniciais = tokens[`avatar-${n}-foreground`];
-      if (!cor || !iniciais) return [`--avatar-${n}: token ausente`];
-      return [
-        ...FUNDOS[tema].filter((fundo) => contraste(cor, fundo) < 3).map((fundo) => `--avatar-${n} sobre ${fundo}`),
-        ...(contraste(iniciais, cor) < 4.5 ? [`--avatar-${n}-foreground sobre --avatar-${n}`] : []),
-      ];
+      if (!cor) return [`--avatar-${n}: token ausente`];
+      return FUNDOS[tema].filter((fundo) => contraste(cor, fundo) < 3).map((fundo) => `--avatar-${n} sobre ${fundo}`);
     });
     expect(falhas).toEqual([]);
   });

@@ -93,7 +93,7 @@ interface Database {
   importacoesSdf: { importacao_id: string; projeto_id: string; importado_em: string }[];
   linksPullRequest: LinkPullRequestMock[];
   idiomaPorUsuario: Record<string, PerfilAtual["idioma_preferido"]>;
-  corAvatarPorUsuario: Record<string, CorAvatar>;
+  corAvatarPorUsuario?: Record<string, CorAvatar>; // opcional: bases mock anteriores à spec 036
   senhasAlteradas: string[];
 }
 
@@ -393,7 +393,7 @@ function buildCurrentUser(db: Database, user: Usuario): PerfilAtual {
     times: userTeams.map(({ id: teamId, nome }) => ({ id: teamId, nome })), setores_gerenciados: managedSectors,
     time_atual_id: userTeams[0]?.id ?? null, tem_multiplos_times: userTeams.length > 1,
     senha_alteracao_obrigatoria: false, idioma_preferido: db.idiomaPorUsuario[user.id] ?? "en",
-    cor_avatar: db.corAvatarPorUsuario[user.id] ?? "azul",
+    cor_avatar: db.corAvatarPorUsuario?.[user.id] ?? "azul",
   };
 }
 
@@ -416,13 +416,13 @@ export const mockAuth = {
     const userId = currentMockUserId();
     return updateDb((db) => {
       db.idiomaPorUsuario[userId] = language;
-      return { idioma_preferido: language, cor_avatar: db.corAvatarPorUsuario[userId] ?? "azul" };
+      return { idioma_preferido: language, cor_avatar: db.corAvatarPorUsuario?.[userId] ?? "azul" };
     });
   },
   updateAvatarColor(cor: CorAvatar): Preferencias {
     const userId = currentMockUserId();
     return updateDb((db) => {
-      db.corAvatarPorUsuario[userId] = cor;
+      (db.corAvatarPorUsuario ??= {})[userId] = cor;
       return { idioma_preferido: db.idiomaPorUsuario[userId] ?? "en", cor_avatar: cor };
     });
   },

@@ -1,32 +1,57 @@
-import { render, waitFor, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { render, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { CorAvatar } from "@/core/auth/api";
 import { AvatarUsuario } from "./avatar-usuario";
 
-function avatar(nome: string, cor: CorAvatar) {
-  const { container } = render(<AvatarUsuario nome={nome} cor={cor} />);
+const ESFERAS = "https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars";
+
+function avatar(cor: CorAvatar) {
+  const { container } = render(<AvatarUsuario cor={cor} />);
   return container.firstElementChild as HTMLElement;
 }
 
+// O jsdom não carrega imagens: simula uma que já terminou de carregar.
+function simularImagemCarregada() {
+  vi.stubGlobal("Image", class {
+    complete = true;
+    naturalWidth = 160;
+    src = "";
+    crossOrigin: string | null = null;
+    addEventListener() {}
+    removeEventListener() {}
+  });
+}
+
 describe("AvatarUsuario", () => {
-  it("mostra as iniciais sobre a cor escolhida, sem imagem e escondido do leitor de tela", async () => {
-    const elemento = avatar("Ana Lais", "verde");
+  afterEach(() => vi.unstubAllGlobals());
 
-    expect(await within(elemento).findByText("AL")).toHaveClass("bg-avatar-7", "text-avatar-7-foreground");
-    expect(elemento.querySelector("img")).toBeNull();
+  it("mostra a esfera do HeroUI da cor escolhida, decorativa e sem texto", async () => {
+    simularImagemCarregada();
+    const elemento = avatar("verde");
+
+    await waitFor(() => expect(elemento.querySelector("img")).toHaveAttribute("src", `${ESFERAS}/green.jpg`));
     expect(elemento).toHaveAttribute("aria-hidden", "true");
+    expect(elemento).toHaveTextContent("");
   });
 
-  it("com uma cor desconhecida (dado antigo), cai no azul em vez de ficar sem fundo", async () => {
-    const elemento = avatar("Ana Lais", "dourado" as CorAvatar);
+  it.each([["cinza", "black"], ["cinza-claro", "white"]] as const)("%s usa a esfera %s", async (cor, esfera) => {
+    simularImagemCarregada();
+    const elemento = avatar(cor);
 
-    expect(await within(elemento).findByText("AL")).toHaveClass("bg-avatar-1");
+    await waitFor(() => expect(elemento.querySelector("img")).toHaveAttribute("src", `${ESFERAS}/${esfera}.jpg`));
   });
 
-  it("com o nome vazio, mostra o ícone genérico de pessoa", async () => {
-    const elemento = avatar("   ", "azul");
+  it("se a esfera não carrega, mostra a cor lisa do token", async () => {
+    const elemento = avatar("verde");
 
-    await waitFor(() => expect(elemento.querySelector("svg.lucide-user-round")).not.toBeNull());
+    await waitFor(() => expect(elemento.querySelector("[data-slot='avatar-fallback']")).toHaveClass("bg-avatar-6"));
+  });
+
+  it("com uma cor desconhecida (dado antigo), cai no azul", async () => {
+    simularImagemCarregada();
+    const elemento = avatar("dourado" as CorAvatar);
+
+    await waitFor(() => expect(elemento.querySelector("img")).toHaveAttribute("src", `${ESFERAS}/blue.jpg`));
   });
 });

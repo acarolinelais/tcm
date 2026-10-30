@@ -9,8 +9,8 @@
 Seguir o caminho do idioma (spec 007, ADR 0025). A conta ganha `cor_avatar`, com um código da paleta de 8
 cores e `azul` como padrão. `GET /api/auth/me` devolve a cor, e `PATCH /api/auth/preferencias` passa a
 aceitar atualização parcial (`idioma_preferido` e `cor_avatar` opcionais, pelo menos um obrigatório) e a
-responder com as duas preferências salvas. No frontend, um `AvatarUsuario` compartilhado mostra as iniciais
-sobre o token da cor (ADR 0041) e substitui o avatar da `Navbar`, que deixa de usar a imagem padrão da spec
+responder com as duas preferências salvas. No frontend, um `AvatarUsuario` compartilhado mostra a esfera do HeroUI
+da cor escolhida, com o token da cor (ADR 0041) como fundo enquanto ela carrega, e substitui o avatar da `Navbar`, que deixa de usar a imagem padrão da spec
 029. A tela de Configurações ganha um seletor de cor em HeroUI (ADR 0037), com atualização otimista do
 cache de `/me` e rollback com toast em caso de erro, como o `LanguageSelector`. O modo mock (ADR 0030)
 guarda a cor por usuário, como já guarda o idioma.
@@ -19,7 +19,7 @@ guarda a cor por usuário, como já guarda o idioma.
 
 | Entidade | Campo | Tipo | Regras |
 |---|---|---|---|
-| `Usuario` | `cor_avatar` | `VARCHAR(10)` | `azul`, `indigo`, `roxo`, `rosa`, `vermelho`, `laranja`, `verde` ou `cinza`; não nulo; default `azul`; `CHECK` `ck_usuarios_cor_avatar` |
+| `Usuario` | `cor_avatar` | `VARCHAR(20)` | `azul`, `indigo`, `roxo`, `vermelho`, `laranja`, `verde`, `cinza` ou `cinza-claro`; não nulo; default `azul`; `CHECK` `ck_usuarios_cor_avatar` |
 
 Migration nova com `down_revision = "d030a1b2c3d4"` (head atual, igual na `origin/dev`): adiciona a coluna
 com `server_default="azul"` (as contas existentes ficam em azul) e a constraint; o `downgrade` remove as duas.
@@ -62,9 +62,9 @@ com `server_default="azul"` (as contas existentes ficam em azul) e a constraint;
   `atualizarCorAvatar()` sobre o mesmo `PATCH`.
 - `core/mock/database.ts`: `corAvatarPorUsuario`, `cor_avatar` no `buildCurrentUser` (padrão `azul`) e
   `updateAvatarColor()`.
-- **Novo** `shared/ui/avatar-usuario.tsx` (+ teste): HeroUI `Avatar` só com `Avatar.Fallback`, iniciais
-  (função `iniciais` movida da `Navbar` para cá) e ícone genérico de pessoa com o nome vazio; recebe `cor`
-  e mapeia para as classes dos tokens.
+- **Novo** `shared/ui/avatar-usuario.tsx` (+ teste): HeroUI `Avatar` com `Avatar.Image` (esfera do HeroUI da cor)
+  e `Avatar.Fallback` na cor do token; sem iniciais. O mapa cor → esfera e token fica em `shared/lib/cor-avatar.ts`.
+  A função `iniciais` da spec 029 fica sem uso e sai.
 - `core/layout/Navbar.tsx` (+ teste): usa `AvatarUsuario` com `perfil.cor_avatar`; sai a
   `AVATAR_PADRAO_URL`.
 - **Novo** `modules/configuracoes/components/SeletorCorAvatar.tsx` (+ teste): `RadioGroup` do HeroUI com 8
@@ -88,7 +88,7 @@ com `server_default="azul"` (as contas existentes ficam em azul) e a constraint;
 | CA-07 | Unidade (schema) + funcional | `PATCH` com `#ff0000`, `dourado`, `null` ou `{}` → 422 ProblemDetails; cor salva inalterada |
 | CA-08 | Funcional | `PATCH` sem token → 401 e nenhuma chamada ao service |
 | CA-09 | Unidade (Vitest) | API rejeita → toast de erro, seleção e avatar voltam para a cor anterior |
-| CA-10 | Unidade (Vitest) | teste de contraste sobre os valores dos tokens nos dois temas (≥ 3:1 cor/fundo, ≥ 4.5:1 iniciais/cor) e varredura do ADR 0041 passando |
+| CA-10 | Unidade (Vitest) | teste de contraste sobre os valores dos tokens nos dois temas (≥ 3:1 cor/fundo) e varredura do ADR 0041 passando |
 | CA-11 | Unidade (Vitest) + e2e | grupo com rótulo, `aria-checked` na cor salva, troca com as setas e `Space` |
 
 ## Riscos e decisões pendentes
@@ -98,8 +98,8 @@ com `server_default="azul"` (as contas existentes ficam em azul) e a constraint;
   enviando só o idioma.
 - **Fim da imagem padrão (spec 029):** os testes da `Navbar` que esperam a imagem mudam. O CA-00 da spec 029
   deixa de valer; fica registrado aqui e no ADR 0043.
-- **Contraste da paleta:** amarelo e tons claros falham com iniciais brancas, por isso a paleta não tem
-  amarelo e cada cor tem o seu `-foreground`. O teste do CA-10 trava os valores.
+- **Contraste da paleta:** tons claros somem sobre o fundo branco, por isso a paleta não tem amarelo e o escuro
+  usa tons claros. O teste do CA-10 trava os valores.
 - **Migration em paralelo:** se outra spec criar migration antes do merge, o `down_revision` muda para o novo
   head; conferir com `uv run alembic heads` antes do PR.
 - **Branch:** o worktree está em `oazvedo/octopus`, atrás da `origin/dev` (ADR 0042 e spec 035). A spec deve

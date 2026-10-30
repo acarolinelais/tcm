@@ -52,7 +52,7 @@ export function Navbar({ perfil }: { perfil: PerfilAtual }) {
         <div ref={menuRef} className="relative">
           <button type="button" aria-haspopup="menu" aria-expanded={menuAberto} onClick={() => setMenuAberto(!menuAberto)} title={t("userMenu")} className="flex items-center gap-1.5">
             {/* Decorativo: o nome já aparece ao lado. Cor escolhida em Configurações (spec 036). */}
-            <AvatarUsuario nome={perfil.nome} cor={perfil.cor_avatar} />
+            <AvatarUsuario cor={perfil.cor_avatar} />
             <span className="max-w-40 truncate text-[15px] font-medium text-body">{perfil.nome.split(" ")[0]}</span>
             <ChevronDown aria-hidden="true" className="size-3.5 text-body" />
           </button>

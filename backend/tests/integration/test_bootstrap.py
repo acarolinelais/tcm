@@ -374,7 +374,7 @@ async def test_admin_bootstrap_real_consegue_fazer_login():
 
 
 @pytest.mark.asyncio
-async def test_cor_do_avatar_salva_volta_no_proximo_login():
+async def test_cor_do_avatar_salva_volta_no_proximo_login_e_pode_voltar_para_azul():
     app.dependency_overrides.clear()
     credenciais = {"email": "admin@sdfmanager.com", "senha": os.environ["BOOTSTRAP_ADMIN_SENHA"]}
     async with AsyncClient(
@@ -396,6 +396,14 @@ async def test_cor_do_avatar_salva_volta_no_proximo_login():
 
             perfil = await client.get("/api/auth/me", headers=await entrar())
             assert perfil.json()["cor_avatar"] == "verde"
+
+            headers = await entrar()
+            de_volta = await client.patch(
+                "/api/auth/preferencias", json={"cor_avatar": "azul"}, headers=headers
+            )
+            assert de_volta.status_code == 200
+            perfil = await client.get("/api/auth/me", headers=await entrar())
+            assert perfil.json()["cor_avatar"] == "azul"
         finally:
             await client.patch(
                 "/api/auth/preferencias", json={"cor_avatar": "azul"}, headers=headers

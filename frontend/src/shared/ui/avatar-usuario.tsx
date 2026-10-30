@@ -1,18 +1,17 @@
 import { Avatar } from "@heroui/react";
-import { UserRound } from "lucide-react";
 
 import type { CorAvatar } from "@/core/auth/api";
-import { CLASSES_COR_AVATAR } from "@/shared/lib/cor-avatar";
-import { iniciais } from "@/shared/lib/iniciais";
+import { AVATAR_POR_COR } from "@/shared/lib/cor-avatar";
 import { cn } from "@/shared/lib/utils";
 
-/** Iniciais do nome sobre a cor escolhida pela pessoa. Decorativo: quem usa mostra o nome em texto ao lado. */
-export function AvatarUsuario({ nome, cor, className }: { nome: string; cor: CorAvatar; className?: string }) {
+/** Esfera em degradê do HeroUI na cor escolhida pela pessoa (spec 036). Decorativo: quem usa mostra o nome ao lado. */
+export function AvatarUsuario({ cor, className }: { cor: CorAvatar; className?: string }) {
+  const { imagem, fundo } = AVATAR_POR_COR[cor] ?? AVATAR_POR_COR.azul;
   return (
     <Avatar aria-hidden="true" className={cn("size-[21px]", className)}>
-      <Avatar.Fallback className={cn("text-[11px] font-medium", CLASSES_COR_AVATAR[cor] ?? CLASSES_COR_AVATAR.azul)}>
-        {iniciais(nome) || <UserRound className="size-3" strokeWidth={2} />}
-      </Avatar.Fallback>
+      <Avatar.Image src={imagem} alt="" />
+      {/* O atraso evita piscar a cor lisa enquanto a imagem carrega. */}
+      <Avatar.Fallback delayMs={600} className={fundo} />
     </Avatar>
   );
 }

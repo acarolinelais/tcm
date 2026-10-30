@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Link, MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, describe, expect, it } from "vitest";
@@ -60,37 +60,24 @@ describe("botão de voltar da navbar", () => {
 describe("avatar do usuário logado", () => {
   const comNome = (nome: string) => ({ ...perfil, nome });
 
-  it("mostra as iniciais sobre a cor da conta, sem imagem", async () => {
+  it("mostra o avatar na cor da conta, decorativo, com o primeiro nome ao lado como nome acessível", async () => {
     await i18n.changeLanguage("en");
-    renderEm("/overview", { ...comNome("Ana Lais"), cor_avatar: "verde" });
+    renderEm("/overview", { ...comNome("Ana Carolina Lais"), cor_avatar: "verde" });
 
     const botao = screen.getByRole("button", { name: "Ana" });
-    expect(await within(botao).findByText("AL")).toHaveClass("bg-avatar-7");
-    expect(botao.querySelector("img")).toBeNull();
+    const avatar = botao.querySelector("[aria-hidden='true']");
+    // Sem imagem no jsdom, aparece o fundo da cor; a esfera de cada cor é testada no AvatarUsuario.
+    await waitFor(() => expect(avatar?.querySelector("[data-slot='avatar-fallback']")).toHaveClass("bg-avatar-6"));
+    expect(avatar).toHaveTextContent("");
   });
 
-  it("mostra as iniciais num avatar decorativo, com o primeiro nome ao lado como nome acessível", async () => {
-    await i18n.changeLanguage("en");
-    renderEm("/overview", comNome("Ana Carolina Lais"));
-
-    const botao = screen.getByRole("button", { name: "Ana" });
-    expect((await within(botao).findByText("AL")).closest("[aria-hidden='true']")).not.toBeNull();
-  });
-
-  it("com um nome só, mostra uma letra", async () => {
-    await i18n.changeLanguage("en");
-    renderEm("/overview", comNome("Ana"));
-
-    expect(await within(screen.getByRole("button", { name: "Ana" })).findByText("A")).toBeInTheDocument();
-  });
-
-  it("com o nome vazio, mostra o ícone genérico e o menu continua abrindo", async () => {
+  it("com o nome vazio, o avatar continua na cor da conta e o menu continua abrindo", async () => {
     await i18n.changeLanguage("en");
     const user = userEvent.setup();
     renderEm("/overview", comNome("   "));
 
     const botao = screen.getByRole("button", { name: "User menu" });
-    await waitFor(() => expect(botao.querySelector("svg.lucide-user-round")).not.toBeNull());
+    await waitFor(() => expect(botao.querySelector("[data-slot='avatar-fallback']")).toHaveClass("bg-avatar-1"));
     await user.click(botao);
     expect(screen.getByRole("menuitem", { name: "Log out" })).toBeInTheDocument();
   });

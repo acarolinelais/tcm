@@ -27,7 +27,7 @@ class UsuarioModel(Base):
         String(5), nullable=False, default="en", server_default="en"
     )
     cor_avatar: Mapped[str] = mapped_column(
-        String(10),
+        String(20),
         nullable=False,
         default=CorAvatar.AZUL.value,
         server_default=CorAvatar.AZUL.value,

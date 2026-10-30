@@ -49,9 +49,9 @@
 - [x] **T05. Tokens da paleta e teste de contraste**
   - Arquivos: `frontend/src/core/global.css`, `frontend/src/core/theme/contraste-avatar.test.ts`
   - Cobre: CA-10
-  - Detalhe: `--avatar-1` a `--avatar-8` e `--avatar-N-foreground` em `:root` e `.dark`, expostos no
-    `@theme inline`. O teste lê os valores do CSS e confere ≥ 3:1 da cor sobre o fundo do card e ≥ 4.5:1 das
-    iniciais sobre a cor, nos dois temas; falha apontando o token quando um par não atinge.
+  - Detalhe: `--avatar-1` a `--avatar-8` em `:root` e `.dark`, expostos no `@theme inline`. O teste lê os
+    valores do CSS e confere ≥ 3:1 da cor sobre o fundo, nos dois temas; falha apontando o token. (Os tokens
+    `-foreground` das iniciais saíram quando o avatar passou a mostrar só a cor.)
   - Verificação: `cd frontend && npx vitest run src/core/theme` → verde (inclui a varredura do ADR 0041)
 - [x] **T06. Cor no contrato do frontend e no modo mock**
   - Arquivos: `frontend/src/core/auth/api.ts`, `frontend/src/core/mock/database.ts` e o teste dele
@@ -64,10 +64,10 @@
   - Arquivos: `frontend/src/shared/ui/avatar-usuario.tsx`, `avatar-usuario.test.tsx`,
     `frontend/src/core/layout/Navbar.tsx`, `Navbar.test.tsx`
   - Cobre: CA-02, CA-03
-  - Detalhe: HeroUI `Avatar` só com `Avatar.Fallback`, função `iniciais` movida da `Navbar`, ícone genérico com
-    nome vazio, classes da cor por mapa fixo (sem classe dinâmica). Sai a `AVATAR_PADRAO_URL`. Testes:
-    `Ana Lais` + `verde` → `AL` com a classe do verde; sem cor conhecida → azul; nome vazio → ícone; segue
-    `aria-hidden`. Os testes da `Navbar` que esperavam a imagem passam a esperar as iniciais.
+  - Detalhe: HeroUI `Avatar` só com `Avatar.Fallback` na cor da conta, sem iniciais nem imagem; classes da cor
+    por mapa fixo (sem classe dinâmica). Saem a `AVATAR_PADRAO_URL` e a função `iniciais` da spec 029. Testes:
+    `verde` → classe do verde e nenhum texto; cor desconhecida → azul; segue `aria-hidden`; nome vazio não
+    quebra o menu.
   - Verificação: `cd frontend && npx vitest run src/shared/ui/avatar-usuario.test.tsx src/core/layout` → verde
 - [x] **T08. Textos da seção nos três idiomas**
   - Arquivos: `frontend/src/core/i18n/resources.ts`
@@ -93,7 +93,7 @@
   - Verificação: `cd frontend && npm test && npm run lint` → verde
 
 ## Fase 3: E2E
-- [ ] **T11. E2E da cor do avatar**
+- [x] **T11. E2E da cor do avatar**
   - Arquivos: `frontend/e2e/cor-avatar.spec.ts`
   - Cobre: CA-03, CA-04, CA-09, CA-11
   - Detalhe: entrar → avatar azul → Configurações → escolher verde pelo teclado → avatar verde sem reload →
@@ -112,7 +112,20 @@
   `test_migration_seed_perfil_kp_por_unidade_e_idempotente` falha. Não afeta o CI (banco novo a cada run).
   (verificação, bloco 1)
 - `LanguageSelector` e `SeletorCorAvatar` repetem a atualização otimista do perfil em cache (aplica, grava,
-  restaura e avisa em falha). Extrair um helper em `core/auth` e passar o `LanguageSelector` a usar
-  `perfilAtualQueryKey()`. Fica fora porque mexe no seletor de idioma, que não é desta spec. (simplify, bloco 2)
+  restaura e avisa em falha); extrair um helper em `core/auth`. O `LanguageSelector` já usa `perfilAtualQueryKey()`
+  e desfaz só o idioma (code-review), mas ainda não tem a fila de gravações do `SeletorCorAvatar` (respostas fora
+  de ordem). (simplify, blocos 2 e 3)
 - Cada teste de tela monta a sua fixture de `PerfilAtual`; incluir `cor_avatar` tocou 10 arquivos. Criar uma
   fixture única (`perfilFake(overrides)`) para os testes. (simplify, bloco 2)
+- E2E que já falham na `dev`, sem relação com esta spec (rodados contra a API real com banco limpo):
+  `form-factor-rodadas.spec.ts:85` espera 403 ao cancelar Test Case alheio e recebe 422 (a justificativa
+  obrigatória da spec 026 valida antes da permissão); `projetos-dev.spec.ts:48` cai em outro projeto ao trocar
+  pelo dropdown. (verificação, bloco 3)
+- `PATCH /api/auth/preferencias` grava a linha inteira do usuário (`session.merge`, ADR 0016): uma troca de cor e
+  uma de idioma no mesmo instante podem perder uma das duas. Corrigir com `UPDATE` só dos campos enviados, o que
+  pede um método novo no repositório e talvez um ADR sobre atualização parcial. (code-review)
+- Navegar pela paleta com as setas grava a cada passo (até 7 PATCHes em fila). Um debounce reduziria as chamadas,
+  mas muda a RN-05 ("vale na hora"); decidir na spec antes. (code-review)
+- A paleta existe em quatro lugares que precisam concordar (`CorAvatar`, migration, `CORES_AVATAR` e os tokens
+  `--avatar-N`). Um teste de contrato comparando `CORES_AVATAR` com o enum do OpenAPI pegaria divergência.
+  (code-review)

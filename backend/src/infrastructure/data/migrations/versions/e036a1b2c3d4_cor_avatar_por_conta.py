@@ -14,12 +14,13 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     op.add_column(
         "usuarios",
-        sa.Column("cor_avatar", sa.String(length=10), nullable=False, server_default="azul"),
+        sa.Column("cor_avatar", sa.String(length=20), nullable=False, server_default="azul"),
     )
     op.create_check_constraint(
         "ck_usuarios_cor_avatar",
         "usuarios",
-        "cor_avatar IN ('azul', 'indigo', 'roxo', 'rosa', 'vermelho', 'laranja', 'verde', 'cinza')",
+        "cor_avatar IN "
+        "('azul', 'indigo', 'roxo', 'vermelho', 'laranja', 'verde', 'cinza', 'cinza-claro')",
     )
 
 

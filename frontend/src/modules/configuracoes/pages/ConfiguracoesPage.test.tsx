@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
 import { describe, expect, it, vi } from "vitest";
@@ -63,9 +63,10 @@ describe("ConfiguracoesPage", () => {
     render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>);
 
     const botaoUsuario = screen.getByRole("button", { name: "Ana" });
-    expect(await within(botaoUsuario).findByText("AL")).toHaveClass("bg-avatar-1");
+    const corDoAvatar = () => botaoUsuario.querySelector("[data-slot='avatar-fallback']");
+    await waitFor(() => expect(corDoAvatar()).toHaveClass("bg-avatar-1"));
     await user.click(screen.getByRole("radio", { name: "Green" }));
 
-    expect(within(botaoUsuario).getByText("AL")).toHaveClass("bg-avatar-7");
+    await waitFor(() => expect(corDoAvatar()).toHaveClass("bg-avatar-6"));
   });
 });

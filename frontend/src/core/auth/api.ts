@@ -3,8 +3,8 @@ import { useMock } from "@/core/config";
 import { mockAuth } from "@/core/mock/database";
 import { saveTokens, type TokenResponse } from "./session";
 
-// Paleta fixa da cor do avatar (ADR 0043), na mesma ordem do `CorAvatar` do backend.
-export const CORES_AVATAR = ["azul", "indigo", "roxo", "rosa", "vermelho", "laranja", "verde", "cinza"] as const;
+// Paleta fixa da cor do avatar (ADR 0043), na mesma ordem do `CorAvatar` do backend: uma por esfera do HeroUI.
+export const CORES_AVATAR = ["azul", "indigo", "roxo", "vermelho", "laranja", "verde", "cinza", "cinza-claro"] as const;
 export type CorAvatar = (typeof CORES_AVATAR)[number];
 
 export interface PerfilAtual {

@@ -822,6 +822,17 @@ describe("cor do avatar no modo mock (spec 036)", () => {
     expect(mockAuth.currentUser(sessionStorage.getItem("sdf.access")).cor_avatar).toBe("verde");
   });
 
+  it("numa base anterior à v20, a primeira leitura já devolve o perfil em azul e aceita a troca", () => {
+    entrar("admin@sdfmanager.com");
+    const antiga = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
+    delete antiga.corAvatarPorUsuario;
+    antiga.schemaVersion = 19;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(antiga));
+
+    expect(mockAuth.currentUser(sessionStorage.getItem("sdf.access")).cor_avatar).toBe("azul");
+    expect(mockAuth.updateAvatarColor("cinza-claro").cor_avatar).toBe("cinza-claro");
+  });
+
   it("migra uma base salva antes da spec 036 sem perder dados", () => {
     entrar("admin@sdfmanager.com");
     const antiga = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
