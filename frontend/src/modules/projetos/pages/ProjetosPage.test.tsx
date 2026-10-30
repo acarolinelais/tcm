@@ -136,7 +136,8 @@ describe("ProjetosPage", () => {
 
     await user.click(screen.getByRole("button", { name: /Filter by Updated/i }));
     const calendario = await screen.findByRole("dialog", { name: /Updated/i });
-    const dataPorExtenso = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(hoje);
+    // O calendário (spec 050) usa o ordinal no rótulo do dia: "Friday, October 30th, 2026".
+    const dataPorExtenso = `${hoje.toLocaleString("en-US", { month: "long" })} ${hoje.getDate()}(st|nd|rd|th)?, ${hoje.getFullYear()}`;
     await user.click(within(calendario).getByRole("button", { name: new RegExp(dataPorExtenso) }));
 
     expect(screen.getByRole("link", { name: "Clock 9.5" })).toBeInTheDocument();

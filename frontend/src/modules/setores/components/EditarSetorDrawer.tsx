@@ -92,7 +92,7 @@ export function EditarSetorDrawer({ setor, onFechar, gerentes, nomes }: {
         </div>
         <ul aria-label={t("managers")} className="space-y-2">
           {(associados.data ?? []).map((vinculo) => (
-            <li key={vinculo.usuario_id} className="flex items-center justify-between rounded-xl border border-separator px-4 py-3 text-[14px] text-body">
+            <li key={vinculo.usuario_id} className="flex items-center justify-between rounded-xl border border-edge px-4 py-3 text-[14px] text-body">
               <span>{nomes.get(vinculo.usuario_id) ?? vinculo.usuario_id}{vinculo.ativo ? "" : ` · ${t("inactive").toLowerCase()}`}</span>
               {vinculo.ativo && <Button variant="ghost" size="sm" aria-label={`${t("remove")} ${nomes.get(vinculo.usuario_id) ?? vinculo.usuario_id}`} onPress={() => setGerenteParaRemover(vinculo.usuario_id)}>{t("remove")}</Button>}
             </li>

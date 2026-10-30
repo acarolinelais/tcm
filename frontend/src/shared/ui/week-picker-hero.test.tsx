@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -28,15 +28,29 @@ describe("WeekPickerHero", () => {
 
   it("com permitirDia, o dia escolhe o dia e o número da semana escolhe a semana (spec 032)", async () => {
     const onChange = vi.fn();
-    const { rerender } = render(<WeekPickerHero label="Day or week" value="2026-03-25" onChange={onChange} permitirDia />);
-    expect(screen.getByRole("button", { name: /^Day or week: Mar 25, 2026/ })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /^Day or week: / }));
+    const { rerender } = render(<WeekPickerHero label="Day or Week" value="2026-03-25" onChange={onChange} permitirDia />);
+    expect(screen.getByRole("button", { name: /^Day or Week: Mar 25, 2026/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /^Day or Week: / }));
     await userEvent.click(await screen.findByRole("button", { name: /March 24/ }));
     expect(onChange).toHaveBeenLastCalledWith("2026-03-24");
 
-    rerender(<WeekPickerHero label="Day or week" value="2026-W12" onChange={onChange} permitirDia />);
-    await userEvent.click(screen.getByRole("button", { name: /^Day or week: / }));
+    rerender(<WeekPickerHero label="Day or Week" value="2026-W12" onChange={onChange} permitirDia />);
+    await userEvent.click(screen.getByRole("button", { name: /^Day or Week: / }));
     await userEvent.click(await screen.findByRole("button", { name: "Week 13, 2026" }));
     expect(onChange).toHaveBeenLastCalledWith("2026-W13");
   });
+
+  it("é a pílula do protótipo, reage ao toque e Esc fecha devolvendo o foco ao gatilho (spec 050)", async () => {
+    const user = userEvent.setup();
+    render(<WeekPickerHero label="Week" value="" onChange={vi.fn()} />);
+    const gatilho = screen.getByRole("button", { name: /^Week: / });
+
+    expect(gatilho).toHaveClass("h-9", "rounded-full", "border-edge", "bg-surface", "data-[pressed]:scale-[0.97]", "motion-reduce:data-[pressed]:scale-100");
+    await user.click(gatilho);
+    expect(await screen.findByRole("button", { name: "This week" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("button", { name: "This week" })).not.toBeInTheDocument());
+    expect(gatilho).toHaveFocus();
+  });
 });
+

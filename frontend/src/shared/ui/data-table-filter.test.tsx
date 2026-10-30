@@ -81,4 +81,20 @@ describe("DataTableMultiFilter", () => {
     expect(screen.queryByRole("option", { name: "caroline.silva" })).not.toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it("no filtro de data, escolher um dia aplica o filtro e Limpar remove (spec 050, mesmo calendário dos filtros de semana)", async () => {
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    const { rerender } = render(<DataTableFilter label="End date" type="date" value="2026-03-10" onChange={onChange} />);
+
+    await user.click(screen.getByRole("button", { name: /End date/ }));
+    await user.click(await screen.findByRole("button", { name: /March 24th, 2026/ }));
+    expect(onChange).toHaveBeenLastCalledWith("2026-03-24");
+
+    rerender(<DataTableFilter label="End date" type="date" value="2026-03-24" onChange={onChange} />);
+    await user.click(screen.getByRole("button", { name: /End date/ }));
+    await user.click(await screen.findByRole("button", { name: "Clear filters" }));
+    expect(onChange).toHaveBeenLastCalledWith("");
+  });
 });
+

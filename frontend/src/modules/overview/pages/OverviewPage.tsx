@@ -5,7 +5,7 @@ import { useOverview } from "../hooks/useOverview";
 import { useOutletContext } from "react-router";
 import type { PerfilAtual } from "@/core/auth/api";
 import { useTranslation } from "react-i18next";
-import { Skeleton } from "@/shared/ui/skeleton";
+import { Skeleton } from "@heroui/react";
 
 export function OverviewPage() {
   const perfil = useOutletContext<PerfilAtual>();

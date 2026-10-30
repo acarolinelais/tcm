@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PerfilAtual } from "@/core/auth/api";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
-import { useCasoTeste, useHistoricoProjeto, useProjetosSeletor, useResumoExecucoes } from "../hooks/useProjetos";
+import { useHistoricoProjeto, useProjetosSeletor, useResumoExecucoes } from "../hooks/useProjetos";
 import type { FiltrosHistoricoProjeto, HistoricoProjeto, ResumoExecucoes } from "../model/projeto";
 import { formatarDia } from "../components/resultados-gerais/formatar-dia";
 import { ResultadosGeraisPage } from "./ResultadosGeraisPage";
@@ -14,12 +14,6 @@ vi.mock("../hooks/useProjetos", () => ({
   useHistoricoProjeto: vi.fn(),
   useResumoExecucoes: vi.fn(),
   useProjetosSeletor: vi.fn(),
-  // Painel de detalhes (specs 028 e 030).
-  ehNaoEncontrado: () => false,
-  useCasoTeste: vi.fn(),
-  usePullRequestsCasoTeste: () => ({ data: { itens: [], pode_remover: true }, isError: false }),
-  useAdicionarPullRequest: () => ({ isPending: false, mutateAsync: vi.fn() }),
-  useRemoverPullRequest: () => ({ isPending: false, mutate: vi.fn() }),
 }));
 
 const perfil = {
@@ -72,7 +66,6 @@ describe("ResultadosGeraisPage", () => {
     vi.mocked(useProjetosSeletor).mockReturnValue({ data: { pages: [{ items: projetos, page: 1, page_size: 100, total_count: 2 }] }, isError: false, isLoading: false } as never);
     vi.mocked(useHistoricoProjeto).mockReturnValue({ data: historico, isLoading: false, isError: false, refetch: vi.fn() } as never);
     vi.mocked(useResumoExecucoes).mockImplementation((casoId) => ({ data: casoId ? resumo : undefined, isLoading: false, isError: false, refetch: vi.fn() }) as never);
-    vi.mocked(useCasoTeste).mockImplementation((id) => ({ data: id ? { id, tc_id: "Clock_001", title: `Título ${id}`, precondition: null, procedure: null, expected_result: null } : undefined, isError: false, error: null }) as never);
   });
 
   it("mostra uma aba com o nome de cada projeto, abre a primeira e consulta o projeto da aba (CA-01)", async () => {
@@ -188,7 +181,7 @@ describe("ResultadosGeraisPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(screen.getByRole("button", { name: /^Day or week: / }));
+    await user.click(screen.getByRole("button", { name: /^Day or Week: / }));
     await user.click((await screen.findAllByRole("button", { name: /^Week \d+, \d{4}$/ }))[0]);
     await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina({ periodo: expect.stringMatching(/^\d{4}-W\d{2}$/) }), perfil));
 
@@ -226,12 +219,14 @@ describe("ResultadosGeraisPage", () => {
     expect(await screen.findByText("Added manually")).toBeInTheDocument();
   });
 
-  it("o TC ID abre o painel do caso (spec 030)", async () => {
+  it("o TC ID é só texto e não abre o painel do caso (spec 050, CA-01)", async () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(screen.getByRole("button", { name: "Clock_001" }));
-    expect(within(await screen.findByRole("dialog")).getByText("Título c1")).toBeInTheDocument();
+    const tcId = within(linha("Clock_001")).getByText("Clock_001");
+    expect(tcId.closest("button, a")).toBeNull();
+    await user.click(tcId);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("sem projeto acessível mostra o estado vazio; perfil sem permissão continua negado (CA-02)", () => {
@@ -245,4 +240,15 @@ describe("ResultadosGeraisPage", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("You do not have permission");
     expect(useHistoricoProjeto).toHaveBeenLastCalledWith("", comPagina(), expect.anything());
   });
+
+  it("a lupa é o botão redondo do protótipo e abre a busca como antes (spec 050)", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const lupa = screen.getByRole("button", { name: "Search by tester ID, SDF ID or device" });
+
+    expect(lupa).toHaveClass("size-9", "rounded-full", "border-edge", "bg-surface", "data-[pressed]:scale-[0.97]");
+    await user.click(lupa);
+    expect(screen.getByRole("searchbox", { name: "Search by tester ID, SDF ID or device" })).toHaveFocus();
+  });
 });
+

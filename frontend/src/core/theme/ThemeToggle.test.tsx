@@ -15,6 +15,17 @@ afterEach(async () => {
 });
 
 describe("ThemeToggle", () => {
+  it("tem o desenho do protótipo (spec 050): círculo de 29px com borda, ícone do tema em uso e toque imediato", async () => {
+    const user = userEvent.setup();
+    render(<ThemeToggle />);
+    const botao = screen.getByRole("button", { name: "Dark theme" });
+
+    expect(botao).toHaveClass("size-[29px]", "rounded-full", "border-edge", "bg-surface", "active:scale-[0.97]", "motion-reduce:active:scale-100");
+    expect(botao.querySelector("svg")).toHaveClass("lucide-sun");
+    await user.click(botao);
+    expect(botao.querySelector("svg")).toHaveClass("lucide-moon");
+  });
+
   it("alterna do claro para o escuro e de volta, guardando a escolha", async () => {
     const user = userEvent.setup();
     render(<ThemeToggle />);

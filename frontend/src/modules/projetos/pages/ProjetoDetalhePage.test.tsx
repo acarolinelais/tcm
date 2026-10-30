@@ -364,7 +364,8 @@ describe("ProjetoDetalhePage", () => {
     const escolherDia = async (dia: Date) => {
       await user.click(screen.getByRole("button", { name: /Filter by End date/i }));
       const calendario = await screen.findByRole("dialog", { name: /End date/i });
-      const dataPorExtenso = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(dia);
+      // O calendário (spec 050) usa o ordinal no rótulo do dia: "Friday, October 30th, 2026".
+      const dataPorExtenso = `${dia.toLocaleString("en-US", { month: "long" })} ${dia.getDate()}(st|nd|rd|th)?, ${dia.getFullYear()}`;
       await user.click(within(calendario).getByRole("button", { name: new RegExp(dataPorExtenso) }));
     };
 

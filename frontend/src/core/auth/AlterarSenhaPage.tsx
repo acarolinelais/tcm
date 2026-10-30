@@ -1,12 +1,10 @@
 import { useState, type FormEvent } from "react";
+import { Button, Input, Label } from "@heroui/react";
 import { useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { alterarSenhaInicial } from "./api";
 import { ApiError } from "@/shared/api/problem-details";
-import { Button } from "@/shared/ui/button";
-import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
 import { useTranslation } from "react-i18next";
 
 export function AlterarSenhaPage() {
@@ -50,7 +48,7 @@ export function AlterarSenhaPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-page p-4">
-      <form noValidate onSubmit={enviar} className="w-full max-w-md space-y-5 rounded-2xl border border-border bg-card p-6">
+      <form noValidate onSubmit={enviar} className="w-full max-w-md space-y-5 rounded-2xl border border-edge bg-card p-6">
         <div>
           <h1 className="text-xl font-semibold">{t("createPassword")}</h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -90,7 +88,7 @@ export function AlterarSenhaPage() {
           {errosCampos.confirmacao && <p id="confirmacao-senha-error" role="alert" className="mt-1.5 text-sm text-destructive">{errosCampos.confirmacao}</p>}
         </div>
         {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}
-        <Button type="submit" className="w-full" disabled={salvando}>
+        <Button type="submit" variant="primary" className="w-full" isDisabled={salvando}>
           {salvando ? t("saving") : t("savePassword")}
         </Button>
       </form>
