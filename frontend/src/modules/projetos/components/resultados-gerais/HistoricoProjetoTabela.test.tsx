@@ -1,12 +1,15 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { baixarPlanilha, montarPlanilha } from "@/shared/lib/exportar-planilha";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 
 import type { CasoHistorico, HistoricoProjeto } from "../../model/projeto";
 import { formatarDia } from "./formatar-dia";
 import { HistoricoProjetoTabela } from "./HistoricoProjetoTabela";
+
+vi.mock("@/shared/lib/exportar-planilha");
 
 const DATAS = ["2026-10-10", "2026-10-09", "2026-10-08", "2026-10-07", "2026-10-06", "2026-10-05", "2026-10-04"];
 
@@ -28,7 +31,7 @@ const dados: HistoricoProjeto = {
 };
 
 function renderizar(props: Partial<Parameters<typeof HistoricoProjetoTabela>[0]> = {}) {
-  const handlers = { onAbrirResultado: vi.fn(), onAbrirResumo: vi.fn(), onAbrirDetalhes: vi.fn(), onModeloChange: vi.fn(), onFiltroChange: vi.fn(), onTentarDeNovo: vi.fn(), onLimparFiltros: vi.fn(), onPageChange: vi.fn(), onPageSizeChange: vi.fn() };
+  const handlers = { onAbrirResultado: vi.fn(), onAbrirResumo: vi.fn(), onAbrirDetalhes: vi.fn(), onModeloChange: vi.fn(), onFiltroChange: vi.fn(), onTentarDeNovo: vi.fn(), onLimparFiltros: vi.fn(), onPageChange: vi.fn(), onPageSizeChange: vi.fn(), buscarTodos: vi.fn(async () => dados.items) };
   render(<HistoricoProjetoTabela
     dados={dados} carregando={false} erro={false} filtros={{}} temFiltros={false} page={1} pageSize={DEFAULT_TABLE_PAGE_SIZE}
     modeloDaLinha={(linha) => linha.modelo_padrao_id ?? ""}
@@ -104,5 +107,22 @@ describe("HistoricoProjetoTabela", () => {
     expect(screen.getByText("No results found")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Clear filters" }));
     expect(handlers.onLimparFiltros).toHaveBeenCalled();
+  });
+
+  it("exporta todos os casos com as datas como colunas e o resultado do modelo escolhido na linha", async () => {
+    const outro = caso("Clock_050", { "2026-10-09": { s27: { execucao_id: "e9", resultado: "PASS", sdf_id: null, origem: "MANUAL" } } });
+    const buscarTodos = vi.fn(async () => [...dados.items, outro]);
+    const user = userEvent.setup();
+    renderizar({ buscarTodos, modeloDaLinha: (linha) => linha.tc_id === "Clock_001" ? "s27" : linha.modelo_padrao_id ?? "" });
+
+    await user.click(screen.getByRole("button", { name: "Export" }));
+    await user.click(await screen.findByRole("menuitem", { name: "All items" }));
+
+    await waitFor(() => expect(baixarPlanilha).toHaveBeenCalledWith(expect.any(ArrayBuffer), expect.stringMatching(/^resultados-gerais_/)));
+    const [colunas, itens] = vi.mocked(montarPlanilha).mock.calls[0];
+    expect(itens).toEqual([...dados.items, outro]);
+    expect(colunas.map((coluna) => coluna.titulo)).toEqual(["TC ID", "Form Factor", ...DATAS.map(formatarDia)]);
+    expect(colunas.slice(0, 3).map((coluna) => coluna.valor(dados.items[0]))).toEqual(["Clock_001", "SM-S27", "FAIL"]);
+    expect(colunas.slice(0, 4).map((coluna) => coluna.valor(outro))).toEqual(["Clock_050", "SM-S26", "—", "—"]);
   });
 });

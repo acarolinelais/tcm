@@ -1,7 +1,10 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Table } from "@heroui/react";
 
+import type { ColunaExportacao } from "@/shared/lib/exportar-planilha";
+import type { OpcoesExportacao } from "@/shared/lib/use-exportar-tabela";
 import { cn } from "@/shared/lib/utils";
+import { DataTableExport } from "@/shared/ui/data-table-export";
 
 export interface DataTableColumn<T> {
   id: string;
@@ -11,6 +14,8 @@ export interface DataTableColumn<T> {
   /** Coluna que identifica a linha para leitores de tela (a primeira, em geral). */
   isRowHeader?: boolean;
   className?: string;
+  /** Título e valor da coluna na planilha (spec 035). Sem ele, a coluna não é exportada (ex.: ações). */
+  exportar?: ColunaExportacao<T>;
 }
 
 interface DataTableProps<T extends object> {
@@ -28,6 +33,8 @@ interface DataTableProps<T extends object> {
    * linhas redesenham a cada render da tela; com ela, só quando um desses valores muda.
    */
   rowDependencies?: readonly unknown[];
+  /** Botão "Exportar" no rodapé (spec 035): exporta as colunas com `exportar`, da página (`items`) ou de todos os itens. */
+  exportacao?: Pick<OpcoesExportacao<T>, "listagem" | "todosOsItens">;
   className?: string;
 }
 
@@ -44,7 +51,7 @@ const cantosCorpo = "bg-surface [&>tr:first-child>td:first-child]:rounded-ss-[25
 const chavePorId = (item: object) => (item as { id: string }).id;
 
 /** Listagem do padrão da spec 022 sobre o `Table` do HeroUI. */
-export function DataTable<T extends object>({ columns, items, getKey = chavePorId, state, pagination, rowDependencies, className, "aria-label": ariaLabel }: DataTableProps<T>) {
+export function DataTable<T extends object>({ columns, items, getKey = chavePorId, state, pagination, rowDependencies, exportacao, className, "aria-label": ariaLabel }: DataTableProps<T>) {
   return (
     <Table
       variant="primary"
@@ -82,7 +89,12 @@ export function DataTable<T extends object>({ columns, items, getKey = chavePorI
           </div>
         </div>
       </Table.ScrollContainer>
-      {pagination ? <Table.Footer className="p-0">{pagination}</Table.Footer> : <div className="h-[5px]" />}
+      {pagination || exportacao ? (
+        <Table.Footer className="flex items-center p-0">
+          {exportacao ? <DataTableExport {...exportacao} colunas={columns} itensPagina={items} className="ms-4 shrink-0" /> : null}
+          <div className="min-w-0 flex-1">{pagination}</div>
+        </Table.Footer>
+      ) : <div className="h-[5px]" />}
     </Table>
   );
 }

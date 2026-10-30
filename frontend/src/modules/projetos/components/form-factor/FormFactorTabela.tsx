@@ -9,7 +9,7 @@ import { RowActions } from "@/shared/ui/row-action-button";
 import { rowActionIconProps } from "@/shared/ui/row-action-icon";
 
 import type { CasoTesteResumo, FormFactorMatriz } from "../../model/projeto";
-import { colunasPorModelo } from "./colunas-form-factor";
+import { colunasPorModelo, rotuloAssignee, rotuloSdf } from "./colunas-form-factor";
 import { estadoCasosTeste } from "../casos-teste/estado-casos-teste";
 import { TcIdBotao } from "../casos-teste/TcIdBotao";
 
@@ -17,7 +17,7 @@ type Linha = FormFactorMatriz["items"][number];
 const chaveDaLinha = (linha: Linha) => linha.caso_teste_id;
 const SEM_LINHAS: Linha[] = [];
 
-export function FormFactorTabela({ dados, carregando, erro, identificadoresMembros, opcoesAssignee, assignee, onAssigneeChange, tcId = "", sdfId = "", onFiltroTexto, modeloDispositivoId = "", resultadoFiltro = "", onFiltroResultado, podeRegistrar, onRegistrar, onAbrirDetalhes, temFiltros, onLimparFiltros, page, pageSize, onPageChange, onPageSizeChange }: {
+export function FormFactorTabela({ dados, carregando, erro, identificadoresMembros, opcoesAssignee, assignee, onAssigneeChange, tcId = "", sdfId = "", onFiltroTexto, modeloDispositivoId = "", resultadoFiltro = "", onFiltroResultado, podeRegistrar, onRegistrar, onAbrirDetalhes, buscarTodos, temFiltros, onLimparFiltros, page, pageSize, onPageChange, onPageSizeChange }: {
   dados: FormFactorMatriz | undefined;
   carregando: boolean;
   erro: boolean;
@@ -32,6 +32,8 @@ export function FormFactorTabela({ dados, carregando, erro, identificadoresMembr
   onRegistrar?: (linha: Linha) => void;
   /** Abre o painel de detalhes do caso pelo TC ID (spec 030). */
   onAbrirDetalhes: (caso: CasoTesteResumo) => void;
+  /** Todas as linhas com os filtros atuais, para "Exportar todos os itens" (spec 035). */
+  buscarTodos: () => Promise<Linha[]>;
   temFiltros: boolean;
   onLimparFiltros: () => void;
   page: number;
@@ -46,13 +48,15 @@ export function FormFactorTabela({ dados, carregando, erro, identificadoresMembr
   // A coluna só aparece quando alguma linha da página tem ação para este usuário.
   const comAcoes = podeRegistrar ? linhas.some(podeRegistrar) : false;
 
+  const assigneeDaLinha = rotuloAssignee(identificadoresMembros);
+  const rotuloData = (linha: Linha) => linha.data_reportada ? formatDate(linha.data_reportada) : "—";
   const colunas: DataTableColumn<Linha>[] = [
     { id: "numero", header: "", className: "w-12 text-right tabular-nums text-muted after:hidden", cell: (linha) => String(primeiraDaPagina + linhas.indexOf(linha) + 1).padStart(2, "0") },
-    { id: "tcId", isRowHeader: true, header: <DataTableFilter label={t("tcId")} value={tcId} onChange={(valor) => onFiltroTexto?.("tcId", valor)} />, cell: (linha) => <TcIdBotao caso={{ id: linha.caso_teste_id, tc_id: linha.tc_id }} onAbrir={onAbrirDetalhes} /> },
-    { id: "sdfId", header: <DataTableFilter label={t("sdfId")} value={sdfId} onChange={(valor) => onFiltroTexto?.("sdfId", valor)} />, cell: (linha) => linha.sdf_id ?? "—" },
-    { id: "assignee", header: <DataTableMultiFilter label={t("assignee")} values={assignee} onChange={onAssigneeChange} options={opcoesAssignee} searchable />, cell: (linha) => identificadoresMembros[linha.responsavel_id] ?? "—" },
+    { id: "tcId", isRowHeader: true, header: <DataTableFilter label={t("tcId")} value={tcId} onChange={(valor) => onFiltroTexto?.("tcId", valor)} />, cell: (linha) => <TcIdBotao caso={{ id: linha.caso_teste_id, tc_id: linha.tc_id }} onAbrir={onAbrirDetalhes} />, exportar: { titulo: t("tcId"), valor: (linha) => linha.tc_id } },
+    { id: "sdfId", header: <DataTableFilter label={t("sdfId")} value={sdfId} onChange={(valor) => onFiltroTexto?.("sdfId", valor)} />, cell: rotuloSdf, exportar: { titulo: t("sdfId"), valor: rotuloSdf } },
+    { id: "assignee", header: <DataTableMultiFilter label={t("assignee")} values={assignee} onChange={onAssigneeChange} options={opcoesAssignee} searchable />, cell: assigneeDaLinha, exportar: { titulo: t("assignee"), valor: assigneeDaLinha } },
     ...colunasPorModelo<Linha>(t, modelos, { modeloId: modeloDispositivoId, resultado: resultadoFiltro }, (modeloId, valor) => onFiltroResultado?.(modeloId, valor)),
-    { id: "data", header: t("date"), cell: (linha) => linha.data_reportada ? formatDate(linha.data_reportada) : "—" },
+    { id: "data", header: t("date"), cell: rotuloData, exportar: { titulo: t("date"), valor: rotuloData } },
     ...(comAcoes ? [{
       id: "acoes",
       header: t("actions"),
@@ -66,6 +70,7 @@ export function FormFactorTabela({ dados, carregando, erro, identificadoresMembr
     columns={colunas}
     items={linhas}
     getKey={chaveDaLinha}
+    exportacao={{ listagem: "form-factor", todosOsItens: buscarTodos }}
     rowDependencies={[t, modelos, identificadoresMembros, podeRegistrar, onRegistrar, primeiraDaPagina]}
     state={estadoCasosTeste(t, { isLoading: carregando, isError: erro, isEmpty: !linhas.length, hasFilters: temFiltros, onClearFilters: onLimparFiltros, errorLabel: t("formFactorLoadError") })}
     pagination={<DataTablePagination page={page} pageSize={pageSize} totalCount={dados?.total_count ?? 0} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} />}

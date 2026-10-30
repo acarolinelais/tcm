@@ -65,8 +65,8 @@ export function TimeDetalhePage({ modoAdmin = false }: { modoAdmin?: boolean }) 
   const alterarFiltro = (novos: Partial<typeof filtros>) => { setPagina(1); setFiltros((atual) => ({ ...atual, ...novos })); };
 
   const colunas: DataTableColumn<TimeMembro & { perfilNome: string }>[] = [
-    { id: "nome", isRowHeader: true, header: <DataTableFilter label={t("user")} value={filtros.nome ?? ""} onChange={(value) => alterarFiltro({ nome: value || undefined })} placeholder={t("usersSearchName")} />, cell: (membro) => membro.usuario_nome ?? membro.usuario_id },
-    { id: "perfil", header: <DataTableFilter label={t("profile")} value={filtros.perfil ?? ""} onChange={(value) => alterarFiltro({ perfil: value || undefined })} options={[{ value: "", label: t("all") }, ...perfisFiltro.map((nome) => ({ value: nome, label: nome }))]} />, cell: (membro) => membro.perfilNome },
+    { id: "nome", isRowHeader: true, header: <DataTableFilter label={t("user")} value={filtros.nome ?? ""} onChange={(value) => alterarFiltro({ nome: value || undefined })} placeholder={t("usersSearchName")} />, cell: (membro) => membro.usuario_nome ?? membro.usuario_id, exportar: { titulo: t("user"), valor: (membro) => membro.usuario_nome ?? membro.usuario_id } },
+    { id: "perfil", header: <DataTableFilter label={t("profile")} value={filtros.perfil ?? ""} onChange={(value) => alterarFiltro({ perfil: value || undefined })} options={[{ value: "", label: t("all") }, ...perfisFiltro.map((nome) => ({ value: nome, label: nome }))]} />, cell: (membro) => membro.perfilNome, exportar: { titulo: t("profile"), valor: (membro) => membro.perfilNome } },
     ...(podeGerenciarMembros ? [{
       id: "acoes",
       header: t("actions"),
@@ -117,6 +117,7 @@ export function TimeDetalhePage({ modoAdmin = false }: { modoAdmin?: boolean }) 
         items={membrosPaginados}
         state={estado}
         pagination={<DataTablePagination page={pagina} pageSize={tamanho} totalCount={membrosFiltrados.length} onPageChange={setPagina} onPageSizeChange={(valor) => { setTamanho(valor); setPagina(1); }} />}
+        exportacao={{ listagem: "membros-time", todosOsItens: membrosFiltrados }}
       />
     </>}
     <EditarTimeDrawer isOpen={editarTimeAberto} onOpenChange={setEditarTimeAberto} timeId={timeId} nomeAtual={time?.nome ?? ""} />

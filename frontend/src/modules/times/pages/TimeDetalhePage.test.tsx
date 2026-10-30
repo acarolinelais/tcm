@@ -1,15 +1,18 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PerfilAtual } from "@/core/auth/api";
+import { baixarPlanilha, montarPlanilha } from "@/shared/lib/exportar-planilha";
 import { TimeDetalhePage } from "./TimeDetalhePage";
 
 const api = vi.hoisted(() => ({ listar: vi.fn(), membros: vi.fn(), remover: vi.fn() }));
 const setoresApi = vi.hoisted(() => ({ listar: vi.fn() }));
 vi.mock("../api/times.api", () => ({ timesApi: api }));
 vi.mock("@/modules/setores/api/setores.api", () => ({ setoresApi }));
+vi.mock("@/shared/lib/exportar-planilha");
 
 const time = { id: "time-1", setor_id: "setor-1", nome: "Produto", gerente_id: null, ativo: true };
 const perfilBase: PerfilAtual = {
@@ -46,6 +49,21 @@ describe("TimeDetalhePage", () => {
 
     expect(within(await screen.findByRole("row", { name: "Pat" })).getByText("Key Person")).toBeInTheDocument();
     expect(api.membros).toHaveBeenCalledWith(time.id);
+  });
+
+  it("exporta todos os membros da lista em memória com nome e perfil", async () => {
+    const user = userEvent.setup();
+    renderPage({ ...perfilBase, times: [{ id: time.id, nome: time.nome }] });
+
+    await screen.findByRole("row", { name: "Pat" });
+    await user.click(screen.getByRole("button", { name: "Export" }));
+    await user.click(await screen.findByRole("menuitem", { name: "All items" }));
+
+    await waitFor(() => expect(baixarPlanilha).toHaveBeenCalledWith(expect.any(ArrayBuffer), expect.stringMatching(/^membros-time_/)));
+    const [colunas, itens] = vi.mocked(montarPlanilha).mock.calls[0];
+    expect(colunas.map((coluna) => coluna.titulo)).toEqual(["User", "Profile"]);
+    expect(colunas.map((coluna) => coluna.valor(itens[0]))).toEqual(["Pat", "Key Person"]);
+    expect(api.membros).toHaveBeenCalledTimes(1);
   });
 
   it("mostra a visão geral do time com setor, status e membros, sem voltar no cabeçalho", async () => {

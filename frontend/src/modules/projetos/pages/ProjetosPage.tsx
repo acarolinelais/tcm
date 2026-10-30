@@ -19,6 +19,7 @@ import { InlineSelect } from "@/shared/ui/inline-select";
 import { RowActions, type RowAction } from "@/shared/ui/row-action-button";
 import { rowActionIconProps } from "@/shared/ui/row-action-icon";
 import { TagChip } from "@/shared/ui/tag-chip";
+import { baixarPlanilha, buscarTodasAsPaginas } from "@/shared/lib/exportar-planilha";
 import { comOpcaoTodos } from "@/shared/lib/opcoes";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { toast } from "@/shared/lib/toast";
@@ -36,7 +37,7 @@ import { modelosDispositivoApi, projetosApi, type Projeto, type StatusProjeto } 
 type ModoCriacao = "manual" | "planilha";
 const statusProjeto: StatusProjeto[] = ["Created", "To Do", "InProgress", "Completed", "Canceled"];
 const timesVazios: Awaited<ReturnType<typeof timesApi.listar>>["items"] = [];
-const FILTROS_VAZIOS = { nome: "", time: "", app: "", oneUi: "", modelo: "", status: "", createdAt: "" };
+const FILTROS_VAZIOS = { nome: "", time: "", app: "", oneUi: "", modelo: "", status: "", createdAt: "", updatedAt: "" };
 
 export function ProjetosPage() {
   const { t } = useTranslation();
@@ -70,17 +71,21 @@ export function ProjetosPage() {
   const opcoesModelos = useMemo(() => (modelos.data?.items ?? []).map((model) => ({ value: model.id, label: model.nome, description: model.descricao })), [modelos.data?.items]);
   const opcoesFiltroModelos = useMemo(() => [...new Set((projetos.data?.items ?? []).flatMap((project) => project.modelos_dispositivo ?? []))].sort((a, b) => a.localeCompare(b)).map((nome) => ({ value: nome, label: nome })), [projetos.data?.items]);
   const nomeTime = useMemo(() => Object.fromEntries([...perfil.times, ...timesDisponiveis].map((time) => [time.id, time.nome])), [perfil.times, timesDisponiveis]);
-  const projetosFiltrados = (projetos.isError ? [] : projetos.data?.items ?? []).filter((project) => {
+  const passaNosFiltros = (project: Projeto) => {
     // Filtro de data pelo dia (AAAA-MM-DD) no fuso do navegador, nunca pelo texto formatado.
-    const criadoEm = project.created_at ? formatarDiaIso(new Date(project.created_at)) : "";
+    const dia = (data: string | null) => data ? formatarDiaIso(new Date(data)) : "";
     return project.nome.toLocaleLowerCase().includes(filtrosProjeto.nome.toLocaleLowerCase())
       && (nomeTime[project.time_id] ?? project.time_id).toLocaleLowerCase().includes(filtrosProjeto.time.toLocaleLowerCase())
       && project.app.toLocaleLowerCase().includes(filtrosProjeto.app.toLocaleLowerCase())
       && project.one_ui.toLocaleLowerCase().includes(filtrosProjeto.oneUi.toLocaleLowerCase())
       && (!filtrosProjeto.modelo || (project.modelos_dispositivo ?? []).includes(filtrosProjeto.modelo))
       && (!filtrosProjeto.status || project.status === filtrosProjeto.status)
-      && (!filtrosProjeto.createdAt || criadoEm === filtrosProjeto.createdAt);
-  });
+      && (!filtrosProjeto.createdAt || dia(project.created_at) === filtrosProjeto.createdAt)
+      && (!filtrosProjeto.updatedAt || dia(project.updated_at) === filtrosProjeto.updatedAt);
+  };
+  const projetosFiltrados = (projetos.isError ? [] : projetos.data?.items ?? []).filter(passaNosFiltros);
+  // O filtro é local, sobre a página: para exportar tudo, busca todas as páginas e filtra depois.
+  const buscarProjetosParaExportar = async () => (await buscarTodasAsPaginas((page, pageSize) => projetosApi.listar(page, pageSize))).filter(passaNosFiltros);
   const alterarFiltroProjeto = (campo: keyof typeof filtrosProjeto, valor: string) => {
     setPagina(1);
     setFiltrosProjeto((atual) => ({ ...atual, [campo]: valor }));
@@ -136,15 +141,7 @@ export function ProjetosPage() {
     ]);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Test Cases");
-    const bytes = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-    const url = URL.createObjectURL(new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "template-projeto-test-cases.xlsx";
-    document.body.append(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    baixarPlanilha(XLSX.write(workbook, { bookType: "xlsx", type: "array" }), "template-projeto-test-cases.xlsx");
   }
   function statusLabel(status: StatusProjeto) {
     const keys: Record<StatusProjeto, string> = { Created: "projectCreated", "To Do": "toDo", InProgress: "inProgress", Completed: "completed", Canceled: "projectCanceled" };
@@ -185,16 +182,20 @@ export function ProjetosPage() {
       { label: t("deleteProject"), icon: <Trash2 {...rowActionIconProps} />, onPress: () => setProjetoExcluindo(project), destructive: true },
     ] : []),
   ];
+  const rotuloTime = (project: Projeto) => nomeTime[project.time_id] ?? "—";
+  const rotuloCriadoEm = (project: Projeto) => project.created_at ? formatDate(project.created_at) : "—";
+  const rotuloAtualizadoEm = (project: Projeto) => project.updated_at ? formatDate(project.updated_at) : "—";
   const colunas: DataTableColumn<Projeto>[] = [
     { id: "numero", header: "", className: "w-12 text-right tabular-nums text-muted after:hidden", cell: (project) => String(primeiraDaPagina + projetosFiltrados.indexOf(project) + 1).padStart(2, "0") },
-    { id: "nome", isRowHeader: true, header: <DataTableFilter label={t("project")} value={filtrosProjeto.nome} onChange={(value) => alterarFiltroProjeto("nome", value)} />, cell: (project) => <Link to={`/projetos/${project.id}`} className="hover:text-accent-text focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{project.nome}</Link> },
-    { id: "time", header: <DataTableFilter label={t("team")} value={filtrosProjeto.time} onChange={(value) => alterarFiltroProjeto("time", value)} />, cell: (project) => nomeTime[project.time_id] ?? "—" },
-    { id: "app", header: <DataTableFilter label={t("app")} value={filtrosProjeto.app} onChange={(value) => alterarFiltroProjeto("app", value)} />, cell: (project) => project.app },
-    { id: "oneUi", header: <DataTableFilter label={t("oneUi")} value={filtrosProjeto.oneUi} onChange={(value) => alterarFiltroProjeto("oneUi", value)} />, cell: (project) => project.one_ui },
-    { id: "modelos", header: <DataTableFilter label={t("deviceModels")} value={filtrosProjeto.modelo} onChange={(value) => alterarFiltroProjeto("modelo", value)} options={comOpcaoTodos(t("all"), opcoesFiltroModelos)} searchable />, cell: (project) => <ContagemModelos modelos={project.modelos_dispositivo ?? []} rotulo={t("deviceModels")} /> },
+    { id: "nome", isRowHeader: true, header: <DataTableFilter label={t("project")} value={filtrosProjeto.nome} onChange={(value) => alterarFiltroProjeto("nome", value)} />, cell: (project) => <Link to={`/projetos/${project.id}`} className="hover:text-accent-text focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{project.nome}</Link>, exportar: { titulo: t("project"), valor: (project) => project.nome } },
+    { id: "time", header: <DataTableFilter label={t("team")} value={filtrosProjeto.time} onChange={(value) => alterarFiltroProjeto("time", value)} />, cell: rotuloTime, exportar: { titulo: t("team"), valor: rotuloTime } },
+    { id: "app", header: <DataTableFilter label={t("app")} value={filtrosProjeto.app} onChange={(value) => alterarFiltroProjeto("app", value)} />, cell: (project) => project.app, exportar: { titulo: t("app"), valor: (project) => project.app } },
+    { id: "oneUi", header: <DataTableFilter label={t("oneUi")} value={filtrosProjeto.oneUi} onChange={(value) => alterarFiltroProjeto("oneUi", value)} />, cell: (project) => project.one_ui, exportar: { titulo: t("oneUi"), valor: (project) => project.one_ui } },
+    { id: "modelos", header: <DataTableFilter label={t("deviceModels")} value={filtrosProjeto.modelo} onChange={(value) => alterarFiltroProjeto("modelo", value)} options={comOpcaoTodos(t("all"), opcoesFiltroModelos)} searchable />, cell: (project) => <ContagemModelos modelos={project.modelos_dispositivo ?? []} rotulo={t("deviceModels")} />, exportar: { titulo: t("deviceModels"), valor: (project) => (project.modelos_dispositivo ?? []).join(", ") } },
     {
       id: "status",
       header: <DataTableFilter label={t("status")} value={filtrosProjeto.status} onChange={(value) => alterarFiltroProjeto("status", value)} options={comOpcaoTodos(t("all"), opcoesStatus)} />,
+      exportar: { titulo: t("status"), valor: (project) => statusLabel(project.status) },
       cell: (project) => {
         const etiqueta = <TagChip tom={statusProjetoTons[project.status]}>{statusLabel(project.status)}</TagChip>;
         return podeGerenciar
@@ -202,7 +203,8 @@ export function ProjetosPage() {
           : etiqueta;
       },
     },
-    { id: "criadoEm", header: <DataTableFilter label={t("createdAt")} value={filtrosProjeto.createdAt} onChange={(value) => alterarFiltroProjeto("createdAt", value)} type="date" />, cell: (project) => project.created_at ? formatDate(project.created_at) : "—" },
+    { id: "criadoEm", header: <DataTableFilter label={t("createdAt")} value={filtrosProjeto.createdAt} onChange={(value) => alterarFiltroProjeto("createdAt", value)} type="date" />, cell: rotuloCriadoEm, exportar: { titulo: t("createdAt"), valor: rotuloCriadoEm } },
+    { id: "atualizadoEm", header: <DataTableFilter label={t("updatedAt")} value={filtrosProjeto.updatedAt} onChange={(value) => alterarFiltroProjeto("updatedAt", value)} type="date" />, cell: rotuloAtualizadoEm, exportar: { titulo: t("updatedAt"), valor: rotuloAtualizadoEm } },
     { id: "acoes", header: t("actions"), className: "w-px whitespace-nowrap", cell: (project) => <RowActions identificador={project.nome} actions={acoesDoProjeto(project)} /> },
   ];
   const estadoProjetos = estadoDaTabela({
@@ -230,6 +232,7 @@ export function ProjetosPage() {
         items={projetosFiltrados}
         state={estadoProjetos}
         pagination={<DataTablePagination page={pagina} pageSize={tamanhoPagina} totalCount={projetos.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />}
+        exportacao={{ listagem: "projetos", todosOsItens: buscarProjetosParaExportar }}
         rowDependencies={[t, nomeTime, podeGerenciar, primeiraDaPagina, ordemDosProjetos]}
       />
     </> : <>

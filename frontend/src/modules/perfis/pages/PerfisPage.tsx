@@ -225,15 +225,19 @@ export function PerfisPage() {
     : t("unsavedPermissionsHint");
   const labelSalvarEContinuar = criando ? t("createAndContinue") : t("saveAndContinue");
   const labelDescartar = acaoPendente?.tipo === "cancelar" ? t("discardDraft") : t("discardAndContinue");
+  const nomeDoPerfil = (perfil: Perfil) => perfil.codigo ? t(`catalog.profile.${perfil.codigo}`, { defaultValue: perfil.nome }) : perfil.nome;
+  const descricaoDoPerfil = (perfil: Perfil) => perfil.codigo ? t(`catalog.profile.description.${perfil.codigo}`, { defaultValue: perfil.descricao || "—" }) : perfil.descricao || "—";
+  const tipoDoPerfil = (perfil: Perfil) => perfil.codigo ? t("protectedBySystem") : t("unitProfile");
   const colunas: DataTableColumn<Perfil>[] = [
-    { id: "perfil", isRowHeader: true, header: t("profileColumn"), cell: (perfil) => perfil.codigo ? t(`catalog.profile.${perfil.codigo}`, { defaultValue: perfil.nome }) : perfil.nome },
+    { id: "perfil", isRowHeader: true, header: t("profileColumn"), cell: nomeDoPerfil, exportar: { titulo: t("profileColumn"), valor: nomeDoPerfil } },
     // A tabela mede as colunas pelo conteúdo: a largura máxima faz a descrição quebrar linha em vez de empurrar as ações.
-    { id: "descricao", header: t("description"), className: "py-2.5", cell: (perfil) => <span className="block max-w-[20rem] whitespace-normal">{perfil.codigo ? t(`catalog.profile.description.${perfil.codigo}`, { defaultValue: perfil.descricao || "—" }) : perfil.descricao || "—"}</span> },
-    { id: "tipo", header: t("type"), cell: (perfil) => perfil.codigo ? t("protectedBySystem") : t("unitProfile") },
+    { id: "descricao", header: t("description"), className: "py-2.5", cell: (perfil) => <span className="block max-w-[20rem] whitespace-normal">{descricaoDoPerfil(perfil)}</span>, exportar: { titulo: t("description"), valor: descricaoDoPerfil } },
+    { id: "tipo", header: t("type"), cell: tipoDoPerfil, exportar: { titulo: t("type"), valor: tipoDoPerfil } },
     {
       id: "permissoes",
       header: t("permissions"),
       className: "text-end",
+      exportar: { titulo: t("permissions"), valor: (perfil) => perfil.permissoes.length },
       cell: (perfil) => <span className="inline-flex items-center gap-1.5 tabular-nums">
         <ShieldCheck aria-hidden="true" absoluteStrokeWidth strokeWidth={1} className="size-3.5" />
         <span aria-hidden="true">{perfil.permissoes.length}</span>
@@ -277,6 +281,7 @@ export function PerfisPage() {
             filtered: { title: t("noProfiles"), hint: t("noProfilesHint") },
           })}
           pagination={<DataTablePagination page={pagina} pageSize={itensPorPagina} totalCount={listaPerfis.length} onPageChange={setPagina} onPageSizeChange={(quantidade) => { setItensPorPagina(quantidade); setPagina(1); }} />}
+          exportacao={{ listagem: "perfis", todosOsItens: listaPerfis }}
         />
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-3">

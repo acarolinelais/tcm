@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { listarPerfis } from "@/modules/perfis/api/perfis.api";
 import { setoresApi } from "@/modules/setores/api/setores.api";
+import { buscarTodasAsPaginas } from "@/shared/lib/exportar-planilha";
 import { comOpcaoTodos } from "@/shared/lib/opcoes";
 import { toast } from "@/shared/lib/toast";
 import { AlertConfirm } from "@/shared/ui/alert-confirm";
@@ -89,6 +90,13 @@ export function UsuariosTable({
   );
   const rotuloPerfil = (perfil: { codigo?: string | null; nome?: string | null }) =>
     perfil.codigo ? t(`catalog.profile.${perfil.codigo}`, { defaultValue: perfil.nome ?? "—" }) : perfil.nome ?? "—";
+  const rotuloStatus = (usuario: Usuario) => usuario.ativo ? t("active") : t("inactive");
+  function perfilDoUsuario(usuario: Usuario) {
+    const perfil = perfis.data?.find((item) => item.id === usuario.perfil_id);
+    return rotuloPerfil({ codigo: usuario.perfil_codigo ?? perfil?.codigo, nome: usuario.perfil_nome ?? perfil?.nome });
+  }
+  const responsavelDoUsuario = (usuario: Usuario) => listaGerentes.find((gerente) => gerente.id === usuario.responsavel_id)?.nome ?? t("noOwner");
+  const setoresDoUsuario = (usuario: Usuario) => usuario.setores?.join(", ") || "—";
 
   function acoesDoUsuario(usuario: Usuario): RowAction[] {
     // Quem gerencia sem atribuir perfil só mexe nos usuários de que é responsável.
@@ -107,32 +115,33 @@ export function UsuariosTable({
   }
 
   const colunas: DataTableColumn<Usuario>[] = [
-    { id: "nome", isRowHeader: true, header: <DataTableFilter label={t("user")} value={filtros.nome ?? ""} onChange={(valor) => onFiltroChange("nome", valor)} placeholder={t("usersSearchName")} />, cell: (usuario) => usuario.nome },
-    { id: "email", header: <DataTableFilter label={t("email")} value={filtros.email ?? ""} onChange={(valor) => onFiltroChange("email", valor)} placeholder={t("usersSearchEmail")} />, cell: (usuario) => usuario.email },
+    { id: "nome", isRowHeader: true, header: <DataTableFilter label={t("user")} value={filtros.nome ?? ""} onChange={(valor) => onFiltroChange("nome", valor)} placeholder={t("usersSearchName")} />, cell: (usuario) => usuario.nome, exportar: { titulo: t("user"), valor: (usuario) => usuario.nome } },
+    { id: "email", header: <DataTableFilter label={t("email")} value={filtros.email ?? ""} onChange={(valor) => onFiltroChange("email", valor)} placeholder={t("usersSearchEmail")} />, cell: (usuario) => usuario.email, exportar: { titulo: t("email"), valor: (usuario) => usuario.email } },
     {
       id: "status",
       header: <DataTableFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(valor) => onFiltroChange("ativo", valor)} options={comOpcaoTodos(t("all"), [{ value: "true", label: t("active") }, { value: "false", label: t("inactive") }])} />,
-      cell: (usuario) => <TagChip tom={usuario.ativo ? TONS_ETIQUETA.ativo : TONS_ETIQUETA.neutro}>{usuario.ativo ? t("active") : t("inactive")}</TagChip>,
+      cell: (usuario) => <TagChip tom={usuario.ativo ? TONS_ETIQUETA.ativo : TONS_ETIQUETA.neutro}>{rotuloStatus(usuario)}</TagChip>,
+      exportar: { titulo: t("status"), valor: rotuloStatus },
     },
     ...(podeConsultarPerfil ? [{
       id: "perfil",
       header: podeAtribuirPerfil || podeAtribuirPerfilKP
         ? <DataTableFilter label={t("profile")} value={filtros.perfil_id ?? ""} onChange={(valor) => onFiltroChange("perfil", valor)} options={comOpcaoTodos(t("all"), (perfis.data ?? []).map((perfil) => ({ value: perfil.id, label: rotuloPerfil(perfil) })))} />
         : t("profile"),
-      cell: (usuario: Usuario) => {
-        const perfil = perfis.data?.find((item) => item.id === usuario.perfil_id);
-        return rotuloPerfil({ codigo: usuario.perfil_codigo ?? perfil?.codigo, nome: usuario.perfil_nome ?? perfil?.nome });
-      },
+      cell: perfilDoUsuario,
+      exportar: { titulo: t("profile"), valor: perfilDoUsuario },
     }] : []),
     ...(podeAtribuirPerfil ? [{
       id: "responsavel",
       header: <DataTableFilter label={t("owner")} value={filtros.sem_responsavel ? "__none" : filtros.responsavel_id ?? ""} onChange={(valor) => onFiltroChange("responsavel", valor)} options={comOpcaoTodos(t("all"), [{ value: "__none", label: t("noOwner") }, ...listaGerentes.map((gerente) => ({ value: gerente.id, label: gerente.nome }))])} />,
-      cell: (usuario: Usuario) => listaGerentes.find((gerente) => gerente.id === usuario.responsavel_id)?.nome ?? t("noOwner"),
+      cell: responsavelDoUsuario,
+      exportar: { titulo: t("owner"), valor: responsavelDoUsuario },
     }] : []),
     ...(podeConsultarSetores ? [{
       id: "setor",
       header: <DataTableFilter label={t("sector")} value={filtros.setor_id ?? ""} onChange={(valor) => onFiltroChange("setor", valor)} options={comOpcaoTodos(t("all"), (setores.data?.items ?? []).map((setor) => ({ value: setor.id, label: setor.nome })))} />,
-      cell: (usuario: Usuario) => usuario.setores?.join(", ") || "—",
+      cell: setoresDoUsuario,
+      exportar: { titulo: t("sector"), valor: setoresDoUsuario },
     }] : []),
     ...(mostrarAcoes ? [{ id: "acoes", header: t("actions"), className: "w-px whitespace-nowrap", cell: (usuario: Usuario) => <RowActions identificador={usuario.nome} actions={acoesDoUsuario(usuario)} /> }] : []),
   ];
@@ -158,6 +167,7 @@ export function UsuariosTable({
         items={items}
         state={estado}
         pagination={<DataTablePagination page={page} pageSize={pageSize} pageSizeOptions={pageSizeOptions} totalCount={usuarios.data?.total_count ?? 0} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} />}
+        exportacao={{ listagem: "usuarios", todosOsItens: () => buscarTodasAsPaginas((pagina, tamanho) => usuarioApi.listar(pagina, tamanho, filtros)) }}
         rowDependencies={[t, perfis.data, listaGerentes, setores.data, podeGerenciar, podeAtribuirPerfil, usuarioAtualId, ativar.isPending, inativar.isPending]}
       />
       <AlertConfirm

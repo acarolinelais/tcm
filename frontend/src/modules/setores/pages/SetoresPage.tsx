@@ -5,6 +5,7 @@ import { Button as HeroButton } from "@heroui/react";
 import { Building2, Pencil, Plus, UserRoundCheck, UserRoundX, UsersRound } from "lucide-react";
 
 import type { PerfilAtual } from "@/core/auth/api";
+import { CACHE_EXPORTACAO_MS, buscarTodasAsPaginas } from "@/shared/lib/exportar-planilha";
 import { comOpcaoTodos } from "@/shared/lib/opcoes";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { toast } from "@/shared/lib/toast";
@@ -19,7 +20,7 @@ import { rowActionIconProps } from "@/shared/ui/row-action-icon";
 import { TONS_ETIQUETA, TagChip } from "@/shared/ui/tag-chip";
 import { listarPerfis } from "@/modules/perfis/api/perfis.api";
 import { usuarioApi } from "@/modules/usuarios/api/usuario.api";
-import { setoresApi, type Setor } from "../api/setores.api";
+import { setoresApi, type Setor, type SetorGerente } from "../api/setores.api";
 import { EditarSetorDrawer } from "../components/EditarSetorDrawer";
 import { NovoSetorDrawer } from "../components/NovoSetorDrawer";
 import { useTranslation } from "react-i18next";
@@ -45,7 +46,8 @@ export function SetoresPage() {
   if (perfil.perfil_codigo !== "ADMIN_UNIDADE") return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
   const temFiltro = Boolean(filtros.busca) || filtros.ativo !== undefined;
   const alterarFiltro = (novos: Partial<typeof filtros>) => { setPagina(1); setFiltros((atual) => ({ ...atual, ...novos })); };
-  const gerentesDoSetor = (setor: Setor) => (gerentesPorSetor[setoresVisiveis.indexOf(setor)]?.data ?? [])
+  // Lê do cache: as linhas da tela vêm do `useQueries` acima e as de "Todos os itens", de `buscarSetoresParaExportar`.
+  const gerentesDoSetor = (setor: Setor) => (client.getQueryData<SetorGerente[]>(["setor-gerentes", setor.id]) ?? [])
     .filter((vinculo) => vinculo.ativo).map((vinculo) => nomes.get(vinculo.usuario_id) ?? vinculo.usuario_id).join(", ") || "—";
   const acoesDoSetor = (setor: Setor): RowAction[] => [
     { label: t("editSector"), icon: <Pencil {...rowActionIconProps} />, onPress: () => setSetorAtual(setor) },
@@ -57,10 +59,17 @@ export function SetoresPage() {
       onPress: () => setor.ativo ? setSetorParaInativar(setor) : alterar.mutate({ id: setor.id, ativo: true }),
     },
   ];
+  const rotuloStatus = (setor: Setor) => setor.ativo ? t("active") : t("inactive");
+  async function buscarSetoresParaExportar() {
+    const todos = await buscarTodasAsPaginas((page, pageSize) => setoresApi.listar(page, pageSize, filtros.ativo, filtros.busca));
+    // Reaproveita o que a tela acabou de buscar; o que estiver velho ou invalidado é buscado de novo.
+    await Promise.all(todos.map((setor) => client.fetchQuery({ staleTime: CACHE_EXPORTACAO_MS, queryKey: ["setor-gerentes", setor.id], queryFn: () => setoresApi.gerentes(setor.id) })));
+    return todos;
+  }
   const colunas: DataTableColumn<Setor>[] = [
-    { id: "nome", isRowHeader: true, header: <DataTableFilter label={t("sector")} value={filtros.busca ?? ""} onChange={(value) => alterarFiltro({ busca: value || undefined })} placeholder={t("searchSector")} />, cell: (setor) => setor.nome },
-    { id: "gerentes", header: t("managers"), cell: gerentesDoSetor },
-    { id: "status", header: <DataTableFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => alterarFiltro({ ativo: value === "" ? undefined : value === "true" })} options={comOpcaoTodos(t("all"), [{ value: "true", label: t("active") }, { value: "false", label: t("inactive") }])} />, cell: (setor) => <TagChip tom={setor.ativo ? TONS_ETIQUETA.ativo : TONS_ETIQUETA.neutro}>{setor.ativo ? t("active") : t("inactive")}</TagChip> },
+    { id: "nome", isRowHeader: true, header: <DataTableFilter label={t("sector")} value={filtros.busca ?? ""} onChange={(value) => alterarFiltro({ busca: value || undefined })} placeholder={t("searchSector")} />, cell: (setor) => setor.nome, exportar: { titulo: t("sector"), valor: (setor) => setor.nome } },
+    { id: "gerentes", header: t("managers"), cell: gerentesDoSetor, exportar: { titulo: t("managers"), valor: gerentesDoSetor } },
+    { id: "status", header: <DataTableFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => alterarFiltro({ ativo: value === "" ? undefined : value === "true" })} options={comOpcaoTodos(t("all"), [{ value: "true", label: t("active") }, { value: "false", label: t("inactive") }])} />, cell: (setor) => <TagChip tom={setor.ativo ? TONS_ETIQUETA.ativo : TONS_ETIQUETA.neutro}>{rotuloStatus(setor)}</TagChip>, exportar: { titulo: t("status"), valor: rotuloStatus } },
     { id: "acoes", header: t("actions"), className: "w-px whitespace-nowrap", cell: (setor) => <RowActions identificador={setor.nome} actions={acoesDoSetor(setor)} /> },
   ];
   const estado = estadoDaTabela({
@@ -87,6 +96,7 @@ export function SetoresPage() {
       items={setoresVisiveis}
       state={estado}
       pagination={<DataTablePagination page={pagina} pageSize={tamanho} totalCount={setores.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(n) => { setTamanho(n); setPagina(1); }} />}
+      exportacao={{ listagem: "setores", todosOsItens: buscarSetoresParaExportar }}
       // Os gerentes chegam por consultas separadas, depois das linhas.
       rowDependencies={[t, nomes, gerentesPorSetor.map((consulta) => consulta.dataUpdatedAt).join()]}
     />

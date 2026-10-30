@@ -9,6 +9,7 @@ import type { PerfilAtual } from "@/core/auth/api";
 import { formatDate } from "@/core/i18n/format";
 import { timesApi } from "@/modules/times/api/times.api";
 import { ApiError } from "@/shared/api/problem-details";
+import { buscarTodasAsPaginas } from "@/shared/lib/exportar-planilha";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { toast } from "@/shared/lib/toast";
 import { formatarDiaIso } from "@/shared/lib/utils";
@@ -49,6 +50,13 @@ const valorDoCampo = (campo: CampoInline, valor: string) => campo === "automatio
 type Aba = "cases" | "form-factor";
 // Valor do filtro de Backup para os casos sem backup.
 const SEM_BACKUP = "__sem_backup__";
+/** End Date do caso: a última atualização de um caso Done; os outros ainda não terminaram. */
+const dataFinalDoCaso = (caso: CasoTeste) => caso.status === "Done" ? caso.updated_at ?? caso.created_at : null;
+// Figma: data por extenso curta ("Mar 23, 2026").
+function rotuloDataFinal(caso: CasoTeste) {
+  const endDate = dataFinalDoCaso(caso);
+  return endDate ? formatDate(endDate, { dateStyle: "medium" }) : "—";
+}
 // Colunas de valores fechados filtram por vários valores ao mesmo tempo; TC ID (texto) e End date (dia) filtram por um.
 const FILTROS_CASO_VAZIOS = { tcId: "", status: [] as string[], situation: [] as string[], assignee: [] as string[], difficulty: [] as string[], category: [] as string[], automationLevel: [] as string[], endDate: "", backup: [] as string[] };
 
@@ -95,11 +103,14 @@ function ProjetoDetalhe() {
   const podeRegistrarResultado = admin || (["GERENTE", "KP", "USUARIO_PADRAO"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("form_factor.registrar"));
   const podeRegistrarLinha = (linha: LinhaFormFactor) => Boolean(linha.rodada_pendente_id) && (perfilGestao || linha.responsavel_id === perfil.id || linha.backup_id === perfil.id);
   const projeto = useQuery({ queryKey: ["projetos", "detalhe", projetoId, perfil.unidade_id, perfil.id], queryFn: () => projetosApi.obter(projetoId), enabled: podeConsultar && Boolean(projetoId) });
-  const casos = useCasosTeste(projetoId, pagina, tamanhoPagina, { responsavelIds: filtrosCaso.assignee.length ? filtrosCaso.assignee : undefined, ...(dev ? { associadosAMim: true } : {}), ...(semanaCasos ? { semana: semanaCasos } : {}) }, perfil, Boolean(projeto.isSuccess && podeConsultarCasos && aba === "cases"));
+  const filtrosApiCasos = { responsavelIds: filtrosCaso.assignee.length ? filtrosCaso.assignee : undefined, ...(dev ? { associadosAMim: true } : {}), ...(semanaCasos ? { semana: semanaCasos } : {}) };
+  const casos = useCasosTeste(projetoId, pagina, tamanhoPagina, filtrosApiCasos, perfil, Boolean(projeto.isSuccess && podeConsultarCasos && aba === "cases"));
   const associacao = useCasosTeste(projetoId, 1, 1, { associadosAMim: true }, perfil, dev && projeto.isSuccess && podeConsultarCasos);
   const membros = useQuery({ queryKey: ["projetos", projetoId, "membros", perfil.unidade_id, perfil.id], queryFn: async () => timesApi.membros(projeto.data!.time_id), enabled: projeto.isSuccess && (podeConsultarCasos || podeConsultarFormFactor) });
-  const resultados = useFormFactor(projetoId, { page: pagina, pageSize: tamanhoPagina, semana: semana || undefined, responsavelIds: assigneeFormFactor.length ? assigneeFormFactor : undefined, tcId: filtrosResumo.tcId || undefined, sdfId: filtrosResumo.sdfId || undefined, modeloDispositivoId: filtrosResumo.modeloDispositivoId || undefined, resultado: filtrosResumo.resultado || undefined }, perfil, projeto.isSuccess && podeConsultarFormFactor && aba === "form-factor" && visaoFormFactor === "summary");
-  const historico = useFormFactorResultados(projetoId, { page: pagina, pageSize: tamanhoPagina, semana: semana || undefined, tcId: filtrosResultados.tcId || undefined, sdfId: filtrosResultados.sdfId || undefined, responsavelIds: responsaveisResultados.length ? responsaveisResultados : undefined, origem: filtrosResultados.origem ? filtrosResultados.origem as "SDF" | "MANUAL" : undefined, modeloDispositivoId: filtrosResultados.modeloDispositivoId || undefined, resultado: filtrosResultados.resultado || undefined }, perfil, projeto.isSuccess && podeConsultarFormFactor && aba === "form-factor" && visaoFormFactor === "results");
+  const filtrosApiResumo = { semana: semana || undefined, responsavelIds: assigneeFormFactor.length ? assigneeFormFactor : undefined, tcId: filtrosResumo.tcId || undefined, sdfId: filtrosResumo.sdfId || undefined, modeloDispositivoId: filtrosResumo.modeloDispositivoId || undefined, resultado: filtrosResumo.resultado || undefined };
+  const filtrosApiResultados = { semana: semana || undefined, tcId: filtrosResultados.tcId || undefined, sdfId: filtrosResultados.sdfId || undefined, responsavelIds: responsaveisResultados.length ? responsaveisResultados : undefined, origem: filtrosResultados.origem ? filtrosResultados.origem as "SDF" | "MANUAL" : undefined, modeloDispositivoId: filtrosResultados.modeloDispositivoId || undefined, resultado: filtrosResultados.resultado || undefined };
+  const resultados = useFormFactor(projetoId, { page: pagina, pageSize: tamanhoPagina, ...filtrosApiResumo }, perfil, projeto.isSuccess && podeConsultarFormFactor && aba === "form-factor" && visaoFormFactor === "summary");
+  const historico = useFormFactorResultados(projetoId, { page: pagina, pageSize: tamanhoPagina, ...filtrosApiResultados }, perfil, projeto.isSuccess && podeConsultarFormFactor && aba === "form-factor" && visaoFormFactor === "results");
   const criarRodada = useCriarRodadaFormFactor(projetoId);
   const registrarResultadoRodada = useRegistrarResultadosRodadaFormFactor(projetoId);
 
@@ -157,8 +168,8 @@ function ProjetoDetalhe() {
   const mostrarAcoes = podeGerenciarCasos || Boolean(casos.data?.items.some((item) => item.responsavel_id === responsavelAtual));
   // A lista vazia do Assignee é verdadeira para Boolean: conta só quando tem alguém escolhido.
   const temFiltrosCaso = Boolean(semanaCasos || Object.values(filtrosCaso).some((valor) => Array.isArray(valor) ? valor.length > 0 : Boolean(valor)));
-  const casosFiltrados = (casos.isError ? [] : casos.data?.items ?? []).filter((item) => {
-    const endDate = item.status === "Done" ? item.updated_at ?? item.created_at : null;
+  const passaNosFiltrosCaso = (item: CasoTeste) => {
+    const endDate = dataFinalDoCaso(item);
     const dataFinal = endDate ? formatarDiaIso(new Date(endDate)) : "";
     return item.tc_id.toLocaleLowerCase().includes(filtrosCaso.tcId.toLocaleLowerCase())
       && (!filtrosCaso.status.length || filtrosCaso.status.includes(item.status))
@@ -169,7 +180,12 @@ function ProjetoDetalhe() {
       && (!filtrosCaso.automationLevel.length || filtrosCaso.automationLevel.includes(String(item.automation_level ?? "")))
       && (!filtrosCaso.endDate || dataFinal === filtrosCaso.endDate)
       && (!filtrosCaso.backup.length || filtrosCaso.backup.includes(item.backup_id ?? SEM_BACKUP));
-  });
+  };
+  const casosFiltrados = (casos.isError ? [] : casos.data?.items ?? []).filter(passaNosFiltrosCaso);
+  // Parte dos filtros é local, sobre a página: para exportar tudo, busca todas as páginas e filtra depois.
+  const buscarResumoParaExportar = () => buscarTodasAsPaginas((page, pageSize) => formFactorApi.listar(projetoId, { ...filtrosApiResumo, page, pageSize }));
+  const buscarResultadosParaExportar = () => buscarTodasAsPaginas((page, pageSize) => formFactorApi.listarResultados(projetoId, { ...filtrosApiResultados, page, pageSize }));
+  const buscarCasosParaExportar = async () => (await buscarTodasAsPaginas((page, pageSize) => casosTesteApi.listar(projetoId, page, pageSize, filtrosApiCasos))).filter(passaNosFiltrosCaso);
   const alterarFiltroCaso = <K extends keyof typeof filtrosCaso>(campo: K, valor: (typeof filtrosCaso)[K]) => {
     setPagina(1);
     setFiltrosCaso((atual) => ({ ...atual, [campo]: valor }));
@@ -204,6 +220,12 @@ function ProjetoDetalhe() {
     ? <InlineSelect aria-label={`${rotulo} ${caso.tc_id}`} value={valor} options={opcoes} onChange={(value) => alterarCampo(caso, campo, value)}>{exibicao}</InlineSelect>
     : exibicao;
 
+  const rotuloStatus = (caso: CasoTeste) => t(ROTULO_STATUS[caso.status]);
+  const rotuloSituacao = (caso: CasoTeste) => t(ROTULO_SITUACAO[caso.situation]);
+  const rotuloDificuldade = (caso: CasoTeste) => t(ROTULO_DIFICULDADE[caso.difficulty]);
+  const rotuloAutomacao = (caso: CasoTeste) => caso.automation_level ? t(ROTULO_AUTOMACAO[caso.automation_level]) : "—";
+  const rotuloAssignee = (caso: CasoTeste) => identificadoresMembros[caso.responsavel_id] ?? "—";
+  const rotuloBackup = (caso: CasoTeste) => caso.backup_id ? identificadoresMembros[caso.backup_id] ?? "—" : "—";
   const primeiraDaPagina = (pagina - 1) * tamanhoPagina;
   // O filtro é local: o mesmo caso muda de posição sem mudar de identidade, então o número depende da ordem.
   const ordemDosCasos = casosFiltrados.map((caso) => caso.id).join();
@@ -211,59 +233,65 @@ function ProjetoDetalhe() {
     { id: "numero", header: "", className: "w-12 text-right tabular-nums text-muted after:hidden", cell: (caso) => String(primeiraDaPagina + casosFiltrados.indexOf(caso) + 1).padStart(2, "0") },
     { id: "tcId", isRowHeader: true, header: <DataTableFilter label={t("tcId")} value={filtrosCaso.tcId} onChange={(value) => alterarFiltroCaso("tcId", value)} />,
       // Botão, não link: abre o painel de detalhes (spec 028) sem sair da página; o React Aria devolve o foco a ele ao fechar.
-      cell: (caso) => <TcIdBotao caso={caso} onAbrir={setCasoDetalhado} /> },
+      cell: (caso) => <TcIdBotao caso={caso} onAbrir={setCasoDetalhado} />, exportar: { titulo: t("tcId"), valor: (caso) => caso.tc_id } },
     {
       id: "status",
       header: <DataTableMultiFilter label={t("status")} values={filtrosCaso.status} onChange={(values) => alterarFiltroCaso("status", values)} options={opcoes.status} />,
+      exportar: { titulo: t("status"), valor: rotuloStatus },
       cell: (caso) => {
         const opcoesStatus = opcoesStatusDoCaso(caso);
-        return celulaEditavel(caso, "status", t("status"), caso.status, opcoesStatus, <TagChip tom={statusChipTons[caso.status]}>{t(ROTULO_STATUS[caso.status])}</TagChip>, opcoesStatus.length > 0);
+        return celulaEditavel(caso, "status", t("status"), caso.status, opcoesStatus, <TagChip tom={statusChipTons[caso.status]}>{rotuloStatus(caso)}</TagChip>, opcoesStatus.length > 0);
       },
     },
     {
       id: "situation",
       header: <DataTableMultiFilter label={t("tcSituation")} values={filtrosCaso.situation} onChange={(values) => alterarFiltroCaso("situation", values)} options={opcoes.situacao} />,
-      cell: (caso) => celulaEditavel(caso, "situation", t("tcSituation"), caso.situation, opcoes.situacao, <TagChip tom={TONS_ETIQUETA.neutro}>{t(ROTULO_SITUACAO[caso.situation])}</TagChip>, podeEditarProprio(caso)),
+      exportar: { titulo: t("tcSituation"), valor: rotuloSituacao },
+      cell: (caso) => celulaEditavel(caso, "situation", t("tcSituation"), caso.situation, opcoes.situacao, <TagChip tom={TONS_ETIQUETA.neutro}>{rotuloSituacao(caso)}</TagChip>, podeEditarProprio(caso)),
     },
     {
       id: "assignee",
       header: <DataTableMultiFilter label={t("assignee")} values={filtrosCaso.assignee} onChange={(values) => alterarFiltroCaso("assignee", values)} options={opcoesAssignee} searchable />,
-      cell: (caso) => celulaEditavel(caso, "responsavel_id", t("assignee"), caso.responsavel_id, membrosExceto(caso.backup_id), <span>{identificadoresMembros[caso.responsavel_id] ?? "—"}</span>, podeGerenciarCasos),
+      exportar: { titulo: t("assignee"), valor: rotuloAssignee },
+      cell: (caso) => celulaEditavel(caso, "responsavel_id", t("assignee"), caso.responsavel_id, membrosExceto(caso.backup_id), <span>{rotuloAssignee(caso)}</span>, podeGerenciarCasos),
     },
     {
       id: "difficulty",
       header: <DataTableMultiFilter label={t("difficulty")} values={filtrosCaso.difficulty} onChange={(values) => alterarFiltroCaso("difficulty", values)} options={opcoes.dificuldade} />,
-      cell: (caso) => celulaEditavel(caso, "difficulty", t("difficulty"), caso.difficulty, opcoes.dificuldade, <span>{t(ROTULO_DIFICULDADE[caso.difficulty])}</span>, podeEditarProprio(caso)),
+      exportar: { titulo: t("difficulty"), valor: rotuloDificuldade },
+      cell: (caso) => celulaEditavel(caso, "difficulty", t("difficulty"), caso.difficulty, opcoes.dificuldade, <span>{rotuloDificuldade(caso)}</span>, podeEditarProprio(caso)),
     },
     {
       id: "category",
       header: <DataTableMultiFilter label={t("category")} values={filtrosCaso.category} onChange={(values) => alterarFiltroCaso("category", values)} options={opcoes.categoria} />,
+      exportar: { titulo: t("category"), valor: (caso) => caso.category },
       cell: (caso) => celulaEditavel(caso, "category", t("category"), caso.category, opcoes.categoria, <span>{caso.category}</span>, podeEditarProprio(caso)),
     },
     {
       id: "automationLevel",
       header: <DataTableMultiFilter label={t("automationLevel")} values={filtrosCaso.automationLevel} onChange={(values) => alterarFiltroCaso("automationLevel", values)} options={opcoes.automacao} />,
-      cell: (caso) => celulaEditavel(caso, "automation_level", t("automationLevel"), String(caso.automation_level ?? ""), opcoes.automacao, <span>{caso.automation_level ? t(ROTULO_AUTOMACAO[caso.automation_level]) : "—"}</span>, podeEditarProprio(caso)),
+      exportar: { titulo: t("automationLevel"), valor: rotuloAutomacao },
+      cell: (caso) => celulaEditavel(caso, "automation_level", t("automationLevel"), String(caso.automation_level ?? ""), opcoes.automacao, <span>{rotuloAutomacao(caso)}</span>, podeEditarProprio(caso)),
     },
     {
       id: "endDate",
       header: <DataTableFilter label={t("endDate")} value={filtrosCaso.endDate} onChange={(value) => alterarFiltroCaso("endDate", value)} type="date" />,
-      cell: (caso) => {
-        const endDate = caso.status === "Done" ? caso.updated_at ?? caso.created_at : null;
-        // Figma: data por extenso curta ("Mar 23, 2026"), centralizada na coluna.
-        return <span className="block text-center">{endDate ? formatDate(endDate, { dateStyle: "medium" }) : "—"}</span>;
-      },
+      exportar: { titulo: t("endDate"), valor: rotuloDataFinal },
+      cell: (caso) => <span className="block text-center">{rotuloDataFinal(caso)}</span>,
     },
     {
       id: "backup",
       header: <DataTableMultiFilter label={t("backup")} values={filtrosCaso.backup} onChange={(values) => alterarFiltroCaso("backup", values)} options={[...opcoesAssignee, { value: SEM_BACKUP, label: t("noBackup") }]} searchable />,
-      cell: (caso) => celulaEditavel(caso, "backup_id", t("backup"), caso.backup_id ?? "", membrosExceto(caso.responsavel_id), <span>{caso.backup_id ? identificadoresMembros[caso.backup_id] ?? "—" : "—"}</span>, podeGerenciarCasos),
+      exportar: { titulo: t("backup"), valor: rotuloBackup },
+      cell: (caso) => celulaEditavel(caso, "backup_id", t("backup"), caso.backup_id ?? "", membrosExceto(caso.responsavel_id), <span>{rotuloBackup(caso)}</span>, podeGerenciarCasos),
     },
     {
       // Spec 026: qualquer perfil que vê o TC lê a justificativa da exclusão.
       id: "notes",
       header: t("notes"),
       className: "w-px whitespace-nowrap",
+      // Na tela, um botão abre a justificativa; na planilha vai o próprio texto.
+      exportar: { titulo: t("notes"), valor: (caso) => caso.status === "Cancelled" && caso.justificativa_exclusao ? caso.justificativa_exclusao : "—" },
       cell: (caso) => caso.status === "Cancelled" && caso.justificativa_exclusao
         ? <RowActionButton identificador={caso.tc_id} action={{ label: t("viewJustification"), icon: <MessageSquareText {...rowActionIconProps} />, onPress: () => setCasoComJustificativa(caso) }} />
         : <span className="block text-center">—</span>,
@@ -329,16 +357,17 @@ function ProjetoDetalhe() {
             items={casosFiltrados}
             state={estadoCasos}
             pagination={<DataTablePagination page={pagina} pageSize={tamanhoPagina} totalCount={casos.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />}
+            exportacao={{ listagem: "test-cases", todosOsItens: buscarCasosParaExportar }}
             rowDependencies={[t, opcoes, identificadoresMembros, opcoesMembros, podeGerenciarCasos, responsavelAtual, mostrarAcoes, transfer.isPending, primeiraDaPagina, ordemDosCasos]}
           />
         </PageTabPanel>}
         {(podeConsultarFormFactor || podeImportarSdf) && <PageTabPanel id="form-factor" className="flex min-h-0 flex-1 flex-col gap-4 p-0">
           {visaoFormFactor === "summary"
             ? <div className="flex min-h-0 flex-1 flex-col">
-                <FormFactorTabela dados={resultados.data} carregando={resultados.isLoading} erro={resultados.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} assignee={assigneeFormFactor} onAssigneeChange={(valor) => { setAssigneeFormFactor(valor); setPagina(1); }} tcId={filtrosResumo.tcId} sdfId={filtrosResumo.sdfId} onFiltroTexto={(campo, valor) => { setFiltrosResumo((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} modeloDispositivoId={filtrosResumo.modeloDispositivoId} resultadoFiltro={filtrosResumo.resultado} onFiltroResultado={(modeloId, valor) => { setFiltrosResumo({ ...filtrosResumo, modeloDispositivoId: valor ? modeloId : "", resultado: valor }); setPagina(1); }} podeRegistrar={podeRegistrarResultado ? podeRegistrarLinha : undefined} onRegistrar={setLinhaManual} onAbrirDetalhes={setCasoDetalhado} temFiltros={Boolean(semana || assigneeFormFactor.length || filtrosResumo.tcId || filtrosResumo.sdfId || filtrosResumo.resultado)} onLimparFiltros={() => { setSemana(""); setAssigneeFormFactor([]); setFiltrosResumo({ tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" }); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
+                <FormFactorTabela dados={resultados.data} carregando={resultados.isLoading} erro={resultados.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} assignee={assigneeFormFactor} onAssigneeChange={(valor) => { setAssigneeFormFactor(valor); setPagina(1); }} tcId={filtrosResumo.tcId} sdfId={filtrosResumo.sdfId} onFiltroTexto={(campo, valor) => { setFiltrosResumo((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} modeloDispositivoId={filtrosResumo.modeloDispositivoId} resultadoFiltro={filtrosResumo.resultado} onFiltroResultado={(modeloId, valor) => { setFiltrosResumo({ ...filtrosResumo, modeloDispositivoId: valor ? modeloId : "", resultado: valor }); setPagina(1); }} podeRegistrar={podeRegistrarResultado ? podeRegistrarLinha : undefined} onRegistrar={setLinhaManual} onAbrirDetalhes={setCasoDetalhado} buscarTodos={buscarResumoParaExportar} temFiltros={Boolean(semana || assigneeFormFactor.length || filtrosResumo.tcId || filtrosResumo.sdfId || filtrosResumo.resultado)} onLimparFiltros={() => { setSemana(""); setAssigneeFormFactor([]); setFiltrosResumo({ tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" }); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
               </div>
             : <div className="flex min-h-0 flex-1 flex-col">
-                <FormFactorResultadosTabela onAbrirDetalhes={setCasoDetalhado} dados={historico.data} carregando={historico.isLoading} erro={historico.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} filtros={filtrosResultados} responsaveis={responsaveisResultados} onResponsaveisChange={(valores) => { setResponsaveisResultados(valores); setPagina(1); }} onFiltroChange={(campo, valor) => { setFiltrosResultados((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} onFiltroResultado={(modeloId, valor) => { setFiltrosResultados((atual) => ({ ...atual, modeloDispositivoId: valor ? modeloId : "", resultado: valor })); setPagina(1); }} onLimparFiltros={() => { setFiltrosResultados({ tcId: "", sdfId: "", origem: "", modeloDispositivoId: "", resultado: "" }); setResponsaveisResultados([]); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
+                <FormFactorResultadosTabela onAbrirDetalhes={setCasoDetalhado} buscarTodos={buscarResultadosParaExportar} dados={historico.data} carregando={historico.isLoading} erro={historico.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} filtros={filtrosResultados} responsaveis={responsaveisResultados} onResponsaveisChange={(valores) => { setResponsaveisResultados(valores); setPagina(1); }} onFiltroChange={(campo, valor) => { setFiltrosResultados((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} onFiltroResultado={(modeloId, valor) => { setFiltrosResultados((atual) => ({ ...atual, modeloDispositivoId: valor ? modeloId : "", resultado: valor })); setPagina(1); }} onLimparFiltros={() => { setFiltrosResultados({ tcId: "", sdfId: "", origem: "", modeloDispositivoId: "", resultado: "" }); setResponsaveisResultados([]); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
               </div>}
         </PageTabPanel>}
       </PageTabs>

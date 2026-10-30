@@ -8,6 +8,7 @@ import type { PerfilAtual } from "@/core/auth/api";
 import { formatDate } from "@/core/i18n/format";
 import { ApiError } from "@/shared/api/problem-details";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
+import { baixarPlanilha, montarPlanilha } from "@/shared/lib/exportar-planilha";
 
 import { modelosDispositivoApi } from "../api/modelos-dispositivo.api";
 import type { ModeloDispositivo } from "../model/modelo-dispositivo";
@@ -17,6 +18,7 @@ vi.mock("../api/modelos-dispositivo.api", () => ({
   modelosDispositivoApi: { listar: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), ativar: vi.fn(), inativar: vi.fn() },
 }));
 vi.mock("@/shared/lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("@/shared/lib/exportar-planilha");
 
 const kp: PerfilAtual = {
   id: "kp", nome: "KP", email: "kp@example.com", unidade_id: "unit-1", unidade_nome: "Unidade",
@@ -58,6 +60,21 @@ describe("ModelosDispositivoPage", () => {
     expect(within(screen.getByText("Tab S11").closest("tr")!).getByText("—")).toBeInTheDocument();
     expect(within(screen.getByText("Tab S11").closest("tr")!).getByText("Inactive")).toBeInTheDocument();
     expect(modelosDispositivoApi.listar).toHaveBeenCalledWith(1, DEFAULT_TABLE_PAGE_SIZE, {});
+  });
+
+  it("exporta a página atual com status e datas formatadas, sem a coluna de ações", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText("S27 Ultra");
+    await user.click(screen.getByRole("button", { name: "Export" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Current page" }));
+
+    await waitFor(() => expect(baixarPlanilha).toHaveBeenCalledWith(expect.any(ArrayBuffer), expect.stringMatching(/^modelos-dispositivo_/)));
+    const [colunas, itens] = vi.mocked(montarPlanilha).mock.calls[0];
+    expect(itens).toEqual([s27, tab]);
+    expect(colunas.map((coluna) => coluna.valor(tab))).toEqual(["Tab S11", "—", "Inactive", formatDate(tab.created_at!), formatDate(tab.updated_at!)]);
+    expect(modelosDispositivoApi.listar).toHaveBeenCalledTimes(1);
   });
 
   it("cria um modelo com nome e descrição", async () => {

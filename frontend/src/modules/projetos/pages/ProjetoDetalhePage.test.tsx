@@ -13,6 +13,7 @@ import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { formatarDiaIso, semanaIso } from "@/shared/lib/utils";
 import { ApiError } from "@/shared/api/problem-details";
 import { toast } from "@/shared/lib/toast";
+import { baixarPlanilha, montarPlanilha } from "@/shared/lib/exportar-planilha";
 
 vi.mock("../api/projetos.api", () => ({
   projetosApi: { obter: vi.fn(), listar: vi.fn() }, casosTesteApi: { listar: vi.fn(), obter: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), transferirParaBackup: vi.fn(), listarPullRequests: vi.fn() },
@@ -20,6 +21,7 @@ vi.mock("../api/projetos.api", () => ({
 }));
 vi.mock("@/modules/times/api/times.api", () => ({ timesApi: { membros: vi.fn() } }));
 vi.mock("@/shared/lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("@/shared/lib/exportar-planilha");
 
 const projeto = { id: "project-1", unidade_id: "unit-1", time_id: "team-1", nome: "Clock 9.5", app: "Clock", one_ui: "9.5", status: "Created" as const, ativo: true, created_at: null, updated_at: null };
 const casos = [
@@ -68,6 +70,25 @@ describe("ProjetoDetalhePage", () => {
       { id: "m3", time_id: "team-1", usuario_id: "user-2", usuario_nome: "Outro desenvolvedor", usuario_user_id: "outro-id", usuario_perfil: "Developer", usuario_perfil_codigo: null, ativo: true },
       { id: "m2", time_id: "team-1", usuario_id: "backup-1", usuario_nome: "Kaique Pereira", usuario_user_id: "kaique-id", usuario_perfil: "KP", usuario_perfil_codigo: "KP", ativo: true },
     ]);
+  });
+
+  it("exporta todos os Test Cases com os filtros do servidor e os valores legíveis, sem número nem ações", async () => {
+    const excluido = { ...casos[1], id: "case-3", tc_id: "Clock_003", status: "Cancelled" as const, justificativa_exclusao: "Fora do escopo" };
+    vi.mocked(casosTesteApi.listar).mockImplementation(async (_projetoId, page, pageSize) => ({ items: pageSize === 100 ? [...casos, excluido] : casos, page: page ?? 1, page_size: pageSize ?? 20, total_count: 3 }));
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByRole("row", { name: /Clock_002/ });
+    await user.click(screen.getByRole("button", { name: "Export" }));
+    await user.click(await screen.findByRole("menuitem", { name: "All items" }));
+
+    await waitFor(() => expect(baixarPlanilha).toHaveBeenCalledWith(expect.any(ArrayBuffer), expect.stringMatching(/^test-cases_/)));
+    expect(casosTesteApi.listar).toHaveBeenCalledWith("project-1", 1, 100, { responsavelIds: undefined });
+    const [colunas, itens] = vi.mocked(montarPlanilha).mock.calls[0];
+    expect(itens).toEqual([...casos, excluido]);
+    expect(colunas.map((coluna) => coluna.titulo)).toEqual(["TC ID", "Status", "TC Situation", "Assignee", "Difficulty", "Category", "Automation Level", "End date", "Backup", "Notes"]);
+    expect(colunas.map((coluna) => coluna.valor(casos[0]))).toEqual(["Clock_001", "To-Do", "New", "daniel-id", "Low", "A", "—", "—", "kaique-id", "—"]);
+    expect(colunas.at(-1)!.valor(excluido)).toBe("Fora do escopo");
   });
 
   it("permite ao backup cancelar, sem liberar edição dos demais campos", async () => {
