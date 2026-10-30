@@ -354,6 +354,28 @@
   transition: none !important;
 }
 
+/* Troca de tema pelo toggle (spec 049): todos os elementos ganham a mesma transição de cor, então a tela muda
+   junto e aos poucos. Só cor, sem movimento: vale também com movimento reduzido. A duração é a DURACAO_TROCA_MS
+   do core/theme/use-theme.ts. */
+:root.trocando-tema,
+:root.trocando-tema *,
+:root.trocando-tema *::before,
+:root.trocando-tema *::after {
+  transition-property: background-color, border-color, color, fill, stroke, outline-color, text-decoration-color, box-shadow !important;
+  transition-duration: 450ms !important;
+  transition-timing-function: ease-in-out !important;
+  transition-delay: 0s !important;
+}
+
+/* Ícone do toggle de tema. É uma animação, e não uma transição, porque a .trocando-tema toma conta das transições durante a troca. */
+@keyframes tema-icone-entrar {
+  from { opacity: 0; transform: rotate(-90deg) scale(0.6); }
+}
+
+.tema-icone-entrar {
+  animation: tema-icone-entrar 200ms ease-out;
+}
+
 body {
   background-color: var(--background);
   color: var(--foreground);
@@ -508,6 +530,10 @@ body {
 
   .popover-enter[data-saindo="true"] {
     animation: dialog-fade-in 100ms ease-out reverse forwards;
+  }
+
+  .tema-icone-entrar {
+    animation: dialog-fade-in 200ms ease-out;
   }
 }
 

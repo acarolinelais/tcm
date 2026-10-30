@@ -75,6 +75,7 @@ sem paginação, também pagina ([ADR 0039](../adr/0039-resultados-gerais-com-pa
 | 046 | Notificações dentro do sistema (depende das 038, 040 e 044) | Rascunho |
 | 047 | Corrigir rodadas e resultados de Form Factor | Rascunho |
 | 048 | Documentação de uso dentro do sistema | Rascunho |
+| 049 | Transição suave ao trocar o tema (cores da tela mudam juntas e aos poucos, ícone do toggle anima) | Concluída |
 
 > A Timeline ainda não tem spec: o produto não foi definido. A opção natural é um feed dos eventos da spec 038 por projeto e time.
 
