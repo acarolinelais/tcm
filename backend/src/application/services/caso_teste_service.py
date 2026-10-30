@@ -9,6 +9,11 @@ from src.application.schemas.caso_teste import (
     to_detalhe_response,
     to_response,
 )
+from src.application.schemas.historico_caso_teste import (
+    HistoricoCasoTesteResponse,
+    ids_de_usuarios,
+    to_historico_response,
+)
 from src.application.schemas.kanban import (
     KanbanCardResponse,
     KanbanResponse,
@@ -27,6 +32,9 @@ from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.caso_teste import CasoTeste, StatusCasoTeste
 from src.domain.entities.interfaces.caso_teste_repository import CasoTesteRepository
+from src.domain.entities.interfaces.historico_caso_teste_repository import (
+    HistoricoCasoTesteRepository,
+)
 from src.domain.entities.interfaces.link_pull_request_repository import LinkPullRequestRepository
 from src.domain.entities.interfaces.projeto_repository import ProjetoRepository
 from src.domain.entities.interfaces.time_membro_repository import TimeMembroRepository
@@ -71,6 +79,7 @@ class CasoTesteServiceImpl:
         usuario_repo: UsuarioRepository,
         link_repo: LinkPullRequestRepository,
         uow: UnitOfWork,
+        historico_repo: HistoricoCasoTesteRepository | None = None,
     ) -> None:
         self._caso_repo = caso_repo
         self._projeto_repo = projeto_repo
@@ -79,12 +88,24 @@ class CasoTesteServiceImpl:
         self._usuario_repo = usuario_repo
         self._link_repo = link_repo
         self._uow = uow
+        self._historico_repo = historico_repo
 
     async def obter(
         self, usuario_atual: UsuarioAutenticado, caso_id: UUID
     ) -> CasoTesteDetalheResponse:
         caso, _ = await self._obter_caso_visivel(usuario_atual, caso_id)
         return to_detalhe_response(caso)
+
+    async def historico(
+        self, usuario_atual: UsuarioAutenticado, caso_id: UUID
+    ) -> HistoricoCasoTesteResponse:
+        # Quem vê o caso vê o histórico (spec 038, RN-06): mesma checagem do detalhe.
+        await self._obter_caso_visivel(usuario_atual, caso_id)
+        registros = await self._historico_repo.listar(usuario_atual.unidade_id, caso_id)
+        dados = await self._usuario_repo.dados_por_usuarios(
+            usuario_atual.unidade_id, tuple(ids_de_usuarios(registros))
+        )
+        return to_historico_response(registros, {id_: nome for id_, (nome, *_) in dados.items()})
 
     async def listar(
         self,

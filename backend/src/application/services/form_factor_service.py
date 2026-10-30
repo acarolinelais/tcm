@@ -33,6 +33,7 @@ from src.domain.common.exceptions import (
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.execucao_sdf import ExecucaoSdf
 from src.domain.entities.interfaces.caso_teste_repository import CasoTesteRepository
+from src.domain.entities.interfaces.contexto_auditoria import ContextoAuditoria
 from src.domain.entities.interfaces.execucao_sdf_repository import ExecucaoSdfRepository
 from src.domain.entities.interfaces.historico_form_factor_repository import (
     HistoricoFormFactorRepository,
@@ -63,6 +64,7 @@ class FormFactorServiceImpl:
         uow: UnitOfWork,
         rodada_repo: RodadaFormFactorRepository | None = None,
         historico_repo: HistoricoFormFactorRepository | None = None,
+        contexto_auditoria: ContextoAuditoria | None = None,
     ) -> None:
         self._projeto_repo = projeto_repo
         self._time_repo = time_repo
@@ -73,6 +75,7 @@ class FormFactorServiceImpl:
         self._uow = uow
         self._rodada_repo = rodada_repo
         self._historico_repo = historico_repo
+        self._contexto_auditoria = contexto_auditoria
 
     async def historico_projeto(
         self,
@@ -431,6 +434,10 @@ class FormFactorServiceImpl:
         modelos_ids = {modelo.id for modelo in modelos}
         if not request.resultados.keys() <= modelos_ids:
             raise NotFoundException("Modelo não encontrado no projeto.")
+        # O Status que o resultado muda entra no histórico com a origem Form Factor
+        # (spec 038, RN-04).
+        if self._contexto_auditoria is not None:
+            await self._contexto_auditoria.definir_origem("form_factor")
         caso.registrar_resultado_form_factor(request.resultados, modelos_ids)
         execucao.resultados_registrados = True
         data_reportada = execucao.data_reportada

@@ -26,6 +26,7 @@ from src.domain.entities.time_membro import TimeMembro
 from src.domain.entities.usuario import Usuario
 from src.domain.queries.caso_teste_com_responsavel import CasoTesteComResponsavel
 from src.domain.queries.link_pull_request_com_autor import LinkPullRequestComAutor
+from src.domain.queries.registro_auditoria import RegistroAuditoria
 
 
 @pytest.fixture
@@ -1055,3 +1056,84 @@ async def test_obter_kanban_fora_do_escopo_ou_sem_permissao_falha(contexto):
     with pytest.raises(ForbiddenException):
         await service.obter_kanban(sem_permissao, projeto.id)
     casos.listar_cards_por_projeto.assert_not_called()
+
+
+def _registro(table_name, operation, antes=None, depois=None, campos=(), autor="Ana", origem="api"):
+    return RegistroAuditoria(
+        table_name=table_name,
+        operation=operation,
+        old_values=antes,
+        new_values=depois,
+        changed_fields=tuple(campos),
+        usuario_nome=autor,
+        usuario_perfil="Key Person" if autor else None,
+        origem=origem,
+        created_at=datetime(2026, 10, 30, 15, 0),
+    )
+
+
+@pytest.fixture
+def historico_contexto(contexto):
+    service, casos, *_resto, admin, projeto, _time = contexto
+    historico = AsyncMock()
+    service._historico_repo = historico
+    caso = CasoTeste(admin.unidade_id, projeto.id, "Clock_001", "A", "Low", uuid4(), uuid4(), "New")
+    casos.obter_por_id.return_value = caso
+    return service, historico, admin, caso
+
+
+async def test_historico_transforma_cada_coluna_alterada_em_um_item_com_os_nomes(
+    historico_contexto,
+):
+    service, historico, admin, caso = historico_contexto
+    ana, bia = uuid4(), uuid4()
+    historico.listar.return_value = [
+        _registro(
+            "casos_teste",
+            "UPDATE",
+            {"status": "InProgress", "responsavel_id": str(ana), "updated_at": "t0"},
+            {"status": "InReview", "responsavel_id": str(bia), "updated_at": "t1"},
+            ("responsavel_id", "status", "updated_at"),
+            origem="form_factor",
+        ),
+        _registro("links_pull_request", "INSERT", depois={"url": "https://pr/1", "ativo": True}),
+        _registro(
+            "links_pull_request",
+            "UPDATE",
+            {"url": "https://pr/0", "ativo": True},
+            {"url": "https://pr/0", "ativo": False},
+            ("ativo",),
+        ),
+        _registro("casos_teste", "INSERT", depois={"status": "To-Do"}, autor=None),
+    ]
+    service._usuario_repo.dados_por_usuarios.return_value = {
+        ana: ("Ana", None, None, None),
+        bia: ("Bia", None, None, None),
+    }
+
+    resposta = await service.historico(admin, caso.id)
+
+    assert [(i.campo, i.valor_anterior, i.valor_novo) for i in resposta.itens] == [
+        ("responsavel_id", "Ana", "Bia"),
+        ("status", "InProgress", "InReview"),
+        ("pull_request", None, "https://pr/1"),
+        ("pull_request", "https://pr/0", None),
+        ("criacao", None, None),
+    ]
+    assert resposta.itens[0].origem == "form_factor"
+    assert resposta.itens[0].usuario_perfil == "Key Person"
+    assert resposta.itens[-1].usuario_nome is None
+    historico.listar.assert_awaited_once_with(admin.unidade_id, caso.id)
+    assert set(service._usuario_repo.dados_por_usuarios.await_args.args[1]) == {ana, bia}
+
+
+async def test_historico_de_caso_fora_do_alcance_e_recusado_sem_ler_a_auditoria(
+    historico_contexto,
+):
+    service, historico, admin, _caso = historico_contexto
+    service._caso_repo.obter_por_id.return_value = None
+
+    with pytest.raises(NotFoundException):
+        await service.historico(admin, uuid4())
+
+    historico.listar.assert_not_awaited()

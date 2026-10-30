@@ -8,6 +8,7 @@ from src.application.schemas.caso_teste import (
     CasoTesteResponse,
     CriarCasoTesteRequest,
 )
+from src.application.schemas.historico_caso_teste import HistoricoCasoTesteResponse
 from src.application.schemas.kanban import KanbanResponse
 from src.application.schemas.link_pull_request import (
     AdicionarLinkPullRequestRequest,
@@ -22,6 +23,10 @@ class CasoTesteService(Protocol):
     async def obter(
         self, usuario_atual: UsuarioAutenticado, caso_id: UUID
     ) -> CasoTesteDetalheResponse: ...
+
+    async def historico(
+        self, usuario_atual: UsuarioAutenticado, caso_id: UUID
+    ) -> HistoricoCasoTesteResponse: ...
 
     async def listar(
         self,

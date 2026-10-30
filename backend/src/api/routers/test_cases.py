@@ -8,6 +8,7 @@ from src.application.schemas.caso_teste import (
     CasoTesteDetalheResponse,
     CasoTesteResponse,
 )
+from src.application.schemas.historico_caso_teste import HistoricoCasoTesteResponse
 from src.application.schemas.link_pull_request import (
     AdicionarLinkPullRequestRequest,
     LinkPullRequestResponse,
@@ -26,6 +27,15 @@ async def obter(
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
     return await service.obter(usuario_atual, caso_id)
+
+
+@router.get("/{caso_id}/historico", response_model=HistoricoCasoTesteResponse)
+async def historico(
+    caso_id: UUID,
+    service: CasoTesteService = Depends(get_caso_teste_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.historico(usuario_atual, caso_id)
 
 
 @router.put("/{caso_id}", response_model=CasoTesteResponse)
