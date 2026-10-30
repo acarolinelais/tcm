@@ -207,7 +207,9 @@ function ProjetoDetalhe() {
   if (!podeConsultar || (!podeConsultarCasos && !podeConsultarFormFactor && !podeImportarSdf)) return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
   if (dev && !podeConsultarCasos) return <p role="alert">{t("permissionDenied")}</p>;
   if (projeto.isError) return <p role="alert" className="p-6 text-sm">{t("projectNotFound")}</p>;
-  if (dev && projeto.isSuccess && associacao.isSuccess && !associacao.isFetching && associacao.data.total_count === 0) return <ProjetosEntradaPage projetoSemCasosId={projetoId} />;
+  // Spec 012: dev sem casos no projeto vai para a entrada de Projects. O Kanban fica de fora: ele mostra o projeto
+  // inteiro ao dev do time, tenha ele casos ou não (spec 037, RN-04).
+  if (dev && aba !== "kanban" && projeto.isSuccess && associacao.isSuccess && !associacao.isFetching && associacao.data.total_count === 0) return <ProjetosEntradaPage projetoSemCasosId={projetoId} />;
 
   const membrosExceto = (usuarioId: string | null) => opcoesMembros.filter((opcao) => opcao.value !== usuarioId);
   const podeEditarProprio = (caso: CasoTeste) => podeGerenciarCasos || caso.responsavel_id === responsavelAtual;

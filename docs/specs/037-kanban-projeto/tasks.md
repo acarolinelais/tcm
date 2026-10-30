@@ -104,7 +104,7 @@
 
 ## Fase 6: ponta a ponta
 
-- [ ] **T12. e2e do Kanban e do Board**
+- [x] **T12. e2e do Kanban e do Board**
   - Arquivos: `frontend/e2e/projetos-kanban.spec.ts` (novo), `frontend/e2e/projetos-fixtures.ts`
   - Cobre: CA-02, CA-03, CA-05, CA-07, CA-13, CA-17, CA-20
   - Verificação: `cd frontend && npm run e2e -- projetos-kanban` com a API real →
@@ -115,10 +115,12 @@
     - um link fora do escopo mostra "não encontrado";
     - um projeto com 1.000 casos abre com os totais certos;
     - o Board leva direto ao Kanban.
-- [ ] **T13. Suíte completa**
+- [x] **T13. Suíte completa**
   - Arquivos: —
   - Cobre: todos
   - Verificação: `cd backend && uv run pytest` e `cd frontend && npm test && npm run lint && npm run e2e` → tudo verde.
+  - Resultado (2026-10-30): backend 730, Vitest 539 e e2e 112 (duas rodadas) verdes. Os dois e2e que já
+    falhavam na `dev` foram atualizados para as regras atuais num commit `fix` separado.
 
 ## Backlog
 - **`destinos` repetido em cada card** (simplify da fase 1): com 1.000 cards, a mesma lista de até 6 Status
@@ -140,3 +142,7 @@
 - **Texto de carregamento repetido** (simplify da fase 4): `<p role="status" … text-muted>{t("loading")}</p>`
   aparece no Kanban e em pelo menos cinco telas do módulo de projetos. Um `EstadoCarregando` em `shared/ui`
   serviria a todas.
+- **Helpers de e2e repetidos** (simplify da fase 6): `projetos-kanban.spec.ts` e `projetos-dev.spec.ts` montam o
+  mesmo payload de Test Case, e os PUT/GET com `Authorization` são montados à mão (`form-factor-rodadas.spec.ts`
+  já tem um `chamar`). Um `criarCaso` e `put`/`get` em `api-fixtures.ts` serviriam a todos. O
+  `prepararTimeComDev` também poderia deixar de abrir a sessão do dev quando o teste usa outra.

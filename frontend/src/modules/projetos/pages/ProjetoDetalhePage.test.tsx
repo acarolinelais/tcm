@@ -82,6 +82,17 @@ describe("ProjetoDetalhePage", () => {
     expect(screen.queryByRole("button", { name: /^Week/ })).not.toBeInTheDocument();
   });
 
+  it("dev sem casos no projeto vê o Kanban, sem ser mandado para a entrada de Projects", async () => {
+    vi.mocked(casosTesteApi.kanban).mockResolvedValue({ projeto_id: "project-1", total: 0, colunas: [] });
+    vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [], page: 1, page_size: 1, total_count: 0 });
+    renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO" }, undefined, "/projetos/project-1?aba=kanban");
+
+    expect(await screen.findByRole("tab", { name: "Kanban", selected: true })).toBeInTheDocument();
+    expect(await screen.findByText("This project has no Test Cases yet.")).toBeInTheDocument();
+    await waitFor(() => expect(casosTesteApi.listar).toHaveBeenCalledWith("project-1", 1, 1, { associadosAMim: true }));
+    expect(screen.getByRole("tab", { name: "Kanban", selected: true })).toBeInTheDocument();
+  });
+
   it("aba desconhecida no link cai na aba Test Cases", async () => {
     renderPage(perfil, undefined, "/projetos/project-1?aba=nao-existe");
 

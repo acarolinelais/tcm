@@ -37,6 +37,9 @@ setor, time e projeto dentro do próprio escopo e chega ao Kanban desse projeto.
   responsável mostra "Sem responsável".
 - RN-04: No Kanban, o dev vê todos os casos do projeto, não só os seus. Isso amplia apenas a leitura no
   Kanban: a aba Test Cases continua mostrando só os casos dele (spec 012).
+- RN-04a: O dev do time abre o Kanban de qualquer projeto do time, mesmo sem nenhum caso ligado a ele
+  (decidido em 2026-10-30). Nas outras abas continua valendo a spec 012: sem casos no projeto, ele vai para a
+  entrada de Projects.
 - RN-05: Mover um card para outra coluna muda o Status do caso com as mesmas regras e os mesmos efeitos de
   mudar o Status na aba Test Cases:
   - administrador da unidade, gerente e KP movem qualquer card dentro do próprio escopo (ADR 0036);
