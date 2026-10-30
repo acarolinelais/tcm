@@ -267,7 +267,8 @@ describe("ProjetoDetalhePage", () => {
     await user.click(within(await screen.findByRole("dialog", { name: "Week" })).getByRole("button", { name: "Clear filters" }));
     await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("project-1", 1, DEFAULT_TABLE_PAGE_SIZE, { responsavelId: undefined, associadosAMim: true }));
     expect(await screen.findByRole("row", { name: /Clock_001/ })).toBeInTheDocument();
-  });
+    // Fluxo longo (dois calendários, troca de aba): sozinho leva ~3 s e, com a suíte inteira em paralelo, passava dos 5 s.
+  }, 15_000);
 
   it("erro de acesso prevalece sobre associação vazia antiga no cache", async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
