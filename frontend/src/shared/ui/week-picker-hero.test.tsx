@@ -50,7 +50,8 @@ describe("WeekPickerHero", () => {
     expect(await screen.findByRole("button", { name: "This week" })).toBeInTheDocument();
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("button", { name: "This week" })).not.toBeInTheDocument());
-    expect(gatilho).toHaveFocus();
+    // O react-aria devolve o foco depois que o popover termina de sair, não no mesmo tick.
+    await waitFor(() => expect(gatilho).toHaveFocus());
   });
 });
 

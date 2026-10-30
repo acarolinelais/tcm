@@ -65,7 +65,7 @@ sem paginação, também pagina ([ADR 0039](../adr/0039-resultados-gerais-com-pa
 | 036 | Cor do avatar nas Configurações (paleta de 8 cores, azul padrão, salva na conta, ADR 0043) | Concluída |
 | 037 | Kanban do projeto e Board por setor e time | Em andamento |
 | 038 | Histórico de alterações do Test Case por triggers no banco (todos os campos e PRs, com autor, origem e data; ADR 0044) | Em andamento |
-| 039 | Overview com dados reais no escopo do perfil (depende da 038 para o desempenho mensal) | Rascunho |
+| 039 | Overview com dados reais no escopo do perfil (desempenho mensal pela auditoria da 038) | Concluída |
 | 040 | Página do Test Case com endereço próprio e edição dos textos | Rascunho |
 | 041 | Busca global na barra superior (Test Cases, projetos e pessoas) | Rascunho |
 | 042 | Minha conta e redefinição de senha pelo administrador | Rascunho |
