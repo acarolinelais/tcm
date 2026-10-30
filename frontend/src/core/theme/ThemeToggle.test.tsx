@@ -1,6 +1,6 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import i18n from "@/core/i18n";
 import { THEME_KEY } from "./use-theme";
@@ -10,7 +10,7 @@ afterEach(async () => {
   cleanup();
   vi.restoreAllMocks();
   window.localStorage.clear();
-  document.documentElement.classList.remove("dark");
+  document.documentElement.classList.remove("dark", "trocando-tema");
   await i18n.changeLanguage("en");
 });
 
@@ -30,6 +30,19 @@ describe("ThemeToggle", () => {
     expect(document.documentElement).not.toHaveClass("dark");
     expect(toggle).toHaveAttribute("aria-pressed", "false");
     expect(window.localStorage.getItem(THEME_KEY)).toBe("light");
+  });
+
+  it("monta um ícone novo, com a animação de entrada, a cada troca", async () => {
+    const user = userEvent.setup();
+    render(<ThemeToggle />);
+    const toggle = screen.getByRole("button", { name: "Dark theme" });
+    const iconeAntes = toggle.querySelector("svg");
+    // Ao carregar a página, o ícone aparece parado.
+    expect(iconeAntes).not.toHaveClass("tema-icone-entrar");
+    await user.click(toggle);
+    const iconeDepois = toggle.querySelector("svg");
+    expect(iconeDepois).not.toBe(iconeAntes);
+    expect(iconeDepois).toHaveClass("tema-icone-entrar");
   });
 
   it("começa no tema que o script do index.html aplicou", () => {
@@ -68,5 +81,46 @@ describe("ThemeToggle", () => {
     act(() => { window.dispatchEvent(new StorageEvent("storage", { key: THEME_KEY, newValue: "dark" })); });
     expect(document.documentElement).toHaveClass("dark");
     expect(screen.getByRole("button", { name: "Dark theme" })).toHaveAttribute("aria-pressed", "true");
+  });
+});
+
+describe("ThemeToggle com transição de cores (spec 049)", () => {
+  beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); });
+
+  afterEach(() => {
+    vi.runOnlyPendingTimers();
+    vi.useRealTimers();
+  });
+
+  it("troca o tema na hora e mantém a transição de cores só durante a troca", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(<ThemeToggle />);
+    await user.click(screen.getByRole("button", { name: "Dark theme" }));
+    expect(document.documentElement).toHaveClass("dark", "trocando-tema");
+    expect(window.localStorage.getItem(THEME_KEY)).toBe("dark");
+    act(() => { vi.advanceTimersByTime(450); });
+    expect(document.documentElement).not.toHaveClass("trocando-tema");
+  });
+
+  it("um clique no meio da troca volta o tema e recomeça a contagem", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(<ThemeToggle />);
+    const toggle = screen.getByRole("button", { name: "Dark theme" });
+    await user.click(toggle);
+    act(() => { vi.advanceTimersByTime(300); });
+    await user.click(toggle);
+    expect(document.documentElement).not.toHaveClass("dark");
+    expect(window.localStorage.getItem(THEME_KEY)).toBe("light");
+    act(() => { vi.advanceTimersByTime(300); });
+    expect(document.documentElement).toHaveClass("trocando-tema");
+    act(() => { vi.advanceTimersByTime(150); });
+    expect(document.documentElement).not.toHaveClass("trocando-tema");
+  });
+
+  it("troca sem transição quando o tema muda em outra aba", () => {
+    render(<ThemeToggle />);
+    act(() => { window.dispatchEvent(new StorageEvent("storage", { key: THEME_KEY, newValue: "dark" })); });
+    expect(document.documentElement).toHaveClass("dark");
+    expect(document.documentElement).not.toHaveClass("trocando-tema");
   });
 });

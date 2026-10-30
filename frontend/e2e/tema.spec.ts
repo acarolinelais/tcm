@@ -12,6 +12,8 @@ async function guardarTema(page: Page, valor: string) {
   await page.addInitScript((tema) => { window.localStorage.setItem("sdf.theme", tema); }, valor);
 }
 
+const temaGuardado = (page: Page) => page.evaluate(() => window.localStorage.getItem("sdf.theme"));
+
 /** Abre a rota e espera o conteúdo trocar os skeletons. */
 async function abrir(page: Page, rota: string) {
   await page.goto(rota);
@@ -123,4 +125,58 @@ test("o foco do teclado no toggle é visível", async ({ page }) => {
   expect(await toggle.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe(semFoco);
   await page.keyboard.press("Enter");
   await expect(html(page)).toHaveClass(/dark/);
+});
+
+// Spec 049. Só usa a tela de login: não precisa de dados na API.
+test.describe("transição ao trocar o tema", () => {
+  const iconeDoToggle = (page: Page) => toggleTema(page).locator("svg");
+  const fundoDaPagina = (page: Page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+
+  /** Clica no toggle e espera o React trocar o ícone por um novo, que é o que dispara a animação de entrada. */
+  async function trocarEsperandoIconeNovo(page: Page) {
+    const anterior = await iconeDoToggle(page).elementHandle();
+    await toggleTema(page).click();
+    await expect.poll(() => anterior!.evaluate((el) => el.isConnected)).toBe(false);
+    return iconeDoToggle(page).evaluate((el) => getComputedStyle(el).animationName);
+  }
+
+  test("as cores mudam aos poucos do claro para o escuro e a escolha fica guardada", async ({ page }) => {
+    await page.goto("/login");
+    const claro = await fundoDaPagina(page);
+    await toggleTema(page).click();
+    await expect(html(page)).toHaveClass(/dark/);
+    // No meio da troca, o fundo ainda não chegou à cor final.
+    await page.waitForTimeout(150);
+    const meio = await fundoDaPagina(page);
+    await expect(html(page)).not.toHaveClass(/trocando-tema/);
+    const escuro = await fundoDaPagina(page);
+    expect(meio).not.toBe(claro);
+    expect(meio).not.toBe(escuro);
+    expect(await temaGuardado(page)).toBe("dark");
+  });
+
+  test("o ícone fica parado ao carregar e o ícone novo entra girando na troca", async ({ page }) => {
+    await page.goto("/login");
+    expect(await iconeDoToggle(page).evaluate((el) => getComputedStyle(el).animationName)).toBe("none");
+    expect(await trocarEsperandoIconeNovo(page)).toBe("tema-icone-entrar");
+  });
+
+  test("um clique no meio da troca chega ao toggle e termina no tema do último clique", async ({ page }) => {
+    await page.goto("/login");
+    const caixa = (await toggleTema(page).boundingBox())!;
+    const [x, y] = [caixa.x + caixa.width / 2, caixa.y + caixa.height / 2];
+    await page.mouse.click(x, y);
+    await page.waitForTimeout(100);
+    await expect(html(page)).toHaveClass(/trocando-tema/);
+    await page.mouse.click(x, y);
+    await expect(html(page)).not.toHaveClass(/dark/);
+    await expect(toggleTema(page)).toHaveAttribute("aria-pressed", "false");
+    expect(await temaGuardado(page)).toBe("light");
+  });
+
+  test("com movimento reduzido o ícone novo só aparece, sem girar", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/login");
+    expect(await trocarEsperandoIconeNovo(page)).toBe("dialog-fade-in");
+  });
 });
