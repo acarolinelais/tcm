@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import type { PerfilAtual } from "@/core/auth/api";
 import { LanguageSelector } from "@/core/i18n/LanguageSelector";
+import { SeletorCorAvatar } from "../components/SeletorCorAvatar";
 
 export function ConfiguracoesPage() {
   const { t } = useTranslation();
@@ -19,6 +20,13 @@ export function ConfiguracoesPage() {
           </div>
           {/* Grava o idioma preferido da conta, como no cabeçalho. */}
           <LanguageSelector perfil={perfil} />
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border px-6 py-5">
+          <div>
+            <h2 id="titulo-cor-avatar" className="text-[15px] font-medium text-body">{t("settingsAvatarTitle")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("settingsAvatarHint")}</p>
+          </div>
+          <SeletorCorAvatar perfil={perfil} labelledBy="titulo-cor-avatar" />
         </div>
       </div>
     </section>

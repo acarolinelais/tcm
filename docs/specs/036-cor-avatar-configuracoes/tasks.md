@@ -46,21 +46,21 @@
   - Verificação: `cd backend && uv run pytest` → verde
 
 ## Fase 2: Frontend (avatar colorido e seletor em Configurações)
-- [ ] **T05. Tokens da paleta e teste de contraste**
+- [x] **T05. Tokens da paleta e teste de contraste**
   - Arquivos: `frontend/src/core/global.css`, `frontend/src/core/theme/contraste-avatar.test.ts`
   - Cobre: CA-10
   - Detalhe: `--avatar-1` a `--avatar-8` e `--avatar-N-foreground` em `:root` e `.dark`, expostos no
     `@theme inline`. O teste lê os valores do CSS e confere ≥ 3:1 da cor sobre o fundo do card e ≥ 4.5:1 das
     iniciais sobre a cor, nos dois temas; falha apontando o token quando um par não atinge.
   - Verificação: `cd frontend && npx vitest run src/core/theme` → verde (inclui a varredura do ADR 0041)
-- [ ] **T06. Cor no contrato do frontend e no modo mock**
+- [x] **T06. Cor no contrato do frontend e no modo mock**
   - Arquivos: `frontend/src/core/auth/api.ts`, `frontend/src/core/mock/database.ts` e o teste dele
   - Cobre: CA-02, CA-04, CA-06
   - Detalhe: tipo `CorAvatar`, `cor_avatar` em `PerfilAtual`, `atualizarCorAvatar()` no mesmo PATCH (só o
     campo da cor). Mock: `corAvatarPorUsuario`, padrão `azul`, `updateAvatarColor()`. Testes: mock novo em
     azul; trocar a cor de um usuário não muda a de outro; a cor persiste após novo login mock.
   - Verificação: `cd frontend && npx vitest run src/core/auth src/core/mock` → verde
-- [ ] **T07. `AvatarUsuario` compartilhado e uso na `Navbar`**
+- [x] **T07. `AvatarUsuario` compartilhado e uso na `Navbar`**
   - Arquivos: `frontend/src/shared/ui/avatar-usuario.tsx`, `avatar-usuario.test.tsx`,
     `frontend/src/core/layout/Navbar.tsx`, `Navbar.test.tsx`
   - Cobre: CA-02, CA-03
@@ -69,13 +69,13 @@
     `Ana Lais` + `verde` → `AL` com a classe do verde; sem cor conhecida → azul; nome vazio → ícone; segue
     `aria-hidden`. Os testes da `Navbar` que esperavam a imagem passam a esperar as iniciais.
   - Verificação: `cd frontend && npx vitest run src/shared/ui/avatar-usuario.test.tsx src/core/layout` → verde
-- [ ] **T08. Textos da seção nos três idiomas**
+- [x] **T08. Textos da seção nos três idiomas**
   - Arquivos: `frontend/src/core/i18n/resources.ts`
   - Cobre: CA-01, CA-11
   - Detalhe: `settingsAvatarTitle`, `settingsAvatarHint`, `avatarColorSaveError` e os 8 nomes de cor em `en`,
     `pt-BR` e `ko` (skill `better-writing`).
   - Verificação: `cd frontend && npx vitest run src/core/i18n` → verde (cobertura de chaves nos três idiomas)
-- [ ] **T09. `SeletorCorAvatar` com gravação otimista e rollback**
+- [x] **T09. `SeletorCorAvatar` com gravação otimista e rollback**
   - Arquivos: `frontend/src/modules/configuracoes/components/SeletorCorAvatar.tsx`,
     `SeletorCorAvatar.test.tsx`
   - Cobre: CA-01, CA-03, CA-09, CA-11
@@ -85,7 +85,7 @@
     salva marcada; clicar verde chama a API com `{ cor_avatar: "verde" }`; API rejeita → volta para a anterior
     com toast; setas e `Space` trocam a seleção.
   - Verificação: `cd frontend && npx vitest run src/modules/configuracoes` → verde
-- [ ] **T10. Seção "Cor do avatar" na `ConfiguracoesPage`**
+- [x] **T10. Seção "Cor do avatar" na `ConfiguracoesPage`**
   - Arquivos: `frontend/src/modules/configuracoes/pages/ConfiguracoesPage.tsx`, `ConfiguracoesPage.test.tsx`
   - Cobre: CA-01, CA-03
   - Detalhe: nova linha abaixo do idioma, separada por divisor, no mesmo padrão título + dica. Teste: a página
@@ -111,3 +111,8 @@
   `USUARIO_PADRAO` no banco; numa segunda rodada no mesmo banco,
   `test_migration_seed_perfil_kp_por_unidade_e_idempotente` falha. Não afeta o CI (banco novo a cada run).
   (verificação, bloco 1)
+- `LanguageSelector` e `SeletorCorAvatar` repetem a atualização otimista do perfil em cache (aplica, grava,
+  restaura e avisa em falha). Extrair um helper em `core/auth` e passar o `LanguageSelector` a usar
+  `perfilAtualQueryKey()`. Fica fora porque mexe no seletor de idioma, que não é desta spec. (simplify, bloco 2)
+- Cada teste de tela monta a sua fixture de `PerfilAtual`; incluir `cor_avatar` tocou 10 arquivos. Criar uma
+  fixture única (`perfilFake(overrides)`) para os testes. (simplify, bloco 2)

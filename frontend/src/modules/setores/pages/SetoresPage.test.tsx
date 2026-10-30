@@ -23,7 +23,7 @@ import { baixarPlanilha, montarPlanilha } from "@/shared/lib/exportar-planilha";
 const admin: PerfilAtual = {
   id: "admin", nome: "Admin", email: "admin@example.com", unidade_id: "unit-1", unidade_nome: "Unidade",
   perfil_codigo: "ADMIN_UNIDADE", perfil: "Administrador", permissoes: [], times: [], setores_gerenciados: [],
-  time_atual_id: null, tem_multiplos_times: false, senha_alteracao_obrigatoria: false, idioma_preferido: "en",
+  time_atual_id: null, tem_multiplos_times: false, senha_alteracao_obrigatoria: false, idioma_preferido: "en", cor_avatar: "azul",
 };
 const engenharia = { id: "setor-1", unidade_id: "unit-1", nome: "Engenharia", ativo: true };
 const suporte = { id: "setor-2", unidade_id: "unit-1", nome: "Suporte", ativo: false };

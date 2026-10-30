@@ -1,4 +1,4 @@
-import type { PerfilAtual } from "@/core/auth/api";
+import type { CorAvatar, PerfilAtual, Preferencias } from "@/core/auth/api";
 import type { TokenResponse } from "@/core/auth/session";
 import type { Perfil, Permissao } from "@/modules/perfis/api/perfis.api";
 import type { Setor, SetorGerente } from "@/modules/setores/api/setores.api";
@@ -93,6 +93,7 @@ interface Database {
   importacoesSdf: { importacao_id: string; projeto_id: string; importado_em: string }[];
   linksPullRequest: LinkPullRequestMock[];
   idiomaPorUsuario: Record<string, PerfilAtual["idioma_preferido"]>;
+  corAvatarPorUsuario: Record<string, CorAvatar>;
   senhasAlteradas: string[];
 }
 
@@ -139,7 +140,7 @@ function createSeed(): Database {
     { id: "mock-user-inactive", nome: "Rafael Lima", email: "rafael.lima@example.com", ativo: false, perfil_id: standardProfile.id, responsavel_id: MANAGER_ID, created_at: "2026-02-10T12:00:00Z" },
   ].map((user: Usuario) => ({ ...user, user_id: user.user_id ?? null }));
   return {
-    schemaVersion: 20,
+    schemaVersion: 21,
     unidade: { id: UNIT_ID, nome: "Manaus", ativo: true },
     usuarios: users,
     perfis: [adminProfile, standardProfile, managerProfile, kpProfile],
@@ -171,6 +172,7 @@ function createSeed(): Database {
     importacoesSdf: [],
     linksPullRequest: [],
     idiomaPorUsuario: {},
+    corAvatarPorUsuario: {},
     senhasAlteradas: [],
   };
 }
@@ -343,6 +345,12 @@ function readDb(): Database {
       db.schemaVersion = 20;
       return writeDb(db);
     }
+    if ((db.schemaVersion ?? 1) < 21) {
+      // Spec 036: cor do avatar por conta.
+      db.corAvatarPorUsuario ??= {};
+      db.schemaVersion = 21;
+      return writeDb(db);
+    }
     return db;
   }
   catch { return writeDb(createSeed()); }
@@ -385,6 +393,7 @@ function buildCurrentUser(db: Database, user: Usuario): PerfilAtual {
     times: userTeams.map(({ id: teamId, nome }) => ({ id: teamId, nome })), setores_gerenciados: managedSectors,
     time_atual_id: userTeams[0]?.id ?? null, tem_multiplos_times: userTeams.length > 1,
     senha_alteracao_obrigatoria: false, idioma_preferido: db.idiomaPorUsuario[user.id] ?? "en",
+    cor_avatar: db.corAvatarPorUsuario[user.id] ?? "azul",
   };
 }
 
@@ -403,10 +412,19 @@ export const mockAuth = {
     if (!user) throw new Error("Sessão mock inválida. Saia e entre novamente.");
     return buildCurrentUser(db, user);
   },
-  updateLanguage(language: PerfilAtual["idioma_preferido"]) {
+  updateLanguage(language: PerfilAtual["idioma_preferido"]): Preferencias {
     const userId = currentMockUserId();
-    updateDb((db) => { db.idiomaPorUsuario[userId] = language; });
-    return { idioma_preferido: language };
+    return updateDb((db) => {
+      db.idiomaPorUsuario[userId] = language;
+      return { idioma_preferido: language, cor_avatar: db.corAvatarPorUsuario[userId] ?? "azul" };
+    });
+  },
+  updateAvatarColor(cor: CorAvatar): Preferencias {
+    const userId = currentMockUserId();
+    return updateDb((db) => {
+      db.corAvatarPorUsuario[userId] = cor;
+      return { idioma_preferido: db.idiomaPorUsuario[userId] ?? "en", cor_avatar: cor };
+    });
   },
   changePassword(password: string): TokenResponse {
     const userId = currentMockUserId();

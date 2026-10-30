@@ -9,7 +9,7 @@ import { Sidebar } from "./Sidebar";
 const perfil: PerfilAtual = {
   id: "developer", nome: "Developer", email: "dev@example.com", unidade_id: "unit-1", unidade_nome: "Unit",
   perfil_codigo: null, perfil: "Developer", permissoes: [], times: [], setores_gerenciados: [],
-  time_atual_id: null, tem_multiplos_times: false, senha_alteracao_obrigatoria: false, idioma_preferido: "en",
+  time_atual_id: null, tem_multiplos_times: false, senha_alteracao_obrigatoria: false, idioma_preferido: "en", cor_avatar: "azul",
 };
 
 function renderSidebar(currentProfile: PerfilAtual) {

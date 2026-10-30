@@ -94,8 +94,7 @@
   --subtle: #6d6d6d;      /* texto de apoio (Figma #7E7E7E/#777777, escurecido para o AA) */
   --panel: #f3f5f7;       /* moldura das tabelas e painéis */
   --table-row-divider: #efeff0; /* divisórias entre linhas */
-  --avatar: #8880f7;
-  --strong-foreground: #ffffff; /* texto e ícones sobre uma cor forte (avatar, círculo do status) */
+  --strong-foreground: #ffffff; /* texto e ícones sobre uma cor forte (círculo do status) */
   --chart-1: #5588f5;     /* série principal dos gráficos do overview */
   --chart-2: #c9daff;
   --chart-3: #b9c4e8;
@@ -108,10 +107,49 @@
   --subtle: rgb(255 255 255 / 0.55);
   --panel: #1a1a1a;                 /* moldura e cabeçalho da tabela, um passo abaixo do conteúdo */
   --table-row-divider: #2c2c2e;
-  --avatar: #5e5ce6;                /* systemIndigo */
   --chart-1: #0a84ff;
   --chart-2: #5e5ce6;
   --chart-3: #8e8e93;               /* systemGray: 5,1:1 sobre o cartão (gráfico com significado pede ≥ 3:1) */
+}
+
+/* Paleta da cor do avatar (ADR 0043), na ordem de `CorAvatar`. No claro, tons fortes com iniciais brancas; no escuro,
+   tons claros com iniciais escuras. O contraste é travado por src/core/theme/contraste-avatar.test.ts. */
+:root {
+  --avatar-1: #2563eb;  /* azul */
+  --avatar-2: #4f46e5;  /* indigo */
+  --avatar-3: #7e22ce;  /* roxo */
+  --avatar-4: #be185d;  /* rosa */
+  --avatar-5: #c62828;  /* vermelho */
+  --avatar-6: #c2410c;  /* laranja */
+  --avatar-7: #15803d;  /* verde */
+  --avatar-8: #4b5563;  /* cinza */
+  --avatar-1-foreground: #ffffff;
+  --avatar-2-foreground: #ffffff;
+  --avatar-3-foreground: #ffffff;
+  --avatar-4-foreground: #ffffff;
+  --avatar-5-foreground: #ffffff;
+  --avatar-6-foreground: #ffffff;
+  --avatar-7-foreground: #ffffff;
+  --avatar-8-foreground: #ffffff;
+}
+
+:root.dark {
+  --avatar-1: #60a5fa;  /* azul */
+  --avatar-2: #a5b4fc;  /* indigo */
+  --avatar-3: #c084fc;  /* roxo */
+  --avatar-4: #f472b6;  /* rosa */
+  --avatar-5: #f87171;  /* vermelho */
+  --avatar-6: #fb923c;  /* laranja */
+  --avatar-7: #4ade80;  /* verde */
+  --avatar-8: #a1a1aa;  /* cinza */
+  --avatar-1-foreground: #111111;
+  --avatar-2-foreground: #111111;
+  --avatar-3-foreground: #111111;
+  --avatar-4-foreground: #111111;
+  --avatar-5-foreground: #111111;
+  --avatar-6-foreground: #111111;
+  --avatar-7-foreground: #111111;
+  --avatar-8-foreground: #111111;
 }
 
 /* Tons das etiquetas e dos status (ADR 0041). No claro, os pares do Figma (texto `--x`/`-fg`, fundo `-bg`), com o
@@ -265,8 +303,22 @@
   --color-body: var(--body);
   --color-subtle: var(--subtle);
   --color-panel: var(--panel);
-  --color-avatar: var(--avatar);
-  --color-strong-foreground: var(--strong-foreground);
+  --color-avatar-1: var(--avatar-1);
+  --color-avatar-1-foreground: var(--avatar-1-foreground);
+  --color-avatar-2: var(--avatar-2);
+  --color-avatar-2-foreground: var(--avatar-2-foreground);
+  --color-avatar-3: var(--avatar-3);
+  --color-avatar-3-foreground: var(--avatar-3-foreground);
+  --color-avatar-4: var(--avatar-4);
+  --color-avatar-4-foreground: var(--avatar-4-foreground);
+  --color-avatar-5: var(--avatar-5);
+  --color-avatar-5-foreground: var(--avatar-5-foreground);
+  --color-avatar-6: var(--avatar-6);
+  --color-avatar-6-foreground: var(--avatar-6-foreground);
+  --color-avatar-7: var(--avatar-7);
+  --color-avatar-7-foreground: var(--avatar-7-foreground);
+  --color-avatar-8: var(--avatar-8);
+  --color-avatar-8-foreground: var(--avatar-8-foreground);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);

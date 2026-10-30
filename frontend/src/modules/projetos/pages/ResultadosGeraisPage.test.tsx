@@ -25,7 +25,7 @@ vi.mock("../hooks/useProjetos", () => ({
 const perfil = {
   id: "manager-1", nome: "Gerente", email: "manager@example.com", unidade_id: "unit-1", unidade_nome: "Unit",
   perfil_codigo: "GERENTE", perfil: "Gerente", permissoes: ["form_factor.consultar"], times: [], setores_gerenciados: [],
-  time_atual_id: null, tem_multiplos_times: false, senha_alteracao_obrigatoria: false, idioma_preferido: "en",
+  time_atual_id: null, tem_multiplos_times: false, senha_alteracao_obrigatoria: false, idioma_preferido: "en", cor_avatar: "azul",
 } as PerfilAtual;
 
 const DIA = "2026-10-10";

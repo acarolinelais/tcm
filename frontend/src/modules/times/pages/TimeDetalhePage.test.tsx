@@ -19,7 +19,7 @@ const perfilBase: PerfilAtual = {
   id: "kp-1", nome: "Pat", email: "pat@example.com", unidade_id: "unit-1", unidade_nome: "Unit",
   perfil_codigo: "KP", perfil: "Pessoa-chave", permissoes: ["times.consultar"], times: [],
   setores_gerenciados: [], time_atual_id: null, tem_multiplos_times: false,
-  senha_alteracao_obrigatoria: false, idioma_preferido: "en",
+  senha_alteracao_obrigatoria: false, idioma_preferido: "en", cor_avatar: "azul",
 };
 
 function renderPage(perfil: PerfilAtual) {

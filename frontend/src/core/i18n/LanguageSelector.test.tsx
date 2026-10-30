@@ -42,7 +42,7 @@ describe("LanguageSelector", () => {
   });
 
   it("saves authenticated selections in the account", async () => {
-    vi.mocked(atualizarIdiomaPreferido).mockResolvedValue({ idioma_preferido: "ko" });
+    vi.mocked(atualizarIdiomaPreferido).mockResolvedValue({ idioma_preferido: "ko", cor_avatar: "azul" });
     renderComQueryClient(<LanguageSelector perfil={{ idioma_preferido: "en" } as never} />);
     fireEvent.click(screen.getByRole("button", { name: /English/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Korean" }));
