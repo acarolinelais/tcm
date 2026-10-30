@@ -20,7 +20,7 @@ export function EmBreve({ titulo, ilustracao }: EmBreveProps) {
       : underConstruction;
 
   return (
-    <section className="relative flex min-h-[min(36rem,calc(100vh_-_7rem))] items-center overflow-hidden rounded-3xl border border-border bg-surface px-6 py-10 shadow-sm sm:px-10 lg:px-14">
+    <section className="relative flex min-h-[min(36rem,calc(100vh_-_7rem))] items-center overflow-hidden rounded-3xl border border-edge bg-surface px-6 py-10 shadow-sm sm:px-10 lg:px-14">
       <div aria-hidden="true" className="pointer-events-none absolute -right-24 top-1/2 h-[28rem] w-[28rem] -translate-y-1/2 rounded-full bg-accent-tint sm:-right-20" />
       <div className="relative z-10 grid w-full items-center gap-8 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:gap-10">
         <div className="max-w-lg">

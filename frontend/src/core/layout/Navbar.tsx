@@ -1,7 +1,6 @@
 import type { PerfilAtual } from "@/core/auth/api";
 import { useLocation, useNavigate } from "react-router";
-import { httpPost } from "@/core/api/http-client";
-import { clearTokens } from "@/core/auth/session";
+import { useSair } from "@/core/auth/useSair";
 import { ChevronDown, CircleArrowRight, Search } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -14,22 +13,17 @@ import { rotaPai, rotuloDaRota } from "./voltar";
 
 export function Navbar({ perfil }: { perfil: PerfilAtual }) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [menuAberto, setMenuAberto] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   useDismiss(menuRef, menuAberto, useCallback(() => setMenuAberto(false), []));
   const voltar = useVoltar();
-  async function sair() {
-    try {
-      await httpPost<void>("/api/auth/logout", {});
-    } finally {
-      clearTokens();
-      navigate("/login", { replace: true });
-    }
-  }
+  const sair = useSair();
   return (
-    // Layout do Figma (TCM, node 2090:199): voltar à esquerda, alinhado ao card; idioma e usuário à direita.
-    <header className="col-start-2 row-start-1 grid h-8 min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,33.375rem)_minmax(0,1fr)] items-center gap-4">
+    // Figma TCM 2482-2329/2651 (spec 050): voltar à esquerda, busca no centro, tema, idioma e usuário à direita.
+    // As laterais nunca ficam menores que o conteúdo mínimo (o voltar não invade a busca), então quem encolhe
+    // quando falta espaço é a busca, que tem no máximo 362px. Com folga, as laterais são iguais e a busca fica
+    // centralizada. Abaixo de md a busca some e o grupo da direita usa a coluna do meio.
+    <header className="col-start-2 row-start-1 grid h-8 min-w-0 grid-cols-[minmax(min-content,1fr)_minmax(0,22.625rem)_minmax(max-content,1fr)] items-center gap-4">
       {voltar ? (
         <button
           type="button"
@@ -42,13 +36,15 @@ export function Navbar({ perfil }: { perfil: PerfilAtual }) {
         </button>
       ) : <span />}
       {/* Só visual por enquanto (Figma): ainda não existe busca no app. */}
-      <label className="hidden h-[37px] items-center gap-2.5 rounded-full border border-surface-secondary bg-surface px-5 md:flex">
+      <label className="hidden h-[29px] min-w-0 items-center gap-2.5 rounded-full border border-edge bg-surface px-4 md:flex">
         <Search aria-hidden="true" className="size-[13px] shrink-0 text-muted" strokeWidth={1.75} />
-        <input type="search" aria-label={t("searchKeyword")} placeholder={t("searchKeyword")} className="min-w-0 flex-1 bg-transparent text-[15px] leading-[21px] text-body outline-none placeholder:text-muted" />
+        <input type="search" aria-label={t("searchKeyword")} placeholder={t("searchKeyword")} className="min-w-0 flex-1 bg-transparent text-[13px] leading-[18px] text-body outline-none placeholder:text-muted" />
       </label>
-      <div className="flex shrink-0 items-center justify-end gap-6 md:col-start-3">
+      <div className="flex shrink-0 items-center justify-end gap-[15px] md:col-start-3">
         <ThemeToggle />
-        <LanguageSelector perfil={perfil} className="gap-2 text-[15px] text-body" />
+        <span aria-hidden="true" className="h-[21px] w-px shrink-0 bg-edge" />
+        <LanguageSelector perfil={perfil} className="gap-2 whitespace-nowrap text-[15px] text-body" />
+        <span aria-hidden="true" className="h-[21px] w-px shrink-0 bg-edge" />
         <div ref={menuRef} className="relative">
           <button type="button" aria-haspopup="menu" aria-expanded={menuAberto} onClick={() => setMenuAberto(!menuAberto)} title={t("userMenu")} className="flex items-center gap-1.5">
             {/* Decorativo: o nome já aparece ao lado. Cor escolhida em Configurações (spec 036). */}

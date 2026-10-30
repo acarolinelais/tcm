@@ -126,4 +126,15 @@ describe("translation resources", () => {
     expect(resources["pt-BR"].translation.resultOriginImported).toBe("Importado da planilha");
     expect(resources["pt-BR"].translation.resultOriginManual).toBe("Adicionado manualmente");
   });
+
+  it("has the sector deactivation texts (spec 050) with the name in every language", () => {
+    for (const language of ["en", "pt-BR", "ko"] as const) {
+      for (const key of ["deactivateSectorTitle", "deactivateSectorDescription", "deactivateSectorConfirm"] as const) {
+        expect(resources[language].translation[key], `${language} ${key}`).toBeTruthy();
+      }
+      expect(resources[language].translation.deactivateSectorTitle).toContain("{{name}}");
+      expect(resources[language].translation.deactivateSectorDescription).toContain("{{name}}");
+    }
+  });
 });
+

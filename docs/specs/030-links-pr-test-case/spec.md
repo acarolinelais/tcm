@@ -51,6 +51,8 @@ ID passa a abrir esse painel em todas as tabelas de projetos.
   (resumo por modelo), **Form Factor › Resultados** (histórico de rodadas) e as duas de **Resultados gerais**
   (resumo e histórico). O TC ID tem aparência de link e o clique nele não dispara outra ação da linha (edição
   inline, seleção, registrar resultado).
+  > **Revogado em parte pela spec 050 (2026-10-30):** em Resultados gerais o TC ID é texto simples e não abre o
+  > painel, que fica só na página do projeto (abas Test Cases e Form Factor).
 - RN-10: O painel continua abrindo pela direita e fechando pelo X, por Esc, por clique fora e pelos botões do
   rodapé. Os textos da planilha continuam só de leitura (spec 028). Uma URL digitada e não adicionada é
   descartada ao fechar.

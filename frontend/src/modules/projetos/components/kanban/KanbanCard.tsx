@@ -12,7 +12,7 @@ import { ROTULO_DIFICULDADE, ROTULO_SITUACAO, ROTULO_STATUS, type KanbanCard as 
 /** Tipo do item arrastado: só as colunas do Kanban aceitam. */
 export const TIPO_ARRASTO_CASO = "application/x-tcm-caso-teste";
 
-const classeCard = "grid gap-2 rounded-lg border border-separator bg-surface p-3 text-[13px] text-body";
+const classeCard = "grid gap-2 rounded-lg border border-edge bg-surface p-3 text-[13px] text-body";
 
 export function KanbanCard({ card, onMover, onArrastar }: {
   card: Card;

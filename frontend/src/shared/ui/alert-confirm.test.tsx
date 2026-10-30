@@ -14,7 +14,8 @@ function renderizar(isPending = false) {
 describe("AlertConfirm", () => {
   it("confirmar chama onConfirm", async () => {
     const { onConfirm } = renderizar();
-    expect(screen.getByRole("alertdialog", { name: "Transfer 2 Test Cases" })).toHaveTextContent("They go to their backups.");
+    // A descrição é a descrição acessível da janela, lida junto com o título (spec 050).
+    expect(screen.getByRole("alertdialog", { name: "Transfer 2 Test Cases" })).toHaveAccessibleDescription("They go to their backups.");
     await userEvent.click(screen.getByRole("button", { name: "Transfer" }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
