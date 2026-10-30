@@ -62,6 +62,7 @@ sem paginação, também pagina ([ADR 0039](../adr/0039-resultados-gerais-com-pa
 | 033 | Paginação na tela Resultados Gerais (ADR 0039, substitui o 0038) | Concluída (e2e simulados; validação manual no navegador pendente) |
 | 034 | Tema claro e escuro (toggle no navbar e no login, escolha no navegador, ADRs 0040 e 0041) | Concluída |
 | 035 | Exportar tabelas para Excel (página atual ou todos os itens, com filtros, botão no rodapé, ADR 0042) | Concluída (e2e com API real pendentes) |
+| 036 | Cor do avatar nas Configurações (paleta de 8 cores, azul padrão, salva na conta, ADR 0043) | Aprovada |
 
 > As duas specs 012 foram criadas em paralelo. Os diretórios e históricos foram preservados nesta integração; a harmonização da numeração está registrada no backlog da spec de perfil Dev.
 
