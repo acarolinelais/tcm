@@ -1,12 +1,15 @@
 from uuid import UUID
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, case, func, or_, select
 
 from src.domain.common.paged_result import PagedResult
 from src.domain.entities.projeto import Projeto, StatusProjeto
+from src.domain.queries.linha_navegacao_board import LinhaNavegacaoBoard
 from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
 from src.infrastructure.data.models.projeto_model import ProjetoModel
+from src.infrastructure.data.models.setor_model import SetorModel
 from src.infrastructure.data.models.time_membro_model import TimeMembroModel
+from src.infrastructure.data.models.time_model import TimeModel
 from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
 
 
@@ -145,6 +148,59 @@ class ProjetoRepositoryImpl(RepositoryBaseImpl[Projeto, ProjetoModel]):
             .all()
         )
         return PagedResult([self._to_entity(model) for model in modelos], page, page_size, total)
+
+    async def listar_navegacao(
+        self, unidade_id: UUID, time_ids: tuple[UUID, ...] | None
+    ) -> tuple[LinhaNavegacaoBoard, ...]:
+        # time_ids None = a unidade inteira (admin). O outer join mantém o time sem projeto ativo.
+        if time_ids == ():
+            return ()
+        encerrado = ProjetoModel.status.in_(
+            (StatusProjeto.COMPLETED.value, StatusProjeto.CANCELED.value)
+        )
+        stmt = (
+            select(
+                SetorModel.id,
+                SetorModel.nome,
+                TimeModel.id,
+                TimeModel.nome,
+                ProjetoModel.id,
+                ProjetoModel.nome,
+                ProjetoModel.status,
+            )
+            .join(SetorModel, SetorModel.id == TimeModel.setor_id)
+            .outerjoin(
+                ProjetoModel,
+                and_(ProjetoModel.time_id == TimeModel.id, ProjetoModel.ativo.is_(True)),
+            )
+            .where(
+                TimeModel.unidade_id == unidade_id,
+                TimeModel.ativo.is_(True),
+                SetorModel.ativo.is_(True),
+            )
+            .order_by(
+                SetorModel.nome,
+                TimeModel.nome,
+                TimeModel.id,
+                case((encerrado, 1), else_=0),
+                ProjetoModel.nome,
+            )
+        )
+        if time_ids is not None:
+            stmt = stmt.where(TimeModel.id.in_(time_ids))
+        linhas = await self.session.execute(stmt)
+        return tuple(
+            LinhaNavegacaoBoard(
+                setor_id,
+                setor_nome,
+                time_id,
+                time_nome,
+                projeto_id,
+                projeto_nome,
+                StatusProjeto(status) if status is not None else None,
+            )
+            for setor_id, setor_nome, time_id, time_nome, projeto_id, projeto_nome, status in linhas
+        )
 
     async def desativar(self, unidade_id: UUID, projeto_id: UUID) -> None:
         model = (

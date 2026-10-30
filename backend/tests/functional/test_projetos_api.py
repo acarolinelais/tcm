@@ -24,9 +24,10 @@ from src.domain.entities.caso_teste import (
     SituacaoCasoTeste,
     StatusCasoTeste,
 )
-from src.domain.entities.projeto import Projeto
+from src.domain.entities.projeto import Projeto, StatusProjeto
 from src.domain.entities.time import Time
 from src.domain.queries.caso_teste_com_responsavel import CasoTesteComResponsavel
+from src.domain.queries.linha_navegacao_board import LinhaNavegacaoBoard
 from tests.functional.conftest import dependency_override
 
 
@@ -315,3 +316,54 @@ async def test_obter_kanban_fora_do_escopo_retorna_404_e_sem_permissao_403(api_c
     assert projeto_repo.obter_por_id.await_args.args[0] == unidade_id
     assert proibido.status_code == 403
     caso_repo.listar_cards_por_projeto.assert_not_called()
+
+
+async def test_listar_navegacao_retorna_arvore_e_nao_cai_na_rota_por_id(api_client):
+    from src.api.main import app
+
+    unidade_id, setor_id, time_id = uuid4(), uuid4(), uuid4()
+    projeto_repo = AsyncMock()
+    projeto_repo.listar_navegacao.return_value = (
+        LinhaNavegacaoBoard(
+            setor_id, "SVP", time_id, "SDF Automation", uuid4(), "Clock 9.5", StatusProjeto.TO_DO
+        ),
+    )
+    service = ProjetoServiceImpl(projeto_repo, AsyncMock(), AsyncMock(), AsyncMock(), AsyncMock())
+    dev = UsuarioAutenticado(
+        uuid4(),
+        unidade_id,
+        "USUARIO_PADRAO",
+        permissoes=frozenset({"test_cases.consultar"}),
+        time_ids=(time_id,),
+    )
+    app.dependency_overrides[get_usuario_atual] = dependency_override(dev)
+    app.dependency_overrides[get_projeto_service] = dependency_override(service)
+
+    response = await api_client.get("/api/projetos/navegacao")
+
+    assert response.status_code == 200
+    [setor] = response.json()["setores"]
+    assert setor["nome"] == "SVP"
+    assert setor["times"][0]["projetos"][0] == {
+        "id": setor["times"][0]["projetos"][0]["id"],
+        "nome": "Clock 9.5",
+        "status": "To Do",
+    }
+    projeto_repo.listar_navegacao.assert_awaited_once_with(unidade_id, (time_id,))
+    projeto_repo.obter_por_id.assert_not_called()
+
+
+async def test_listar_navegacao_sem_times_retorna_arvore_vazia(api_client):
+    from src.api.main import app
+
+    projeto_repo = AsyncMock()
+    projeto_repo.listar_navegacao.return_value = ()
+    service = ProjetoServiceImpl(projeto_repo, AsyncMock(), AsyncMock(), AsyncMock(), AsyncMock())
+    kp = UsuarioAutenticado(uuid4(), uuid4(), "KP", permissoes=frozenset({"test_cases.consultar"}))
+    app.dependency_overrides[get_usuario_atual] = dependency_override(kp)
+    app.dependency_overrides[get_projeto_service] = dependency_override(service)
+
+    response = await api_client.get("/api/projetos/navegacao")
+
+    assert response.status_code == 200
+    assert response.json() == {"setores": []}

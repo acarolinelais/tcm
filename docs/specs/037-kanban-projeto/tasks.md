@@ -32,13 +32,13 @@
 
 ## Fase 2: navegação do Board (backend)
 
-- [ ] **T04. Repositório: árvore setor → time → projeto**
+- [x] **T04. Repositório: árvore setor → time → projeto**
   - Arquivos: `backend/src/infrastructure/repositories/projeto_repository.py` (+ interface),
     `backend/tests/integration/test_projeto_repository.py`
   - Cobre: CA-15
   - Verificação: `cd backend && uv run pytest tests/integration/test_projeto_repository.py -k navegacao` → só traz
     setores, times e projetos ativos, filtra por `time_ids` e põe os projetos `Completed` e `Canceled` por último.
-- [ ] **T05. Service e rota `GET /api/projetos/navegacao`**
+- [x] **T05. Service e rota `GET /api/projetos/navegacao`**
   - Arquivos: `backend/src/application/schemas/navegacao_board.py` (novo), `backend/src/application/services/projeto_service.py`,
     `backend/src/api/routers/projetos.py`, `backend/tests/unit/application/services/test_projeto_service.py`,
     `backend/tests/functional/test_projetos_api.py`
@@ -124,3 +124,10 @@
 - **`destinos` repetido em cada card** (simplify da fase 1): com 1.000 cards, a mesma lista de até 6 Status
   volta em quase todos. Trocar por destinos por coluna e uma marcação por card muda o contrato da API da spec
   037; vale só se o tamanho da resposta virar problema.
+- **Escopo de times do admin repetido** (simplify da fase 2): `None if usuario_atual.eh_administrador else
+  usuario_atual.times_no_escopo` aparece em `ProjetoServiceImpl.listar` e em `listar_navegacao`. Uma
+  property em `UsuarioAutenticado` resolveria, mas mexe no domínio compartilhado por outros services.
+- **`test_bootstrap` falha na segunda rodada no mesmo banco** (visto na fase 2, anterior a esta spec):
+  `test_usuario_user_id_persistence.py` grava unidades sem o perfil `USUARIO_PADRAO` e não as apaga, e a
+  migration de perfil KP reaplicada pelo `test_bootstrap` recusa essas unidades. A suíte passa num banco recém-
+  migrado.

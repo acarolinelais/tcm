@@ -28,6 +28,7 @@ from src.application.schemas.importacao_projeto import (
 )
 from src.application.schemas.importacao_sdf import ImportarRelatorioSdfResponse
 from src.application.schemas.kanban import KanbanResponse
+from src.application.schemas.navegacao_board import NavegacaoBoardResponse
 from src.application.schemas.projeto import (
     AtualizarProjetoRequest,
     AtualizarStatusProjetoRequest,
@@ -82,6 +83,15 @@ async def importar_projeto(
         ImportarProjetoPlanilhaRequest(time_id=time_id, modelos_ids=modelos_ids or []),
         conteudo,
     )
+
+
+# Declarada antes de /{projeto_id}, senão "navegacao" seria lido como um id.
+@router.get("/navegacao", response_model=NavegacaoBoardResponse)
+async def listar_navegacao(
+    service: ProjetoService = Depends(get_projeto_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.listar_navegacao(usuario_atual)
 
 
 @router.get("/{projeto_id}", response_model=ProjetoResponse)

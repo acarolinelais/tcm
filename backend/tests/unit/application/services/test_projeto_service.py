@@ -15,6 +15,7 @@ from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.modelo_dispositivo import ModeloDispositivo
 from src.domain.entities.projeto import Projeto, StatusProjeto
 from src.domain.entities.time import Time
+from src.domain.queries.linha_navegacao_board import LinhaNavegacaoBoard
 
 
 @pytest.fixture
@@ -357,3 +358,66 @@ async def test_status_projeto_inexistente_e_recusado(contexto):
 
     projetos.atualizar.assert_not_awaited()
     uow.commit.assert_not_awaited()
+
+
+def linha(setor_id, setor, time_id, time, projeto=None, status=StatusProjeto.CREATED):
+    return LinhaNavegacaoBoard(
+        setor_id,
+        setor,
+        time_id,
+        time,
+        uuid4() if projeto else None,
+        projeto,
+        status if projeto else None,
+    )
+
+
+async def test_listar_navegacao_monta_arvore_e_admin_ve_a_unidade(contexto):
+    service, projetos, _, _, _, _, admin, _, _ = contexto
+    mobile, clock, vazio = uuid4(), uuid4(), uuid4()
+    projetos.listar_navegacao.return_value = (
+        linha(mobile, "Mobile", clock, "Clock", "Clock 9.5"),
+        linha(mobile, "Mobile", clock, "Clock", "Alarm 9.5", StatusProjeto.COMPLETED),
+        linha(mobile, "Mobile", vazio, "Vazio"),
+    )
+
+    arvore = await service.listar_navegacao(admin)
+
+    projetos.listar_navegacao.assert_awaited_once_with(admin.unidade_id, None)
+    [setor] = arvore.setores
+    assert setor.nome == "Mobile"
+    assert [time.nome for time in setor.times] == ["Clock", "Vazio"]
+    assert [p.nome for p in setor.times[0].projetos] == ["Clock 9.5", "Alarm 9.5"]
+    assert setor.times[1].projetos == []
+
+
+async def test_listar_navegacao_gerente_inclui_times_em_que_participa(contexto):
+    service, projetos, _, _, _, _, admin, _, _ = contexto
+    gerenciado, participa = uuid4(), uuid4()
+    gerente = UsuarioAutenticado(
+        uuid4(),
+        admin.unidade_id,
+        "GERENTE",
+        permissoes=frozenset({"projetos.consultar"}),
+        times_gerenciados=(gerenciado,),
+        time_ids=(participa,),
+        setores_gerenciados=(uuid4(),),
+    )
+    projetos.listar_navegacao.return_value = ()
+
+    await service.listar_navegacao(gerente)
+
+    projetos.listar_navegacao.assert_awaited_once_with(admin.unidade_id, (gerenciado, participa))
+
+
+async def test_listar_navegacao_sem_permissao_ou_sem_times_devolve_arvore_vazia(contexto):
+    service, projetos, _, _, _, _, admin, _, _ = contexto
+    sem_permissao = UsuarioAutenticado(uuid4(), admin.unidade_id, "USUARIO_PADRAO")
+    sem_times = UsuarioAutenticado(
+        uuid4(), admin.unidade_id, "KP", permissoes=frozenset({"test_cases.consultar"})
+    )
+    projetos.listar_navegacao.return_value = ()
+
+    assert (await service.listar_navegacao(sem_permissao)).setores == []
+    assert (await service.listar_navegacao(sem_times)).setores == []
+    projetos.listar_navegacao.assert_awaited_once_with(admin.unidade_id, ())
