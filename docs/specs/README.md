@@ -63,6 +63,19 @@ sem paginação, também pagina ([ADR 0039](../adr/0039-resultados-gerais-com-pa
 | 034 | Tema claro e escuro (toggle no navbar e no login, escolha no navegador, ADRs 0040 e 0041) | Concluída |
 | 035 | Exportar tabelas para Excel (página atual ou todos os itens, com filtros, botão no rodapé, ADR 0042) | Concluída (e2e com API real pendentes) |
 | 036 | Cor do avatar nas Configurações (paleta de 8 cores, azul padrão, salva na conta, ADR 0043) | Concluída |
+| 038 | Histórico de alterações do Test Case (Status, responsáveis, exclusão e PR, com autor e data) | Rascunho |
+| 039 | Overview com dados reais no escopo do perfil (depende da 038 para o desempenho mensal) | Rascunho |
+| 040 | Página do Test Case com endereço próprio e edição dos textos | Rascunho |
+| 041 | Busca global na barra superior (Test Cases, projetos e pessoas) | Rascunho |
+| 042 | Minha conta e redefinição de senha pelo administrador | Rascunho |
+| 043 | Ações em lote na lista de Test Cases (Status, responsável e Backup) | Rascunho |
+| 044 | Comentários no Test Case | Rascunho |
+| 045 | Evidências anexadas ao Test Case (exige ADR de armazenamento) | Rascunho |
+| 046 | Notificações dentro do sistema (depende das 038, 040 e 044) | Rascunho |
+| 047 | Corrigir rodadas e resultados de Form Factor | Rascunho |
+| 048 | Documentação de uso dentro do sistema | Rascunho |
+
+> A Timeline ainda não tem spec: o produto não foi definido. A opção natural é um feed dos eventos da spec 038 por projeto e time.
 
 > As duas specs 012 foram criadas em paralelo. Os diretórios e históricos foram preservados nesta integração; a harmonização da numeração está registrada no backlog da spec de perfil Dev.
 
