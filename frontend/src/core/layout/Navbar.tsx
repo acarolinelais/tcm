@@ -2,19 +2,15 @@ import type { PerfilAtual } from "@/core/auth/api";
 import { useLocation, useNavigate } from "react-router";
 import { httpPost } from "@/core/api/http-client";
 import { clearTokens } from "@/core/auth/session";
-import { Avatar } from "@heroui/react";
-import { ChevronDown, CircleArrowRight, Search, UserRound } from "lucide-react";
+import { ChevronDown, CircleArrowRight, Search } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LanguageSelector } from "@/core/i18n/LanguageSelector";
 import { ThemeToggle } from "@/core/theme/ThemeToggle";
-import { iniciais } from "@/shared/lib/iniciais";
 import { useDismiss } from "@/shared/lib/use-dismiss";
+import { AvatarUsuario } from "@/shared/ui/avatar-usuario";
 import { ChevronIcon } from "./sidebar-icons";
 import { rotaPai, rotuloDaRota } from "./voltar";
-
-/** Imagem padrão do avatar (esfera azul dos exemplos do HeroUI). Sem ela, o fallback mostra as iniciais. */
-export const AVATAR_PADRAO_URL = "https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/blue.jpg";
 
 export function Navbar({ perfil }: { perfil: PerfilAtual }) {
   const { t } = useTranslation();
@@ -55,14 +51,8 @@ export function Navbar({ perfil }: { perfil: PerfilAtual }) {
         <LanguageSelector perfil={perfil} className="gap-2 text-[15px] text-body" />
         <div ref={menuRef} className="relative">
           <button type="button" aria-haspopup="menu" aria-expanded={menuAberto} onClick={() => setMenuAberto(!menuAberto)} title={t("userMenu")} className="flex items-center gap-1.5">
-            {/* Decorativo: o nome já aparece ao lado. Tamanho e cor do Figma, menores que o `sm` do HeroUI. */}
-            <Avatar aria-hidden="true" className="size-[21px]">
-              <Avatar.Image src={AVATAR_PADRAO_URL} alt="" />
-              {/* O atraso evita piscar as iniciais enquanto a imagem carrega. */}
-              <Avatar.Fallback delayMs={600} className="bg-avatar text-[11px] font-medium text-strong-foreground">
-                {iniciais(perfil.nome) || <UserRound className="size-3" strokeWidth={2} />}
-              </Avatar.Fallback>
-            </Avatar>
+            {/* Decorativo: o nome já aparece ao lado. Cor escolhida em Configurações (spec 036). */}
+            <AvatarUsuario cor={perfil.cor_avatar} />
             <span className="max-w-40 truncate text-[15px] font-medium text-body">{perfil.nome.split(" ")[0]}</span>
             <ChevronDown aria-hidden="true" className="size-3.5 text-body" />
           </button>

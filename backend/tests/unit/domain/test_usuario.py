@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+from src.domain.common.cor_avatar import CorAvatar
 from src.domain.entities.usuario import Usuario
 
 
@@ -62,3 +63,13 @@ def test_definir_senha_hash_guarda_o_hash():
     usuario.definir_senha_hash("hash-fake")
 
     assert usuario.senha_hash == "hash-fake"
+
+
+def test_usuario_novo_tem_avatar_azul_e_pode_trocar_a_cor():
+    usuario = Usuario(uuid4(), "Ana", "ana@example.com")
+
+    assert usuario.cor_avatar == CorAvatar.AZUL
+
+    usuario.definir_cor_avatar(CorAvatar.VERDE)
+
+    assert usuario.cor_avatar == CorAvatar.VERDE

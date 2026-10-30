@@ -33,7 +33,7 @@ const ROTULOS_STATUS = ["To-Do", "In Progress", "In Review", "In Validation", "D
 const perfil: PerfilAtual = {
   id: "user-1", nome: "Dev", email: "dev@example.com", unidade_id: "unit-1", unidade_nome: "Unidade",
   perfil_codigo: null, perfil: "Desenvolvedor", permissoes: ["projetos.consultar", "test_cases.consultar"], times: [], setores_gerenciados: [],
-  time_atual_id: "team-1", tem_multiplos_times: false, senha_alteracao_obrigatoria: false, idioma_preferido: "en",
+  time_atual_id: "team-1", tem_multiplos_times: false, senha_alteracao_obrigatoria: false, idioma_preferido: "en", cor_avatar: "azul",
 };
 
 /** Admin na aba Form Factor com o diálogo de criar rodada aberto. */
