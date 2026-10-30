@@ -1,7 +1,6 @@
 import type { PerfilAtual } from "@/core/auth/api";
 import { useLocation, useNavigate } from "react-router";
-import { httpPost } from "@/core/api/http-client";
-import { clearTokens } from "@/core/auth/session";
+import { useSair } from "@/core/auth/useSair";
 import { ChevronDown, CircleArrowRight, Search } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -14,19 +13,11 @@ import { rotaPai, rotuloDaRota } from "./voltar";
 
 export function Navbar({ perfil }: { perfil: PerfilAtual }) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [menuAberto, setMenuAberto] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   useDismiss(menuRef, menuAberto, useCallback(() => setMenuAberto(false), []));
   const voltar = useVoltar();
-  async function sair() {
-    try {
-      await httpPost<void>("/api/auth/logout", {});
-    } finally {
-      clearTokens();
-      navigate("/login", { replace: true });
-    }
-  }
+  const sair = useSair();
   return (
     // Layout do Figma (TCM, node 2090:199): voltar à esquerda, alinhado ao card; idioma e usuário à direita.
     <header className="col-start-2 row-start-1 grid h-8 min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,33.375rem)_minmax(0,1fr)] items-center gap-4">
