@@ -10,6 +10,7 @@ from src.application.schemas.auth import (
     AlterarSenhaRequest,
     AtualizarPreferenciasRequest,
     LoginRequest,
+    PreferenciasResponse,
     RefreshRequest,
     TokenResponse,
 )
@@ -123,15 +124,21 @@ class AuthServiceImpl:
 
     async def atualizar_preferencias(
         self, unidade_id: UUID, usuario_id: UUID, request: AtualizarPreferenciasRequest
-    ) -> None:
+    ) -> PreferenciasResponse:
         usuario = await self._usuario_repo.obter_por_id(unidade_id, usuario_id)
         if usuario is None:
             raise NotFoundException("Usuário não encontrado.")
-        usuario.definir_idioma_preferido(request.idioma_preferido)
+        if request.idioma_preferido is not None:
+            usuario.definir_idioma_preferido(request.idioma_preferido)
+        if request.cor_avatar is not None:
+            usuario.definir_cor_avatar(request.cor_avatar)
         await self._usuario_repo.atualizar(usuario)
         if self._session is None:
             raise RuntimeError("Sessão de banco não configurada.")
         await self._session.commit()
+        return PreferenciasResponse(
+            idioma_preferido=usuario.idioma_preferido, cor_avatar=usuario.cor_avatar
+        )
 
     async def alterar_senha_inicial(
         self, usuario_id: UUID, sessao_id: UUID, request: AlterarSenhaRequest

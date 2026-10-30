@@ -17,7 +17,9 @@ from src.application.schemas.auth import (
     TokenResponse,
 )
 from src.application.services.interfaces.auth_service import AuthService
+from src.domain.common.cor_avatar import CorAvatar
 from src.domain.common.exceptions import ForbiddenException
+from src.domain.common.idioma_preferido import IdiomaPreferido
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.infrastructure.data.models.setor_gerente_model import SetorGerenteModel
 from src.infrastructure.data.models.setor_model import SetorModel
@@ -69,8 +71,7 @@ async def atualizar_preferencias(
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual_para_troca_senha),
     service: AuthService = Depends(get_auth_service),
 ) -> PreferenciasResponse:
-    await service.atualizar_preferencias(usuario_atual.unidade_id, usuario_atual.id, request)
-    return PreferenciasResponse(idioma_preferido=request.idioma_preferido)
+    return await service.atualizar_preferencias(usuario_atual.unidade_id, usuario_atual.id, request)
 
 
 @router.get("/me", response_model=PerfilAtualResponse)
@@ -115,12 +116,14 @@ async def perfil_atual(
     unidade_nome = await session.scalar(
         select(UnidadeModel.nome).where(UnidadeModel.id == usuario_atual.unidade_id)
     )
-    idioma_preferido = await session.scalar(
-        select(UsuarioModel.idioma_preferido).where(
-            UsuarioModel.id == usuario_atual.id,
-            UsuarioModel.unidade_id == usuario_atual.unidade_id,
+    preferencias = (
+        await session.execute(
+            select(UsuarioModel.idioma_preferido, UsuarioModel.cor_avatar).where(
+                UsuarioModel.id == usuario_atual.id,
+                UsuarioModel.unidade_id == usuario_atual.unidade_id,
+            )
         )
-    )
+    ).one_or_none()
     existentes = {time["id"] for time in times}
     times.extend(
         {"id": str(row.id), "nome": row.nome}
@@ -141,5 +144,6 @@ async def perfil_atual(
         time_atual_id=usuario_atual.time_atual_id,
         tem_multiplos_times=len(times) > 1,
         senha_alteracao_obrigatoria=usuario_atual.senha_alteracao_obrigatoria,
-        idioma_preferido=idioma_preferido or "en",
+        idioma_preferido=preferencias.idioma_preferido if preferencias else IdiomaPreferido.INGLES,
+        cor_avatar=preferencias.cor_avatar if preferencias else CorAvatar.AZUL,
     )

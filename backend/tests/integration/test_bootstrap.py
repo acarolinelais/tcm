@@ -371,3 +371,32 @@ async def test_admin_bootstrap_real_consegue_fazer_login():
         )
     assert perfil.status_code == 200
     assert perfil.json()["idioma_preferido"] == "en"
+
+
+@pytest.mark.asyncio
+async def test_cor_do_avatar_salva_volta_no_proximo_login():
+    app.dependency_overrides.clear()
+    credenciais = {"email": "admin@sdfmanager.com", "senha": os.environ["BOOTSTRAP_ADMIN_SENHA"]}
+    async with AsyncClient(
+        transport=ASGITransport(app=app, raise_app_exceptions=False), base_url="http://test"
+    ) as client:
+
+        async def entrar() -> dict[str, str]:
+            token = (await client.post("/api/auth/login", json=credenciais)).json()
+            return {"Authorization": f"Bearer {token['access_token']}"}
+
+        headers = await entrar()
+        assert (await client.get("/api/auth/me", headers=headers)).json()["cor_avatar"] == "azul"
+        try:
+            salvo = await client.patch(
+                "/api/auth/preferencias", json={"cor_avatar": "verde"}, headers=headers
+            )
+            assert salvo.status_code == 200
+            assert salvo.json() == {"idioma_preferido": "en", "cor_avatar": "verde"}
+
+            perfil = await client.get("/api/auth/me", headers=await entrar())
+            assert perfil.json()["cor_avatar"] == "verde"
+        finally:
+            await client.patch(
+                "/api/auth/preferencias", json={"cor_avatar": "azul"}, headers=headers
+            )

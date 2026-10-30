@@ -6,7 +6,7 @@
 > Implementar com a skill `implement-task`, um bloco (fase) por vez.
 
 ## Fase 1: Backend (cor na conta e preferências parciais)
-- [ ] **T01. `CorAvatar` e cor padrão no `Usuario`**
+- [x] **T01. `CorAvatar` e cor padrão no `Usuario`**
   - Arquivos: `backend/src/domain/common/cor_avatar.py`, `backend/src/domain/entities/usuario.py`,
     `backend/tests/unit/domain/test_usuario.py`
   - Cobre: CA-02
@@ -14,7 +14,7 @@
     `definir_cor_avatar()`. Testes: usuário novo em `azul`; `definir_cor_avatar(VERDE)` troca; código fora da
     paleta não vira `CorAvatar` (`ValueError`).
   - Verificação: `cd backend && uv run pytest tests/unit/domain/test_usuario.py` → verde
-- [ ] **T02. Coluna, constraint, migration e mapeamento no repositório**
+- [x] **T02. Coluna, constraint, migration e mapeamento no repositório**
   - Arquivos: `backend/src/infrastructure/data/models/usuario_model.py`,
     `backend/src/infrastructure/data/migrations/versions/<rev>_cor_avatar_por_conta.py`,
     `backend/src/infrastructure/repositories/usuario_repository.py`,
@@ -25,7 +25,7 @@
     constraint; salvar `verde` em uma conta não altera outra da mesma unidade; `downgrade` remove a coluna.
   - Verificação: `cd backend && uv run pytest tests/integration/test_migration_cor_avatar.py && uv run alembic heads`
     → verde e um único head
-- [ ] **T03. Schemas e service de preferências com atualização parcial**
+- [x] **T03. Schemas e service de preferências com atualização parcial**
   - Arquivos: `backend/src/application/schemas/auth.py`,
     `backend/src/application/services/interfaces/auth_service.py`,
     `backend/src/infrastructure/services/auth_service.py`,
@@ -37,7 +37,7 @@
     idioma; só idioma mantém a cor; `{}`, `null` e `#ff0000` recusados no schema; usuário inexistente →
     `NotFoundException` sem commit.
   - Verificação: `cd backend && uv run pytest tests/unit/application` → verde
-- [ ] **T04. Router: cor no `/me` e resposta do PATCH**
+- [x] **T04. Router: cor no `/me` e resposta do PATCH**
   - Arquivos: `backend/src/api/routers/auth.py`, `backend/tests/functional/test_auth_api.py`
   - Cobre: CA-02, CA-04, CA-05, CA-07, CA-08
   - Detalhe: o `/me` lê `cor_avatar` junto com o idioma; o PATCH devolve o retorno do service. Testes:
@@ -101,3 +101,13 @@
   - Verificação: `cd frontend && npm run e2e -- cor-avatar` → verde
 
 ## Backlog
+- `/me` consulta o banco direto no router (`api/routers/auth.py`), contra o ADR 0003. Já era assim antes desta
+  spec; mover para um service/repositório é refatoração própria. (simplify, bloco 1)
+- `/me` faz duas idas ao banco seguidas (nome da unidade e preferências) que caberiam numa consulta com
+  `join`. Fica junto com o item acima. (simplify, bloco 1)
+- `AtualizarPreferenciasRequest` e o schema de edição de Test Case repetem a checagem "ao menos um campo".
+  Extrair um helper só se surgir um terceiro caso. (simplify, bloco 1)
+- Testes de integração existentes (ex.: `test_usuario_user_id_persistence.py`) deixam unidades sem perfil
+  `USUARIO_PADRAO` no banco; numa segunda rodada no mesmo banco,
+  `test_migration_seed_perfil_kp_por_unidade_e_idempotente` falha. Não afeta o CI (banco novo a cada run).
+  (verificação, bloco 1)
