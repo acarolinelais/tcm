@@ -13,13 +13,13 @@ afterEach(() => {
 
 describe("http-client: tela de origem (spec 038)", () => {
   it("manda o caminho da tela atual no cabeçalho X-Tela", async () => {
-    window.history.pushState({}, "", "/projetos/7f3a?aba=kanban");
+    window.history.pushState({}, "", "/board/7f3a?status=InReview");
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(respostaJson({ ok: true }));
 
     await httpPut("/api/test-cases/1", { status: "InReview" });
 
     const cabecalhos = fetchSpy.mock.calls[0][1]?.headers as Record<string, string>;
-    expect(cabecalhos["X-Tela"]).toBe("/projetos/7f3a");
+    expect(cabecalhos["X-Tela"]).toBe("/board/7f3a");
   });
 
   it("manda o cabeçalho mesmo quando a requisição falha", async () => {

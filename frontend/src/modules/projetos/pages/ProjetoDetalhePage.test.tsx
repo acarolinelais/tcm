@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Outlet, Route, Routes } from "react-router";
+import { MemoryRouter, Outlet, Route, Routes, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PerfilAtual } from "@/core/auth/api";
@@ -16,7 +16,7 @@ import { toast } from "@/shared/lib/toast";
 import { baixarPlanilha, montarPlanilha } from "@/shared/lib/exportar-planilha";
 
 vi.mock("../api/projetos.api", () => ({
-  projetosApi: { obter: vi.fn(), listar: vi.fn() }, casosTesteApi: { listar: vi.fn(), kanban: vi.fn(), obter: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), transferirParaBackup: vi.fn(), listarPullRequests: vi.fn() },
+  projetosApi: { obter: vi.fn(), listar: vi.fn() }, casosTesteApi: { listar: vi.fn(), obter: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), transferirParaBackup: vi.fn(), listarPullRequests: vi.fn() },
   formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), criarRodada: vi.fn(), registrarResultadosRodada: vi.fn(), importar: vi.fn() }, modelosDispositivoApi: {},
 }));
 vi.mock("@/modules/times/api/times.api", () => ({ timesApi: { membros: vi.fn() } }));
@@ -46,10 +46,16 @@ async function abrirCriacaoRodada() {
   return { user, dialog: await screen.findByRole("dialog") };
 }
 
+/** Mostra o endereço em que o redirecionamento para o Board terminou. */
+function BoardDestino() {
+  const local = useLocation();
+  return <p>Board {local.pathname}{local.search}</p>;
+}
+
 function renderPage(currentProfile = perfil, client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }), url = "/projetos/project-1") {
   function ContextOutlet() { return <Outlet context={currentProfile} />; }
   // MemoryRouter declarativo: o createMemoryRouter navega com um Request que o jsdom rejeita.
-  return render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[url]}><Routes><Route element={<ContextOutlet />}><Route path="projetos/:projetoId" element={<ProjetoDetalhePage />} /></Route></Routes></MemoryRouter></QueryClientProvider>);
+  return render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[url]}><Routes><Route element={<ContextOutlet />}><Route path="projetos/:projetoId" element={<ProjetoDetalhePage />} /><Route path="board/:projetoId" element={<BoardDestino />} /></Route></Routes></MemoryRouter></QueryClientProvider>);
 }
 
 describe("ProjetoDetalhePage", () => {
@@ -72,42 +78,38 @@ describe("ProjetoDetalhePage", () => {
     ]);
   });
 
-  it("abre direto na aba Kanban pelo link e não consulta a tabela de Test Cases", async () => {
-    vi.mocked(casosTesteApi.kanban).mockResolvedValue({ projeto_id: "project-1", total: 0, colunas: [] });
-    renderPage(perfil, undefined, "/projetos/project-1?aba=kanban");
+  it("mostra só as abas Test Cases e Form Factor", async () => {
+    renderPage({ ...perfil, permissoes: [...perfil.permissoes, "form_factor.consultar"] });
 
-    expect(await screen.findByRole("tab", { name: "Kanban", selected: true })).toBeInTheDocument();
-    await waitFor(() => expect(casosTesteApi.kanban).toHaveBeenCalledWith("project-1"));
-    expect(casosTesteApi.listar).not.toHaveBeenCalledWith("project-1", expect.anything(), expect.anything(), expect.anything());
-    expect(screen.queryByRole("button", { name: /^Week/ })).not.toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: "Test Cases", selected: true })).toBeInTheDocument();
+    expect(screen.getAllByRole("tab").map((aba) => aba.textContent)).toEqual(["Test Cases", "Form Factor"]);
   });
 
-  it("dev sem casos no projeto vê o Kanban, sem ser mandado para a entrada de Projects", async () => {
-    vi.mocked(casosTesteApi.kanban).mockResolvedValue({ projeto_id: "project-1", total: 0, colunas: [] });
-    vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [], page: 1, page_size: 1, total_count: 0 });
-    renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO" }, undefined, "/projetos/project-1?aba=kanban");
+  it("link antigo da aba Kanban abre o Kanban do projeto no Board, com os filtros", async () => {
+    renderPage(perfil, undefined, "/projetos/project-1?aba=kanban&status=InReview");
 
-    expect(await screen.findByRole("tab", { name: "Kanban", selected: true })).toBeInTheDocument();
-    expect(await screen.findByText("This project has no Test Cases yet.")).toBeInTheDocument();
-    await waitFor(() => expect(casosTesteApi.listar).toHaveBeenCalledWith("project-1", 1, 1, { associadosAMim: true }));
-    expect(screen.getByRole("tab", { name: "Kanban", selected: true })).toBeInTheDocument();
+    expect(await screen.findByText("Board /board/project-1?status=InReview")).toBeInTheDocument();
+    expect(projetosApi.obter).not.toHaveBeenCalled();
+  });
+
+  it("dev sem casos no projeto vai para a entrada de Projects, mas o link antigo do Kanban leva ao Board", async () => {
+    vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [], page: 1, page_size: 1, total_count: 0 });
+    vi.mocked(projetosApi.listar).mockResolvedValue({ items: [], page: 1, page_size: 100, total_count: 0 });
+    const dev = { ...perfil, perfil_codigo: "USUARIO_PADRAO" };
+    const { unmount } = renderPage(dev);
+
+    expect(await screen.findByText("No associated projects or Test Cases")).toBeInTheDocument();
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    unmount();
+
+    renderPage(dev, undefined, "/projetos/project-1?aba=kanban");
+    expect(await screen.findByText("Board /board/project-1")).toBeInTheDocument();
   });
 
   it("aba desconhecida no link cai na aba Test Cases", async () => {
     renderPage(perfil, undefined, "/projetos/project-1?aba=nao-existe");
 
     expect(await screen.findByRole("tab", { name: "Test Cases", selected: true })).toBeInTheDocument();
-    expect(casosTesteApi.kanban).not.toHaveBeenCalled();
-  });
-
-  it("trocar para a aba Kanban mostra o quadro do projeto", async () => {
-    vi.mocked(casosTesteApi.kanban).mockResolvedValue({ projeto_id: "project-1", total: 0, colunas: [] });
-    const user = userEvent.setup();
-    renderPage();
-
-    await user.click(await screen.findByRole("tab", { name: "Kanban" }));
-
-    expect(await screen.findByText("This project has no Test Cases yet.")).toBeInTheDocument();
   });
 
   it("exporta todos os Test Cases com os filtros do servidor e os valores legíveis, sem número nem ações", async () => {
