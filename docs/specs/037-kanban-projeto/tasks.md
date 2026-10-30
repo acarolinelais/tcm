@@ -174,7 +174,7 @@
   - Verificação: `cd frontend && npm test -- ProjetoDetalhePage` → só duas abas; `?aba=kanban&status=InReview`
     leva a `/board/project-1?status=InReview`; dev sem casos sem `aba` vai para a entrada de Projects e com
     `?aba=kanban` vai ao Board; aba desconhecida cai em Test Cases.
-- [ ] **T22. Testes que usavam a aba: `http-client` e e2e do Kanban**
+- [x] **T22. Testes que usavam a aba: `http-client` e e2e do Kanban**
   - Arquivos: `core/api/http-client.test.ts`, `e2e/projetos-kanban.spec.ts`
   - O que muda: a URL de exemplo do `X-Tela` passa a `/board/7f3a?status=InReview`; os `goto` com
     `?aba=kanban` passam a `/board/{id}`, menos o de projeto fora do escopo, que segue pelo link antigo;
@@ -182,13 +182,12 @@
   - Cobre: CA-01, CA-02, CA-03, CA-05, CA-13, CA-14, CA-20, CA-22
   - Verificação: `cd frontend && npm test -- http-client` → verde; `npm run e2e -- projetos-kanban` → verde,
     com o teste fora do escopo passando pelo redirecionamento e mostrando "projeto não encontrado".
-- [ ] **T23. Suíte completa**
+- [x] **T23. Suíte completa**
   - Verificação: `cd frontend && npm test && npm run lint && npm run e2e` e
     `grep -rn "aba=kanban\|kanbanTab" frontend/src frontend/e2e` → tudo verde; o grep só acha o redirecionamento
     e os testes dele. Backend sem mudança (não precisa do `uv run pytest`).
-  - Pendente (2026-10-30): `npm test` (626), `npm run lint`, `tsc` e o grep passaram. O `npm run e2e` não
-    rodou: o login do admin do e2e na API local devolve 401 sem `SDF_E2E_ADMIN_PASSWORD`. T22 e T23 só
-    fecham com o e2e verde.
+  - Resultado (2026-10-30): `npm test` (626), `npm run lint`, `tsc`, o grep e `npm run e2e` (85, com
+    `SDF_E2E_ADMIN_PASSWORD` da API local) verdes.
 
 ## Backlog
 - **`destinos` repetido em cada card** (simplify da fase 1): com 1.000 cards, a mesma lista de até 6 Status
