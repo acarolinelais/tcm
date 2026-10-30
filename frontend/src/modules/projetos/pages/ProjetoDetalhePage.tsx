@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button as HeroButton, ToggleButton, ToggleButtonGroup } from "@heroui/react";
 import { MessageSquareText, Pencil, Plus, UploadCloud } from "lucide-react";
-import { useOutletContext, useParams, useSearchParams } from "react-router";
+import { Navigate, useOutletContext, useParams, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import type { PerfilAtual } from "@/core/auth/api";
@@ -30,7 +30,6 @@ import { CasoTesteDrawer } from "../components/casos-teste/CasoTesteDrawer";
 import { DetalhesCasoTesteDrawer } from "../components/casos-teste/DetalhesCasoTesteDrawer";
 import { TcIdBotao } from "../components/casos-teste/TcIdBotao";
 import { ExcluirCasoTesteDialog } from "../components/casos-teste/ExcluirCasoTesteDialog";
-import { KanbanBoard } from "../components/kanban/KanbanBoard";
 import { JustificativaExclusaoDrawer } from "../components/casos-teste/JustificativaExclusaoDrawer";
 import { estadoCasosTeste } from "../components/casos-teste/estado-casos-teste";
 import { FormFactorTabela } from "../components/form-factor/FormFactorTabela";
@@ -48,8 +47,8 @@ import { DIFICULDADES_CASO_TESTE as dificuldades, OPCOES_CATEGORIA, NIVEIS_AUTOM
 type CampoInline = "category" | "difficulty" | "automation_level" | "situation" | "status" | "responsavel_id" | "backup_id";
 /** As células editam em texto; o Automation Level viaja como número (1, 2 ou 3). */
 const valorDoCampo = (campo: CampoInline, valor: string) => campo === "automation_level" ? Number(valor) : valor;
-type Aba = "cases" | "kanban" | "form-factor";
-const ROTULO_ABA: Record<Aba, string> = { cases: "testCasesTab", kanban: "kanbanTab", "form-factor": "formFactor" };
+type Aba = "cases" | "form-factor";
+const ROTULO_ABA: Record<Aba, string> = { cases: "testCasesTab", "form-factor": "formFactor" };
 // Valor do filtro de Backup para os casos sem backup.
 const SEM_BACKUP = "__sem_backup__";
 /** End Date do caso: a última atualização de um caso Done; os outros ainda não terminaram. */
@@ -64,6 +63,13 @@ const FILTROS_CASO_VAZIOS = { tcId: "", status: [] as string[], situation: [] as
 
 export function ProjetoDetalhePage() {
   const { projetoId = "" } = useParams();
+  const [parametros] = useSearchParams();
+  // A aba Kanban saiu da tela do projeto (spec 037, RN-11): um link antigo abre o Kanban no Board, com os filtros.
+  if (parametros.get("aba") === "kanban") {
+    const filtros = new URLSearchParams(parametros);
+    filtros.delete("aba");
+    return <Navigate replace to={{ pathname: `/board/${projetoId}`, search: filtros.toString() }} />;
+  }
   // key: ao trocar de projeto, filtros, página e aba voltam ao estado inicial.
   return <ProjetoDetalhe key={projetoId} />;
 }
@@ -73,7 +79,7 @@ function ProjetoDetalhe() {
   const perfil = useOutletContext<PerfilAtual>();
   const { projetoId = "" } = useParams();
   const client = useQueryClient();
-  // A aba fica na URL (?aba=kanban), para um link abrir direto nela (spec 037, RN-11).
+  // A aba fica na URL (?aba=form-factor), para um link abrir direto nela.
   const [parametros, setParametros] = useSearchParams();
   const [pagina, setPagina] = useState(1);
   const [tamanhoPagina, setTamanhoPagina] = useState(DEFAULT_TABLE_PAGE_SIZE);
@@ -105,7 +111,7 @@ function ProjetoDetalhe() {
   const podeImportarSdf = perfilGestao && (admin || perfil.permissoes.includes("form_factor.importar"));
   const podeRegistrarResultado = admin || (["GERENTE", "KP", "USUARIO_PADRAO"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("form_factor.registrar"));
   const podeRegistrarLinha = (linha: LinhaFormFactor) => Boolean(linha.rodada_pendente_id) && (perfilGestao || linha.responsavel_id === perfil.id || linha.backup_id === perfil.id);
-  const abasDisponiveis: Aba[] = [...(podeConsultarCasos ? ["cases", "kanban"] as const : []), ...(podeConsultarFormFactor || podeImportarSdf ? ["form-factor"] as const : [])];
+  const abasDisponiveis: Aba[] = [...(podeConsultarCasos ? ["cases"] as const : []), ...(podeConsultarFormFactor || podeImportarSdf ? ["form-factor"] as const : [])];
   const abaDaUrl = parametros.get("aba") as Aba | null;
   const aba: Aba = abaDaUrl && abasDisponiveis.includes(abaDaUrl) ? abaDaUrl : podeConsultarCasos ? "cases" : "form-factor";
   const projeto = useProjeto(projetoId, perfil, podeConsultar);
@@ -207,9 +213,8 @@ function ProjetoDetalhe() {
   if (!podeConsultar || (!podeConsultarCasos && !podeConsultarFormFactor && !podeImportarSdf)) return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
   if (dev && !podeConsultarCasos) return <p role="alert">{t("permissionDenied")}</p>;
   if (projeto.isError) return <p role="alert" className="p-6 text-sm">{t("projectNotFound")}</p>;
-  // Spec 012: dev sem casos no projeto vai para a entrada de Projects. O Kanban fica de fora: ele mostra o projeto
-  // inteiro ao dev do time, tenha ele casos ou não (spec 037, RN-04).
-  if (dev && aba !== "kanban" && projeto.isSuccess && associacao.isSuccess && !associacao.isFetching && associacao.data.total_count === 0) return <ProjetosEntradaPage projetoSemCasosId={projetoId} />;
+  // Spec 012: dev sem casos no projeto vai para a entrada de Projects.
+  if (dev && projeto.isSuccess && associacao.isSuccess && !associacao.isFetching && associacao.data.total_count === 0) return <ProjetosEntradaPage projetoSemCasosId={projetoId} />;
 
   const membrosExceto = (usuarioId: string | null) => opcoesMembros.filter((opcao) => opcao.value !== usuarioId);
   const podeEditarProprio = (caso: CasoTeste) => podeGerenciarCasos || caso.responsavel_id === responsavelAtual;
@@ -329,7 +334,7 @@ function ProjetoDetalhe() {
   return <PageCard>
     <header className="mb-[25px] flex shrink-0 flex-wrap items-start gap-4">
       <div className="min-w-0 flex-1">{projeto.data ? <ProjetoSwitcher projetoId={projetoId} nome={projeto.data.nome} /> : <PageTitle>{t("loadingProjects")}</PageTitle>}</div>
-      {projeto.data && aba !== "kanban" && <WeekPickerHero label={t("week")} value={aba === "cases" ? semanaCasos : semana} onChange={(valor) => { if (aba === "cases") setSemanaCasos(valor); else setSemana(valor); setPagina(1); }} className="ml-auto" />}
+      {projeto.data && <WeekPickerHero label={t("week")} value={aba === "cases" ? semanaCasos : semana} onChange={(valor) => { if (aba === "cases") setSemanaCasos(valor); else setSemana(valor); setPagina(1); }} className="ml-auto" />}
     </header>
     {/* Figma: o seletor de visão do Form Factor fica entre o título e as abas, com Results primeiro. */}
     {projeto.data && aba === "form-factor" && (podeConsultarFormFactor || podeImportarSdf) && <div className="mb-5 flex shrink-0 flex-wrap items-center justify-between gap-3">
@@ -356,7 +361,7 @@ function ProjetoDetalhe() {
         tabs={abasDisponiveis.map((id) => ({ id, label: t(ROTULO_ABA[id]) }))}
         selectedKey={aba}
         onSelectionChange={(chave) => trocarAba(chave as Aba)}
-        actions={aba === "kanban" ? null : aba === "cases" ? podeGerenciarCasos && <HeroButton variant="primary" size="sm" onPress={() => abrirCaso(null)}><Plus aria-hidden="true" className="size-4" />{t("newTestCase")}</HeroButton> : <>{podeCriarRodada && <HeroButton variant="primary" size="sm" onPress={() => setAbrirCriacaoRodada(true)}><Plus aria-hidden="true" className="size-4" />{t("createTestRound")}</HeroButton>}{podeImportarSdf && <><input ref={inputSdf} className="sr-only" type="file" accept=".xls,.xlsx" tabIndex={-1} aria-hidden="true" onChange={(event) => { setArquivoSdf(event.target.files?.[0] ?? null); event.target.value = ""; }} /><HeroButton size="sm" variant="outline" className="h-auto min-h-8 whitespace-normal text-left leading-tight" onPress={() => inputSdf.current?.click()}><UploadCloud aria-hidden="true" className="size-4 shrink-0" />{arquivoSdf?.name ?? t("importSdf")}</HeroButton>{arquivoSdf && <HeroButton size="sm" variant="primary" isDisabled={importReport.isPending} onPress={() => importReport.mutate()}>{importReport.isPending ? t("saving") : t("import")}</HeroButton>}</>}</>}
+        actions={aba === "cases" ? podeGerenciarCasos && <HeroButton variant="primary" size="sm" onPress={() => abrirCaso(null)}><Plus aria-hidden="true" className="size-4" />{t("newTestCase")}</HeroButton> : <>{podeCriarRodada && <HeroButton variant="primary" size="sm" onPress={() => setAbrirCriacaoRodada(true)}><Plus aria-hidden="true" className="size-4" />{t("createTestRound")}</HeroButton>}{podeImportarSdf && <><input ref={inputSdf} className="sr-only" type="file" accept=".xls,.xlsx" tabIndex={-1} aria-hidden="true" onChange={(event) => { setArquivoSdf(event.target.files?.[0] ?? null); event.target.value = ""; }} /><HeroButton size="sm" variant="outline" className="h-auto min-h-8 whitespace-normal text-left leading-tight" onPress={() => inputSdf.current?.click()}><UploadCloud aria-hidden="true" className="size-4 shrink-0" />{arquivoSdf?.name ?? t("importSdf")}</HeroButton>{arquivoSdf && <HeroButton size="sm" variant="primary" isDisabled={importReport.isPending} onPress={() => importReport.mutate()}>{importReport.isPending ? t("saving") : t("import")}</HeroButton>}</>}</>}
       >
         {podeConsultarCasos && <PageTabPanel id="cases" className="flex min-h-0 flex-1 flex-col p-0">
           <DataTable
@@ -368,9 +373,6 @@ function ProjetoDetalhe() {
             exportacao={{ listagem: "test-cases", todosOsItens: buscarCasosParaExportar }}
             rowDependencies={[t, opcoes, identificadoresMembros, opcoesMembros, podeGerenciarCasos, responsavelAtual, mostrarAcoes, transfer.isPending, primeiraDaPagina, ordemDosCasos]}
           />
-        </PageTabPanel>}
-        {podeConsultarCasos && <PageTabPanel id="kanban" className="flex min-h-0 flex-1 flex-col p-0">
-          <KanbanBoard projetoId={projetoId} perfil={perfil} podeGerenciar={podeGerenciarCasos} />
         </PageTabPanel>}
         {(podeConsultarFormFactor || podeImportarSdf) && <PageTabPanel id="form-factor" className="flex min-h-0 flex-1 flex-col gap-4 p-0">
           {visaoFormFactor === "summary"
