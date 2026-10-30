@@ -1,17 +1,17 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Link, MemoryRouter, Route, Routes, useLocation } from "react-router";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import type { PerfilAtual } from "@/core/auth/api";
 import i18n from "@/core/i18n";
-import { AVATAR_PADRAO_URL, Navbar } from "./Navbar";
+import { Navbar } from "./Navbar";
 
 const perfil = {
   id: "u", nome: "Caroline Souza", email: "c@example.com", unidade_id: "un", unidade_nome: "Un", perfil_codigo: "ADMIN_UNIDADE",
   perfil: "Administrador", permissoes: [], times: [], setores_gerenciados: [], time_atual_id: null, tem_multiplos_times: false,
-  senha_alteracao_obrigatoria: false, idioma_preferido: "en",
+  senha_alteracao_obrigatoria: false, idioma_preferido: "en", cor_avatar: "azul",
 } as PerfilAtual;
 
 // MemoryRouter comum: a navegação do roteador de dados quebra no jsdom (AbortSignal incompatível).
@@ -59,48 +59,25 @@ describe("botão de voltar da navbar", () => {
 
 describe("avatar do usuário logado", () => {
   const comNome = (nome: string) => ({ ...perfil, nome });
-  afterEach(() => vi.unstubAllGlobals());
 
-  it("mostra a imagem padrão do HeroUI quando ela carrega, sem as iniciais", async () => {
-    // O jsdom não carrega imagens: simula uma que já terminou de carregar.
-    vi.stubGlobal("Image", class {
-      complete = true;
-      naturalWidth = 160;
-      src = "";
-      crossOrigin: string | null = null;
-      addEventListener() {}
-      removeEventListener() {}
-    });
+  it("mostra o avatar na cor da conta, decorativo, com o primeiro nome ao lado como nome acessível", async () => {
     await i18n.changeLanguage("en");
-    renderEm("/overview", comNome("Ana Carolina Lais"));
+    renderEm("/overview", { ...comNome("Ana Carolina Lais"), cor_avatar: "verde" });
 
     const botao = screen.getByRole("button", { name: "Ana" });
-    await waitFor(() => expect(botao.querySelector("img")).toHaveAttribute("src", AVATAR_PADRAO_URL));
-    expect(within(botao).queryByText("AL")).not.toBeInTheDocument();
+    const avatar = botao.querySelector("[aria-hidden='true']");
+    // Sem imagem no jsdom, aparece o fundo da cor; a esfera de cada cor é testada no AvatarUsuario.
+    await waitFor(() => expect(avatar?.querySelector("[data-slot='avatar-fallback']")).toHaveClass("bg-avatar-6"));
+    expect(avatar).toHaveTextContent("");
   });
 
-  it("sem a imagem, mostra as iniciais num avatar decorativo, com o primeiro nome ao lado como nome acessível", async () => {
-    await i18n.changeLanguage("en");
-    renderEm("/overview", comNome("Ana Carolina Lais"));
-
-    const botao = screen.getByRole("button", { name: "Ana" });
-    expect((await within(botao).findByText("AL")).closest("[aria-hidden='true']")).not.toBeNull();
-  });
-
-  it("com um nome só, mostra uma letra", async () => {
-    await i18n.changeLanguage("en");
-    renderEm("/overview", comNome("Ana"));
-
-    expect(await within(screen.getByRole("button", { name: "Ana" })).findByText("A")).toBeInTheDocument();
-  });
-
-  it("com o nome vazio, mostra o ícone genérico e o menu continua abrindo", async () => {
+  it("com o nome vazio, o avatar continua na cor da conta e o menu continua abrindo", async () => {
     await i18n.changeLanguage("en");
     const user = userEvent.setup();
     renderEm("/overview", comNome("   "));
 
     const botao = screen.getByRole("button", { name: "User menu" });
-    await waitFor(() => expect(botao.querySelector("svg.lucide-user-round")).not.toBeNull());
+    await waitFor(() => expect(botao.querySelector("[data-slot='avatar-fallback']")).toHaveClass("bg-avatar-1"));
     await user.click(botao);
     expect(screen.getByRole("menuitem", { name: "Log out" })).toBeInTheDocument();
   });

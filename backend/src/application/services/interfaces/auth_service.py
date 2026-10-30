@@ -5,6 +5,7 @@ from src.application.schemas.auth import (
     AlterarSenhaRequest,
     AtualizarPreferenciasRequest,
     LoginRequest,
+    PreferenciasResponse,
     RefreshRequest,
     TokenResponse,
 )
@@ -19,7 +20,7 @@ class AuthService(Protocol):
 
     async def atualizar_preferencias(
         self, unidade_id: UUID, usuario_id: UUID, request: AtualizarPreferenciasRequest
-    ) -> None: ...
+    ) -> PreferenciasResponse: ...
 
     async def alterar_senha_inicial(
         self, usuario_id: UUID, sessao_id: UUID, request: AlterarSenhaRequest

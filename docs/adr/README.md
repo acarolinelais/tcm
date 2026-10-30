@@ -54,3 +54,4 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0040](0040-tema-claro-escuro-no-navegador.md) | Tema claro e escuro por classe no `<html>`, guardado no navegador | Aceito |
 | [0041](0041-cores-somente-por-tokens-semanticos.md) | Cores somente por tokens semânticos | Aceito |
 | [0042](0042-exportacao-de-tabelas-para-excel-no-navegador.md) | Exportação de tabelas para Excel gerada no navegador | Aceito |
+| [0043](0043-cor-do-avatar-por-conta.md) | Cor do avatar por conta | Aceito |

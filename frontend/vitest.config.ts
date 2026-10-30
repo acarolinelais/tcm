@@ -12,6 +12,8 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    // Sem isto o Vitest esvazia o CSS, inclusive com `?raw`; o teste de contraste do avatar lê os tokens do global.css.
+    css: { include: [/global\.css/] },
     globals: true,
     setupFiles: ["./src/test-setup.ts"],
     exclude: ["node_modules", "e2e"],

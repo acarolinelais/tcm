@@ -5,7 +5,7 @@ import { ChevronDown } from "lucide-react";
 
 import { atualizarIdiomaPreferido, type PerfilAtual } from "@/core/auth/api";
 import i18n, { TEMP_LANGUAGE_KEY } from "@/core/i18n";
-import { getAccessToken } from "@/core/auth/session";
+import { perfilAtualQueryKey } from "@/core/auth/usePerfilAtual";
 import { languages, type LanguageCode } from "./resources";
 import { cn } from "@/shared/lib/utils";
 import { toast } from "@/shared/lib/toast";
@@ -28,7 +28,7 @@ export function LanguageSelector({ perfil, className }: { perfil?: PerfilAtual; 
       await i18n.changeLanguage(code);
       return;
     }
-    const queryKey = ["auth", "me", getAccessToken()];
+    const queryKey = perfilAtualQueryKey();
     const perfilEmCache = queryClient.getQueryData<PerfilAtual>(queryKey);
     queryClient.setQueryData<PerfilAtual>(queryKey, (atual) => atual ? { ...atual, idioma_preferido: code } : atual);
     await i18n.changeLanguage(code);
@@ -36,7 +36,8 @@ export function LanguageSelector({ perfil, className }: { perfil?: PerfilAtual; 
       await atualizarIdiomaPreferido(code);
       window.sessionStorage.removeItem(TEMP_LANGUAGE_KEY);
     } catch {
-      if (perfilEmCache) queryClient.setQueryData(queryKey, perfilEmCache);
+      // Desfaz só o idioma: o resto do perfil (ex.: a cor do avatar) pode ter mudado enquanto este PATCH corria.
+      if (perfilEmCache) queryClient.setQueryData<PerfilAtual>(queryKey, (atual) => atual ? { ...atual, idioma_preferido: perfilEmCache.idioma_preferido } : atual);
       await i18n.changeLanguage(anterior);
       toast.error(t("languageSaveError"));
     }

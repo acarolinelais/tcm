@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { languages, resources } from "./resources";
 import i18n from "./index";
 import { formatNumber } from "./format";
+import { NOME_COR_AVATAR } from "@/shared/lib/cor-avatar";
 
 describe("translation resources", () => {
   it("supports the account locale codes and has matching keys for every language", () => {
@@ -28,6 +29,15 @@ describe("translation resources", () => {
       expect(resources[language].translation.pullRequestUrlDomain).toContain("github.sec.samsung.net");
     }
     expect(resources["pt-BR"].translation.noPullRequests).toBe("Nenhum PR registrado");
+  });
+
+  it("names the avatar color section and every palette color in every language", () => {
+    const chaves = ["settingsAvatarTitle", "settingsAvatarHint", "avatarColorSaveError", ...Object.values(NOME_COR_AVATAR)] as const;
+    for (const language of ["en", "pt-BR", "ko"] as const) {
+      for (const key of chaves) expect(resources[language].translation[key], `${language} ${key}`).toBeTruthy();
+      expect(new Set(Object.values(NOME_COR_AVATAR).map((key) => resources[language].translation[key])).size, language).toBe(8);
+    }
+    expect(resources["pt-BR"].translation.settingsAvatarTitle).toBe("Cor do avatar");
   });
 
   it("labels each Automation Level with its number in every language", () => {

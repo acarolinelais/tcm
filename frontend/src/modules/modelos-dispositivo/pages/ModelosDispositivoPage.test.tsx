@@ -23,7 +23,7 @@ vi.mock("@/shared/lib/exportar-planilha");
 const kp: PerfilAtual = {
   id: "kp", nome: "KP", email: "kp@example.com", unidade_id: "unit-1", unidade_nome: "Unidade",
   perfil_codigo: "KP", perfil: "KP", permissoes: ["projetos.gerenciar", "modelos_dispositivo.gerenciar"], times: [], setores_gerenciados: [],
-  time_atual_id: null, tem_multiplos_times: false, senha_alteracao_obrigatoria: false, idioma_preferido: "en",
+  time_atual_id: null, tem_multiplos_times: false, senha_alteracao_obrigatoria: false, idioma_preferido: "en", cor_avatar: "azul",
 };
 
 const s27: ModeloDispositivo = {

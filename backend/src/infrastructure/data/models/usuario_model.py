@@ -4,6 +4,7 @@ from uuid import UUID
 from sqlalchemy import CheckConstraint, ForeignKey, Index, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
+from src.domain.common.cor_avatar import CorAvatar
 from src.domain.entities.usuario import Usuario
 from src.infrastructure.data.base import Base
 
@@ -25,6 +26,12 @@ class UsuarioModel(Base):
     idioma_preferido: Mapped[str] = mapped_column(
         String(5), nullable=False, default="en", server_default="en"
     )
+    cor_avatar: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=CorAvatar.AZUL.value,
+        server_default=CorAvatar.AZUL.value,
+    )
     auth_version: Mapped[int] = mapped_column(default=0, server_default="0")
     ativo: Mapped[bool] = mapped_column(default=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
@@ -41,5 +48,9 @@ class UsuarioModel(Base):
         ),
         CheckConstraint(
             "idioma_preferido IN ('en', 'pt-BR', 'ko')", name="ck_usuarios_idioma_preferido"
+        ),
+        CheckConstraint(
+            f"cor_avatar IN ({', '.join(f"'{cor}'" for cor in CorAvatar)})",
+            name="ck_usuarios_cor_avatar",
         ),
     )

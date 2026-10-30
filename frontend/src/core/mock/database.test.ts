@@ -412,7 +412,7 @@ describe("base mock de projetos", () => {
     mockProjetosApi.listar(1, 10);
     const migrado = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
 
-    expect(migrado.schemaVersion).toBe(20);
+    expect(migrado.schemaVersion).toBeGreaterThanOrEqual(20);
     expect(migrado.linksPullRequest).toEqual([]);
   });
 
@@ -858,5 +858,47 @@ describe("mock do Kanban e da navegação do Board", () => {
     const times = mockProjetosApi.navegacao().setores.flatMap((setor) => setor.times).map((time) => time.id);
     expect(times).toContain("mock-team-platform");
     expect(times).not.toContain("mock-team-operations");
+  });
+});
+
+describe("cor do avatar no modo mock (spec 036)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    resetMockDatabase();
+  });
+
+  it("começa em azul e a cor salva volta no próximo login, sem mexer em outra conta", () => {
+    entrar("admin@sdfmanager.com");
+    expect(mockAuth.currentUser(sessionStorage.getItem("sdf.access")).cor_avatar).toBe("azul");
+
+    expect(mockAuth.updateAvatarColor("verde")).toEqual({ idioma_preferido: "en", cor_avatar: "verde" });
+
+    entrar("ana.souza@example.com");
+    expect(mockAuth.currentUser(sessionStorage.getItem("sdf.access")).cor_avatar).toBe("azul");
+    entrar("admin@sdfmanager.com");
+    expect(mockAuth.currentUser(sessionStorage.getItem("sdf.access")).cor_avatar).toBe("verde");
+  });
+
+  it("numa base anterior à v20, a primeira leitura já devolve o perfil em azul e aceita a troca", () => {
+    entrar("admin@sdfmanager.com");
+    const antiga = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
+    delete antiga.corAvatarPorUsuario;
+    antiga.schemaVersion = 19;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(antiga));
+
+    expect(mockAuth.currentUser(sessionStorage.getItem("sdf.access")).cor_avatar).toBe("azul");
+    expect(mockAuth.updateAvatarColor("cinza-claro").cor_avatar).toBe("cinza-claro");
+  });
+
+  it("migra uma base salva antes da spec 036 sem perder dados", () => {
+    entrar("admin@sdfmanager.com");
+    const antiga = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
+    delete antiga.corAvatarPorUsuario;
+    antiga.schemaVersion = 20;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(antiga));
+
+    expect(mockAuth.currentUser(sessionStorage.getItem("sdf.access")).cor_avatar).toBe("azul");
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}").schemaVersion).toBe(21);
   });
 });
