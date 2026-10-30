@@ -77,6 +77,7 @@ sem paginação, também pagina ([ADR 0039](../adr/0039-resultados-gerais-com-pa
 | 048 | Documentação de uso dentro do sistema | Rascunho |
 | 049 | Transição suave ao trocar o tema (cores da tela mudam juntas e aos poucos, ícone do toggle anima) | Concluída |
 | 050 | Ajustes visuais: tema escuro do protótipo, Navbar sem sobreposição, fim do shadcn, calendário e Sidebar | Em andamento (e2e com API real pendentes) |
+| 051 | Estilização da tela de redefinição de senha (visual do login, olho, idioma, tema e sair; HeroUI) | Concluída |
 
 > A Timeline ainda não tem spec: o produto não foi definido. A opção natural é um feed dos eventos da spec 038 por projeto e time.
 
