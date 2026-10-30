@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button as HeroButton, ToggleButton, ToggleButtonGroup } from "@heroui/react";
 import { MessageSquareText, Pencil, Plus, UploadCloud } from "lucide-react";
-import { useOutletContext, useParams } from "react-router";
+import { useOutletContext, useParams, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import type { PerfilAtual } from "@/core/auth/api";
@@ -30,6 +30,7 @@ import { CasoTesteDrawer } from "../components/casos-teste/CasoTesteDrawer";
 import { DetalhesCasoTesteDrawer } from "../components/casos-teste/DetalhesCasoTesteDrawer";
 import { TcIdBotao } from "../components/casos-teste/TcIdBotao";
 import { ExcluirCasoTesteDialog } from "../components/casos-teste/ExcluirCasoTesteDialog";
+import { KanbanBoard } from "../components/kanban/KanbanBoard";
 import { JustificativaExclusaoDrawer } from "../components/casos-teste/JustificativaExclusaoDrawer";
 import { estadoCasosTeste } from "../components/casos-teste/estado-casos-teste";
 import { FormFactorTabela } from "../components/form-factor/FormFactorTabela";
@@ -47,7 +48,8 @@ import { CATEGORIAS_CASO_TESTE as categorias, DIFICULDADES_CASO_TESTE as dificul
 type CampoInline = "category" | "difficulty" | "automation_level" | "situation" | "status" | "responsavel_id" | "backup_id";
 /** As células editam em texto; o Automation Level viaja como número (1, 2 ou 3). */
 const valorDoCampo = (campo: CampoInline, valor: string) => campo === "automation_level" ? Number(valor) : valor;
-type Aba = "cases" | "form-factor";
+type Aba = "cases" | "kanban" | "form-factor";
+const ROTULO_ABA: Record<Aba, string> = { cases: "testCasesTab", kanban: "kanbanTab", "form-factor": "formFactor" };
 // Valor do filtro de Backup para os casos sem backup.
 const SEM_BACKUP = "__sem_backup__";
 /** End Date do caso: a última atualização de um caso Done; os outros ainda não terminaram. */
@@ -71,7 +73,8 @@ function ProjetoDetalhe() {
   const perfil = useOutletContext<PerfilAtual>();
   const { projetoId = "" } = useParams();
   const client = useQueryClient();
-  const [aba, setAba] = useState<Aba>(perfil.perfil_codigo === "ADMIN_UNIDADE" || perfil.permissoes.includes("test_cases.consultar") ? "cases" : "form-factor");
+  // A aba fica na URL (?aba=kanban), para um link abrir direto nela (spec 037, RN-11).
+  const [parametros, setParametros] = useSearchParams();
   const [pagina, setPagina] = useState(1);
   const [tamanhoPagina, setTamanhoPagina] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const [filtrosCaso, setFiltrosCaso] = useState(FILTROS_CASO_VAZIOS);
@@ -102,6 +105,9 @@ function ProjetoDetalhe() {
   const podeImportarSdf = perfilGestao && (admin || perfil.permissoes.includes("form_factor.importar"));
   const podeRegistrarResultado = admin || (["GERENTE", "KP", "USUARIO_PADRAO"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("form_factor.registrar"));
   const podeRegistrarLinha = (linha: LinhaFormFactor) => Boolean(linha.rodada_pendente_id) && (perfilGestao || linha.responsavel_id === perfil.id || linha.backup_id === perfil.id);
+  const abasDisponiveis: Aba[] = [...(podeConsultarCasos ? ["cases", "kanban"] as const : []), ...(podeConsultarFormFactor || podeImportarSdf ? ["form-factor"] as const : [])];
+  const abaDaUrl = parametros.get("aba") as Aba | null;
+  const aba: Aba = abaDaUrl && abasDisponiveis.includes(abaDaUrl) ? abaDaUrl : podeConsultarCasos ? "cases" : "form-factor";
   const projeto = useQuery({ queryKey: ["projetos", "detalhe", projetoId, perfil.unidade_id, perfil.id], queryFn: () => projetosApi.obter(projetoId), enabled: podeConsultar && Boolean(projetoId) });
   const filtrosApiCasos = { responsavelIds: filtrosCaso.assignee.length ? filtrosCaso.assignee : undefined, ...(dev ? { associadosAMim: true } : {}), ...(semanaCasos ? { semana: semanaCasos } : {}) };
   const casos = useCasosTeste(projetoId, pagina, tamanhoPagina, filtrosApiCasos, perfil, Boolean(projeto.isSuccess && podeConsultarCasos && aba === "cases"));
@@ -190,7 +196,7 @@ function ProjetoDetalhe() {
     setPagina(1);
     setFiltrosCaso((atual) => ({ ...atual, [campo]: valor }));
   };
-  const trocarAba = (proxima: Aba) => { setAba(proxima); setPagina(1); };
+  const trocarAba = (proxima: Aba) => { setParametros({ aba: proxima }, { replace: true }); setPagina(1); };
 
   function abrirCaso(testCase: CasoTeste | null) {
     setEditar(testCase);
@@ -321,7 +327,7 @@ function ProjetoDetalhe() {
   return <PageCard>
     <header className="mb-[25px] flex shrink-0 flex-wrap items-start gap-4">
       <div className="min-w-0 flex-1">{projeto.data ? <ProjetoSwitcher projetoId={projetoId} nome={projeto.data.nome} /> : <PageTitle>{t("loadingProjects")}</PageTitle>}</div>
-      {projeto.data && <WeekPickerHero label={t("week")} value={aba === "cases" ? semanaCasos : semana} onChange={(valor) => { if (aba === "cases") setSemanaCasos(valor); else setSemana(valor); setPagina(1); }} className="ml-auto" />}
+      {projeto.data && aba !== "kanban" && <WeekPickerHero label={t("week")} value={aba === "cases" ? semanaCasos : semana} onChange={(valor) => { if (aba === "cases") setSemanaCasos(valor); else setSemana(valor); setPagina(1); }} className="ml-auto" />}
     </header>
     {/* Figma: o seletor de visão do Form Factor fica entre o título e as abas, com Results primeiro. */}
     {projeto.data && aba === "form-factor" && (podeConsultarFormFactor || podeImportarSdf) && <div className="mb-5 flex shrink-0 flex-wrap items-center justify-between gap-3">
@@ -345,10 +351,10 @@ function ProjetoDetalhe() {
     {projeto.isLoading ? <p role="status" className="py-8 text-[14px] text-muted">{t("loadingProjects")}</p> : projeto.isError || !projeto.data ? <p role="alert" className="py-8 text-[14px] text-muted">{t("projectNotFound")}</p> : (
       <PageTabs
         aria-label={t("projectTabs")}
-        tabs={[...(podeConsultarCasos ? [{ id: "cases", label: t("testCasesTab") }] : []), ...(podeConsultarFormFactor || podeImportarSdf ? [{ id: "form-factor", label: t("formFactor") }] : [])]}
+        tabs={abasDisponiveis.map((id) => ({ id, label: t(ROTULO_ABA[id]) }))}
         selectedKey={aba}
         onSelectionChange={(chave) => trocarAba(chave as Aba)}
-        actions={aba === "cases" ? podeGerenciarCasos && <HeroButton variant="primary" size="sm" onPress={() => abrirCaso(null)}><Plus aria-hidden="true" className="size-4" />{t("newTestCase")}</HeroButton> : <>{podeCriarRodada && <HeroButton variant="primary" size="sm" onPress={() => setAbrirCriacaoRodada(true)}><Plus aria-hidden="true" className="size-4" />{t("createTestRound")}</HeroButton>}{podeImportarSdf && <><input ref={inputSdf} className="sr-only" type="file" accept=".xls,.xlsx" tabIndex={-1} aria-hidden="true" onChange={(event) => { setArquivoSdf(event.target.files?.[0] ?? null); event.target.value = ""; }} /><HeroButton size="sm" variant="outline" className="h-auto min-h-8 whitespace-normal text-left leading-tight" onPress={() => inputSdf.current?.click()}><UploadCloud aria-hidden="true" className="size-4 shrink-0" />{arquivoSdf?.name ?? t("importSdf")}</HeroButton>{arquivoSdf && <HeroButton size="sm" variant="primary" isDisabled={importReport.isPending} onPress={() => importReport.mutate()}>{importReport.isPending ? t("saving") : t("import")}</HeroButton>}</>}</>}
+        actions={aba === "kanban" ? null : aba === "cases" ? podeGerenciarCasos && <HeroButton variant="primary" size="sm" onPress={() => abrirCaso(null)}><Plus aria-hidden="true" className="size-4" />{t("newTestCase")}</HeroButton> : <>{podeCriarRodada && <HeroButton variant="primary" size="sm" onPress={() => setAbrirCriacaoRodada(true)}><Plus aria-hidden="true" className="size-4" />{t("createTestRound")}</HeroButton>}{podeImportarSdf && <><input ref={inputSdf} className="sr-only" type="file" accept=".xls,.xlsx" tabIndex={-1} aria-hidden="true" onChange={(event) => { setArquivoSdf(event.target.files?.[0] ?? null); event.target.value = ""; }} /><HeroButton size="sm" variant="outline" className="h-auto min-h-8 whitespace-normal text-left leading-tight" onPress={() => inputSdf.current?.click()}><UploadCloud aria-hidden="true" className="size-4 shrink-0" />{arquivoSdf?.name ?? t("importSdf")}</HeroButton>{arquivoSdf && <HeroButton size="sm" variant="primary" isDisabled={importReport.isPending} onPress={() => importReport.mutate()}>{importReport.isPending ? t("saving") : t("import")}</HeroButton>}</>}</>}
       >
         {podeConsultarCasos && <PageTabPanel id="cases" className="flex min-h-0 flex-1 flex-col p-0">
           <DataTable
@@ -360,6 +366,9 @@ function ProjetoDetalhe() {
             exportacao={{ listagem: "test-cases", todosOsItens: buscarCasosParaExportar }}
             rowDependencies={[t, opcoes, identificadoresMembros, opcoesMembros, podeGerenciarCasos, responsavelAtual, mostrarAcoes, transfer.isPending, primeiraDaPagina, ordemDosCasos]}
           />
+        </PageTabPanel>}
+        {podeConsultarCasos && <PageTabPanel id="kanban" className="flex min-h-0 flex-1 flex-col p-0">
+          <KanbanBoard projetoId={projetoId} perfil={perfil} podeGerenciar={podeGerenciarCasos} />
         </PageTabPanel>}
         {(podeConsultarFormFactor || podeImportarSdf) && <PageTabPanel id="form-factor" className="flex min-h-0 flex-1 flex-col gap-4 p-0">
           {visaoFormFactor === "summary"

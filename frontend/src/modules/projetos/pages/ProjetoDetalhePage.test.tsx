@@ -16,7 +16,7 @@ import { toast } from "@/shared/lib/toast";
 import { baixarPlanilha, montarPlanilha } from "@/shared/lib/exportar-planilha";
 
 vi.mock("../api/projetos.api", () => ({
-  projetosApi: { obter: vi.fn(), listar: vi.fn() }, casosTesteApi: { listar: vi.fn(), obter: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), transferirParaBackup: vi.fn(), listarPullRequests: vi.fn() },
+  projetosApi: { obter: vi.fn(), listar: vi.fn() }, casosTesteApi: { listar: vi.fn(), kanban: vi.fn(), obter: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), transferirParaBackup: vi.fn(), listarPullRequests: vi.fn() },
   formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), criarRodada: vi.fn(), registrarResultadosRodada: vi.fn(), importar: vi.fn() }, modelosDispositivoApi: {},
 }));
 vi.mock("@/modules/times/api/times.api", () => ({ timesApi: { membros: vi.fn() } }));
@@ -46,10 +46,10 @@ async function abrirCriacaoRodada() {
   return { user, dialog: await screen.findByRole("dialog") };
 }
 
-function renderPage(currentProfile = perfil, client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })) {
+function renderPage(currentProfile = perfil, client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }), url = "/projetos/project-1") {
   function ContextOutlet() { return <Outlet context={currentProfile} />; }
   // MemoryRouter declarativo: o createMemoryRouter navega com um Request que o jsdom rejeita.
-  return render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/projetos/project-1"]}><Routes><Route element={<ContextOutlet />}><Route path="projetos/:projetoId" element={<ProjetoDetalhePage />} /></Route></Routes></MemoryRouter></QueryClientProvider>);
+  return render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[url]}><Routes><Route element={<ContextOutlet />}><Route path="projetos/:projetoId" element={<ProjetoDetalhePage />} /></Route></Routes></MemoryRouter></QueryClientProvider>);
 }
 
 describe("ProjetoDetalhePage", () => {
@@ -70,6 +70,33 @@ describe("ProjetoDetalhePage", () => {
       { id: "m3", time_id: "team-1", usuario_id: "user-2", usuario_nome: "Outro desenvolvedor", usuario_user_id: "outro-id", usuario_perfil: "Developer", usuario_perfil_codigo: null, ativo: true },
       { id: "m2", time_id: "team-1", usuario_id: "backup-1", usuario_nome: "Kaique Pereira", usuario_user_id: "kaique-id", usuario_perfil: "KP", usuario_perfil_codigo: "KP", ativo: true },
     ]);
+  });
+
+  it("abre direto na aba Kanban pelo link e não consulta a tabela de Test Cases", async () => {
+    vi.mocked(casosTesteApi.kanban).mockResolvedValue({ projeto_id: "project-1", total: 0, colunas: [] });
+    renderPage(perfil, undefined, "/projetos/project-1?aba=kanban");
+
+    expect(await screen.findByRole("tab", { name: "Kanban", selected: true })).toBeInTheDocument();
+    await waitFor(() => expect(casosTesteApi.kanban).toHaveBeenCalledWith("project-1"));
+    expect(casosTesteApi.listar).not.toHaveBeenCalledWith("project-1", expect.anything(), expect.anything(), expect.anything());
+    expect(screen.queryByRole("button", { name: /^Week/ })).not.toBeInTheDocument();
+  });
+
+  it("aba desconhecida no link cai na aba Test Cases", async () => {
+    renderPage(perfil, undefined, "/projetos/project-1?aba=nao-existe");
+
+    expect(await screen.findByRole("tab", { name: "Test Cases", selected: true })).toBeInTheDocument();
+    expect(casosTesteApi.kanban).not.toHaveBeenCalled();
+  });
+
+  it("trocar para a aba Kanban mostra o quadro do projeto", async () => {
+    vi.mocked(casosTesteApi.kanban).mockResolvedValue({ projeto_id: "project-1", total: 0, colunas: [] });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("tab", { name: "Kanban" }));
+
+    expect(await screen.findByText("This project has no Test Cases yet.")).toBeInTheDocument();
   });
 
   it("exporta todos os Test Cases com os filtros do servidor e os valores legíveis, sem número nem ações", async () => {

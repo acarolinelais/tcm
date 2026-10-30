@@ -63,7 +63,7 @@
 
 ## Fase 4: aba Kanban do projeto
 
-- [ ] **T08. `KanbanBoard`, `KanbanColuna` e `KanbanCard` com `useDrag`/`useDrop`**
+- [x] **T08. `KanbanBoard`, `KanbanColuna` e `KanbanCard` com `useDrag`/`useDrop`**
   - Arquivos: `frontend/src/modules/projetos/components/kanban/*`, `KanbanBoard.test.tsx`, `resources.ts`
   - Cobre: CA-01, CA-09, CA-11, CA-12, CA-13
   - Verificação: `cd frontend && npm test -- KanbanBoard && npm run lint` →
@@ -72,7 +72,7 @@
     - um card com `destinos` vazio não é arrastável;
     - o projeto vazio mostra o aviso;
     - o erro mostra "Tentar de novo" sem o aviso de vazio.
-- [ ] **T09. "Mover para", exclusão com justificativa e toast de erro**
+- [x] **T09. "Mover para", exclusão com justificativa e toast de erro**
   - Arquivos: `frontend/src/modules/projetos/components/kanban/MoverParaMenu.tsx`, `KanbanBoard.tsx`, `KanbanBoard.test.tsx`, `resources.ts`
   - Cobre: CA-05, CA-06, CA-07, CA-08, CA-10
   - Verificação: `cd frontend && npm test -- KanbanBoard` →
@@ -80,7 +80,7 @@
     - o backup só vê `Excluded`;
     - `Excluded` abre o `ExcluirCasoTesteDialog`, e cancelar não chama a mutation;
     - uma recusa volta o card e mostra a mensagem.
-- [ ] **T10. Aba `kanban` na tela do projeto, com a aba na URL**
+- [x] **T10. Aba `kanban` na tela do projeto, com a aba na URL**
   - Arquivos: `frontend/src/modules/projetos/pages/ProjetoDetalhePage.tsx`, `ProjetoDetalhePage.test.tsx`
   - Cobre: CA-02, CA-14, CA-20
   - Verificação: `cd frontend && npm test -- ProjetoDetalhePage` →
@@ -137,3 +137,6 @@
 - **Filtro de casos ativos repetido no mock** (simplify da fase 3): `mockCasosTesteApi.kanban` e `listar`
   repetem `getMockProject` + `.ativo` + o filtro por projeto, ativo e unidade. Um `casosAtivosDoProjetoMock`
   serviria aos dois.
+- **Texto de carregamento repetido** (simplify da fase 4): `<p role="status" … text-muted>{t("loading")}</p>`
+  aparece no Kanban e em pelo menos cinco telas do módulo de projetos. Um `EstadoCarregando` em `shared/ui`
+  serviria a todas.
