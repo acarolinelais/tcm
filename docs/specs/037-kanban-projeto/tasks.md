@@ -102,6 +102,14 @@
     - trocar o setor limpa time e projeto;
     - "sem times" e "time sem projetos" têm avisos próprios.
 
+- [x] **T11a. Tela só do Kanban para quem vem pelo Board** (ajuste de 2026-10-30)
+  - Arquivos: `frontend/src/modules/projetos/pages/BoardKanbanPage.tsx` (novo), `routes.tsx`, `BoardPage.tsx`,
+    os testes de ambos e `e2e/projetos-kanban.spec.ts`
+  - Cobre: CA-15, CA-17, CA-20
+  - Verificação: `cd frontend && npm test -- BoardKanbanPage BoardPage routes` → o Board leva a `/board/{id}`,
+    a tela mostra só o quadro, sem abas, e um projeto fora do escopo mostra "não encontrado". O título é o
+    seletor de projeto (`ProjetoSwitcher`), com a lista da navegação do Board e destino em `/board/{id}`.
+
 ## Fase 6: ponta a ponta
 
 - [x] **T12. e2e do Kanban e do Board**

@@ -120,6 +120,8 @@ test("Board leva direto ao Kanban de quem tem um time com um projeto", async ({ 
 
   await page.goto("/board");
 
-  await expect(page).toHaveURL(new RegExp(`/projetos/${dados.projeto.id}\\?aba=kanban$`));
-  await expect(page.getByRole("tab", { name: "Kanban", selected: true })).toBeVisible();
+  // O Board abre uma tela só com o Kanban, sem as abas da tela do projeto.
+  await expect(page).toHaveURL(new RegExp(`/board/${dados.projeto.id}$`));
+  await expect(page.getByRole("region", { name: /^To-Do/ })).toBeVisible();
+  await expect(page.getByRole("tab")).toHaveCount(0);
 });

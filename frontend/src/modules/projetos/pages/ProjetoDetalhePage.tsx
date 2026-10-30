@@ -40,10 +40,10 @@ import { FormFactorResultadosTabela } from "../components/form-factor/FormFactor
 import { ProjetoSwitcher } from "../components/ProjetoSwitcher";
 import { statusChipTons } from "../components/status/status-chip-estilos";
 import { ProjetosEntradaPage } from "./ProjetosEntradaPage";
-import { useCasosTeste, useCriarRodadaFormFactor, useFormFactor, useFormFactorResultados, useRegistrarResultadosRodadaFormFactor, useTransferirCasoTeste } from "../hooks/useProjetos";
+import { useCasosTeste, useCriarRodadaFormFactor, useFormFactor, useFormFactorResultados, useProjeto, useRegistrarResultadosRodadaFormFactor, useTransferirCasoTeste } from "../hooks/useProjetos";
 
-import { casosTesteApi, formFactorApi, projetosApi, type CasoTeste, type LinhaFormFactor } from "../api/projetos.api";
-import { CATEGORIAS_CASO_TESTE as categorias, DIFICULDADES_CASO_TESTE as dificuldades, NIVEIS_AUTOMACAO_CASO_TESTE as niveisAutomacao, ROTULO_AUTOMACAO, ROTULO_DIFICULDADE, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, opcoesRotuladas, type AtualizarCasoTesteInput, type CasoTesteResumo, type StatusCasoTeste } from "../model/projeto";
+import { casosTesteApi, formFactorApi, type CasoTeste, type LinhaFormFactor } from "../api/projetos.api";
+import { CATEGORIAS_CASO_TESTE as categorias, DIFICULDADES_CASO_TESTE as dificuldades, NIVEIS_AUTOMACAO_CASO_TESTE as niveisAutomacao, ROTULO_AUTOMACAO, ROTULO_DIFICULDADE, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, opcoesRotuladas, perfilGerenciaCasos, type AtualizarCasoTesteInput, type CasoTesteResumo, type StatusCasoTeste } from "../model/projeto";
 
 type CampoInline = "category" | "difficulty" | "automation_level" | "situation" | "status" | "responsavel_id" | "backup_id";
 /** As células editam em texto; o Automation Level viaja como número (1, 2 ou 3). */
@@ -97,7 +97,7 @@ function ProjetoDetalhe() {
   const admin = perfil.perfil_codigo === "ADMIN_UNIDADE";
   const dev = perfil.perfil_codigo === "USUARIO_PADRAO";
   const podeConsultar = admin || perfil.permissoes.includes("projetos.consultar") || perfil.permissoes.includes("test_cases.consultar");
-  const podeGerenciarCasos = admin || (["GERENTE", "KP"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("test_cases.gerenciar"));
+  const podeGerenciarCasos = perfilGerenciaCasos(perfil);
   const podeConsultarCasos = admin || perfil.permissoes.includes("test_cases.consultar");
   const podeConsultarFormFactor = admin || perfil.permissoes.includes("form_factor.consultar");
   const perfilGestao = admin || ["GERENTE", "KP"].includes(perfil.perfil_codigo ?? "");
@@ -108,7 +108,7 @@ function ProjetoDetalhe() {
   const abasDisponiveis: Aba[] = [...(podeConsultarCasos ? ["cases", "kanban"] as const : []), ...(podeConsultarFormFactor || podeImportarSdf ? ["form-factor"] as const : [])];
   const abaDaUrl = parametros.get("aba") as Aba | null;
   const aba: Aba = abaDaUrl && abasDisponiveis.includes(abaDaUrl) ? abaDaUrl : podeConsultarCasos ? "cases" : "form-factor";
-  const projeto = useQuery({ queryKey: ["projetos", "detalhe", projetoId, perfil.unidade_id, perfil.id], queryFn: () => projetosApi.obter(projetoId), enabled: podeConsultar && Boolean(projetoId) });
+  const projeto = useProjeto(projetoId, perfil, podeConsultar);
   const filtrosApiCasos = { responsavelIds: filtrosCaso.assignee.length ? filtrosCaso.assignee : undefined, ...(dev ? { associadosAMim: true } : {}), ...(semanaCasos ? { semana: semanaCasos } : {}) };
   const casos = useCasosTeste(projetoId, pagina, tamanhoPagina, filtrosApiCasos, perfil, Boolean(projeto.isSuccess && podeConsultarCasos && aba === "cases"));
   const associacao = useCasosTeste(projetoId, 1, 1, { associadosAMim: true }, perfil, dev && projeto.isSuccess && podeConsultarCasos);

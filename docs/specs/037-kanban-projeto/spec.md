@@ -60,7 +60,8 @@ setor, time e projeto dentro do próprio escopo e chega ao Kanban desse projeto.
 
 ### Board na navegação lateral
 - RN-12: A opção Board abre uma escolha em cascata: Setor → Time → Projeto. Ao escolher o projeto, a pessoa
-  vai para a tela desse projeto, já na aba Kanban.
+  vai para uma tela só com o Kanban desse projeto, sem as abas Test Cases e Form Factor (decidido em
+  2026-10-30). A tela do projeto, aberta por Projects, continua com as três abas.
 - RN-13: Cada seletor só oferece opções do escopo da pessoa:
   - administrador da unidade: todos os setores da unidade;
   - gerente: os setores que gerencia e os setores dos times dos quais participa (ADR 0036);
@@ -108,11 +109,12 @@ setor, time e projeto dentro do próprio escopo e chega ao Kanban desse projeto.
 - **CA-14:** Dado um link para a aba Kanban de um projeto do escopo, quando a pessoa o abre, então a tela do
   projeto já abre nessa aba.
 - **CA-15:** Dado um gerente de dois setores, quando abre o Board, então escolhe setor, time e projeto, cada
-  seletor lista só opções do escopo dele, e ao escolher o projeto ele vai para a aba Kanban do projeto.
+  seletor lista só opções do escopo dele, e ao escolher o projeto ele vai para a tela do Kanban do projeto,
+  sem as abas Test Cases e Form Factor.
 - **CA-16:** Dado um gerente de um só setor, quando abre o Board, então o setor já vem escolhido e ele começa
   pelo time.
-- **CA-17:** Dado um dev de um só time com um só projeto, quando abre o Board, então vai direto para a aba
-  Kanban desse projeto.
+- **CA-17:** Dado um dev de um só time com um só projeto, quando abre o Board, então vai direto para a tela
+  do Kanban desse projeto.
 - **CA-18:** Dado setor, time e projeto escolhidos no Board, quando a pessoa troca o setor, então time e
   projeto são limpos.
 - **CA-19 (falha):** Dado uma pessoa sem nenhum time no escopo, quando abre o Board, então vê um aviso de que

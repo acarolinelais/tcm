@@ -8,12 +8,18 @@ import { PageTitle } from "@/shared/ui/page-card";
 import { useProjetosSeletor } from "../hooks/useProjetos";
 
 // Título do projeto (Figma TCM 2070:1476); com outros projetos visíveis, vira um menu para trocar de projeto.
-export function ProjetoSwitcher({ projetoId, nome }: { projetoId: string; nome: string }) {
+// O Board (spec 037) passa a própria lista, do escopo do Board, e o destino na tela só do Kanban.
+export function ProjetoSwitcher({ projetoId, nome, projetos: lista, destino = (id) => `/projetos/${id}` }: {
+  projetoId: string;
+  nome: string;
+  projetos?: { id: string; nome: string }[];
+  destino?: (projetoId: string) => string;
+}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const perfil = useOutletContext<PerfilAtual>();
-  const projetos = useProjetosSeletor(perfil);
-  const opcoes = projetos.data?.pages.flatMap((pagina) => pagina.items) ?? [];
+  const projetos = useProjetosSeletor(perfil, !lista);
+  const opcoes = lista ?? projetos.data?.pages.flatMap((pagina) => pagina.items) ?? [];
   const outros = opcoes.filter((projeto) => projeto.id !== projetoId);
 
   if (!outros.length && !projetos.hasNextPage && !projetos.isError) return <PageTitle>{nome}</PageTitle>;
@@ -30,7 +36,7 @@ export function ProjetoSwitcher({ projetoId, nome }: { projetoId: string; nome: 
             aria-label={t("switchProject")}
             selectionMode="single"
             selectedKeys={new Set([projetoId])}
-            onAction={(id) => { if (id !== projetoId) navigate(`/projetos/${id}`); }}
+            onAction={(id) => { if (id !== projetoId) navigate(destino(String(id))); }}
           >
             {opcoes.map((projeto) => (
               <Dropdown.Item key={projeto.id} id={projeto.id} textValue={projeto.nome} className="text-[14px]">

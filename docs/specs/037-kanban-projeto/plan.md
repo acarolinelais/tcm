@@ -117,7 +117,8 @@ Sem alteração. O Kanban lê `CasoTeste.status` (`To-Do`, `InProgress`, `InRevi
   cascata.
   - A seleção fica na URL (`?setor=&time=`).
   - Quando há uma única opção, ela é escolhida automaticamente.
-  - Escolher um projeto navega para `/projetos/{id}?aba=kanban`.
+  - Escolher um projeto navega para `/board/{id}` (`BoardKanbanPage`), uma tela só com o nome do projeto e o
+    `KanbanBoard`, sem as abas da tela do projeto (ajuste de 2026-10-30).
   - Tem estados próprios para "sem times" e "time sem projetos".
 - `core/router.tsx`: remove o `EmBreve` de `board`, que passa a ser registrado pelo módulo.
 - `core/i18n/resources.ts`: aba, "Mover para", "Mostrar mais", estados e erros, em en, pt e ko.

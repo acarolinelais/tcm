@@ -7,13 +7,13 @@ import { SelectField } from "@/shared/ui/form-field";
 import { PageCard, PageTitle } from "@/shared/ui/page-card";
 import { useNavegacaoBoard } from "../hooks/useProjetos";
 
-const linkDoKanban = (projetoId: string) => `/projetos/${projetoId}?aba=kanban`;
+const linkDoKanban = (projetoId: string) => `/board/${projetoId}`;
 /** O item com o id da URL ou, se for o único, ele mesmo. */
 const escolhido = <T extends { id: string }>(itens: T[], id: string | null) => itens.find((item) => item.id === id) ?? (itens.length === 1 ? itens[0] : undefined);
 const opcoes = (itens: { id: string; nome: string }[]) => itens.map((item) => ({ value: item.id, label: item.nome }));
 
 /**
- * Board (spec 037): escolha em cascata Setor → Time → Projeto dentro do escopo, que leva à aba Kanban do projeto.
+ * Board (spec 037): escolha em cascata Setor → Time → Projeto dentro do escopo, que leva à tela só do Kanban do projeto.
  * A seleção fica na URL (?setor=&time=); um seletor com uma única opção já vem escolhido.
  */
 export function BoardPage() {

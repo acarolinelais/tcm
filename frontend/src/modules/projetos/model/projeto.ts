@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import type { PerfilAtual } from "@/core/auth/api";
 import type { PagedResult } from "@/shared/types/paged-result";
 
 export type StatusProjeto = "Created" | "To Do" | "InProgress" | "Completed" | "Canceled";
@@ -71,6 +72,11 @@ export interface CasoTeste {
   ativo: boolean;
   created_at: string | null;
   updated_at: string | null;
+}
+
+/** Gestão de Test Cases (ADR 0015): admin, ou gerente/KP com `test_cases.gerenciar`. O escopo do time a API confere. */
+export function perfilGerenciaCasos(perfil: Pick<PerfilAtual, "perfil_codigo" | "permissoes">) {
+  return perfil.perfil_codigo === "ADMIN_UNIDADE" || (["GERENTE", "KP"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("test_cases.gerenciar"));
 }
 
 /** Colunas do Kanban na ordem do ciclo (spec 037, RN-02): In Fixes antes de Done. */

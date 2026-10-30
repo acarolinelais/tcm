@@ -30,7 +30,7 @@ function renderBoard(arvore: NavegacaoBoard | Error, url = "/board") {
         <Routes>
           <Route element={<Contexto />}>
             <Route path="board" element={<BoardPage />} />
-            <Route path="projetos/:projetoId" element={<Destino />} />
+            <Route path="board/:projetoId" element={<Destino />} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -56,7 +56,7 @@ async function escolher(user: ReturnType<typeof userEvent.setup>, campo: string,
 describe("BoardPage", () => {
   beforeEach(() => { vi.mocked(projetosApi.navegacao).mockReset(); });
 
-  it("escolhe setor, time e projeto e abre a aba Kanban do projeto", async () => {
+  it("escolhe setor, time e projeto e abre a tela do Kanban do projeto", async () => {
     renderBoard(doisSetores);
     const user = userEvent.setup();
 
@@ -64,7 +64,7 @@ describe("BoardPage", () => {
     await escolher(user, "Team", "Clock");
     await escolher(user, "Project", "Alarm 9.5");
 
-    expect(await screen.findByText("destino /projetos/p2?aba=kanban")).toBeInTheDocument();
+    expect(await screen.findByText("destino /board/p2")).toBeInTheDocument();
   });
 
   it("só oferece os setores do escopo e esconde time e projeto até a escolha", async () => {
@@ -85,7 +85,7 @@ describe("BoardPage", () => {
   it("um caminho só até um projeto só vai direto para o Kanban", async () => {
     renderBoard({ setores: [doisSetores.setores[1]] });
 
-    expect(await screen.findByText("destino /projetos/p3?aba=kanban")).toBeInTheDocument();
+    expect(await screen.findByText("destino /board/p3")).toBeInTheDocument();
   });
 
   it("trocar o setor limpa o time escolhido", async () => {
@@ -96,7 +96,7 @@ describe("BoardPage", () => {
     await escolher(user, "Sector", "Web");
 
     // Web tem um time só com um projeto só: sem o time antigo, segue direto para o Kanban dele.
-    expect(await screen.findByText("destino /projetos/p3?aba=kanban")).toBeInTheDocument();
+    expect(await screen.findByText("destino /board/p3")).toBeInTheDocument();
   });
 
   it("time sem projetos mostra o aviso", async () => {
