@@ -30,10 +30,16 @@ Documentação em PT-BR. Termos de domínio no código em português; termos té
 | `web-design-guidelines`, `vercel-react-best-practices` | Revisão de UI contra guidelines e performance de React |
 | `tailwind-v4` | Convenções do Tailwind v4 (`@theme`, migração da v3, classes dinâmicas) |
 | `adversarial-review` | Revisão cética de um diff: tenta quebrar e só reporta o que sobrevive à refutação |
+| `ponytail` | Toda tarefa de código, principalmente alterações pontuais: a menor mudança que resolve a tarefa inteira, sem abstração, opção ou dependência que ninguém pediu. Não corta validação, tratamento de erro, segurança, acessibilidade nem a estrutura dos ADRs. Atalhos conscientes ficam marcados com `shortcut: <limite>, <quando evoluir>` |
+| `ponytail-review`, `ponytail-audit`, `ponytail-debt` | Revisão do diff (`ponytail-review`) ou do repositório inteiro (`ponytail-audit`) focada em correção, carga e código que sobra; `ponytail-debt` lista os comentários `shortcut:`. Relatório em PT-BR |
+| `humanizer` | Textos em prosa: specs, ADRs, descrições de PR, mensagens de commit, comentários de código e textos de interface. Remove vícios de texto gerado por IA sem mudar o conteúdo. Não reescreve código |
 | `caveman` | Respostas enxutas no chat para economizar tokens (`/caveman` liga, "stop caveman" desliga). Código, commits, docs e ADRs continuam em texto normal. Origem e licença em `.claude/skills/caveman/ORIGEM.md` |
 
 ## Skills globais e quando usar
 - `andrej-karpathy-skills:karpathy-guidelines`: toda tarefa de código.
+- `ponytail` e `humanizer` são o padrão do projeto: o hook `SessionStart` em `.claude/settings.json`
+  (script `.claude/hooks/session-start.mjs`, precisa de Node) liga a `ponytail` no nível full e lembra a
+  `humanizer` para prosa em toda sessão. Em conflito com um ADR, o ADR vence.
 - `simplify`: **obrigatória** uma vez por bloco (sobre o diff do bloco inteiro), antes do relatório e de commitar.
   Nunca pule, nem em blocos pequenos. Achados fora do escopo do bloco vão para o `## Backlog` do `tasks.md`.
 - `code-review`: ao terminar todas as tasks de uma spec.
