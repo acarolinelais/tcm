@@ -89,6 +89,27 @@ test("dev vê todos os casos, só move os seus, e o backup só exclui", async ({
   await expect(page.getByText("Colega_001")).toHaveCount(0);
 });
 
+test("durante o arrasto, a origem fica marcada e só as colunas que aceitam o card ficam em destaque", async ({ request, page }) => {
+  const dados = await preparar(request, page);
+  // O dev é o backup deste caso: só pode levá-lo para Excluded.
+  await dados.caso("Arrasto_001", 1, 0);
+
+  await page.goto(`/board/${dados.projeto.id}`);
+  const card = page.getByRole("article", { name: "Arrasto_001" });
+  const origem = await card.boundingBox();
+  const alvo = await coluna(page, /^Excluded/).boundingBox();
+  if (!origem || !alvo) throw new Error("card ou coluna fora da tela");
+  await page.mouse.move(origem.x + origem.width / 2, origem.y + origem.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(alvo.x + alvo.width / 2, alvo.y + 80, { steps: 15 });
+
+  await expect(card).toHaveCSS("opacity", "0.4");
+  await expect(coluna(page, /^In Progress/)).toHaveCSS("opacity", "0.5");
+  await expect(coluna(page, /^Excluded/)).toHaveCSS("opacity", "1");
+  await page.keyboard.press("Escape");
+  await page.mouse.up();
+});
+
 test("link para o Kanban de projeto fora do escopo mostra não encontrado", async ({ request, page }) => {
   const dados = await preparar(request, page);
   const outroSetor = await post(request, "setores", { nome: `Fora ${crypto.randomUUID()}` }, dados.admin.access_token);
