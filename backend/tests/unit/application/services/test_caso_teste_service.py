@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from src.application.schemas.caso_teste import AtualizarCasoTesteRequest, CriarCasoTesteRequest
 from src.application.schemas.link_pull_request import AdicionarLinkPullRequestRequest
 from src.application.services.caso_teste_service import CasoTesteServiceImpl
+from src.domain.common.cor_avatar import CorAvatar
 from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
@@ -981,7 +982,7 @@ def card(projeto, responsavel_id, status, tc_id, backup_id=None):
         status,
         exigir_backup=False,
     )
-    return CasoTesteComResponsavel(caso, f"Pessoa {responsavel_id}")
+    return CasoTesteComResponsavel(caso, f"Pessoa {responsavel_id}", CorAvatar.AZUL)
 
 
 async def test_obter_kanban_agrupa_nas_sete_colunas_na_ordem_do_ciclo(contexto):

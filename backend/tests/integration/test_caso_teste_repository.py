@@ -8,6 +8,7 @@ from alembic.runtime.migration import MigrationContext
 from sqlalchemy import insert, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from src.domain.common.cor_avatar import CorAvatar
 from src.domain.entities.caso_teste import (
     CasoTeste,
     CategoriaCasoTeste,
@@ -356,6 +357,7 @@ async def test_listar_cards_por_projeto_traz_ativos_com_nome_do_responsavel():
                         nome="Afonso Fagundes",
                         email=f"afonso-{usuario_id}@example.com",
                         perfil_id=perfil_id,
+                        cor_avatar="verde",
                     )
                 ]
             )
@@ -392,6 +394,7 @@ async def test_listar_cards_por_projeto_traz_ativos_com_nome_do_responsavel():
             cards = await repository.listar_cards_por_projeto(unidade_id, projeto_id)
             assert [card.caso.tc_id for card in cards] == ["Clock_001", "Clock_002"]
             assert {card.responsavel_nome for card in cards} == {"Afonso Fagundes"}
+            assert {card.responsavel_cor_avatar for card in cards} == {CorAvatar.VERDE}
 
             # Outra unidade não enxerga os casos, mesmo com o id do projeto certo.
             assert await repository.listar_cards_por_projeto(uuid4(), projeto_id) == ()

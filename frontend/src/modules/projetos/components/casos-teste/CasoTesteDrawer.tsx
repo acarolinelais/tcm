@@ -7,7 +7,7 @@ import { SelectField, TextAreaField, TextInputField } from "@/shared/ui/form-fie
 import { DrawerFormActions, SideDrawer } from "@/shared/ui/side-drawer";
 import type { CasoTeste, CategoriaCasoTeste, DificuldadeCasoTeste, SituacaoCasoTeste } from "../../api/projetos.api";
 import { useAtualizarCasoTeste, useCriarCasoTeste } from "../../hooks/useProjetos";
-import { CATEGORIAS_CASO_TESTE, DIFICULDADES_CASO_TESTE, MAX_JUSTIFICATIVA_EXCLUSAO, NIVEIS_AUTOMACAO_CASO_TESTE, ROTULO_AUTOMACAO, ROTULO_DIFICULDADE, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, opcoesRotuladas, type NivelAutomacaoCasoTeste, type StatusCasoTeste } from "../../model/projeto";
+import { DIFICULDADES_CASO_TESTE, MAX_JUSTIFICATIVA_EXCLUSAO, OPCOES_CATEGORIA, NIVEIS_AUTOMACAO_CASO_TESTE, ROTULO_AUTOMACAO, ROTULO_DIFICULDADE, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, opcoesRotuladas, type NivelAutomacaoCasoTeste, type StatusCasoTeste } from "../../model/projeto";
 
 type CamposEditaveis = Pick<CasoTeste, "category" | "difficulty" | "situation" | "status" | "responsavel_id" | "backup_id">;
 
@@ -77,7 +77,7 @@ export function CasoTesteDrawer({ isOpen, onOpenChange, projetoId, editar, membr
     >
       <div className="space-y-5 px-7 py-6">
         <TextInputField label={t("tcId")} value={tcId} onChange={setTcId} maxLength={120} isDisabled={Boolean(editar)} isRequired autoFocus={!editar} />
-        <SelectField label={t("category")} value={category} onChange={(valor) => setCategory(valor as CategoriaCasoTeste)} options={CATEGORIAS_CASO_TESTE.map((valor) => ({ value: valor, label: valor }))} />
+        <SelectField label={t("category")} value={category} onChange={(valor) => setCategory(valor as CategoriaCasoTeste)} options={OPCOES_CATEGORIA} />
         <SelectField label={t("automationLevel")} value={automationLevel} onChange={setAutomationLevel} placeholder={t("automationLevelNotSet")} options={opcoesRotuladas(NIVEIS_AUTOMACAO_CASO_TESTE, ROTULO_AUTOMACAO, t)} />
         <SelectField label={t("difficulty")} value={difficulty} onChange={(valor) => setDifficulty(valor as DificuldadeCasoTeste)} options={opcoesRotuladas(DIFICULDADES_CASO_TESTE, ROTULO_DIFICULDADE, t)} />
         <SelectField label={t("tcSituation")} value={situation} onChange={(valor) => setSituation(valor as SituacaoCasoTeste)} isRequired placeholder={t("tcSituationRequired")} options={opcoesRotuladas(SITUACOES_CASO_TESTE, ROTULO_SITUACAO, t)} />

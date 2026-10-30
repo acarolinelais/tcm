@@ -132,21 +132,21 @@
 
 ## Fase 7: arrasto, cor do avatar e filtros (ajuste de 2026-10-30)
 
-- [ ] **T14. Cor do avatar do responsável no card**
+- [x] **T14. Cor do avatar do responsável no card**
   - Arquivos: `backend/src/infrastructure/repositories/caso_teste_repository.py`, `domain/queries/caso_teste_com_responsavel.py`,
     `application/schemas/kanban.py`, os testes de integração, unidade e funcional; no frontend `model/projeto.ts`,
     `core/mock/database.ts`, `KanbanCard.tsx` e os testes
   - Cobre: CA-23
   - Verificação: `uv run pytest -k "kanban or cards"` e `npm test -- KanbanBoard database` → o card traz e mostra a cor.
-- [ ] **T15. Arrasto mais fluido: prévia, origem marcada e rolagem nas bordas**
+- [x] **T15. Arrasto mais fluido: prévia, origem marcada e rolagem nas bordas**
   - Arquivos: `components/kanban/KanbanCard.tsx`, `KanbanBoard.tsx`, `e2e/projetos-kanban.spec.ts`
   - Cobre: CA-21, CA-22
   - Verificação: `npm test -- KanbanBoard && npm run lint`, e o e2e arrasta para `Excluded` numa tela de 1280 px.
-- [ ] **T16. Filtros no cabeçalho do Kanban, com os valores na URL**
+- [x] **T16. Filtros no cabeçalho do Kanban, com os valores na URL**
   - Arquivos: `components/kanban/KanbanFiltros.tsx` (novo), `KanbanBoard.tsx`, `core/i18n/resources.ts`, os testes
   - Cobre: CA-24, CA-25, CA-26, CA-27
   - Verificação: `npm test -- KanbanFiltros KanbanBoard` → filtros combinados, colunas de Status, URL e vazio filtrado.
-- [ ] **T17. Suíte completa**
+- [x] **T17. Suíte completa**
   - Verificação: `uv run pytest`, `npm test && npm run lint` e `npm run e2e` → tudo verde.
 
 ## Backlog
@@ -173,3 +173,8 @@
   mesmo payload de Test Case, e os PUT/GET com `Authorization` são montados à mão (`form-factor-rodadas.spec.ts`
   já tem um `chamar`). Um `criarCaso` e `put`/`get` em `api-fixtures.ts` serviriam a todos. O
   `prepararTimeComDev` também poderia deixar de abrir a sessão do dev quando o teste usa outra.
+- **Predicado de filtro repetido** (simplify da fase 7): `filtrarKanban` (`hooks/useFiltrosKanban.ts`) e os
+  filtros da aba Test Cases (`ProjetoDetalhePage.tsx`) comparam os mesmos campos do caso. Um `casoPassaFiltros`
+  em `model/` serviria aos dois.
+- **Fallback da cor do avatar repetido** (simplify da fase 7): `cor or CorAvatar.AZUL` aparece em
+  `caso_teste_repository.py` e `usuario_repository.py`. Um `cor_avatar_de(valor)` no domínio serviria aos dois.

@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PerfilAtual } from "@/core/auth/api";
 
@@ -12,8 +13,21 @@ vi.mock("../../api/projetos.api", () => ({
   projetosApi: {}, casosTesteApi: { kanban: vi.fn(), atualizar: vi.fn() }, formFactorApi: {}, modelosDispositivoApi: {},
 }));
 
-function card(tc_id: string, destinos: StatusCasoTeste[]): KanbanCard {
-  return { id: tc_id, tc_id, category: "A", difficulty: "Low", situation: "New", responsavel_id: "u1", responsavel_nome: "Afonso Fagundes", destinos };
+function card(tc_id: string, destinos: StatusCasoTeste[], extra: Partial<KanbanCard> = {}): KanbanCard {
+  return { id: tc_id, tc_id, category: "A", difficulty: "Low", situation: "New", responsavel_id: "u1", responsavel_nome: "Afonso Fagundes", responsavel_cor_avatar: "verde", destinos, ...extra };
+}
+
+const maria = { responsavel_id: "u2", responsavel_nome: "Maria Pernalete" };
+const filtravel = () => kanban({
+  "To-Do": [card("Clock_001", []), card("Clock_002", [], { ...maria, difficulty: "High" }), card("Clock_003", [], maria)],
+  InReview: [card("Clock_004", [], { ...maria, difficulty: "High" })],
+  Done: [card("Clock_005", [])],
+});
+
+async function filtrar(user: ReturnType<typeof userEvent.setup>, filtro: string, opcao: string) {
+  await user.click(screen.getByRole("button", { name: `Filter by ${filtro}` }));
+  await user.click(await screen.findByRole("option", { name: opcao }));
+  await user.keyboard("{Escape}");
 }
 
 function kanban(porStatus: Partial<Record<StatusCasoTeste, KanbanCard[]>>): KanbanProjeto {
@@ -21,9 +35,9 @@ function kanban(porStatus: Partial<Record<StatusCasoTeste, KanbanCard[]>>): Kanb
   return { projeto_id: "p1", total: colunas.reduce((soma, coluna) => soma + coluna.total, 0), colunas };
 }
 
-function renderBoard() {
+function renderBoard(url = "/") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  render(<QueryClientProvider client={client}><KanbanBoard projetoId="p1" perfil={{ id: "kp", unidade_id: "u" } as PerfilAtual} podeGerenciar /></QueryClientProvider>);
+  render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[url]}><KanbanBoard projetoId="p1" perfil={{ id: "kp", unidade_id: "u" } as PerfilAtual} podeGerenciar /></MemoryRouter></QueryClientProvider>);
 }
 
 const coluna = (nome: RegExp) => screen.getByRole("region", { name: nome });
@@ -44,6 +58,59 @@ describe("KanbanBoard", () => {
     ]);
     expect(within(coluna(/^In Review/i)).getAllByRole("article")).toHaveLength(2);
     expect(within(coluna(/^In Review/i)).getByText("2")).toBeInTheDocument();
+  });
+
+  it("mostra a esfera do responsável na cor que ele escolheu", async () => {
+    // O jsdom não carrega imagens: simula a esfera já carregada, como no teste do AvatarUsuario.
+    vi.stubGlobal("Image", class { complete = true; naturalWidth = 160; src = ""; crossOrigin: string | null = null; addEventListener() {} removeEventListener() {} });
+    vi.mocked(casosTesteApi.kanban).mockResolvedValue(kanban({ "To-Do": [card("Clock_001", [])] }));
+    renderBoard();
+
+    const artigo = await screen.findByRole("article", { name: "Clock_001" });
+    await waitFor(() => expect(artigo.querySelector("img")?.getAttribute("src")).toContain("/green.jpg"));
+    vi.unstubAllGlobals();
+  });
+
+  it("filtra por responsável e Difficulty juntos e recalcula os totais", async () => {
+    vi.mocked(casosTesteApi.kanban).mockResolvedValue(filtravel());
+    renderBoard();
+    const user = userEvent.setup();
+    await screen.findByRole("article", { name: "Clock_001" });
+
+    await filtrar(user, "Assignee", "Maria Pernalete");
+    await filtrar(user, "Difficulty", "High");
+
+    expect(screen.getAllByRole("article").map((artigo) => artigo.getAttribute("aria-label"))).toEqual(["Clock_002", "Clock_004"]);
+    expect(coluna(/^To-Do/)).toHaveAccessibleName("To-Do, 1 case");
+    expect(coluna(/^Done/)).toHaveAccessibleName("Done, 0 cases");
+  });
+
+  it("o filtro de Status mostra só as colunas escolhidas", async () => {
+    vi.mocked(casosTesteApi.kanban).mockResolvedValue(filtravel());
+    renderBoard("/?status=InReview&status=Done");
+
+    await screen.findByRole("article", { name: "Clock_004" });
+    expect(screen.getAllByRole("region").map((item) => item.getAttribute("aria-label"))).toEqual(["In Review, 1 case", "Done, 1 case"]);
+  });
+
+  it("filtros vindos do link são aplicados, e Limpar filtros volta ao quadro completo", async () => {
+    vi.mocked(casosTesteApi.kanban).mockResolvedValue(filtravel());
+    renderBoard("/?responsavel=u2&tc=clock_003");
+    const user = userEvent.setup();
+
+    await screen.findByRole("article", { name: "Clock_003" });
+    expect(screen.getAllByRole("article")).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(screen.getAllByRole("article")).toHaveLength(5);
+  });
+
+  it("filtros sem resultado mostram o aviso próprio, não o de projeto vazio", async () => {
+    vi.mocked(casosTesteApi.kanban).mockResolvedValue(filtravel());
+    renderBoard("/?tc=nao-existe");
+
+    expect(await screen.findByText("No cases match the filters.")).toBeInTheDocument();
+    expect(screen.queryByText("This project has no Test Cases yet.")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("region")).toHaveLength(7);
   });
 
   it("mostra só os primeiros 50 cards e carrega o resto com Mostrar mais", async () => {

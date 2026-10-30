@@ -933,6 +933,7 @@ export const mockCasosTesteApi = {
       id: item.id, tc_id: item.tc_id, category: item.category, difficulty: item.difficulty, situation: item.situation,
       responsavel_id: item.responsavel_id,
       responsavel_nome: nomes.get(item.responsavel_id) ?? "",
+      responsavel_cor_avatar: db.corAvatarPorUsuario?.[item.responsavel_id] ?? "azul",
       destinos: gestor || item.responsavel_id === user.id
         ? ORDEM_KANBAN.filter((status) => status !== item.status)
         : item.backup_id === user.id && item.status !== "Cancelled" ? ["Cancelled"] : [],

@@ -2,6 +2,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from src.domain.common.cor_avatar import CorAvatar
 from src.domain.entities.caso_teste import (
     CategoriaCasoTeste,
     DificuldadeCasoTeste,
@@ -19,6 +20,7 @@ class KanbanCardResponse(BaseModel):
     situation: SituacaoCasoTeste
     responsavel_id: UUID
     responsavel_nome: str
+    responsavel_cor_avatar: CorAvatar
     # Status para os quais quem consulta pode mover o card; vazio = só leitura.
     destinos: list[StatusCasoTeste]
 
@@ -59,5 +61,6 @@ def to_card_response(
         situation=caso.situation,
         responsavel_id=caso.responsavel_id,
         responsavel_nome=item.responsavel_nome,
+        responsavel_cor_avatar=item.responsavel_cor_avatar,
         destinos=destinos,
     )

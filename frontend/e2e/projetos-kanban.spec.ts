@@ -125,3 +125,32 @@ test("Board leva direto ao Kanban de quem tem um time com um projeto", async ({ 
   await expect(page.getByRole("region", { name: /^To-Do/ })).toBeVisible();
   await expect(page.getByRole("tab")).toHaveCount(0);
 });
+
+test.describe("tela de 1280 px", () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  test("arrastar até a borda rola o quadro e o card chega em Excluded", async ({ request, page }) => {
+    const dados = await preparar(request, page);
+    await dados.caso("Borda_001", 0, 1);
+    await page.goto(`/projetos/${dados.projeto.id}?aba=kanban`);
+
+    const excluded = page.getByRole("region", { name: /^Excluded/ });
+    await expect(excluded).not.toBeInViewport();
+    const origem = await page.getByRole("article", { name: "Borda_001" }).boundingBox();
+    const quadro = await page.getByRole("region", { name: /^To-Do/ }).locator("..").boundingBox();
+    if (!origem || !quadro) throw new Error("card ou quadro fora da tela");
+    await page.mouse.move(origem.x + origem.width / 2, origem.y + origem.height / 2);
+    await page.mouse.down();
+    // Segura o card perto da borda direita até a coluna Excluded entrar na tela (RN-11a).
+    const y = origem.y + origem.height / 2;
+    await page.mouse.move(quadro.x + quadro.width - 20, y, { steps: 10 });
+    await expect(excluded).toBeInViewport({ ratio: 0.9, timeout: 10_000 });
+    const alvo = await excluded.boundingBox();
+    if (!alvo) throw new Error("coluna Excluded fora da tela");
+    await page.mouse.move(alvo.x + alvo.width / 2, alvo.y + 120, { steps: 5 });
+    await page.mouse.up();
+
+    // Soltar em Excluded pede a justificativa (spec 026).
+    await expect(page.getByRole("alertdialog")).toBeVisible();
+  });
+});

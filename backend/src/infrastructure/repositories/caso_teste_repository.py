@@ -4,6 +4,7 @@ from uuid import UUID
 
 from sqlalchemy import case, func, or_, select
 
+from src.domain.common.cor_avatar import CorAvatar
 from src.domain.common.paged_result import PagedResult
 from src.domain.entities.caso_teste import (
     CasoTeste,
@@ -140,7 +141,7 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
         # shortcut: sem paginação, cabe até alguns milhares de casos por projeto (spec 037, RN-10);
         # paginar por coluna se um projeto passar disso.
         linhas = await self.session.execute(
-            select(CasoTesteModel, UsuarioModel.nome)
+            select(CasoTesteModel, UsuarioModel.nome, UsuarioModel.cor_avatar)
             .join(UsuarioModel, UsuarioModel.id == CasoTesteModel.responsavel_id)
             .where(
                 CasoTesteModel.unidade_id == unidade_id,
@@ -150,7 +151,8 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             .order_by(CasoTesteModel.tc_id, CasoTesteModel.id)
         )
         return tuple(
-            CasoTesteComResponsavel(self._to_entity(modelo), nome) for modelo, nome in linhas
+            CasoTesteComResponsavel(self._to_entity(modelo), nome, CorAvatar(cor or CorAvatar.AZUL))
+            for modelo, nome, cor in linhas
         )
 
     def _to_entity(self, model: CasoTesteModel) -> CasoTeste:

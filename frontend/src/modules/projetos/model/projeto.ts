@@ -1,10 +1,12 @@
 import { z } from "zod";
 
-import type { PerfilAtual } from "@/core/auth/api";
+import type { CorAvatar, PerfilAtual } from "@/core/auth/api";
 import type { PagedResult } from "@/shared/types/paged-result";
 
 export type StatusProjeto = "Created" | "To Do" | "InProgress" | "Completed" | "Canceled";
 export const CATEGORIAS_CASO_TESTE = ["A", "B", "C"] as const;
+/** Category não tem tradução: o rótulo é o próprio valor. */
+export const OPCOES_CATEGORIA = CATEGORIAS_CASO_TESTE.map((valor) => ({ value: valor, label: valor }));
 export const DIFICULDADES_CASO_TESTE = ["Low", "Medium", "High"] as const;
 export type CategoriaCasoTeste = (typeof CATEGORIAS_CASO_TESTE)[number];
 export type DificuldadeCasoTeste = (typeof DIFICULDADES_CASO_TESTE)[number];
@@ -84,6 +86,8 @@ export const ORDEM_KANBAN: readonly StatusCasoTeste[] = ["To-Do", "InProgress", 
 
 export interface KanbanCard extends Pick<CasoTeste, "id" | "tc_id" | "category" | "difficulty" | "situation" | "responsavel_id"> {
   responsavel_nome: string;
+  /** Cor que o responsável escolheu para o avatar nas Configurações (spec 036). */
+  responsavel_cor_avatar: CorAvatar;
   /** Status para os quais quem consulta pode mover o card; vazio = só leitura. */
   destinos: StatusCasoTeste[];
 }

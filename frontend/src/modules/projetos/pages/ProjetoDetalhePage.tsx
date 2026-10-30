@@ -43,7 +43,7 @@ import { ProjetosEntradaPage } from "./ProjetosEntradaPage";
 import { useCasosTeste, useCriarRodadaFormFactor, useFormFactor, useFormFactorResultados, useProjeto, useRegistrarResultadosRodadaFormFactor, useTransferirCasoTeste } from "../hooks/useProjetos";
 
 import { casosTesteApi, formFactorApi, type CasoTeste, type LinhaFormFactor } from "../api/projetos.api";
-import { CATEGORIAS_CASO_TESTE as categorias, DIFICULDADES_CASO_TESTE as dificuldades, NIVEIS_AUTOMACAO_CASO_TESTE as niveisAutomacao, ROTULO_AUTOMACAO, ROTULO_DIFICULDADE, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, opcoesRotuladas, perfilGerenciaCasos, type AtualizarCasoTesteInput, type CasoTesteResumo, type StatusCasoTeste } from "../model/projeto";
+import { DIFICULDADES_CASO_TESTE as dificuldades, OPCOES_CATEGORIA, NIVEIS_AUTOMACAO_CASO_TESTE as niveisAutomacao, ROTULO_AUTOMACAO, ROTULO_DIFICULDADE, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, opcoesRotuladas, perfilGerenciaCasos, type AtualizarCasoTesteInput, type CasoTesteResumo, type StatusCasoTeste } from "../model/projeto";
 
 type CampoInline = "category" | "difficulty" | "automation_level" | "situation" | "status" | "responsavel_id" | "backup_id";
 /** As células editam em texto; o Automation Level viaja como número (1, 2 ou 3). */
@@ -161,7 +161,7 @@ function ProjetoDetalhe() {
     status: opcoesRotuladas(STATUS_CASO_TESTE, ROTULO_STATUS, t),
     situacao: opcoesRotuladas(SITUACOES_CASO_TESTE, ROTULO_SITUACAO, t),
     dificuldade: opcoesRotuladas(dificuldades, ROTULO_DIFICULDADE, t),
-    categoria: categorias.map((valor) => ({ value: valor, label: valor })),
+    categoria: OPCOES_CATEGORIA,
     automacao: opcoesRotuladas(niveisAutomacao, ROTULO_AUTOMACAO, t),
   }), [t]);
   const identificadoresMembros = useMemo(() => Object.fromEntries((membros.data ?? []).map((member) => [member.usuario_id, member.usuario_user_id ?? "—"])), [membros.data]);

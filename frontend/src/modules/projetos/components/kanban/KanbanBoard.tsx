@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { useDrop } from "react-aria";
 import { Button } from "@heroui/react";
 import { useTranslation } from "react-i18next";
@@ -12,9 +12,52 @@ import { StatusPill } from "../status/StatusBadge";
 import { useKanban, useMoverCasoKanban } from "../../hooks/useKanban";
 import { ROTULO_STATUS, type KanbanCard as Card, type KanbanColuna, type StatusCasoTeste } from "../../model/projeto";
 import { KanbanCard, TIPO_ARRASTO_CASO } from "./KanbanCard";
+import { filtrarKanban, useFiltrosKanban } from "../../hooks/useFiltrosKanban";
+import { KanbanFiltros } from "./KanbanFiltros";
 
 /** Cards renderizados por coluna antes do "Mostrar mais": mantém leve um projeto com 1.000 casos (RN-10). */
 const CARDS_POR_VEZ = 50;
+/** Distância da borda do quadro, em px, em que o arrasto começa a rolar as colunas (RN-11a). */
+const BORDA_DE_ROLAGEM = 80;
+/** Pixels por quadro de animação: cerca de 700 px/s a 60 fps. */
+const VELOCIDADE_DE_ROLAGEM = 12;
+
+/**
+ * Rola o quadro enquanto o card arrastado fica perto da borda. O navegador só dispara `dragover` quando o ponteiro
+ * se mexe (ou de tempos em tempos parado), então o `dragover` só aponta a direção e a rolagem roda quadro a quadro.
+ */
+function useRolagemNaBorda(arrastando: boolean) {
+  const direcao = useRef(0);
+  const quadro = useRef<HTMLElement | null>(null);
+  const animacao = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!arrastando) direcao.current = 0;
+  }, [arrastando]);
+  useEffect(() => () => { if (animacao.current !== null) cancelAnimationFrame(animacao.current); }, []);
+
+  const rolar = () => {
+    if (!quadro.current || direcao.current === 0) {
+      animacao.current = null;
+      return;
+    }
+    quadro.current.scrollLeft += direcao.current * VELOCIDADE_DE_ROLAGEM;
+    animacao.current = requestAnimationFrame(rolar);
+  };
+
+  return {
+    onDragOverCapture: (evento: DragEvent<HTMLElement>) => {
+      const { left, right } = evento.currentTarget.getBoundingClientRect();
+      quadro.current = evento.currentTarget;
+      direcao.current = evento.clientX < left + BORDA_DE_ROLAGEM ? -1 : evento.clientX > right - BORDA_DE_ROLAGEM ? 1 : 0;
+      if (direcao.current !== 0 && animacao.current === null) animacao.current = requestAnimationFrame(rolar);
+    },
+    // Saiu do quadro: para de rolar.
+    onDragLeaveCapture: (evento: DragEvent<HTMLElement>) => {
+      if (!evento.currentTarget.contains(evento.relatedTarget as Node | null)) direcao.current = 0;
+    },
+  };
+}
 
 export function KanbanBoard({ projetoId, perfil, podeGerenciar }: { projetoId: string; perfil: PerfilAtual; podeGerenciar: boolean }) {
   const { t } = useTranslation();
@@ -22,6 +65,10 @@ export function KanbanBoard({ projetoId, perfil, podeGerenciar }: { projetoId: s
   const mover = useMoverCasoKanban(projetoId, perfil);
   const [arrastando, setArrastando] = useState<Card | null>(null);
   const [excluindo, setExcluindo] = useState<Card | null>(null);
+  const rolagem = useRolagemNaBorda(Boolean(arrastando));
+  const { filtros, alterar, limpar, ativos } = useFiltrosKanban();
+  // Sem memo, cada início e fim de arrasto refaria o filtro sobre todos os casos.
+  const colunas = useMemo(() => (kanban.data ? filtrarKanban(kanban.data.colunas, filtros) : []), [kanban.data, filtros]);
 
   const pedirMovimento = (card: Card, destino: StatusCasoTeste, justificativa?: string) => {
     if (!card.destinos.includes(destino)) return;
@@ -41,11 +88,19 @@ export function KanbanBoard({ projetoId, perfil, podeGerenciar }: { projetoId: s
     return <div className="py-8"><ErroComRetry mensagem={t("kanbanLoadError")} retry={{ label: t("retryQuery"), onRetry: () => void kanban.refetch() }} /></div>;
   }
 
+  const semResultado = ativos && kanban.data.total > 0 && colunas.every((coluna) => coluna.casos.length === 0);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <KanbanFiltros colunas={kanban.data.colunas} filtros={filtros} ativos={ativos} onAlterar={alterar} onLimpar={limpar} />
       {kanban.data.total === 0 && <p role="status" className="text-[14px] text-muted">{t("kanbanEmpty")}</p>}
-      <div className="thin-scroll flex min-h-0 flex-1 gap-3 overflow-x-auto pb-2">
-        {kanban.data.colunas.map((coluna) => (
+      {semResultado && <p role="status" className="text-[14px] text-muted">{t("kanbanNoMatches")}</p>}
+      <div
+        className="thin-scroll flex min-h-0 flex-1 gap-3 overflow-x-auto pb-2"
+        // Captura: o useDrop das colunas para a propagação do dragover.
+        {...(arrastando ? rolagem : {})}
+      >
+        {colunas.map((coluna) => (
           <Coluna
             key={coluna.status}
             coluna={coluna}
@@ -94,7 +149,7 @@ function Coluna({ coluna, arrastando, aceita, onSoltar, onMover, onArrastar }: {
       aria-label={t("kanbanColumn", { status: rotulo, count: coluna.total })}
       className={cn(
         "flex w-72 shrink-0 flex-col gap-2 rounded-xl bg-panel p-2 transition-colors",
-        arrastando && !aceita && "opacity-60",
+        arrastando && (aceita ? "bg-accent-soft" : "opacity-50"),
         isDropTarget && "ring-2 ring-focus",
       )}
     >

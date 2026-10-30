@@ -12,7 +12,7 @@ vi.mock("../api/projetos.api", () => ({ casosTesteApi: { kanban: vi.fn(), atuali
 const perfil = { id: "kp", unidade_id: "u" } as PerfilAtual;
 
 function kanban(): KanbanProjeto {
-  const card = { id: "c1", tc_id: "Clock_001", category: "A", difficulty: "Low", situation: "New", responsavel_id: "kp", responsavel_nome: "KP", destinos: ["InValidation"] } as const;
+  const card = { id: "c1", tc_id: "Clock_001", category: "A", difficulty: "Low", situation: "New", responsavel_id: "kp", responsavel_nome: "KP", responsavel_cor_avatar: "azul", destinos: ["InValidation"] } as const;
   return {
     projeto_id: "p1",
     total: 1,

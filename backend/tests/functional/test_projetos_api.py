@@ -15,6 +15,7 @@ from src.application.validators.importacao_projeto import (
     ErroImportacaoPlanilha,
     PlanilhaProjetoInvalida,
 )
+from src.domain.common.cor_avatar import CorAvatar
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.caso_teste import (
@@ -245,6 +246,7 @@ def _kanban_service(unidade_id, setor_id, cards):
                 exigir_backup=False,
             ),
             "Afonso Fagundes",
+            CorAvatar.LARANJA,
         )
         for i, status in enumerate(cards)
     )
@@ -281,6 +283,7 @@ async def test_obter_kanban_retorna_200_com_totais_de_1000_casos(api_client):
     assert sum(coluna["total"] for coluna in corpo["colunas"]) == 1000
     card = corpo["colunas"][0]["casos"][0]
     assert card["responsavel_nome"] == "Afonso Fagundes"
+    assert card["responsavel_cor_avatar"] == "laranja"
     assert len(card["destinos"]) == 6
 
 
