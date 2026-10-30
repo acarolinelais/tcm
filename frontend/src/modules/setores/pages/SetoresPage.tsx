@@ -35,6 +35,9 @@ export function SetoresPage() {
   const [setorAtual, setSetorAtual] = useState<Setor | null>(null);
   const [novo, setNovo] = useState(false);
   const [setorParaInativar, setSetorParaInativar] = useState<Setor | null>(null);
+  // A confirmação mostra o último setor enquanto fecha, para o nome não sumir na animação de saída.
+  const [setorExibido, setSetorExibido] = useState(setorParaInativar);
+  if (setorParaInativar && setorParaInativar !== setorExibido) setSetorExibido(setorParaInativar);
   const setores = useQuery({ queryKey: ["setores", pagina, tamanho, filtros], queryFn: () => setoresApi.listar(pagina, tamanho, filtros.ativo, filtros.busca) });
   const setoresVisiveis = setores.isError ? [] : setores.data?.items ?? [];
   const gerentesPorSetor = useQueries({ queries: setoresVisiveis.map((setor) => ({ queryKey: ["setor-gerentes", setor.id], queryFn: () => setoresApi.gerentes(setor.id) })) });
@@ -102,6 +105,6 @@ export function SetoresPage() {
     />
     <NovoSetorDrawer isOpen={novo} onOpenChange={setNovo} gerentes={usuarios.data?.items ?? []} />
     <EditarSetorDrawer setor={setorAtual} onFechar={() => setSetorAtual(null)} gerentes={usuarios.data?.items ?? []} nomes={nomes} />
-    <AlertConfirm open={Boolean(setorParaInativar)} onOpenChange={(open) => { if (!open) setSetorParaInativar(null); }} title={`${t("inactivate")} ${t("sector").toLowerCase()}`} description={`${t("inactivate")} ${setorParaInativar?.nome ?? t("sector").toLowerCase()}? ${t("sectorUpdateError")}`} confirmLabel={`${t("inactivate")} ${t("sector").toLowerCase()}`} variant="destructive" isPending={alterar.isPending} onConfirm={() => { if (setorParaInativar) alterar.mutate({ id: setorParaInativar.id, ativo: false }, { onSuccess: () => setSetorParaInativar(null) }); }} />
+    <AlertConfirm open={Boolean(setorParaInativar)} onOpenChange={(open) => { if (!open) setSetorParaInativar(null); }} title={t("deactivateSectorTitle", { name: setorExibido?.nome ?? "" })} description={t("deactivateSectorDescription", { name: setorExibido?.nome ?? "" })} confirmLabel={t("deactivateSectorConfirm")} variant="destructive" isPending={alterar.isPending} onConfirm={() => { if (setorParaInativar) alterar.mutate({ id: setorParaInativar.id, ativo: false }, { onSuccess: () => setSetorParaInativar(null) }); }} />
   </PageCard>;
 }

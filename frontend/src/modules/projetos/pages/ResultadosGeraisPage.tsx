@@ -13,8 +13,7 @@ import { PageTabPanel, PageTabs } from "@/shared/ui/page-tabs";
 import { WeekPickerHero } from "@/shared/ui/week-picker-hero";
 import { useHistoricoProjeto, useProjetosSeletor } from "../hooks/useProjetos";
 import { formFactorApi } from "../api/projetos.api";
-import type { CasoHistorico, CasoTesteResumo, FiltrosHistoricoProjeto } from "../model/projeto";
-import { DetalhesCasoTesteDrawer } from "../components/casos-teste/DetalhesCasoTesteDrawer";
+import type { CasoHistorico, FiltrosHistoricoProjeto } from "../model/projeto";
 import { HistoricoProjetoTabela, type ResultadoAberto } from "../components/resultados-gerais/HistoricoProjetoTabela";
 import { ResultadoExecucaoModal } from "../components/resultados-gerais/ResultadoExecucaoModal";
 import { ResumoExecucoesDrawer } from "../components/resultados-gerais/ResumoExecucoesDrawer";
@@ -45,7 +44,6 @@ export function ResultadosGeraisPage() {
   const [escolhas, setEscolhas] = useState<Record<string, string>>({});
   const [resultadoAberto, setResultadoAberto] = useState<ResultadoAberto | null>(null);
   const [casoDoResumo, setCasoDoResumo] = useState<CasoHistorico | null>(null);
-  const [casoDetalhado, setCasoDetalhado] = useState<CasoTesteResumo | null>(null);
   const historico = useHistoricoProjeto(projetoId, { ...filtros, page: pagina, pageSize: tamanhoPagina }, perfil);
   const dados = historico.data;
   const totalPaginas = Math.max(1, Math.ceil((dados?.total_count ?? 0) / tamanhoPagina));
@@ -113,7 +111,7 @@ export function ResultadosGeraisPage() {
           </SearchField.Group>
         </SearchField>
       </form>
-      : <Button isIconOnly variant="ghost" aria-label={t("generalResultsSearch")} onPress={() => setBuscaAberta(true)} className="size-9 min-w-0 rounded-[10px]">
+      : <Button isIconOnly variant="ghost" aria-label={t("generalResultsSearch")} onPress={() => setBuscaAberta(true)} className="size-9 min-w-0 rounded-full border border-edge bg-surface text-body transition-[background-color,transform] duration-100 ease-out hover:bg-page data-[pressed]:scale-[0.97] motion-reduce:transition-none motion-reduce:data-[pressed]:scale-100 dark:text-muted">
         <Search aria-hidden="true" className="size-4" />
       </Button>}
     <WeekPickerHero permitirDia label={t("dayOrWeek")} value={filtros.periodo ?? ""} onChange={(valor) => alterarFiltros({ ...filtros, periodo: valor || undefined })} />
@@ -143,7 +141,6 @@ export function ResultadosGeraisPage() {
           onModeloChange={(casoId, modeloId) => setEscolhas((atuais) => ({ ...atuais, [casoId]: modeloId }))}
           onAbrirResultado={setResultadoAberto}
           onAbrirResumo={setCasoDoResumo}
-          onAbrirDetalhes={setCasoDetalhado}
           buscarTodos={buscarCasosParaExportar}
           page={pagina}
           pageSize={tamanhoPagina}
@@ -154,6 +151,5 @@ export function ResultadosGeraisPage() {
     </PageTabs>
     <ResumoExecucoesDrawer caso={casoDoResumo} perfil={perfil} onFechar={() => setCasoDoResumo(null)} onAbrirResultado={setResultadoAberto} />
     <ResultadoExecucaoModal resultado={resultadoAberto} onFechar={() => setResultadoAberto(null)} />
-    <DetalhesCasoTesteDrawer caso={casoDetalhado} perfil={perfil} onFechar={() => setCasoDetalhado(null)} />
   </PageCard>;
 }

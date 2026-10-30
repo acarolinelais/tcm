@@ -1,8 +1,8 @@
 @import "tailwindcss";
 @import "@fontsource-variable/inter";
+@import "tw-animate-css";
 
 /* HeroUI v3 em camadas, sem reimportar o Tailwind (ADR 0037). */
-@import "tw-animate-css";
 @import "@heroui/styles/base/base.css" layer(base);
 @import "@heroui/styles/components/index.css" layer(components);
 @import "@heroui/styles/themes/default" layer(theme);
@@ -26,19 +26,28 @@
   /* Campos do HeroUI vêm sem borda; num painel branco ficariam invisíveis. */
   --field-border: var(--border);
   --field-border-width: 1px;
+  /* Todo campo de uma linha (input, busca, select) é pílula, como os botões; o textarea volta a um canto suave. */
+  --field-radius: 9999px;
+  /* Sombra dos campos mais leve que a do HeroUI (três camadas): só um contorno de 1px quase imperceptível. */
+  --field-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.03);
+  /* Inter em todo o texto (spec 050, RN-06). O HeroUI traz a fonte do sistema em --font-sans, e o Tailwind usa
+     --default-font-family no <html>: as duas apontam para a Inter. */
+  --font-sans: "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --default-font-family: var(--font-sans);
 }
 
 /* Tema escuro (ADR 0040): os tokens acima também ficam fora de camada, então precisam do valor escuro aqui.
    Os demais tokens do HeroUI (surface, overlay, success...) já mudam pelo tema dele. */
 :root.dark {
   color-scheme: dark;
-  /* Dark Mode segundo a HIG da Apple (macOS Dark Aqua + cores de sistema do iOS), docs/specs/034 plan.md:
-     cinzas neutros do sistema, fundo da janela mais claro que o conteúdo (#323232 / #1E1E1E, como no macOS),
-     o que flutua um passo acima da janela (elevated #3A3A3C), rótulos em branco com opacidade (85% e 55%) e as
-     cores de sistema no lugar dos tons do claro. Contraste mínimo 4,5:1, medido par a par. */
-  --background: #323232;                  /* windowBackgroundColor */
+  --field-shadow: 0 0 0 0 transparent inset; /* o HeroUI não usa sombra nos campos no escuro */
+  /* Fundos do protótipo escuro (Figma TCM 2482-1902, spec 050): a página é a camada mais escura e os painéis
+     ficam um passo acima. Os rótulos seguem a HIG da Apple (branco a 85% e 55%), e o que o protótipo não mostra
+     (menus, sucesso, aviso, erro) continua com as cores de sistema da spec 034. Contraste mínimo de 4,5:1, medido
+     par a par em contraste-tema-escuro.test.ts. */
+  --background: #0a0a0a;                  /* fundo da página */
   --foreground: rgb(255 255 255 / 0.85);  /* labelColor */
-  --surface: #1e1e1e;                     /* controlBackgroundColor: cartões, tabelas, sidebar */
+  --surface: #1b1b1b;                     /* Sidebar, cartão da página e busca */
   --surface-secondary: #2c2c2e;           /* systemGray5 */
   --surface-tertiary: #3a3a3c;            /* systemGray4 */
   --overlay: #3a3a3c;                     /* fundo elevado: menus, popovers, drawers */
@@ -49,7 +58,7 @@
   --muted: rgb(255 255 255 / 0.55);       /* secondaryLabelColor */
   --accent: oklch(56% 0.189 262);         /* azul da marca como preenchimento, texto branco por cima (≥ 4,6:1) */
   --accent-foreground: var(--snow);
-  --accent-text: #5baaff;                /* linkColor (#409CFF) clareado o mínimo para 4,6:1 sobre menus */
+  --accent-text: #5b8fff;                 /* aba ativa do protótipo: 5,1:1 sobre a moldura da tabela */
   --accent-soft-foreground: var(--accent-text);
   --focus: #409cff;                       /* keyboardFocusIndicatorColor */
   --success: #30d158;
@@ -73,7 +82,7 @@
 }
 
 :root.dark {
-  --card: 0 0% 11.8%;               /* #1E1E1E, o mesmo da --surface */
+  --card: 0 0% 10.6%;               /* #1B1B1B, o mesmo da --surface */
   --card-foreground: 0 0% 87%;
   --primary: 220 74% 53.5%;
   --primary-foreground: 0 0% 100%;
@@ -89,6 +98,8 @@
 /* Tokens do projeto (ADR 0041): cores do Figma sem equivalente no HeroUI, nomeadas pelo papel. */
 :root {
   --page: #fbfbfb;        /* fundo das páginas, atrás dos cartões */
+  --edge: #eeeeee;        /* borda dos cartões, dos botões em pílula, da busca e do botão de tema (spec 050) */
+  --table-body: var(--surface); /* corpo da tabela */
   --accent-tint: #eaf1ff; /* fundo azul claro do Figma: item ativo da sidebar, ilustração do login, dropzone */
   --body: #454442;        /* texto corrido das telas do Figma */
   --subtle: #6d6d6d;      /* texto de apoio (Figma #7E7E7E/#777777, escurecido para o AA) */
@@ -102,10 +113,12 @@
 
 :root.dark {
   --page: var(--background);
-  --accent-tint: color-mix(in srgb, #0a84ff 18%, var(--surface)); /* seleção: azul do sistema a 18% sobre o conteúdo */
+  --accent-tint: #0d2144;           /* item ativo da Sidebar no protótipo */
+  --edge: #2f2f2f;
+  --table-body: #161616;            /* corpo da tabela, abaixo da moldura */
   --body: rgb(255 255 255 / 0.85);
   --subtle: rgb(255 255 255 / 0.55);
-  --panel: #1a1a1a;                 /* moldura e cabeçalho da tabela, um passo abaixo do conteúdo */
+  --panel: #232325;                 /* moldura e cabeçalho da tabela */
   --table-row-divider: #2c2c2e;
   --chart-1: #0a84ff;
   --chart-2: #5e5ce6;
@@ -214,8 +227,8 @@
 :root.dark {
   /* Cada tom vira a cor de sistema da Apple equivalente: o texto usa a variante de contraste aumentado (clareada
      onde não chegava a 4,6:1) e o fundo é a cor a 18% sobre o conteúdo. O círculo do status usa a cor cheia. */
-  --etiqueta-todo-bg: #1a3046; /* blue */
-  --etiqueta-todo-fg: #409cff;
+  --etiqueta-todo-bg: #102344; /* To-Do do protótipo */
+  --etiqueta-todo-fg: #9bc4ff;
   --etiqueta-progress-bg: #46351a; /* orange */
   --etiqueta-progress-fg: #ffb340;
   --etiqueta-review-bg: #2a2942; /* indigo */
@@ -228,8 +241,8 @@
   --etiqueta-cancelled-fg: #aeaeb2;
   --etiqueta-ativo-bg: #213e28; /* green */
   --etiqueta-ativo-fg: #30db5b;
-  --etiqueta-neutro-bg: #323233; /* gray */
-  --etiqueta-neutro-fg: #aeaeb2;
+  --etiqueta-neutro-bg: #27272a; /* New (TC Situation) do protótipo */
+  --etiqueta-neutro-fg: #9f9fa9;
   --projeto-created-bg: #1a3046; /* blue */
   --projeto-created-fg: #409cff;
   --projeto-todo-bg: #323233; /* gray */
@@ -288,6 +301,8 @@
   --color-body: var(--body);
   --color-subtle: var(--subtle);
   --color-panel: var(--panel);
+  --color-edge: var(--edge);
+  --color-table-body: var(--table-body);
   --color-avatar-1: var(--avatar-1);
   --color-avatar-2: var(--avatar-2);
   --color-avatar-3: var(--avatar-3);
@@ -330,9 +345,14 @@
   --color-status-glyph: var(--status-glyph);
 }
 
-/* Increase Contrast no escuro (HIG): bordas e separadores mais visíveis e rótulos secundários mais fortes. */
+/* Increase Contrast (HIG): bordas e separadores mais visíveis e rótulos secundários mais fortes. A borda dos
+   cartões e controles (--edge) deixa de ser só decorativa e passa de 3:1 nos dois temas (spec 050). */
 @media (prefers-contrast: more) {
+  :root {
+    --edge: #8e8e93;
+  }
   :root.dark {
+    --edge: var(--border);
     --separator: #545458;
     --border: #7c7c80;
     --muted: rgb(255 255 255 / 0.7);
@@ -379,12 +399,7 @@
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family:
-    "Inter Variable",
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    sans-serif;
+  font-family: var(--font-sans);
 }
 
 .thin-scroll {
@@ -471,28 +486,6 @@ body {
   to { opacity: 1; }
 }
 
-@keyframes dialog-enter {
-  from { opacity: 0; scale: 0.98; }
-  to { opacity: 1; scale: 1; }
-}
-
-.dialog-overlay[data-state="open"] {
-  animation: dialog-fade-in 160ms ease-out;
-}
-
-.dialog-content[data-state="open"] {
-  animation: dialog-enter 180ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* Saídas: mesmo caminho da entrada, mais curtas e suaves. */
-.dialog-overlay[data-state="closed"] {
-  animation: dialog-fade-in 140ms ease-out reverse;
-}
-
-.dialog-content[data-state="closed"] {
-  animation: dialog-enter 140ms ease-out reverse;
-}
-
 /* Menus e popovers nascem do gatilho. */
 @keyframes popover-enter {
   from { opacity: 0; scale: 0.96; }
@@ -517,15 +510,8 @@ body {
 
 /* Movimento reduzido: sem deslizar nem escalar, mas com um fade curto (o retorno visual continua). */
 @media (prefers-reduced-motion: reduce) {
-  .dialog-overlay[data-state="open"],
-  .dialog-content[data-state="open"],
   .popover-enter {
     animation: dialog-fade-in 140ms ease-out;
-  }
-
-  .dialog-overlay[data-state="closed"],
-  .dialog-content[data-state="closed"] {
-    animation: dialog-fade-in 120ms ease-out reverse;
   }
 
   .popover-enter[data-saindo="true"] {
@@ -537,10 +523,10 @@ body {
   }
 }
 
-/* Transparência reduzida: overlays sem desfoque e um pouco mais opacos. */
-@media (prefers-reduced-transparency: reduce) {
-  .dialog-overlay {
-    backdrop-filter: none;
-    background-color: color-mix(in oklab, var(--backdrop) 80%, black);
+/* O brilho do Skeleton do HeroUI não respeita o "reduzir movimento" (spec 050): o carregamento fica parado. */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton,
+  .skeleton::after {
+    animation: none;
   }
 }

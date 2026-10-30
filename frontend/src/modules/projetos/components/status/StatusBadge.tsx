@@ -1,4 +1,4 @@
-import { Badge } from "@/shared/ui/badge";
+import { Chip } from "@heroui/react";
 
 import type { StatusCasoTeste } from "../../model/projeto";
 import { statusBadgeBase, statusBadges } from "./status-badge-estilos";
@@ -13,5 +13,5 @@ function StatusBadgeContent({ status, label }: { status: StatusCasoTeste; label:
 
 /** Pill de leitura do Status; quem pode editar usa as mesmas classes no `SelectTrigger`. */
 export function StatusPill({ status, label }: { status: StatusCasoTeste; label: string }) {
-  return <Badge variant="secondary" className={`${statusBadgeBase} ${statusBadges[status].badge}`}><StatusBadgeContent status={status} label={label} /></Badge>;
+  return <Chip className={`${statusBadgeBase} ${statusBadges[status].badge}`}><StatusBadgeContent status={status} label={label} /></Chip>;
 }

@@ -37,7 +37,7 @@ export function TeamPerformanceChart({
   const hovered = hoverIndex !== null ? points[hoverIndex] : null;
 
   return (
-    <div className="rounded-3xl border border-border bg-card p-5">
+    <div className="rounded-3xl border border-edge bg-card p-5">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-foreground">{t("teamPerformance")}</h2>
         <span className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground shadow-sm">

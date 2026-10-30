@@ -146,7 +146,7 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
     <NovoTimeDrawer isOpen={criarAberto} onOpenChange={setCriarAberto} setoresAtivos={setoresAtivos} setorUnico={setorUnicoGerenciado} carregandoSetores={!admin && ehGerenteComEscopo && setores.isLoading} />
     <SideDrawer isOpen={Boolean(timeAtual)} onOpenChange={(open) => { if (!open) setTimeAtual(null); }} title={timeAtual ? t("memberTitle", { name: timeAtual.nome }) : t("members")} subtitle={t("teamMembersCount", { count: membrosAtivos.length })}>
       <div className="flex-1 space-y-7 px-7 py-6">
-        <form className="space-y-4 rounded-2xl border border-separator bg-page p-4" onSubmit={(event) => { event.preventDefault(); adicionar.mutate(); }}>
+        <form className="space-y-4 rounded-2xl border border-edge bg-page p-4" onSubmit={(event) => { event.preventDefault(); adicionar.mutate(); }}>
           <h3 className="text-[14px] font-medium text-body">{t("addMemberToTeam")}</h3>
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
             <SelectField label={t("selectUser")} value={usuarioId} onChange={setUsuarioId} placeholder={t("selectUser")} options={(usuarios.data ?? []).filter((usuario) => usuario.ativo && !membrosAtivos.some((membro) => membro.usuario_id === usuario.id)).map((usuario) => ({ value: usuario.id, label: `${usuario.nome} · ${usuario.email}`, textValue: usuario.nome }))} />
@@ -164,7 +164,7 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
                   {membrosAtivos.map((membro) => {
                     const nomeMembro = membro.usuario_nome ?? usuarioNome(membro.usuario_id);
                     const perfilNome = rotuloPerfil(t, membro.usuario_perfil_codigo, membro.usuario_perfil);
-                    return <div key={membro.id} className="flex items-center gap-3 rounded-xl border border-separator bg-surface px-3 py-3">
+                    return <div key={membro.id} className="flex items-center gap-3 rounded-xl border border-edge bg-surface px-3 py-3">
                       <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-tint text-[14px] font-medium text-accent-text">{nomeMembro.slice(0, 1).toLocaleUpperCase()}</span>
                       <div className="min-w-0 flex-1"><p className="truncate text-[14px] font-medium text-body" title={nomeMembro}>{nomeMembro}</p><p className="mt-0.5 text-[12px] text-muted">{perfilNome}</p></div>
                       <Button variant="ghost" isIconOnly aria-label={`${t("removeTeamMemberTitle")} ${nomeMembro}`} className="shrink-0 text-danger" onPress={() => setMembroParaRemover(membro.usuario_id)}>

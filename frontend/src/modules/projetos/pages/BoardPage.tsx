@@ -98,7 +98,7 @@ function CardTime({ time }: { time: Time }) {
   return (
     <article
       aria-label={time.nome}
-      className="flex flex-col gap-4 rounded-2xl border border-separator bg-surface p-5 shadow-xs transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+      className="flex flex-col gap-4 rounded-2xl border border-edge bg-surface p-5 shadow-xs transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0"
     >
       <header className="flex items-center gap-3">
         <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-[14px] font-semibold text-accent-text">

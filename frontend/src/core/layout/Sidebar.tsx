@@ -2,6 +2,8 @@ import { NavLink, useLocation } from "react-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { cn } from "@/shared/lib/utils";
+
 import logo from "@/shared/assets/figma/icons/logo-icone.svg";
 import type { PerfilAtual } from "@/core/auth/api";
 import {
@@ -67,7 +69,7 @@ export function Sidebar({
   const larguraRotulo = recolhida ? "max-w-0 -translate-x-1 opacity-0" : "max-w-[14rem] translate-x-0 opacity-100";
 
   return (
-    <aside aria-label={t("mainNav")} className={`relative col-start-1 row-span-2 row-start-1 flex h-full w-full min-w-0 flex-col rounded-[2rem] border border-border bg-card p-3`}>
+    <aside aria-label={t("mainNav")} className={`relative col-start-1 row-span-2 row-start-1 flex h-full w-full min-w-0 flex-col rounded-[2rem] border border-edge bg-card p-3`}>
       <button
         type="button"
         aria-expanded={!recolhida}
@@ -89,11 +91,7 @@ export function Sidebar({
             key={item.to}
             to={item.to}
             aria-label={recolhida ? item.label : undefined}
-            className={({ isActive }) =>
-              `group relative flex items-center rounded-lg py-[7.5px] text-[15px] leading-[21px] transition-colors w-full gap-2.5 px-4 ${
-                isActive ? "bg-accent-tint text-accent-soft-foreground" : "text-body hover:bg-secondary"
-              }`
-            }
+            className={({ isActive }) => classesDoItem({ ativo: isActive, recolhida })}
           >
             {({ isActive }) => <>
               <span className="flex w-4 shrink-0 justify-center"><item.Icon aria-hidden="true" className={`${isActive ? "text-accent-soft-foreground" : "text-body"}`} /></span>
@@ -109,7 +107,7 @@ export function Sidebar({
               aria-expanded={adminAberto}
               aria-label={recolhida ? t("administration") : undefined}
               onClick={() => setAdminAberto((aberto) => !aberto)}
-              className={`group relative flex items-center rounded-lg py-[7.5px] text-left text-[15px] leading-[21px] text-body hover:bg-secondary w-full gap-2.5 px-4`}
+              className={cn(classesDoItem({ ativo: false, recolhida }), "text-left")}
             >
               <span className="flex w-4 shrink-0 justify-center"><AdministrationIcon aria-hidden="true" className={`${estaNaAdmin ? "text-accent-soft-foreground" : "text-body"}`} /></span>
               <span aria-hidden={recolhida} className={`${transicaoRotulo} flex-1 truncate ${larguraRotulo}`}>{t("administration")}</span>
@@ -128,7 +126,7 @@ export function Sidebar({
                     key={to}
                     to={to}
                     aria-label={recolhida ? label : undefined}
-                    className={({ isActive }) => `group relative flex items-center rounded-lg py-2.5 text-[15px] leading-[21px] gap-2.5 px-4 transition-[margin,width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${recolhida ? "ml-0 w-full" : "ml-3 w-[calc(100%-0.75rem)]"} ${isActive ? "bg-accent-tint text-accent-soft-foreground" : "text-body hover:bg-secondary"}`}
+                    className={({ isActive }) => classesDoItem({ ativo: isActive, recolhida, subitem: true })}
                   >
                     {({ isActive }) => <>
                       <span className="flex w-4 shrink-0 justify-center"><Icon aria-hidden="true" className={`${isActive ? "text-accent-soft-foreground" : "text-body"}`} /></span>
@@ -142,7 +140,7 @@ export function Sidebar({
           </>
         )}
         {perfil.perfil_codigo !== "ADMIN_UNIDADE" && ((perfil.perfil_codigo === "GERENTE" && perfil.permissoes.includes("times.consultar") && (perfil.setores_gerenciados.length > 0 || perfil.times.length > 0)) || ((perfil.perfil_codigo === "KP" || perfil.perfil_codigo === "USUARIO_PADRAO") && perfil.permissoes.includes("times.consultar") && perfil.times.length > 0)) && (
-          <NavLink to="/times" aria-label={recolhida ? t("teams") : undefined} className={({ isActive }) => `group relative flex items-center rounded-lg py-[7.5px] text-[15px] leading-[21px] w-full gap-2.5 px-4 ${isActive ? "bg-accent-tint text-accent-soft-foreground" : "text-body hover:bg-secondary"}`}>
+          <NavLink to="/times" aria-label={recolhida ? t("teams") : undefined} className={({ isActive }) => classesDoItem({ ativo: isActive, recolhida })}>
             {({ isActive }) => <>
               <span className="flex w-4 shrink-0 justify-center"><TeamsIcon aria-hidden="true" className={`${isActive ? "text-accent-soft-foreground" : "text-body"}`} /></span>
               <span aria-hidden={recolhida} className={`${transicaoRotulo} ${larguraRotulo}`}>{t("teams")}</span>
@@ -151,7 +149,7 @@ export function Sidebar({
           </NavLink>
         )}
         {(perfil.perfil_codigo === "GERENTE" || perfil.perfil_codigo === "KP") && perfil.permissoes.includes("usuarios.consultar") && (
-          <NavLink to="/usuarios" aria-label={recolhida ? t("users") : undefined} className={({ isActive }) => `group relative flex items-center rounded-lg py-[7.5px] text-[15px] leading-[21px] w-full gap-2.5 px-4 ${isActive ? "bg-accent-tint text-accent-soft-foreground" : "text-body hover:bg-secondary"}`}>
+          <NavLink to="/usuarios" aria-label={recolhida ? t("users") : undefined} className={({ isActive }) => classesDoItem({ ativo: isActive, recolhida })}>
             {({ isActive }) => <><span className="flex w-4 shrink-0 justify-center"><UsersIcon aria-hidden="true" className={`${isActive ? "text-accent-soft-foreground" : "text-body"}`} /></span><span aria-hidden={recolhida} className={`${transicaoRotulo} ${larguraRotulo}`}>{t("users")}</span>{recolhida && <TooltipRotulo titulo={t("users")} />}</>}
           </NavLink>
         )}
@@ -163,7 +161,7 @@ export function Sidebar({
             key={to}
             to={to}
             aria-label={recolhida ? label : undefined}
-            className={({ isActive }) => `group relative flex items-center rounded-lg py-[7.5px] text-[15px] font-normal leading-[21px] tracking-normal w-full gap-2.5 px-4 ${isActive ? "bg-accent-tint text-accent-soft-foreground" : "text-body hover:bg-secondary"}`}
+            className={({ isActive }) => cn(classesDoItem({ ativo: isActive, recolhida }), "font-normal tracking-normal")}
           >
             {({ isActive }) => <>
               <span className="flex w-4 shrink-0 justify-center"><Icon aria-hidden="true" className={`${isActive ? "text-accent-soft-foreground" : "text-body"}`} /></span>
@@ -174,6 +172,19 @@ export function Sidebar({
         ))}
       </div>
     </aside>
+  );
+}
+
+/**
+ * Classes de todos os itens da Sidebar (spec 050, RN-19): destaque em pílula no ativo e no hover, anel de foco no
+ * mesmo raio e toque imediato (RN-14). Recolhida, o item vira um círculo de 30px centralizado no ícone (Figma
+ * 2482-2227). Os subitens de Administração mantêm o recuo.
+ */
+function classesDoItem({ ativo, recolhida, subitem = false }: { ativo: boolean; recolhida: boolean; subitem?: boolean }) {
+  return cn(
+    "group relative flex items-center rounded-full text-[15px] leading-[21px] transition-[background-color,color,transform,margin,width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+    recolhida ? "mx-auto size-[30px] justify-center gap-0 p-0" : cn("w-full gap-2.5 px-4", subitem ? "ml-3 w-[calc(100%-0.75rem)] py-2.5" : "py-[7.5px]"),
+    ativo ? "bg-accent-tint text-accent-soft-foreground" : "text-body hover:bg-secondary",
   );
 }
 

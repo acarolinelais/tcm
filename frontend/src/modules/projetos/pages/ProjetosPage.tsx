@@ -220,7 +220,7 @@ export function ProjetosPage() {
     filtered: { title: t("noResults"), hint: t("noProjectResults") },
   });
 
-  return <section className={criacaoAberta ? "relative flex h-full min-h-0 flex-col" : "flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-separator bg-card px-7 py-8 sm:px-11 sm:py-10"}>
+  return <section className={criacaoAberta ? "relative flex h-full min-h-0 flex-col" : "flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-edge bg-card px-7 py-8 sm:px-11 sm:py-10"}>
     {!criacaoAberta ? <>
       <header className="mb-7 flex shrink-0 items-center justify-between gap-4">
         <h1 className="text-2xl font-medium text-foreground">{t("myProjects")}</h1>
@@ -239,7 +239,7 @@ export function ProjetosPage() {
       <div className="absolute -top-11 left-0 z-10">
         <HeroButton variant="ghost" className="h-auto gap-1 px-1 py-1 text-base font-normal text-foreground hover:bg-transparent" onPress={() => { setCriacaoAberta(false); limparFormulario(); }}><ChevronLeft aria-hidden="true" className="size-4" />{t("projectsNav")}</HeroButton>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[42px] border border-separator bg-card px-7 py-8 sm:px-11 sm:py-10">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[42px] border border-edge bg-card px-7 py-8 sm:px-11 sm:py-10">
       <div className="thin-scroll min-h-0 flex-1 overflow-auto">
         <div className="flex min-h-full w-full flex-col">
           <header className="mb-4 flex items-center justify-between gap-4">
@@ -255,7 +255,7 @@ export function ProjetosPage() {
             {modo === "planilha" ? <section aria-label={t("uploadSpreadsheet")} className="flex flex-1 flex-col">
               <h2 className="mb-3 text-lg font-medium leading-6 text-body">{t("uploadSpreadsheet")}</h2>
               <UploadPlanilha leitura={leitura} onBaixarModelo={downloadTemplate} />
-            </section> : <section className="rounded-2xl border border-border bg-surface p-5 sm:p-7">
+            </section> : <section className="rounded-2xl border border-edge bg-surface p-5 sm:p-7">
               <div className="mb-6"><h2 className="text-base font-semibold">{t("projectDetails")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("projectNameFormulaHint")}</p></div>
               <div className="grid items-start gap-5 sm:grid-cols-2">
                 <div className="sm:col-span-2"><TextInputField label={t("projectNamePreview")} value={nomeProjeto || (app.trim() && oneUi.trim() ? `${app.trim()} ${oneUi.trim()}` : "")} onChange={setNomeProjeto} maxLength={150} /></div>

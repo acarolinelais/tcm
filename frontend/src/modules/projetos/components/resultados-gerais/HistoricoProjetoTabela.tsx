@@ -10,8 +10,7 @@ import { DataTablePagination } from "@/shared/ui/data-table-pagination";
 import { estadoDaTabela } from "@/shared/ui/data-table-state";
 import { InlineSelect } from "@/shared/ui/inline-select";
 import { RowActions } from "@/shared/ui/row-action-button";
-import type { CasoHistorico, CasoTesteResumo, FiltrosHistoricoProjeto, HistoricoProjeto, ResultadoNaData } from "../../model/projeto";
-import { TcIdBotao } from "../casos-teste/TcIdBotao";
+import type { CasoHistorico, FiltrosHistoricoProjeto, HistoricoProjeto, ResultadoNaData } from "../../model/projeto";
 import { formatarDia } from "./formatar-dia";
 import { ResultadoBotao, SemExecucao } from "./ResultadoBotao";
 
@@ -39,7 +38,6 @@ interface Props {
   onModeloChange: (casoId: string, modeloId: string) => void;
   onAbrirResultado: (resultado: ResultadoAberto) => void;
   onAbrirResumo: (caso: CasoHistorico) => void;
-  onAbrirDetalhes: (caso: CasoTesteResumo) => void;
   /** Todos os casos com os filtros atuais, para "Exportar todos os itens" (spec 035). */
   buscarTodos: () => Promise<CasoHistorico[]>;
   page: number;
@@ -51,7 +49,7 @@ interface Props {
 const SEM_CASOS: CasoHistorico[] = [];
 
 // TC ID e Form Factor ficam fixos ao rolar para os lados (RN-05); a largura fixa do TC ID dá o recuo do Form Factor.
-const fixa = "sticky z-[1] bg-surface [thead_&]:bg-surface-secondary";
+const fixa = "sticky z-[1] bg-table-body [thead_&]:bg-surface-secondary";
 
 /** Resultados Gerais de um projeto (specs 032 e 033): uma página de casos e até 7 datas, as mesmas em todas as páginas (ADR 0039). */
 export function HistoricoProjetoTabela(props: Props) {
@@ -74,7 +72,8 @@ export function HistoricoProjetoTabela(props: Props) {
       isRowHeader: true,
       className: `${fixa} left-0 w-40 min-w-40 max-w-40`,
       header: <DataTableFilter label={t("tcId")} value={filtros.tcId ?? ""} onChange={(valor) => props.onFiltroChange("tcId", valor)} />,
-      cell: (caso) => <TcIdBotao caso={{ id: caso.caso_teste_id, tc_id: caso.tc_id }} onAbrir={props.onAbrirDetalhes} />,
+      // Só texto (spec 050, RN-01): o painel do caso abre na página do projeto, não aqui.
+      cell: (caso) => caso.tc_id,
       exportar: { titulo: t("tcId"), valor: (caso) => caso.tc_id },
     },
     {

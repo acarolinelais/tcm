@@ -135,7 +135,7 @@ function CardArquivo({ arquivo, leitura, saindo, onRemover }: { arquivo: File; l
   return <div data-saindo={saindo || undefined} className={`upload-surgir relative ${CARD}`}>
     <Button isIconOnly variant="ghost" size="sm" aria-label={t("removeFile")} onPress={onRemover} className="absolute right-3 top-3 size-8 text-subtle"><X aria-hidden="true" className="size-4" /></Button>
     <div className="flex items-center gap-4 pr-8">
-      <span className="flex size-11 shrink-0 items-center justify-center rounded-[10px] border border-separator bg-surface"><ExcelIcon aria-hidden="true" className="size-6" /></span>
+      <span className="flex size-11 shrink-0 items-center justify-center rounded-[10px] border border-edge bg-surface"><ExcelIcon aria-hidden="true" className="size-6" /></span>
       <div className="min-w-0">
         <p className="truncate text-base font-medium text-body">{arquivo.name}</p>
         <p className="mt-0.5 text-sm text-subtle">{fase === "concluida" ? `${megabytes(arquivo.size)} · ${t("testCaseCount", { count: casos, countLabel: formatNumber(casos) })}` : megabytes(arquivo.size)}</p>
