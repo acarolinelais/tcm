@@ -150,6 +150,23 @@ Sem alteração. O Kanban lê `CasoTeste.status` (`To-Do`, `InProgress`, `InRevi
 | CA-19 | Funcional + Vitest | `test_navegacao_sem_times_retorna_vazio`; o aviso "sem times" |
 | CA-20 | Funcional + e2e | `test_kanban_fora_do_escopo_retorna_404` (outro setor, outra unidade, inexistente) |
 
+## Ajuste: arrasto, cor do avatar e filtros (2026-10-30)
+
+- **Cor do avatar (RN-03, CA-23):** `listar_cards_por_projeto` passa a trazer `UsuarioModel.cor_avatar` no
+  mesmo join; o card ganha `responsavel_cor_avatar` (`CorAvatar`, spec 036). O mock usa `corAvatarPorUsuario`.
+  O `KanbanCard` mostra `AvatarUsuario` ao lado do nome.
+- **Arrasto (RN-11a, CA-21, CA-22):** continua o `useDrag`/`useDrop` do `react-aria` (ADR 0037).
+  - Prévia: o `preview` do `useDrag` com o `DragPreview` do `react-aria` desenha o card opaco, com sombra e
+    leve rotação, no lugar da imagem translúcida do navegador.
+  - Origem: o card arrastado fica como um contorno tracejado na coluna de origem.
+  - Rolagem: o contêiner das colunas rola sozinho quando o ponteiro fica a menos de 80 px da borda durante o
+    arrasto (`dragover` no contêiner + `requestAnimationFrame`).
+- **Filtros (RN-11b a RN-11d, CA-24 a CA-27):** no cliente, sobre o Kanban já carregado (todos os casos vêm na
+  mesma resposta), sem mudança na API. Componente `KanbanFiltros` acima das colunas, com os
+  `MultiSelectCombobox` de `shared/ui` e um campo de busca por TC ID. Os valores ficam na URL
+  (`?responsavel=&status=&category=&difficulty=&situation=&tc=`). O `KanbanBoard` serve à aba do projeto e à
+  tela do Board, então os dois ganham os filtros.
+
 ## Riscos e decisões pendentes
 
 - **Regras de Status suspensas:** as RN-04 e RN-05 da spec 023 estão suspensas desde 2026-10-27, e o

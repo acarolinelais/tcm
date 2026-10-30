@@ -1,6 +1,6 @@
 # 037. Kanban do projeto e Board por setor e time: Spec
 
-- **Status:** Aprovada
+- **Status:** Em andamento
 - **Data:** 2026-10-30
 - **ADRs relacionados:** 0013, 0015, 0021, 0026, 0036, 0037
 
@@ -33,8 +33,9 @@ setor, time e projeto dentro do próprio escopo e chega ao Kanban desse projeto.
   `In Review`, `In Validation`, `In Fixes`, `Done` e `Excluded`. Cada caso aparece como um card na coluna do
   seu Status, e o cabeçalho de cada coluna mostra o total de casos nela. Os rótulos seguem o idioma da
   interface, como na aba Test Cases.
-- RN-03: O card mostra TC ID, Category, Difficulty, TC Situation e o responsável principal. Um caso sem
-  responsável mostra "Sem responsável".
+- RN-03: O card mostra TC ID, Category, Difficulty, TC Situation e o responsável principal, com a esfera de
+  avatar na cor que o responsável escolheu nas Configurações (spec 036). Um caso sem responsável mostra "Sem
+  responsável".
 - RN-04: No Kanban, o dev vê todos os casos do projeto, não só os seus. Isso amplia apenas a leitura no
   Kanban: a aba Test Cases continua mostrando só os casos dele (spec 012).
 - RN-04a: O dev do time abre o Kanban de qualquer projeto do time, mesmo sem nenhum caso ligado a ele
@@ -57,6 +58,17 @@ setor, time e projeto dentro do próprio escopo e chega ao Kanban desse projeto.
 - RN-10: Um projeto com até 1.000 casos abre sem travar a tela, e o total no cabeçalho de cada coluna sempre
   reflete todos os casos dela.
 - RN-11: A aba ativa fica no endereço da página: um link para o Kanban de um projeto abre direto nessa aba.
+
+### Arrasto e filtros (ajuste de 2026-10-30)
+- RN-11a: Enquanto um card é arrastado, ele segue o ponteiro inteiro e opaco, com sombra; o lugar de onde
+  saiu fica marcado; a coluna sob o ponteiro destaca onde ele vai cair, e as colunas que não aceitam o card
+  ficam apagadas. Levar o card perto da borda esquerda ou direita do quadro rola as colunas nessa direção.
+- RN-11b: O cabeçalho do Kanban tem filtros por responsável, Status, Category, Difficulty e TC Situation, e uma
+  busca por TC ID. Os filtros combinam entre si e valem só para a visualização: não mudam nenhum caso.
+- RN-11c: Com filtros ativos, cada coluna mostra só os casos que passam neles, e o total da coluna conta só
+  esses. O filtro de Status mostra só as colunas escolhidas. Uma opção "Limpar filtros" volta ao quadro completo.
+- RN-11d: Os filtros ficam no endereço da página, como a aba e a escolha do Board: recarregar ou compartilhar
+  o link mantém o mesmo recorte.
 
 ### Board na navegação lateral
 - RN-12: A opção Board abre uma escolha em cascata: Setor → Time → Projeto. Ao escolher o projeto, a pessoa
@@ -119,6 +131,19 @@ setor, time e projeto dentro do próprio escopo e chega ao Kanban desse projeto.
   projeto são limpos.
 - **CA-19 (falha):** Dado uma pessoa sem nenhum time no escopo, quando abre o Board, então vê um aviso de que
   não há times disponíveis, sem seletores vazios.
+- **CA-21:** Dado um card que a pessoa pode mover, quando ela começa a arrastar, então o card acompanha o
+  ponteiro com sombra, o lugar de origem fica marcado e só as colunas que aceitam o card ficam em destaque.
+- **CA-22:** Dado um arrasto perto da borda direita do quadro, quando o ponteiro fica ali, então as colunas
+  rolam para a direita até a coluna de destino ficar visível.
+- **CA-23:** Dado casos de responsáveis com cores de avatar diferentes, quando o Kanban abre, então cada card
+  mostra a esfera na cor do seu responsável.
+- **CA-24:** Dado um Kanban com casos de várias pessoas, quando a pessoa filtra por um responsável e uma
+  Difficulty, então cada coluna mostra só os casos que passam nos dois filtros, com o total recalculado.
+- **CA-25:** Dado o filtro de Status com `In Review` e `Done`, quando aplicado, então só essas duas colunas aparecem.
+- **CA-26:** Dado filtros ativos, quando a pessoa recarrega a página ou abre o link copiado, então vê o mesmo
+  recorte; e "Limpar filtros" volta ao quadro completo.
+- **CA-27 (falha):** Dado filtros que nenhum caso atende, quando aplicados, então as colunas aparecem vazias
+  com o aviso de que nenhum caso corresponde aos filtros, e não o aviso de projeto sem casos.
 - **CA-20 (falha):** Dado um gerente, quando abre o link do Kanban de um projeto fora do escopo dele, de outra
   unidade ou inexistente, então vê a mensagem de projeto não encontrado e nenhum caso.
 
@@ -127,7 +152,7 @@ setor, time e projeto dentro do próprio escopo e chega ao Kanban desse projeto.
 - Criar, renomear ou reordenar Status. O catálogo e o ciclo são os da spec 023.
 - Impor as transições do ciclo da spec 023 (suspensas desde 2026-10-27). O Kanban segue as mesmas regras da
   aba Test Cases, e qualquer mudança nelas vale para os dois.
-- Filtros e busca dentro do Kanban (por responsável, Category, Difficulty, semana).
+- Filtro por semana e por backup no Kanban.
 - Reordenar cards dentro da mesma coluna ou guardar uma ordem manual.
 - Editar outros campos do caso, abrir o detalhe do caso ou criar casos pelo Kanban.
 - Atualização em tempo real quando outra pessoa muda um caso (a mudança aparece ao recarregar).
