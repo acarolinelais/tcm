@@ -1,6 +1,8 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
+import i18n from "@/core/i18n";
+
 import { DataTable, type DataTableColumn } from "./data-table";
 
 interface Linha { id: string; nome: string }
@@ -25,5 +27,14 @@ describe("DataTable", () => {
     render(<DataTable aria-label="Teams" columns={colunas} items={[]} state={<p role="alert">Could not load teams.</p>} />);
     expect(screen.getByRole("alert")).toHaveTextContent("Could not load teams.");
     expect(within(screen.getByRole("grid")).getAllByRole("row")).toHaveLength(1);
+  });
+
+  it("com exportacao, mostra o botão Exportar no rodapé; sem ela, não", async () => {
+    await i18n.changeLanguage("en");
+    const { rerender } = render(<DataTable aria-label="Teams" columns={colunas} items={linhas} exportacao={{ listagem: "times", todosOsItens: linhas }} />);
+    expect(screen.getByRole("button", { name: "Export" })).toBeEnabled();
+
+    rerender(<DataTable aria-label="Teams" columns={colunas} items={linhas} />);
+    expect(screen.queryByRole("button", { name: "Export" })).not.toBeInTheDocument();
   });
 });

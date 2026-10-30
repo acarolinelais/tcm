@@ -5,12 +5,14 @@ import { useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import type { PerfilAtual } from "@/core/auth/api";
+import { buscarTodasAsPaginas } from "@/shared/lib/exportar-planilha";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { ErroComRetry } from "@/shared/ui/erro-com-retry";
 import { PageCard, PageTitle } from "@/shared/ui/page-card";
 import { PageTabPanel, PageTabs } from "@/shared/ui/page-tabs";
 import { WeekPickerHero } from "@/shared/ui/week-picker-hero";
 import { useHistoricoProjeto, useProjetosSeletor } from "../hooks/useProjetos";
+import { formFactorApi } from "../api/projetos.api";
 import type { CasoHistorico, CasoTesteResumo, FiltrosHistoricoProjeto } from "../model/projeto";
 import { DetalhesCasoTesteDrawer } from "../components/casos-teste/DetalhesCasoTesteDrawer";
 import { HistoricoProjetoTabela, type ResultadoAberto } from "../components/resultados-gerais/HistoricoProjetoTabela";
@@ -49,6 +51,8 @@ export function ResultadosGeraisPage() {
   const totalPaginas = Math.max(1, Math.ceil((dados?.total_count ?? 0) / tamanhoPagina));
   // Casos removidos encolhem a lista: volta para a última página que existe, como nas outras telas.
   useEffect(() => { if (dados && !historico.isPlaceholderData && pagina > totalPaginas) setPagina(totalPaginas); }, [dados, historico.isPlaceholderData, pagina, totalPaginas]);
+
+  const buscarCasosParaExportar = () => buscarTodasAsPaginas((page, pageSize) => formFactorApi.historicoProjeto(projetoId, { ...filtros, page, pageSize }));
 
   function alterarFiltros(proximos: FiltrosHistoricoProjeto) {
     setFiltros(proximos);
@@ -140,6 +144,7 @@ export function ResultadosGeraisPage() {
           onAbrirResultado={setResultadoAberto}
           onAbrirResumo={setCasoDoResumo}
           onAbrirDetalhes={setCasoDetalhado}
+          buscarTodos={buscarCasosParaExportar}
           page={pagina}
           pageSize={tamanhoPagina}
           onPageChange={setPagina}

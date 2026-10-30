@@ -40,6 +40,8 @@ interface Props {
   onAbrirResultado: (resultado: ResultadoAberto) => void;
   onAbrirResumo: (caso: CasoHistorico) => void;
   onAbrirDetalhes: (caso: CasoTesteResumo) => void;
+  /** Todos os casos com os filtros atuais, para "Exportar todos os itens" (spec 035). */
+  buscarTodos: () => Promise<CasoHistorico[]>;
   page: number;
   pageSize: number;
   onPageChange: (page: number) => void;
@@ -73,11 +75,13 @@ export function HistoricoProjetoTabela(props: Props) {
       className: `${fixa} left-0 w-40 min-w-40 max-w-40`,
       header: <DataTableFilter label={t("tcId")} value={filtros.tcId ?? ""} onChange={(valor) => props.onFiltroChange("tcId", valor)} />,
       cell: (caso) => <TcIdBotao caso={{ id: caso.caso_teste_id, tc_id: caso.tc_id }} onAbrir={props.onAbrirDetalhes} />,
+      exportar: { titulo: t("tcId"), valor: (caso) => caso.tc_id },
     },
     {
       id: "formFactor",
       className: `${fixa} left-40 w-40 min-w-40`,
       header: <DataTableFilter label={t("formFactor")} value={filtros.modeloDispositivoId ?? ""} onChange={(valor) => props.onFiltroChange("modeloDispositivoId", valor)} options={comOpcaoTodos(t("all"), opcoesModelos)} />,
+      exportar: { titulo: t("formFactor"), valor: (caso) => nomeDoModelo(modeloDaLinha(caso)) },
       cell: (caso) => {
         const modeloId = modeloDaLinha(caso);
         return <InlineSelect aria-label={t("formFactorOfCase", { tcId: caso.tc_id })} value={modeloId} options={opcoesModelos} onChange={(valor) => props.onModeloChange(caso.caso_teste_id, valor)}>
@@ -88,6 +92,8 @@ export function HistoricoProjetoTabela(props: Props) {
     ...(dados?.datas ?? []).map<DataTableColumn<CasoHistorico>>((dia) => ({
       id: `dia-${dia}`,
       className: "min-w-28",
+      // Como na tela: o resultado do dia no modelo escolhido para a linha.
+      exportar: { titulo: formatarDia(dia), valor: (caso) => caso.resultados[dia]?.[modeloDaLinha(caso)]?.resultado ?? "—" },
       header: <Tooltip delay={300} closeDelay={0}>
         <Button variant="ghost" className="h-7 min-h-0 rounded-md px-1 text-[14px] font-medium text-muted hover:bg-transparent data-[focus-visible]:ring-2 data-[focus-visible]:ring-focus">
           {formatarDia(dia)}
@@ -114,6 +120,7 @@ export function HistoricoProjetoTabela(props: Props) {
     columns={colunas}
     items={casos}
     getKey={(caso) => caso.caso_teste_id}
+    exportacao={{ listagem: "resultados-gerais", todosOsItens: props.buscarTodos }}
     state={estadoDaTabela({
       isLoading: props.carregando,
       isError: props.erro,

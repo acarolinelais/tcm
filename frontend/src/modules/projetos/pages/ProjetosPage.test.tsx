@@ -11,6 +11,7 @@ import { modelosDispositivoApi, projetosApi } from "../api/projetos.api";
 import { lerPlanilhaProjeto } from "../utils/planilha-projeto";
 import { timesApi } from "@/modules/times/api/times.api";
 import { ApiError } from "@/shared/api/problem-details";
+import { baixarPlanilha, montarPlanilha } from "@/shared/lib/exportar-planilha";
 
 const toastMock = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 
@@ -21,6 +22,7 @@ vi.mock("../api/projetos.api", () => ({
 }));
 vi.mock("@/modules/times/api/times.api", () => ({ timesApi: { listar: vi.fn() } }));
 vi.mock("@/shared/lib/toast", () => ({ toast: toastMock }));
+vi.mock("@/shared/lib/exportar-planilha");
 
 const perfil: PerfilAtual = {
   id: "admin", nome: "Admin", email: "admin@example.com", unidade_id: "unit-1", unidade_nome: "Unidade",
@@ -90,6 +92,55 @@ describe("ProjetosPage", () => {
     expect(screen.getByText("Clock")).toBeInTheDocument();
     expect(screen.getByText("9.5")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Status for Clock 9.5/ })).toHaveTextContent("Created");
+  });
+
+  it("exportar todos busca todas as páginas e aplica os filtros locais, sem número nem ações", async () => {
+    const base = { app: "Clock", one_ui: "9.5", time_id: "team-1", status: "Created" as const, ativo: true, unidade_id: "unit-1", created_at: "2026-05-01T00:00:00Z", updated_at: "2026-05-01T00:00:00Z", modelos_dispositivo: ["S27 Ultra", "Tab S11"] };
+    const clock = { ...base, id: "project-1", nome: "Clock 9.5" };
+    const notes = { ...base, id: "project-2", nome: "Notes 9.5", app: "Notes" };
+    const clockAntigo = { ...base, id: "project-3", nome: "Clock 9.0", one_ui: "9.0", status: "Completed" as const, updated_at: null };
+    vi.mocked(projetosApi.listar).mockImplementation(async (page, pageSize) => ({ items: pageSize === 100 ? [clock, notes, clockAntigo] : [clock, notes], page: page ?? 1, page_size: pageSize ?? 20, total_count: 3 }));
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByRole("link", { name: "Notes 9.5" });
+    await user.click(screen.getByRole("button", { name: "Filter by App" }));
+    await user.type(await screen.findByRole("searchbox", { name: "App" }), "clock");
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+    await waitFor(() => expect(screen.queryByRole("link", { name: "Notes 9.5" })).not.toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: "Export" }));
+    await user.click(await screen.findByRole("menuitem", { name: "All items" }));
+
+    await waitFor(() => expect(baixarPlanilha).toHaveBeenCalledWith(expect.any(ArrayBuffer), expect.stringMatching(/^projetos_/)));
+    expect(projetosApi.listar).toHaveBeenCalledWith(1, 100);
+    const [colunas, itens] = vi.mocked(montarPlanilha).mock.calls[0];
+    expect(itens).toEqual([clock, clockAntigo]);
+    expect(colunas.map((coluna) => coluna.titulo)).toEqual(["Project", "Team", "App", "One UI Version", "Device models", "Status", "Created", "Updated"]);
+    expect(colunas.map((coluna) => coluna.valor(clockAntigo)).slice(0, 6)).toEqual(["Clock 9.0", "Plataforma", "Clock", "9.0", "S27 Ultra, Tab S11", "Completed"]);
+    // Projeto nunca editado: sem data de atualização.
+    expect(colunas.at(-1)?.valor(clockAntigo)).toBe("—");
+    expect(colunas.at(-1)?.valor(clock)).not.toBe("—");
+  });
+
+  it("filtra os projetos pela data de atualização escolhida no calendário", async () => {
+    const hoje = new Date();
+    hoje.setHours(12, 0, 0, 0);
+    const base = { app: "Clock", one_ui: "9.5", time_id: "team-1", status: "Created" as const, ativo: true, unidade_id: "unit-1", created_at: "2026-05-01T00:00:00Z" };
+    vi.mocked(projetosApi.listar).mockResolvedValue({
+      items: [{ ...base, id: "project-1", nome: "Clock 9.5", updated_at: hoje.toISOString() }, { ...base, id: "project-2", nome: "Notes 9.5", updated_at: null }],
+      page: 1, page_size: 20, total_count: 2,
+    });
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("link", { name: "Notes 9.5" });
+
+    await user.click(screen.getByRole("button", { name: /Filter by Updated/i }));
+    const calendario = await screen.findByRole("dialog", { name: /Updated/i });
+    const dataPorExtenso = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(hoje);
+    await user.click(within(calendario).getByRole("button", { name: new RegExp(dataPorExtenso) }));
+
+    expect(screen.getByRole("link", { name: "Clock 9.5" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Notes 9.5" })).not.toBeInTheDocument();
   });
 
   it("altera o status pela linha mesmo com o detalhe de um projeto no cache", async () => {
@@ -238,21 +289,13 @@ describe("ProjetosPage", () => {
   });
 
   it("baixa o modelo de planilha com TC Situation New e sem coluna de Status", async () => {
-    let blob: Blob | undefined;
-    vi.stubGlobal("URL", { ...URL, createObjectURL: vi.fn((arquivo: Blob) => { blob = arquivo; return "blob:modelo"; }), revokeObjectURL: vi.fn() });
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
     const user = userEvent.setup();
     renderPage();
     await user.click(await screen.findByRole("button", { name: /New project/i }));
     await user.click(screen.getByRole("button", { name: /Download template/i }));
 
-    await waitFor(() => expect(blob).toBeDefined());
-    // O Blob do jsdom não tem arrayBuffer(); o FileReader tem.
-    const bytes = await new Promise<ArrayBuffer>((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as ArrayBuffer);
-      reader.readAsArrayBuffer(blob!);
-    });
+    await waitFor(() => expect(baixarPlanilha).toHaveBeenCalledWith(expect.any(ArrayBuffer), "template-projeto-test-cases.xlsx"));
+    const [bytes] = vi.mocked(baixarPlanilha).mock.calls[0];
     const workbook = XLSX.read(bytes, { type: "array" });
     const [cabecalho, exemplo] = XLSX.utils.sheet_to_json<string[]>(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
     expect(cabecalho).toEqual([
@@ -266,8 +309,6 @@ describe("ProjetosPage", () => {
     // O modelo baixado volta a ser lido sem erro quando as pessoas são preenchidas (cabeçalho e exemplo andam juntos).
     const arquivo = new File([bytes], "modelo.xlsx");
     await expect(lerPlanilhaProjeto(arquivo)).resolves.toMatchObject({ app: "Clock", one_ui: "9.5", totalLinhas: 1 });
-    clickSpy.mockRestore();
-    vi.unstubAllGlobals();
   });
 
   it("no cadastro, só o modo escolhido fica na tela: um campo Team por vez (spec 031)", async () => {

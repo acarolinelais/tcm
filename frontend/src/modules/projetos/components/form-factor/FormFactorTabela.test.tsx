@@ -1,10 +1,13 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import type { FormFactorMatriz } from "../../model/projeto";
+import { baixarPlanilha, montarPlanilha } from "@/shared/lib/exportar-planilha";
 import { FormFactorTabela } from "./FormFactorTabela";
+
+vi.mock("@/shared/lib/exportar-planilha");
 
 const matriz: FormFactorMatriz = {
   modelos: [{ id: "s25", nome: "SAMSUNG S25" }, { id: "s26", nome: "SAMSUNG S26" }],
@@ -17,7 +20,7 @@ const matriz: FormFactorMatriz = {
 };
 
 function renderTabela(props: Partial<Parameters<typeof FormFactorTabela>[0]> = {}) {
-  const handlers = { onAssigneeChange: vi.fn(), onLimparFiltros: vi.fn(), onPageChange: vi.fn(), onPageSizeChange: vi.fn(), onAbrirDetalhes: vi.fn() };
+  const handlers = { onAssigneeChange: vi.fn(), onLimparFiltros: vi.fn(), onPageChange: vi.fn(), onPageSizeChange: vi.fn(), onAbrirDetalhes: vi.fn(), buscarTodos: vi.fn(async () => matriz.items) };
   render(<FormFactorTabela
     dados={matriz} carregando={false} erro={false}
     identificadoresMembros={{ ana: "ana.silva", bia: "bia.souza" }}
@@ -94,5 +97,20 @@ describe("FormFactorTabela", () => {
 
     expect(screen.getByRole("alert")).toHaveTextContent("Could not load the Form Factor results.");
     expect(screen.queryByRole("heading", { name: "No test cases yet" })).not.toBeInTheDocument();
+  });
+
+  it("exporta a página com uma coluna por modelo, sem número nem ações", async () => {
+    const user = userEvent.setup();
+    const { buscarTodos } = renderTabela({ podeRegistrar: () => true, onRegistrar: vi.fn() });
+
+    await user.click(screen.getByRole("button", { name: "Export" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Current page" }));
+
+    await waitFor(() => expect(baixarPlanilha).toHaveBeenCalledWith(expect.any(ArrayBuffer), expect.stringMatching(/^form-factor_/)));
+    const [colunas, itens] = vi.mocked(montarPlanilha).mock.calls[0];
+    expect(itens).toEqual(matriz.items);
+    expect(colunas.map((coluna) => coluna.titulo)).toEqual(["TC ID", "SDF ID", "Assignee", "SAMSUNG S25", "SAMSUNG S26", "Date"]);
+    expect(colunas.map((coluna) => coluna.valor(matriz.items[1]))).toEqual(["TC-002", "—", "bia.souza", "—", "—", "—"]);
+    expect(buscarTodos).not.toHaveBeenCalled();
   });
 });

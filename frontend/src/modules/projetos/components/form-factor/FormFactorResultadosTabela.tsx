@@ -9,14 +9,14 @@ import { DataTablePagination } from "@/shared/ui/data-table-pagination";
 import { estadoDaTabela } from "@/shared/ui/data-table-state";
 import type { CasoTesteResumo, FormFactorResultados } from "../../model/projeto";
 import { TcIdBotao } from "../casos-teste/TcIdBotao";
-import { colunasPorModelo } from "./colunas-form-factor";
+import { colunasPorModelo, rotuloAssignee, rotuloSdf } from "./colunas-form-factor";
 
 type Execucao = FormFactorResultados["items"][number];
 type Filtros = { tcId: string; sdfId: string; origem: string; modeloDispositivoId: string; resultado: string };
 const chaveDaExecucao = (execucao: Execucao) => execucao.execucao_id;
 const SEM_EXECUCOES: Execucao[] = [];
 
-export function FormFactorResultadosTabela({ onAbrirDetalhes, dados, carregando, erro, identificadoresMembros, opcoesAssignee, filtros, responsaveis, onResponsaveisChange, onFiltroChange, onFiltroResultado, onLimparFiltros, page, pageSize, onPageChange, onPageSizeChange }: {
+export function FormFactorResultadosTabela({ onAbrirDetalhes, dados, carregando, erro, identificadoresMembros, opcoesAssignee, filtros, responsaveis, onResponsaveisChange, onFiltroChange, onFiltroResultado, onLimparFiltros, buscarTodos, page, pageSize, onPageChange, onPageSizeChange }: {
   /** Abre o painel de detalhes do caso pelo TC ID (spec 030). */
   onAbrirDetalhes: (caso: CasoTesteResumo) => void;
   dados?: FormFactorResultados;
@@ -32,18 +32,23 @@ export function FormFactorResultadosTabela({ onAbrirDetalhes, dados, carregando,
   /** O filtro de resultado vale para um modelo por vez: muda os dois campos de uma vez. */
   onFiltroResultado: (modeloId: string, resultado: string) => void;
   onLimparFiltros: () => void;
+  /** Todas as execuções com os filtros atuais, para "Exportar todos os itens" (spec 035). */
+  buscarTodos: () => Promise<Execucao[]>;
   page: number; pageSize: number; onPageChange: (page: number) => void; onPageSizeChange: (size: number) => void;
 }) {
   const { t } = useTranslation();
   const items = erro ? SEM_EXECUCOES : dados?.items ?? SEM_EXECUCOES;
   const modelos = dados?.modelos ?? [];
+  const assigneeDaExecucao = rotuloAssignee(identificadoresMembros);
+  const rotuloOrigem = (execucao: Execucao) => execucao.origem === "SDF" ? "SDF" : t("manual");
+  const rotuloData = (execucao: Execucao) => formatDate(execucao.data_reportada, { dateStyle: "short", timeStyle: "short" });
   const colunas: DataTableColumn<Execucao>[] = [
-    { id: "tcId", isRowHeader: true, header: <DataTableFilter label={t("tcId")} value={filtros.tcId} onChange={(v) => onFiltroChange("tcId", v)} />, cell: (execucao) => <TcIdBotao caso={{ id: execucao.caso_teste_id, tc_id: execucao.tc_id }} onAbrir={onAbrirDetalhes} /> },
-    { id: "sdfId", header: <DataTableFilter label={t("sdfId")} value={filtros.sdfId} onChange={(v) => onFiltroChange("sdfId", v)} />, cell: (execucao) => execucao.sdf_id ?? "—" },
-    { id: "assignee", header: <DataTableMultiFilter label={t("assignee")} values={responsaveis} onChange={onResponsaveisChange} options={opcoesAssignee} searchable />, cell: (execucao) => identificadoresMembros[execucao.responsavel_id] ?? "—" },
-    { id: "origem", header: <DataTableFilter label={t("origin")} value={filtros.origem} onChange={(v) => onFiltroChange("origem", v)} options={comOpcaoTodos(t("all"), [{ value: "SDF", label: "SDF" }, { value: "MANUAL", label: t("manual") }])} />, cell: (execucao) => execucao.origem === "SDF" ? "SDF" : t("manual") },
+    { id: "tcId", isRowHeader: true, header: <DataTableFilter label={t("tcId")} value={filtros.tcId} onChange={(v) => onFiltroChange("tcId", v)} />, cell: (execucao) => <TcIdBotao caso={{ id: execucao.caso_teste_id, tc_id: execucao.tc_id }} onAbrir={onAbrirDetalhes} />, exportar: { titulo: t("tcId"), valor: (execucao) => execucao.tc_id } },
+    { id: "sdfId", header: <DataTableFilter label={t("sdfId")} value={filtros.sdfId} onChange={(v) => onFiltroChange("sdfId", v)} />, cell: rotuloSdf, exportar: { titulo: t("sdfId"), valor: rotuloSdf } },
+    { id: "assignee", header: <DataTableMultiFilter label={t("assignee")} values={responsaveis} onChange={onResponsaveisChange} options={opcoesAssignee} searchable />, cell: assigneeDaExecucao, exportar: { titulo: t("assignee"), valor: assigneeDaExecucao } },
+    { id: "origem", header: <DataTableFilter label={t("origin")} value={filtros.origem} onChange={(v) => onFiltroChange("origem", v)} options={comOpcaoTodos(t("all"), [{ value: "SDF", label: "SDF" }, { value: "MANUAL", label: t("manual") }])} />, cell: rotuloOrigem, exportar: { titulo: t("origin"), valor: rotuloOrigem } },
     ...colunasPorModelo<Execucao>(t, modelos, { modeloId: filtros.modeloDispositivoId, resultado: filtros.resultado }, onFiltroResultado),
-    { id: "data", header: t("date"), cell: (execucao) => formatDate(execucao.data_reportada, { dateStyle: "short", timeStyle: "short" }) },
+    { id: "data", header: t("date"), cell: rotuloData, exportar: { titulo: t("date"), valor: rotuloData } },
   ];
 
   return <DataTable
@@ -51,6 +56,7 @@ export function FormFactorResultadosTabela({ onAbrirDetalhes, dados, carregando,
     columns={colunas}
     items={items}
     getKey={chaveDaExecucao}
+    exportacao={{ listagem: "form-factor-resultados", todosOsItens: buscarTodos }}
     rowDependencies={[t, modelos, identificadoresMembros]}
     state={estadoDaTabela({
       isLoading: carregando,

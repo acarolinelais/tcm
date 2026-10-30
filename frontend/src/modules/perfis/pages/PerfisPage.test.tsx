@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PerfisPage } from "./PerfisPage";
 import type { Perfil, Permissao } from "../api/perfis.api";
 import { ApiError } from "@/shared/api/problem-details";
+import { baixarPlanilha, montarPlanilha } from "@/shared/lib/exportar-planilha";
 
 const api = vi.hoisted(() => ({
   listarPerfis: vi.fn(),
@@ -16,6 +17,7 @@ const api = vi.hoisted(() => ({
 }));
 
 vi.mock("../api/perfis.api", () => api);
+vi.mock("@/shared/lib/exportar-planilha");
 vi.mock("@/core/auth/usePerfilAtual", () => ({
   usePerfilAtual: () => ({ data: { perfil_codigo: "ADMIN_UNIDADE", permissoes: ["perfis.gerenciar"] } }),
 }));
@@ -53,6 +55,21 @@ describe("PerfisPage", () => {
     api.salvarPermissoes.mockImplementation(async (id: string, codes: string[]) => ({
       ...perfis.find((perfil) => perfil.id === id)!, permissoes: codes,
     }));
+  });
+
+  it("exporta os perfis com tipo e quantidade de permissões, sem a coluna de ações", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByRole("row", { name: /Operação/ });
+    await user.click(screen.getByRole("button", { name: "Export" }));
+    await user.click(await screen.findByRole("menuitem", { name: "All items" }));
+
+    await waitFor(() => expect(baixarPlanilha).toHaveBeenCalledWith(expect.any(ArrayBuffer), expect.stringMatching(/^perfis_/)));
+    const [colunas, itens] = vi.mocked(montarPlanilha).mock.calls[0];
+    expect(colunas).toHaveLength(4);
+    expect(itens).toEqual(perfis);
+    expect(colunas.map((coluna) => coluna.valor(perfis[0]))).toEqual(["Operação", "—", "Unit", 1]);
   });
 
   it("agrupa permissões usando os metadados recebidos, inclusive módulos desconhecidos", async () => {

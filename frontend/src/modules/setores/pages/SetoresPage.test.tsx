@@ -16,7 +16,9 @@ vi.mock("../api/setores.api", () => ({ setoresApi: { listar: vi.fn(), gerentes: 
 vi.mock("@/modules/perfis/api/perfis.api", () => ({ listarPerfis: vi.fn() }));
 vi.mock("@/modules/usuarios/api/usuario.api", () => ({ usuarioApi: { listar: vi.fn() } }));
 vi.mock("@/shared/lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("@/shared/lib/exportar-planilha");
 import { toast } from "@/shared/lib/toast";
+import { baixarPlanilha, montarPlanilha } from "@/shared/lib/exportar-planilha";
 
 const admin: PerfilAtual = {
   id: "admin", nome: "Admin", email: "admin@example.com", unidade_id: "unit-1", unidade_nome: "Unidade",
@@ -74,6 +76,26 @@ describe("SetoresPage", () => {
     renderPage();
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not load sectors. Try again.");
+  });
+
+  it("exportar todos leva os gerentes também dos setores que não estão na página", async () => {
+    const financeiro = { id: "setor-3", unidade_id: "unit-1", nome: "Financeiro", ativo: true };
+    vi.mocked(setoresApi.listar).mockImplementation(async (page, pageSize) => ({ items: pageSize === 100 ? [engenharia, suporte, financeiro] : [engenharia, suporte], page: page ?? 1, page_size: pageSize ?? 20, total_count: 3 }) as never);
+    vi.mocked(setoresApi.gerentes).mockImplementation(async (id) => (id === "setor-3" ? [{ setor_id: "setor-3", usuario_id: "user-bia", ativo: true }] : []) as never);
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByRole("row", { name: /Engenharia/ });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Export" })).toBeEnabled());
+    await user.click(screen.getByRole("button", { name: "Export" }));
+    await user.click(await screen.findByRole("menuitem", { name: "All items" }));
+
+    await waitFor(() => expect(baixarPlanilha).toHaveBeenCalledWith(expect.any(ArrayBuffer), expect.stringMatching(/^setores_/)));
+    const [colunas, itens] = vi.mocked(montarPlanilha).mock.calls[0];
+    expect(colunas.map((coluna) => coluna.titulo)).toEqual(["Sector", "Managers", "Status"]);
+    expect(itens).toEqual([engenharia, suporte, financeiro]);
+    expect(colunas[1].valor(financeiro)).toBe("Bia Costa");
+    expect(colunas[2].valor(suporte)).toBe("Inactive");
   });
 
   describe("painel Novo setor (spec 031)", () => {

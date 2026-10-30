@@ -6,6 +6,7 @@ import { Plus, Trash2, UserRoundCheck, UserRoundX, UsersRound } from "lucide-rea
 import { useTranslation } from "react-i18next";
 
 import type { PerfilAtual } from "@/core/auth/api";
+import { CACHE_EXPORTACAO_MS, buscarTodasAsPaginas } from "@/shared/lib/exportar-planilha";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { rotuloPerfil } from "@/shared/lib/perfil";
 import { toast } from "@/shared/lib/toast";
@@ -22,7 +23,7 @@ import { rowActionIconProps } from "@/shared/ui/row-action-icon";
 import { SideDrawer } from "@/shared/ui/side-drawer";
 import { TONS_ETIQUETA, TagChip } from "@/shared/ui/tag-chip";
 import { setoresApi } from "@/modules/setores/api/setores.api";
-import { timesApi, type Time } from "../api/times.api";
+import { timesApi, type Time, type TimeMembro } from "../api/times.api";
 import { NovoTimeDrawer } from "../components/NovoTimeDrawer";
 
 export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
@@ -61,8 +62,19 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
   // Mapas montados uma vez por render: a coluna de membros consulta nome de usuário para cada integrante.
   const nomesSetores = new Map((setores.data?.items ?? []).map((setor) => [setor.id, setor.nome]));
   const nomesUsuarios = new Map((usuarios.data ?? []).map((usuario) => [usuario.id, usuario.nome]));
-  const integrantesPorTime = new Map(timesVisiveis.map((time, indice) => [time.id, (membrosPorTime[indice]?.data ?? []).filter((membro) => membro.ativo)]));
   const usuarioNome = (id: string) => nomesUsuarios.get(id) ?? id;
+  // Times da página: o resultado do `useQueries`. Os demais (só em "Todos os itens"): o cache preenchido por `buscarTimesParaExportar`.
+  const membrosDaPagina = new Map(timesVisiveis.map((time, indice) => [time.id, membrosPorTime[indice]?.data]));
+  const integrantesDoTime = (time: Time) => (membrosDaPagina.get(time.id) ?? client.getQueryData<TimeMembro[]>(["time-membros", time.id]) ?? [])
+    .filter((membro) => membro.ativo).map((membro) => usuarioNome(membro.usuario_id));
+  const rotuloSetor = (time: Time) => time.setor_nome ?? nomesSetores.get(time.setor_id) ?? time.setor_id;
+  const rotuloStatus = (time: Time) => time.ativo ? t("active") : t("inactive");
+  async function buscarTimesParaExportar() {
+    const todos = await buscarTodasAsPaginas((page, pageSize) => timesApi.listar(page, pageSize, filtros));
+    // Reaproveita o que a tela acabou de buscar; o que estiver velho ou invalidado é buscado de novo.
+    if (podeGerenciarMembros) await Promise.all(todos.map((time) => client.fetchQuery({ staleTime: CACHE_EXPORTACAO_MS, queryKey: ["time-membros", time.id], queryFn: () => timesApi.membros(time.id) })));
+    return todos;
+  }
   const podeGerenciarTime = (time: Time) => admin ||
     (ehGerenteComEscopo && perfil.setores_gerenciados.includes(time.setor_id)) ||
     (perfil.perfil_codigo === "KP" && perfil.permissoes.includes("times.gerenciar") && perfil.times.some((item) => item.id === time.id));
@@ -82,14 +94,15 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
   }
 
   const colunas: DataTableColumn<Time>[] = [
-    { id: "nome", isRowHeader: true, header: <DataTableFilter label={t("teams")} value={filtros.busca ?? ""} onChange={(value) => alterarFiltro({ busca: value || undefined })} placeholder={t("searchTeam")} />, cell: (time) => time.nome },
-    { id: "setor", header: <DataTableFilter label={t("sector")} value={filtros.setor_id ?? ""} onChange={(value) => alterarFiltro({ setor_id: value || undefined })} options={[{ value: "", label: t("all") }, ...(setores.data?.items ?? []).map((setor) => ({ value: setor.id, label: setor.nome }))]} />, cell: (time) => time.setor_nome ?? nomesSetores.get(time.setor_id) ?? time.setor_id },
+    { id: "nome", isRowHeader: true, header: <DataTableFilter label={t("teams")} value={filtros.busca ?? ""} onChange={(value) => alterarFiltro({ busca: value || undefined })} placeholder={t("searchTeam")} />, cell: (time) => time.nome, exportar: { titulo: t("teams"), valor: (time) => time.nome } },
+    { id: "setor", header: <DataTableFilter label={t("sector")} value={filtros.setor_id ?? ""} onChange={(value) => alterarFiltro({ setor_id: value || undefined })} options={[{ value: "", label: t("all") }, ...(setores.data?.items ?? []).map((setor) => ({ value: setor.id, label: setor.nome }))]} />, cell: rotuloSetor, exportar: { titulo: t("sector"), valor: rotuloSetor } },
     ...(podeGerenciarMembros ? [{
       id: "membros",
       header: t("members"),
       className: "text-end",
+      exportar: { titulo: t("members"), valor: (time: Time) => integrantesDoTime(time).join(", ") },
       cell: (time: Time) => {
-        const integrantes = (integrantesPorTime.get(time.id) ?? []).map((membro) => usuarioNome(membro.usuario_id));
+        const integrantes = integrantesDoTime(time);
         return (
           <Tooltip delay={300} closeDelay={0}>
             <Button variant="ghost" aria-label={t("teamMembersCount", { count: integrantes.length })} className="h-7 min-h-0 gap-1.5 rounded-lg px-1.5 text-[14px] text-body">
@@ -102,7 +115,7 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
         );
       },
     }] : []),
-    { id: "status", header: <DataTableFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => alterarFiltro({ ativo: value === "" ? undefined : value === "true" })} options={[{ value: "", label: t("all") }, { value: "true", label: t("active") }, { value: "false", label: t("inactive") }]} />, cell: (time) => <TagChip tom={time.ativo ? TONS_ETIQUETA.ativo : TONS_ETIQUETA.neutro}>{time.ativo ? t("active") : t("inactive")}</TagChip> },
+    { id: "status", header: <DataTableFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => alterarFiltro({ ativo: value === "" ? undefined : value === "true" })} options={[{ value: "", label: t("all") }, { value: "true", label: t("active") }, { value: "false", label: t("inactive") }]} />, cell: (time) => <TagChip tom={time.ativo ? TONS_ETIQUETA.ativo : TONS_ETIQUETA.neutro}>{rotuloStatus(time)}</TagChip>, exportar: { titulo: t("status"), valor: rotuloStatus } },
     ...(podeVisualizarDetalhe ? [{ id: "acoes", header: t("actions"), className: "w-px whitespace-nowrap", cell: (time: Time) => <RowActions identificador={time.nome} actions={acoesDoTime(time)} /> }] : []),
   ];
 
@@ -128,6 +141,7 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
       items={timesVisiveis}
       state={estado}
       pagination={<DataTablePagination page={pagina} pageSize={tamanho} totalCount={times.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(n) => { setTamanho(n); setPagina(1); }} />}
+      exportacao={{ listagem: "times", todosOsItens: buscarTimesParaExportar }}
     />
     <NovoTimeDrawer isOpen={criarAberto} onOpenChange={setCriarAberto} setoresAtivos={setoresAtivos} setorUnico={setorUnicoGerenciado} carregandoSetores={!admin && ehGerenteComEscopo && setores.isLoading} />
     <SideDrawer isOpen={Boolean(timeAtual)} onOpenChange={(open) => { if (!open) setTimeAtual(null); }} title={timeAtual ? t("memberTitle", { name: timeAtual.nome }) : t("members")} subtitle={t("teamMembersCount", { count: membrosAtivos.length })}>

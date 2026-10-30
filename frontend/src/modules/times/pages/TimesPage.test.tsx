@@ -1,16 +1,18 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PerfilAtual } from "@/core/auth/api";
+import { baixarPlanilha, montarPlanilha } from "@/shared/lib/exportar-planilha";
 import { TimesPage } from "./TimesPage";
 
 const api = vi.hoisted(() => ({ listar: vi.fn(), membros: vi.fn(), usuariosDisponiveis: vi.fn() }));
 const setoresApi = vi.hoisted(() => ({ listar: vi.fn() }));
 vi.mock("../api/times.api", () => ({ timesApi: api }));
 vi.mock("@/modules/setores/api/setores.api", () => ({ setoresApi }));
+vi.mock("@/shared/lib/exportar-planilha");
 
 const time = { id: "time-1", setor_id: "setor-b", nome: "Produto", gerente_id: null, ativo: true };
 const gerente: PerfilAtual = {
@@ -73,5 +75,25 @@ describe("TimesPage", () => {
     renderPage(gerente);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not load teams. Try again.");
+  });
+
+  it("admin exporta todos com os filtros e os nomes dos membros, sem a coluna de ações", async () => {
+    const suporte = { id: "time-2", setor_id: "setor-b", setor_nome: "Engenharia", nome: "Suporte", gerente_id: null, ativo: false };
+    api.listar.mockImplementation(async (page: number, pageSize: number) => ({ items: pageSize === 100 ? [time, suporte] : [time], page, page_size: pageSize, total_count: 2 }));
+    api.membros.mockImplementation(async (id: string) => id === "time-2" ? [{ id: "m1", time_id: "time-2", usuario_id: "u-ana", ativo: true }, { id: "m2", time_id: "time-2", usuario_id: "u-bia", ativo: false }] : []);
+    api.usuariosDisponiveis.mockResolvedValue([{ id: "u-ana", nome: "Ana" }, { id: "u-bia", nome: "Bia" }]);
+    const user = userEvent.setup();
+    renderPage({ ...gerente, perfil_codigo: "ADMIN_UNIDADE", perfil: "Admin", permissoes: ["times.consultar", "times.gerenciar"] });
+
+    await screen.findByRole("button", { name: "View team Produto" });
+    await user.click(screen.getByRole("button", { name: "Export" }));
+    await user.click(await screen.findByRole("menuitem", { name: "All items" }));
+
+    await waitFor(() => expect(baixarPlanilha).toHaveBeenCalledWith(expect.any(ArrayBuffer), expect.stringMatching(/^times_/)));
+    expect(api.listar).toHaveBeenCalledWith(1, 100, {});
+    const [colunas, itens] = vi.mocked(montarPlanilha).mock.calls[0];
+    expect(colunas.map((coluna) => coluna.titulo)).toEqual(["Teams", "Sector", "Members", "Status"]);
+    expect(itens).toEqual([time, suporte]);
+    expect(colunas.map((coluna) => coluna.valor(suporte))).toEqual(["Suporte", "Engenharia", "Ana", "Inactive"]);
   });
 });

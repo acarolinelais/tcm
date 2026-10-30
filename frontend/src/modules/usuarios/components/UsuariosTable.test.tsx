@@ -3,6 +3,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { baixarPlanilha, montarPlanilha } from "@/shared/lib/exportar-planilha";
+import { usuarioApi } from "../api/usuario.api";
 import { UsuariosTable } from "./UsuariosTable";
 
 const apiMocks = vi.hoisted(() => ({ useUsuariosList: vi.fn(), listarPerfis: vi.fn(), ativar: vi.fn(), inativar: vi.fn() }));
@@ -13,6 +15,7 @@ vi.mock("../hooks/useUsuarios", () => ({
   useAtribuirResponsavel: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 vi.mock("@/modules/perfis/api/perfis.api", () => ({ listarPerfis: apiMocks.listarPerfis }));
+vi.mock("@/shared/lib/exportar-planilha");
 
 function renderTable(props: Partial<React.ComponentProps<typeof UsuariosTable>> = {}) {
   const client = new QueryClient();
@@ -164,5 +167,30 @@ describe("UsuariosTable", () => {
     renderTable();
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not load users. Try again.");
+  });
+
+  it("exportar todos busca as páginas com os filtros aplicados e leva as colunas sem a de ações", async () => {
+    const todos = Array.from({ length: 3 }, (_, i) => ({ id: `t${i}`, nome: `Todos ${i}`, email: `t${i}@example.com`, ativo: false, perfil_id: "custom", created_at: "2026-01-01T00:00:00Z" }));
+    const listar = vi.spyOn(usuarioApi, "listar").mockResolvedValue({ items: todos, page: 1, page_size: 100, total_count: 3 });
+    renderTable({ filtros: { ativo: false }, podeGerenciar: true });
+    const user = userEvent.setup();
+
+    await screen.findByText("Usuário 0");
+    await user.click(screen.getByRole("button", { name: "Export" }));
+    await user.click(await screen.findByRole("menuitem", { name: "All items" }));
+
+    await vi.waitFor(() => expect(baixarPlanilha).toHaveBeenCalledWith(expect.any(ArrayBuffer), expect.stringMatching(/^usuarios_/)));
+    expect(listar).toHaveBeenCalledWith(1, 100, { ativo: false });
+    const [colunas, itens] = vi.mocked(montarPlanilha).mock.calls[0];
+    expect(colunas.map((coluna) => coluna.titulo)).toEqual(["User", "Email", "Status"]);
+    expect(itens).toEqual(todos);
+    expect(colunas[2].valor(todos[0])).toBe("Inactive");
+  });
+
+  it("sem usuários, o botão Exportar fica desabilitado", async () => {
+    apiMocks.useUsuariosList.mockReturnValue({ data: { items: [], page: 1, page_size: 20, total_count: 0 }, isLoading: false });
+    renderTable();
+
+    expect(await screen.findByRole("button", { name: "Export" })).toBeDisabled();
   });
 });

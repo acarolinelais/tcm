@@ -6,6 +6,7 @@ import { Pencil, Plus, Power, PowerOff, Smartphone } from "lucide-react";
 
 import type { PerfilAtual } from "@/core/auth/api";
 import { formatDate } from "@/core/i18n/format";
+import { buscarTodasAsPaginas } from "@/shared/lib/exportar-planilha";
 import { comOpcaoTodos } from "@/shared/lib/opcoes";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { toast } from "@/shared/lib/toast";
@@ -19,6 +20,7 @@ import { RowActions, type RowAction } from "@/shared/ui/row-action-button";
 import { rowActionIconProps } from "@/shared/ui/row-action-icon";
 import { TONS_ETIQUETA, TagChip } from "@/shared/ui/tag-chip";
 
+import { modelosDispositivoApi } from "../api/modelos-dispositivo.api";
 import { ModeloDispositivoDrawer } from "../components/ModeloDispositivoDrawer";
 import { useDefinirAtivoModeloDispositivo, useModelosDispositivoList } from "../hooks/useModelosDispositivo";
 import type { ModeloDispositivo, ModeloDispositivoFiltros } from "../model/modelo-dispositivo";
@@ -63,12 +65,13 @@ export function ModelosDispositivoPage() {
       ? { label: t("inactivate"), icon: <PowerOff {...rowActionIconProps} />, destructive: true, onPress: () => setParaInativar(modelo) }
       : { label: t("activate"), icon: <Power {...rowActionIconProps} />, disabled: definirAtivo.isPending, onPress: () => alterarAtivo(modelo, true) },
   ];
+  const rotuloStatus = (modelo: ModeloDispositivo) => modelo.ativo ? t("active") : t("inactive");
   const colunas: DataTableColumn<ModeloDispositivo>[] = [
-    { id: "nome", isRowHeader: true, header: <DataTableFilter label={t("deviceModelName")} value={filtros.busca ?? ""} placeholder={t("searchDeviceModel")} onChange={(value) => filtrar({ busca: value || undefined })} />, cell: (modelo) => modelo.nome },
-    { id: "descricao", header: t("description"), cell: (modelo) => modelo.descricao ?? "—" },
-    { id: "status", header: <DataTableFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => filtrar({ ativo: value === "" ? undefined : value === "true" })} options={comOpcaoTodos(t("all"), [{ value: "true", label: t("active") }, { value: "false", label: t("inactive") }])} />, cell: (modelo) => <TagChip tom={modelo.ativo ? TONS_ETIQUETA.ativo : TONS_ETIQUETA.neutro}>{modelo.ativo ? t("active") : t("inactive")}</TagChip> },
-    { id: "criadoEm", header: t("createdAt"), className: "tabular-nums", cell: (modelo) => formatarData(modelo.created_at) },
-    { id: "atualizadoEm", header: t("updatedAt"), className: "tabular-nums", cell: (modelo) => formatarData(modelo.updated_at) },
+    { id: "nome", isRowHeader: true, header: <DataTableFilter label={t("deviceModelName")} value={filtros.busca ?? ""} placeholder={t("searchDeviceModel")} onChange={(value) => filtrar({ busca: value || undefined })} />, cell: (modelo) => modelo.nome, exportar: { titulo: t("deviceModelName"), valor: (modelo) => modelo.nome } },
+    { id: "descricao", header: t("description"), cell: (modelo) => modelo.descricao ?? "—", exportar: { titulo: t("description"), valor: (modelo) => modelo.descricao ?? "—" } },
+    { id: "status", header: <DataTableFilter label={t("status")} value={filtros.ativo === undefined ? "" : String(filtros.ativo)} onChange={(value) => filtrar({ ativo: value === "" ? undefined : value === "true" })} options={comOpcaoTodos(t("all"), [{ value: "true", label: t("active") }, { value: "false", label: t("inactive") }])} />, cell: (modelo) => <TagChip tom={modelo.ativo ? TONS_ETIQUETA.ativo : TONS_ETIQUETA.neutro}>{rotuloStatus(modelo)}</TagChip>, exportar: { titulo: t("status"), valor: rotuloStatus } },
+    { id: "criadoEm", header: t("createdAt"), className: "tabular-nums", cell: (modelo) => formatarData(modelo.created_at), exportar: { titulo: t("createdAt"), valor: (modelo) => formatarData(modelo.created_at) } },
+    { id: "atualizadoEm", header: t("updatedAt"), className: "tabular-nums", cell: (modelo) => formatarData(modelo.updated_at), exportar: { titulo: t("updatedAt"), valor: (modelo) => formatarData(modelo.updated_at) } },
     { id: "acoes", header: t("actions"), className: "w-px whitespace-nowrap", cell: (modelo) => <RowActions identificador={modelo.nome} actions={acoesDoModelo(modelo)} /> },
   ];
   const estado = estadoDaTabela({
@@ -95,6 +98,7 @@ export function ModelosDispositivoPage() {
       items={itens}
       state={estado}
       pagination={<DataTablePagination page={pagina} pageSize={tamanho} totalCount={modelos.data?.total_count ?? 0} onPageChange={setPagina} onPageSizeChange={(n) => { setTamanho(n); setPagina(1); }} />}
+      exportacao={{ listagem: "modelos-dispositivo", todosOsItens: () => buscarTodasAsPaginas((page, pageSize) => modelosDispositivoApi.listar(page, pageSize, filtros)) }}
       rowDependencies={[t, definirAtivo.isPending]}
     />
     <ModeloDispositivoDrawer modelo={emEdicao} onFechar={() => setEmEdicao(undefined)} onSalvo={() => { setEmEdicao(undefined); toast.success(t("deviceModelSaved")); }} />
