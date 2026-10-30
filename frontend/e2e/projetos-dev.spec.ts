@@ -59,7 +59,15 @@ test("múltiplos: troca pelo dropdown e recupera perda da associação", async (
   await page.getByRole("menuitemradio", { name: "Clock 9.5" }).click();
   await expect(page.getByRole("row", { name: /Clock_001/ })).toBeVisible();
   await expect(page.getByText("Gallery_001")).toHaveCount(0);
+  // A transferência troca os papéis: o dev vira o backup e continua ligado ao caso, então fica no projeto.
   await page.getByRole("button", { name: "Transfer to backup Clock_001" }).click();
+  await expect(page).toHaveURL(new RegExp(`/projetos/${primeiro.id}$`));
+  await expect(page.getByRole("row", { name: /Clock_001/ })).toBeVisible();
+  // A gestão reatribui o caso a outras pessoas: sem vínculo no Clock, o dev vai para o projeto que ainda tem.
+  const [clock] = (await (await request.get(`${api}/api/projetos/${primeiro.id}/test-cases`, { headers: { Authorization: `Bearer ${dados.admin.access_token}` } })).json()).items;
+  const reatribuido = await request.put(`${api}/api/test-cases/${clock.id}`, { data: { responsavel_id: dados.usuarios[1].id, backup_id: dados.usuarios[2].id }, headers: { Authorization: `Bearer ${dados.admin.access_token}` } });
+  expect(reatribuido.ok()).toBeTruthy();
+  await page.reload();
   await expect(page).toHaveURL(new RegExp(`/projetos/${segundo.id}$`));
   await expect(page.getByRole("row", { name: /Gallery_001/ })).toBeVisible();
 });
