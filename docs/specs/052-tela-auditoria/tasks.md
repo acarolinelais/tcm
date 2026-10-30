@@ -1,4 +1,4 @@
-# 050. Tela de auditoria: Tasks
+# 052. Tela de auditoria: Tasks
 
 - **Spec:** [spec.md](spec.md) · **Plan:** [plan.md](plan.md)
 
@@ -94,7 +94,7 @@
     - exportar todos usa os filtros.
   - Verificação: `cd frontend && npx vitest run src/modules/auditoria src/core/layout && npm run lint` → verde
 - [ ] **T06. E2E e fechamento**
-  - Arquivos: `frontend/e2e/auditoria.spec.ts` (novo), `docs/specs/050-tela-auditoria/spec.md`,
+  - Arquivos: `frontend/e2e/auditoria.spec.ts` (novo), `docs/specs/052-tela-auditoria/spec.md`,
     `docs/specs/README.md`
   - Cobre: CA-01, CA-02, CA-03 (navegador)
   - Detalhe: com a API simulada por `page.route`, o admin abre Administration › Auditoria, filtra por usuário
