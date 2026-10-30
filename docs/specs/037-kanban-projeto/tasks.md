@@ -225,3 +225,10 @@
   "Completed ou Canceled" cada um do seu jeito. Um `projetoEncerrado` em `model/projeto.ts` serviria aos dois.
 - **Campo de busca repetido** (simplify da fase 8): o `SearchField` do Board é a terceira cópia (as outras em
   `multi-select-combobox.tsx` e `data-table-filter.tsx`). Um `shared/ui/campo-busca.tsx` serviria a todas.
+- **Board sem checagem de permissão no frontend** (code-review do fechamento, 2026-10-30): `BoardKanbanPage`
+  monta o `KanbanBoard` sem olhar `test_cases.consultar`. A API já recusa com 403, então nada vaza, mas quem não
+  tem a permissão vê o erro com "Tentar novamente" em vez de "sem permissão". Vale para o link direto ao Board e
+  para o link antigo `?aba=kanban`.
+- **e2e do Kanban não limpa o que cria** (2026-10-30): `projetos-kanban.spec.ts` cria projetos "Kanban <id>" e
+  "Fora" na API local e não os inativa. Depois de várias rodadas, eles enchem as telas que listam projetos (a
+  General Results mostrava 52). Inativar no fim do teste, ou usar uma unidade só do e2e, resolve.
