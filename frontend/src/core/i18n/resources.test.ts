@@ -118,7 +118,7 @@ describe("translation resources", () => {
   });
 
   it("has the General Results texts (spec 032) in every language", () => {
-    const chaves = ["sdfResult", "resultOriginImported", "resultOriginManual", "executionSummary", "testerId", "device", "formFactorOfCase", "resultChipLabel", "noRunLabel", "generalResultsSearch", "generalResultsProjects", "noAccessibleProjects", "noProjectCases", "noCaseRuns", "dayOrWeek"] as const;
+    const chaves = ["sdfResult", "resultOriginImported", "resultOriginManual", "executionSummary", "testerId", "device", "formFactorOfCase", "resultChipLabel", "noRunLabel", "generalResultsSearch", "noAccessibleProjects", "noProjectCases", "noCaseRuns", "dayOrWeek"] as const;
     for (const language of ["en", "pt-BR", "ko"] as const) {
       for (const key of chaves) expect(resources[language].translation[key], `${language} ${key}`).toBeTruthy();
       expect(resources[language].translation.sdfResult).toBe("SDF Result");

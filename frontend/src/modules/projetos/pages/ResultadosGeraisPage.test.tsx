@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
+import { MemoryRouter, Outlet, Route, Routes, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PerfilAtual } from "@/core/auth/api";
@@ -46,13 +46,21 @@ const resumo: ResumoExecucoes = {
   resultados: { [DIA]: { s26: [{ ...resultado("e0", "FAIL"), data_reportada: `${DIA}T09:00:00Z` }, { ...resultado("e1", "PASS", "MANUAL"), data_reportada: `${DIA}T15:00:00Z` }] } },
 };
 
-function renderPage(currentProfile: PerfilAtual = perfil) {
-  const router = createMemoryRouter([{
-    path: "/",
-    element: <><Outlet context={currentProfile} /></>,
-    children: [{ index: true, element: <ResultadosGeraisPage /> }],
-  }], { initialEntries: ["/"] });
-  return render(<RouterProvider router={router} />);
+/** Mostra o endereço atual, para conferir o `?projeto=` gravado pela tela. */
+function Endereco() {
+  return <p data-testid="endereco">{useLocation().search}</p>;
+}
+
+function renderPage(currentProfile: PerfilAtual = perfil, url = "/") {
+  function Contexto() { return <Outlet context={currentProfile} />; }
+  // MemoryRouter declarativo: o createMemoryRouter navega com um Request que o jsdom rejeita.
+  return render(<MemoryRouter initialEntries={[url]}><Routes><Route path="/" element={<Contexto />}><Route index element={<><ResultadosGeraisPage /><Endereco /></>} /></Route></Routes></MemoryRouter>);
+}
+
+/** Troca de projeto pelo seletor do título (spec 053). */
+async function trocarProjeto(user: ReturnType<typeof userEvent.setup>, atual: string, destino: string) {
+  await user.click(screen.getByRole("button", { name: atual }));
+  await user.click(await screen.findByRole("menuitemradio", { name: destino }));
 }
 
 /** Filtros enviados ao hook: os da tela mais a página (spec 033). */
@@ -68,20 +76,61 @@ describe("ResultadosGeraisPage", () => {
     vi.mocked(useResumoExecucoes).mockImplementation((casoId) => ({ data: casoId ? resumo : undefined, isLoading: false, isError: false, refetch: vi.fn() }) as never);
   });
 
-  it("mostra uma aba com o nome de cada projeto, abre a primeira e consulta o projeto da aba (CA-01)", async () => {
+  it("abre o primeiro projeto com o nome no título e troca pelo seletor, gravando o projeto no endereço (spec 053, CA-02)", async () => {
     const user = userEvent.setup();
     renderPage();
 
-    expect(screen.getByRole("tab", { name: "Clock 9.5" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tab", { name: "Gallery 9.5" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Clock 9.5");
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
     expect(screen.getAllByRole("row")).toHaveLength(3);
     expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina(), perfil);
 
-    await user.click(screen.getByRole("tab", { name: "Gallery 9.5" }));
+    await trocarProjeto(user, "Clock 9.5", "Gallery 9.5");
+    expect(useHistoricoProjeto).toHaveBeenLastCalledWith("gallery", comPagina(), perfil);
+    expect(screen.getByTestId("endereco")).toHaveTextContent("?projeto=gallery");
+  });
+
+  it("com 40 projetos, mostra só o primeiro no título, sem abas, e a busca acha os outros (spec 053, CA-01)", async () => {
+    const user = userEvent.setup();
+    const muitos = Array.from({ length: 40 }, (_, i) => ({ id: `p${i}`, nome: `Projeto ${String(i).padStart(2, "0")}` }));
+    vi.mocked(useProjetosSeletor).mockReturnValue({ data: { pages: [{ items: muitos, page: 1, page_size: 100, total_count: 40 }] }, isError: false, isLoading: false } as never);
+    renderPage();
+
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    expect(screen.queryByText("Projeto 39")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Projeto 00" }));
+    await user.type(await screen.findByRole("searchbox", { name: "Search project" }), "39");
+    await user.click(screen.getByRole("menuitemradio", { name: "Projeto 39" }));
+    expect(useHistoricoProjeto).toHaveBeenLastCalledWith("p39", comPagina(), perfil);
+  });
+
+  it("o projeto do endereço abre direto (spec 053, CA-04)", () => {
+    renderPage(perfil, "/?projeto=gallery");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Gallery 9.5");
     expect(useHistoricoProjeto).toHaveBeenLastCalledWith("gallery", comPagina(), perfil);
   });
 
-  it("abre cada linha no modelo padrão e guarda a escolha de cada linha, esquecida ao trocar de aba (CA-05, CA-06)", async () => {
+  it("um projeto do endereço fora da lista abre o primeiro, sem consultar o id do link (spec 053, CA-05)", () => {
+    renderPage(perfil, "/?projeto=outra-unidade");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Clock 9.5");
+    expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina(), perfil);
+    expect(vi.mocked(useHistoricoProjeto).mock.calls.map(([id]) => id)).not.toContain("outra-unidade");
+  });
+
+  it("com páginas de projetos ainda por carregar, o link espera em vez de abrir o primeiro (spec 053, CA-04)", () => {
+    vi.mocked(useProjetosSeletor).mockReturnValue({ data: { pages: [{ items: projetos, page: 1, page_size: 100, total_count: 150 }] }, isError: false, isLoading: false, hasNextPage: true, isFetchingNextPage: true, fetchNextPage: vi.fn() } as never);
+    renderPage(perfil, "/?projeto=projeto-da-pagina-2");
+    expect(vi.mocked(useHistoricoProjeto).mock.calls.map(([id]) => id)).not.toContain("clock");
+  });
+
+  it("com um projeto só, o título não abre seletor (spec 053, CA-07)", () => {
+    vi.mocked(useProjetosSeletor).mockReturnValue({ data: { pages: [{ items: [projetos[0]], page: 1, page_size: 100, total_count: 1 }] }, isError: false, isLoading: false } as never);
+    renderPage();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Clock 9.5");
+    expect(screen.queryByRole("button", { name: "Clock 9.5" })).not.toBeInTheDocument();
+  });
+
+  it("abre cada linha no modelo padrão e guarda a escolha de cada linha, esquecida ao trocar de projeto (CA-05, CA-06)", async () => {
     const user = userEvent.setup();
     renderPage();
     const chamadas = vi.mocked(useHistoricoProjeto).mock.calls.length;
@@ -96,8 +145,8 @@ describe("ResultadosGeraisPage", () => {
     expect(within(linha("Clock_002")).getByRole("button", { name: `PASS on SM-S27, ${formatarDia(DIA)}` })).toBeInTheDocument();
     for (const [projetoId, filtros] of vi.mocked(useHistoricoProjeto).mock.calls.slice(chamadas)) expect([projetoId, filtros]).toEqual(["clock", comPagina()]);
 
-    await user.click(screen.getByRole("tab", { name: "Gallery 9.5" }));
-    await user.click(screen.getByRole("tab", { name: "Clock 9.5" }));
+    await trocarProjeto(user, "Clock 9.5", "Gallery 9.5");
+    await trocarProjeto(user, "Gallery 9.5", "Clock 9.5");
     expect(within(linha("Clock_001")).getByRole("button", { name: "Form Factor Clock_001" })).toHaveTextContent("SM-S27");
   });
 
@@ -121,7 +170,7 @@ describe("ResultadosGeraisPage", () => {
     await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina({ busca: "s26", tcId: "001", modeloDispositivoId: "s27" }), perfil));
   });
 
-  it("pagina os casos; filtro, tamanho e aba voltam à página 1 e a escolha da linha sobrevive à troca de página (spec 033)", async () => {
+  it("pagina os casos; filtro, tamanho e projeto voltam à página 1 e a escolha da linha sobrevive à troca de página (spec 033)", async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -141,9 +190,9 @@ describe("ResultadosGeraisPage", () => {
     await user.type(await screen.findByRole("searchbox", { name: "TC ID" }), "001{Enter}");
     await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina({ tcId: "001" }), perfil));
 
-    // CA-05: a outra aba abre na página 1.
+    // CA-05 (e spec 053, CA-06): o outro projeto abre sem filtros, na página 1.
     await user.click(screen.getByRole("button", { name: "Page 2" }));
-    await user.click(screen.getByRole("tab", { name: "Gallery 9.5" }));
+    await trocarProjeto(user, "Clock 9.5", "Gallery 9.5");
     expect(useHistoricoProjeto).toHaveBeenLastCalledWith("gallery", comPagina(), perfil);
 
     // CA-04: trocar o tamanho também.
@@ -233,7 +282,7 @@ describe("ResultadosGeraisPage", () => {
     vi.mocked(useProjetosSeletor).mockReturnValue({ data: { pages: [{ items: [], page: 1, page_size: 100, total_count: 0 }] }, isError: false, isLoading: false } as never);
     const { unmount } = renderPage();
     expect(screen.getByText("No projects to show")).toBeInTheDocument();
-    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("General Results");
     unmount();
 
     renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO" });

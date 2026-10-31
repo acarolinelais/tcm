@@ -180,7 +180,7 @@ export function useHistoricoProjeto(projetoId: string, filtros: FiltrosHistorico
     queryKey: ["form-factor", "historico", projetoId, filtros, perfil?.unidade_id, perfil?.id],
     queryFn: () => formFactorApi.historicoProjeto(projetoId, filtros),
     enabled: Boolean(projetoId),
-    // Troca de página ou filtro mantém a tabela até a resposta chegar; outra aba ou outro perfil não herda os dados.
+    // Troca de página ou filtro mantém a tabela até a resposta chegar; outro projeto ou outro perfil não herda os dados.
     placeholderData: (anterior, consultaAnterior) => {
       const [, , projeto, , unidadeId, usuarioId] = consultaAnterior?.queryKey ?? [];
       return projeto === projetoId && unidadeId === perfil?.unidade_id && usuarioId === perfil?.id ? anterior : undefined;
