@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { managerId, project, setupProjectSession } from "./projetos-fixtures";
 
-/** Specs 032 e 033: Resultados Gerais por projeto, paginados, com a API simulada. */
+/** Specs 032, 033 e 053: Resultados Gerais por projeto, paginados, com a API simulada. */
 const gallery = { ...project, id: "project-2", nome: "Gallery 9.5", app: "Gallery" };
 const modelos = [{ id: "s26", nome: "S26 Ultra" }, { id: "s27", nome: "S27 Ultra" }];
 const DIAS = ["2026-10-10", "2026-10-09", "2026-10-08", "2026-10-07", "2026-10-06", "2026-10-05", "2026-10-04"];
@@ -30,10 +30,10 @@ function historico(params: URLSearchParams) {
   return { modelos, datas, modelo_destacado_id: null, items: casos.slice(primeiro, primeiro + tamanho), page: pagina, page_size: tamanho, total_count: TOTAL_CASOS };
 }
 
-async function rotas(page: Page) {
+async function rotas(page: Page, projetos: object[] = [project, gallery]) {
   const consultas: string[] = [];
   const paginas: string[] = [];
-  await page.route("**/api/projetos?*", (route) => route.fulfill({ json: { items: [project, gallery], page: 1, page_size: 100, total_count: 2 } }));
+  await page.route("**/api/projetos?*", (route) => route.fulfill({ json: { items: projetos, page: 1, page_size: 100, total_count: projetos.length } }));
   await page.route("**/api/form-factor/general/projetos/*/historico?*", (route) => {
     const url = new URL(route.request().url());
     consultas.push(`${url.pathname.split("/")[5]}?${url.searchParams.get("semana") ?? ""}`);
@@ -48,12 +48,18 @@ async function rotas(page: Page) {
   return { consultas, paginas };
 }
 
-test("troca de aba e de modelo, abre o resultado e o resumo e filtra por semana", async ({ page }) => {
+/** Abre o seletor de projeto do título e digita na busca (spec 053). */
+async function buscarProjeto(page: Page, atual: string, termo: string) {
+  await page.getByRole("button", { name: atual }).click();
+  await page.getByRole("searchbox", { name: "Buscar projeto" }).fill(termo);
+}
+
+test("troca de projeto e de modelo, abre o resultado e o resumo e filtra por semana", async ({ page }) => {
   await setupProjectSession(page);
   const { consultas } = await rotas(page);
   await page.goto("/resultados-gerais");
 
-  await expect(page.getByRole("tab", { name: "Clock 9.5" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Clock 9.5");
   const linha = page.getByRole("row", { name: /Clock_001/ });
   await expect(linha.getByRole("button", { name: "PASS no S27 Ultra, 10/10/2026" })).toBeVisible();
   await expect(page.getByRole("columnheader")).toHaveCount(2 + 7 + 1);
@@ -83,15 +89,52 @@ test("troca de aba e de modelo, abre o resultado e o resumo e filtra por semana"
   await page.keyboard.press("Escape");
   await expect(painel).toBeHidden();
 
-  // Outra aba consulta o outro projeto.
-  await page.getByRole("tab", { name: "Gallery 9.5" }).click();
+  // O seletor do título busca e troca de projeto (spec 053), e o projeto fica no endereço.
+  await buscarProjeto(page, "Clock 9.5", "gal");
+  await page.getByRole("menuitemradio", { name: "Gallery 9.5" }).click();
   await expect.poll(() => consultas.at(-1)).toBe(`${gallery.id}?`);
+  await expect(page).toHaveURL(/\?projeto=project-2$/);
 
   // Calendário: escolher uma semana consulta só o período.
   await page.getByRole("button", { name: /^Dia ou semana: / }).click();
   await page.getByRole("button", { name: /^Semana \d+, \d{4}$/ }).first().click();
   await expect.poll(() => consultas.at(-1)).toMatch(new RegExp(`^${gallery.id}\\?\\d{4}-W\\d{2}$`));
   await expect(page.getByRole("columnheader")).toHaveCount(2 + 1 + 1);
+
+  // Recarregar mantém o projeto escolhido.
+  await page.reload();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Gallery 9.5");
+});
+
+test("com 40 projetos, a tela não passa da borda, a busca acha o último e avisa quando não acha nada (spec 053, CA-01, CA-03)", async ({ page }) => {
+  await setupProjectSession(page);
+  const muitos = Array.from({ length: 40 }, (_, i) => ({
+    ...project, id: `projeto-${i}`, nome: `Projeto com nome comprido ${String(i).padStart(2, "0")}`,
+  }));
+  const { consultas } = await rotas(page, muitos);
+  await page.goto("/resultados-gerais");
+
+  const titulo = page.getByRole("heading", { level: 1 });
+  await expect(titulo).toHaveText(muitos[0].nome);
+  await expect(page.getByRole("tab")).toHaveCount(0);
+  // O layout corta o que sobra (overflow-hidden), então a borda é medida no próprio cabeçalho da tela.
+  await expect(titulo).toBeInViewport();
+  expect(await titulo.locator("xpath=ancestor::header[1]").evaluate((cabecalho) => cabecalho.scrollWidth <= cabecalho.clientWidth)).toBe(true);
+
+  await buscarProjeto(page, muitos[0].nome, "39");
+  await page.getByRole("menuitemradio", { name: muitos[39].nome }).click();
+  await expect.poll(() => consultas.at(-1)).toBe("projeto-39?");
+
+  // Busca sem resultado: aviso, nenhuma consulta nova e o mesmo projeto aberto.
+  const antes = consultas.length;
+  await buscarProjeto(page, muitos[39].nome, "inexistente");
+  await expect(page.getByText("Nenhum projeto encontrado")).toBeVisible();
+  // O primeiro Escape limpa a busca; o segundo fecha o menu.
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("searchbox", { name: "Buscar projeto" })).toBeHidden();
+  expect(consultas.length).toBe(antes);
+  await expect(titulo).toHaveText(muitos[39].nome);
 });
 
 test("numa janela estreita, TC ID e Form Factor continuam visíveis ao rolar para os lados", async ({ page }) => {
