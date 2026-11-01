@@ -63,6 +63,26 @@ describe("MultiSelectCombobox", () => {
     expect(etiqueta).toHaveTextContent(/^SM-9292$/);
   });
 
+  it("mostra o ícone antes do rótulo, fora do nome acessível da opção", async () => {
+    const user = userEvent.setup();
+    render(<MultiSelectCombobox label="Pessoas" placeholder="Todas" options={[{ value: "ana", label: "Ana", icone: <span data-testid="avatar-ana" /> }]} value={[]} onValueChange={vi.fn()} emptyLabel="Nada" removeLabel={(l) => l} />);
+
+    await user.click(screen.getByRole("button", { name: "Pessoas" }));
+
+    const opcao = await screen.findByRole("option", { name: "Ana" });
+    expect(within(opcao).getByTestId("avatar-ana")).toBeInTheDocument();
+  });
+
+  it("a busca também encontra pela descrição", async () => {
+    const user = userEvent.setup();
+    render(<Seletor />);
+
+    await abrir(user);
+    await user.type(await screen.findByRole("searchbox"), "galaxy");
+
+    expect(screen.getAllByRole("option").map((opcao) => opcao.getAttribute("data-key"))).toEqual(["sm-9292"]);
+  });
+
   it("falha: busca sem resultado mostra a mensagem e nada é escolhido", async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();

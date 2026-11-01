@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from "react";
+import { type ReactNode, useId, useRef, useState } from "react";
 import { Button, Label, ListBox, Popover, SearchField, Tag, TagGroup } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 
@@ -8,8 +8,10 @@ import { ChevronDownIcon } from "@/shared/ui/figma-icons";
 interface Option {
   value: string;
   label: string;
-  /** Texto secundário exibido depois do rótulo, só na lista de opções. Busca e etiquetas usam o `label`. */
+  /** Texto secundário exibido depois do rótulo, só na lista de opções. A busca também olha a descrição; as etiquetas usam só o `label`. */
   description?: string | null;
+  /** Decorativo, antes do rótulo na lista (ex.: o avatar da pessoa). */
+  icone?: ReactNode;
 }
 
 interface MultiSelectComboboxProps {
@@ -33,7 +35,8 @@ export function MultiSelectCombobox({ label, placeholder, options, value, onValu
   const [aberto, setAberto] = useState(false);
   const [busca, setBusca] = useState("");
   const termo = busca.trim().toLocaleLowerCase();
-  const visiveis = options.filter((opcao) => opcao.label.toLocaleLowerCase().includes(termo));
+  // A busca olha o rótulo e a descrição (ex.: TC ID e título do caso, spec 054).
+  const visiveis = options.filter((opcao) => `${opcao.label} ${opcao.description ?? ""}`.toLocaleLowerCase().includes(termo));
   // Um escolhido que saiu das opções (ex.: modelo inativado) continua com etiqueta, para poder ser removido.
   const escolhidos = value.map((item) => options.find((opcao) => opcao.value === item) ?? { value: item, label: item });
 
@@ -53,10 +56,11 @@ export function MultiSelectCombobox({ label, placeholder, options, value, onValu
         </Button>
         <Popover.Content placement="bottom start" className="w-[min(var(--trigger-width),calc(100vw-1rem))] p-1.5">
           <Popover.Dialog aria-labelledby={labelId} className="grid gap-1 outline-none">
-            <SearchField aria-label={t("searchOptions")} value={busca} onChange={setBusca} autoFocus>
-              <SearchField.Group className="h-9">
+            {/* Sem largura mínima: a lista tem a largura do botão, que pode ser estreito (spec 054). */}
+            <SearchField aria-label={t("searchOptions")} value={busca} onChange={setBusca} autoFocus className="w-full min-w-0">
+              <SearchField.Group className="h-9 w-full min-w-0">
                 <SearchField.SearchIcon />
-                <SearchField.Input placeholder={t("searchOptions")} className="text-[13px]" />
+                <SearchField.Input placeholder={t("searchOptions")} className="min-w-0 text-[13px]" />
               </SearchField.Group>
             </SearchField>
             {visiveis.length ? (
@@ -73,7 +77,8 @@ export function MultiSelectCombobox({ label, placeholder, options, value, onValu
                 {visiveis.map((opcao) => (
                   <ListBox.Item key={opcao.value} id={opcao.value} textValue={opcao.description ? `${opcao.label} ${opcao.description}` : opcao.label} className="text-[13px]">
                     {/* Sem truncar: nome e descrição longos quebram a linha. O "·" é decorativo. */}
-                    <span className="min-w-0 break-words">
+                    {opcao.icone && <span aria-hidden="true" className="shrink-0">{opcao.icone}</span>}
+                    <span className="min-w-0 flex-1 break-words">
                       {opcao.label}
                       {opcao.description && <>
                         <span aria-hidden="true" className="text-muted"> ·</span>{" "}

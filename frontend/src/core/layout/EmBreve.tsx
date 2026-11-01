@@ -2,22 +2,10 @@ import { ArrowLeft, Construction } from "lucide-react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 
-import codeReview from "@/shared/assets/figma/icons/undraw_code-review_jdgp.svg";
-import development from "@/shared/assets/figma/icons/undraw_development_s4gv.svg";
 import underConstruction from "@/shared/assets/figma/icons/undraw_under-construction_hdrn.svg";
 
-type EmBreveProps = {
-  titulo: string;
-  ilustracao?: "board" | "timeline";
-};
-
-export function EmBreve({ titulo, ilustracao }: EmBreveProps) {
+export function EmBreve({ titulo }: { titulo: string }) {
   const { t } = useTranslation();
-  const imagem = ilustracao === "board"
-    ? codeReview
-    : ilustracao === "timeline"
-      ? development
-      : underConstruction;
 
   return (
     <section className="relative flex min-h-[min(36rem,calc(100vh_-_7rem))] items-center overflow-hidden rounded-3xl border border-edge bg-surface px-6 py-10 shadow-sm sm:px-10 lg:px-14">
@@ -39,7 +27,7 @@ export function EmBreve({ titulo, ilustracao }: EmBreveProps) {
           </Link>
         </div>
         <div className="relative flex min-h-52 items-center justify-center md:min-h-80">
-          <img src={imagem} alt="" aria-hidden="true" className="relative z-10 max-h-[22rem] w-full max-w-[34rem] object-contain dark:brightness-[.85]" />
+          <img src={underConstruction} alt="" aria-hidden="true" className="relative z-10 max-h-[22rem] w-full max-w-[34rem] object-contain dark:brightness-[.85]" />
         </div>
       </div>
     </section>
