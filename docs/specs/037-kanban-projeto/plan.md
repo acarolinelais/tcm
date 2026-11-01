@@ -150,6 +150,7 @@ Sem alteração. O Kanban lê `CasoTeste.status` (`To-Do`, `InProgress`, `InRevi
 | CA-16, CA-17, CA-18 | Vitest + e2e | Busca nos cards, entrada direta em `/board/{id}`, último projeto aberto |
 | CA-19 | Funcional + Vitest | `test_navegacao_sem_times_retorna_vazio`; o aviso "sem times" |
 | CA-20 | Funcional + e2e | `test_kanban_fora_do_escopo_retorna_404` (outro setor, outra unidade, inexistente); o e2e entra pelo link antigo `?aba=kanban` |
+| CA-21 | e2e | Arrasto segurado: origem com `opacity` 0.4, coluna que não aceita com 0.5 e a que aceita com 1 (fechamento, 2026-10-30) |
 | CA-28 | Vitest | A tela do projeto lista só as abas Test Cases e Form Factor |
 | CA-29 | Vitest | Dev sem casos com `?aba=kanban` é redirecionado ao Board; sem `aba`, vai para a entrada de Projects |
 

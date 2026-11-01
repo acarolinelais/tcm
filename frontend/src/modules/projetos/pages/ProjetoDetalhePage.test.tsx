@@ -101,9 +101,12 @@ describe("ProjetoDetalhePage", () => {
     expect(await screen.findByText("No associated projects or Test Cases")).toBeInTheDocument();
     expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
     unmount();
+    vi.clearAllMocks();
 
     renderPage(dev, undefined, "/projetos/project-1?aba=kanban");
     expect(await screen.findByText("Board /board/project-1")).toBeInTheDocument();
+    expect(projetosApi.obter).not.toHaveBeenCalled();
+    expect(casosTesteApi.listar).not.toHaveBeenCalled();
   });
 
   it("aba desconhecida no link cai na aba Test Cases", async () => {

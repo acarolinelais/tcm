@@ -1,6 +1,6 @@
 # 037. Kanban do projeto e Board por setor e time: Spec
 
-- **Status:** Em andamento
+- **Status:** Concluída
 - **Data:** 2026-10-30
 - **ADRs relacionados:** 0013, 0015, 0021, 0026, 0036, 0037
 

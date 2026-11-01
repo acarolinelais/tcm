@@ -20,8 +20,9 @@ function kanban(): KanbanProjeto {
   };
 }
 
-function montar() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } } });
+const novoClient = () => new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } } });
+
+function montar(client = novoClient()) {
   const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
   const { result } = renderHook(() => ({ kanban: useKanban("p1", perfil), mover: useMoverCasoKanban("p1", perfil) }), { wrapper });
   return result;
@@ -59,6 +60,21 @@ describe("useMoverCasoKanban", () => {
     await act(() => result.current.mover.mutateAsync({ casoId: "c1", destino: "Cancelled", justificativa: "Sem hardware" }));
 
     expect(casosTesteApi.atualizar).toHaveBeenCalledWith("c1", { status: "Cancelled", justificativa_exclusao: "Sem hardware" });
+  });
+
+  it("ao terminar, marca a lista de Test Cases do projeto para recarregar", async () => {
+    vi.mocked(casosTesteApi.kanban).mockResolvedValue(kanban());
+    vi.mocked(casosTesteApi.atualizar).mockResolvedValue({} as CasoTeste);
+    const client = novoClient();
+    const chaveCasos = ["projetos", "p1", "test-cases", 1, 20];
+    client.setQueryData(chaveCasos, { items: [] });
+    const result = montar(client);
+    await waitFor(() => expect(result.current.kanban.isSuccess).toBe(true));
+    expect(client.getQueryState(chaveCasos)?.isInvalidated).toBe(false);
+
+    await act(() => result.current.mover.mutateAsync({ casoId: "c1", destino: "InValidation" }));
+
+    await waitFor(() => expect(client.getQueryState(chaveCasos)?.isInvalidated).toBe(true));
   });
 
   it("devolve o card à coluna original quando a API recusa", async () => {

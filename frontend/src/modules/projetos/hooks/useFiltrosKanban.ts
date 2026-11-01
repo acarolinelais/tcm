@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router";
 import type { KanbanCard, KanbanColuna } from "../model/projeto";
 
 /**
- * Filtros do Kanban (spec 037, RN-11b a RN-11d), guardados na URL ao lado de outros parâmetros da tela (ex.: `aba`).
+ * Filtros do Kanban (spec 037, RN-11b a RN-11d), guardados na URL sem apagar os outros parâmetros dela.
  * Cada filtro de caso compara um campo do card; o de Status escolhe colunas.
  */
 const CAMPO_DO_FILTRO = { responsavel: "responsavel_id", category: "category", difficulty: "difficulty", situation: "situation" } as const satisfies Record<string, keyof KanbanCard>;
