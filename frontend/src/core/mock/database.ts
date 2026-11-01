@@ -38,6 +38,7 @@ import {
   problemaUrlPullRequest,
 } from "@/modules/projetos/model/projeto";
 import type { ModeloDispositivo } from "@/modules/modelos-dispositivo/model/modelo-dispositivo";
+import type { FiltrosAuditoria, RegistroAuditoria } from "@/modules/auditoria/model/auditoria";
 import { lerPlanilhaProjeto, PlanilhaProjetoError, type PessoasDaLinha, type PlanilhaProjeto } from "@/modules/projetos/utils/planilha-projeto";
 import { ApiError, type ProblemDetailsError } from "@/shared/api/problem-details";
 import type { PagedResult } from "@/shared/types/paged-result";
@@ -1437,3 +1438,37 @@ export function resetMockDatabase() {
   localStorage.removeItem(STORAGE_KEY);
   readDb();
 }
+
+// Auditoria (spec 052): registros fixos de exemplo, só de leitura, com um de outra unidade que nunca aparece.
+type RegistroAuditoriaMock = RegistroAuditoria & { unidade_id: string; usuario_id: string | null };
+const PROJETO_AUDITORIA = { projeto_id: "mock-project-clock", projeto_nome: "Clock 9.5" };
+const registrosAuditoriaMock: RegistroAuditoriaMock[] = [
+  { id: 6, unidade_id: UNIT_ID, usuario_id: "mock-user-kp", usuario_nome: "Kaique Pereira", usuario_perfil: "KP", alterado_em: "2026-10-30T15:42:00Z", acao: "alteracao", caso_teste_id: "mock-case-clock-001", tc_id: "Clock_001", ...PROJETO_AUDITORIA, alteracoes: [{ campo: "status", valor_anterior: "InProgress", valor_novo: "InReview" }, { campo: "category", valor_anterior: "B", valor_novo: "A" }], origem: "api", tela: "/projetos/mock-project-clock/kanban" },
+  { id: 5, unidade_id: UNIT_ID, usuario_id: "mock-user-manager", usuario_nome: "Ivan Moreira", usuario_perfil: "Gerente", alterado_em: "2026-10-30T13:10:00Z", acao: "alteracao", caso_teste_id: "mock-case-clock-002", tc_id: "Clock_002", ...PROJETO_AUDITORIA, alteracoes: [{ campo: "status", valor_anterior: "InValidation", valor_novo: "InFixes" }], origem: "form_factor", tela: "/projetos/mock-project-clock" },
+  { id: 4, unidade_id: UNIT_ID, usuario_id: "mock-user-dev", usuario_nome: "Daniel Oliveira", usuario_perfil: "Developer", alterado_em: "2026-10-29T18:05:00Z", acao: "pr_removido", caso_teste_id: "mock-case-clock-001", tc_id: "Clock_001", ...PROJETO_AUDITORIA, alteracoes: [{ campo: "pull_request", valor_anterior: "https://github.sec.samsung.net/org/clock/pull/7", valor_novo: null }], origem: "api", tela: "/projetos/mock-project-clock" },
+  { id: 3, unidade_id: UNIT_ID, usuario_id: "mock-user-dev", usuario_nome: "Daniel Oliveira", usuario_perfil: "Developer", alterado_em: "2026-10-29T17:50:00Z", acao: "pr_incluido", caso_teste_id: "mock-case-clock-001", tc_id: "Clock_001", ...PROJETO_AUDITORIA, alteracoes: [{ campo: "pull_request", valor_anterior: null, valor_novo: "https://github.sec.samsung.net/org/clock/pull/7" }], origem: "api", tela: "/projetos/mock-project-clock" },
+  { id: 2, unidade_id: UNIT_ID, usuario_id: null, usuario_nome: null, usuario_perfil: null, alterado_em: "2026-10-28T12:00:00Z", acao: "criacao", caso_teste_id: "mock-case-clock-002", tc_id: "Clock_002", ...PROJETO_AUDITORIA, alteracoes: [{ campo: "criacao", valor_anterior: null, valor_novo: null }], origem: "api", tela: null },
+  { id: 1, unidade_id: "mock-unit-outra", usuario_id: "mock-user-outra", usuario_nome: "Outra Unidade", usuario_perfil: "KP", alterado_em: "2026-10-30T16:00:00Z", acao: "alteracao", caso_teste_id: "mock-case-outra", tc_id: "Clock_001", projeto_id: "mock-project-outra", projeto_nome: "Clock 9.5", alteracoes: [{ campo: "status", valor_anterior: "To-Do", valor_novo: "Done" }], origem: "api", tela: "/projetos/mock-project-outra" },
+];
+
+/** O dia `AAAA-MM-DD` do registro no fuso do navegador, como o backend faz com `fuso_horario`. */
+const diaLocal = (iso: string) => formatarDiaIso(new Date(iso));
+const contem = (texto: string | null, termo: string) => (texto ?? "").toLocaleLowerCase().includes(termo.toLocaleLowerCase());
+
+export const mockAuditoriaApi = {
+  listar(pageNumber: number, pageSize: number, filtros: FiltrosAuditoria = {}): PagedResult<RegistroAuditoria> {
+    const { db, profile } = mockProfile();
+    if (profile?.codigo !== "ADMIN_UNIDADE") throw new ApiError({ type: "about:blank", title: "Apenas administradores da unidade podem consultar a auditoria.", status: 403 });
+    const registros = registrosAuditoriaMock.filter((registro) => registro.unidade_id === db.unidade.id
+      && (!filtros.data_inicio || diaLocal(registro.alterado_em) >= filtros.data_inicio)
+      && (!filtros.data_fim || diaLocal(registro.alterado_em) <= filtros.data_fim)
+      && (!filtros.usuario_id?.length || filtros.usuario_id.includes(registro.usuario_id ?? ""))
+      && (!filtros.perfil || registro.usuario_perfil === filtros.perfil)
+      && (!filtros.acao || registro.acao === filtros.acao)
+      && (!filtros.tc_id || contem(registro.tc_id, filtros.tc_id))
+      && (!filtros.projeto_id || registro.projeto_id === filtros.projeto_id)
+      && (!filtros.origem || registro.origem === filtros.origem)
+      && (!filtros.tela || contem(registro.tela, filtros.tela)));
+    return page<RegistroAuditoria>(registros, pageNumber, pageSize);
+  },
+};

@@ -13,3 +13,17 @@ export type NomeTom =
 export function tomDoToken(nome: NomeTom): TomEtiqueta {
   return { fundo: `var(--${nome}-bg)`, texto: `var(--${nome}-fg)` };
 }
+
+/**
+ * Status do Test Case (Figma TCM 2070:1476). Done e In Fixes herdam os tons de Pass e Fail. Fica aqui, e não só
+ * no módulo de projetos, porque a Auditoria (spec 052) também mostra o Status.
+ */
+export const TONS_STATUS_CASO_TESTE: Record<string, TomEtiqueta> = {
+  "To-Do": tomDoToken("etiqueta-todo"),
+  InProgress: tomDoToken("etiqueta-progress"),
+  InReview: tomDoToken("etiqueta-review"),
+  InValidation: tomDoToken("etiqueta-validation"),
+  Done: tomDoToken("etiqueta-ativo"),
+  InFixes: tomDoToken("etiqueta-fixes"),
+  Cancelled: tomDoToken("etiqueta-cancelled"),
+};

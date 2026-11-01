@@ -59,12 +59,15 @@ describe("Sidebar project navigation", () => {
     await user.click(screen.getByRole("button", { name: "Administration" }));
     expect(screen.getByRole("link", { name: "Device models" })).toHaveAttribute("href", "/admin/modelos-dispositivo");
     expect(screen.queryByRole("link", { name: "Users" })).not.toBeInTheDocument();
+    // Spec 052: Audit é só do admin, mesmo com Administration aberto para outro perfil.
+    expect(screen.queryByRole("link", { name: "Audit" })).not.toBeInTheDocument();
     unmount();
 
     const { unmount: unmountAdmin } = renderSidebar({ ...perfil, perfil_codigo: "ADMIN_UNIDADE", permissoes: [] });
     await user.click(screen.getByRole("button", { name: "Administration" }));
     expect(screen.getByRole("link", { name: "Users" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Device models" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Audit" })).toHaveAttribute("href", "/admin/auditoria");
     unmountAdmin();
 
     renderSidebar({ ...perfil, perfil_codigo: "ADMIN_UNIDADE", permissoes: ["modelos_dispositivo.gerenciar"] });

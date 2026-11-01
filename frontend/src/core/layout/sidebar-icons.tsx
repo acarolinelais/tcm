@@ -159,3 +159,15 @@ export function ChevronIcon(props: IconProps) {
     </svg>
   );
 }
+
+// Auditoria (spec 052): o Figma não tem este item; segue o traço de 1px e o tamanho dos demais.
+export function AuditIcon(props: IconProps) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path d="M6 13.5H3C1.61929 13.5 0.5 12.3807 0.5 11V3C0.5 1.61929 1.61929 0.5 3 0.5H8C9.38071 0.5 10.5 1.61929 10.5 3V6" strokeLinecap="round" stroke="currentColor"/>
+      <path d="M3.5 4H7.5M3.5 6.75H6" strokeLinecap="round" stroke="currentColor"/>
+      <circle cx="9.75" cy="9.75" r="2.25" stroke="currentColor"/>
+      <path d="M11.4 11.4L13.5 13.5" strokeLinecap="round" stroke="currentColor"/>
+    </svg>
+  );
+}

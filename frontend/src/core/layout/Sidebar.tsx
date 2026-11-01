@@ -8,6 +8,7 @@ import logo from "@/shared/assets/figma/icons/logo-icone.svg";
 import type { PerfilAtual } from "@/core/auth/api";
 import {
   AdministrationIcon,
+  AuditIcon,
   BoardIcon,
   ChevronIcon,
   CollapseIcon,
@@ -57,6 +58,7 @@ export function Sidebar({
       ["/admin/setores", t("sectors"), SectorsIcon],
       ["/admin/times", t("teams"), TeamsIcon],
       ["/admin/perfis", t("profiles"), ProfilesIcon],
+      ["/admin/auditoria", t("audit"), AuditIcon],
     ] as const : []),
     ...(perfil.permissoes.includes("modelos_dispositivo.gerenciar") ? [["/admin/modelos-dispositivo", t("deviceModels"), DeviceIcon] as const] : []),
   ];

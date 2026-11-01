@@ -202,6 +202,22 @@ describe("ProjetoDetalhePage", () => {
     expect(casosTesteApi.obter).toHaveBeenCalledWith("case-1");
   });
 
+  it("abre o painel do Test Case direto pelo link da Auditoria (?caso=&tc=, spec 052)", async () => {
+    vi.mocked(casosTesteApi.obter).mockResolvedValue({ ...casos[0], title: "Check Writing style", precondition: null, procedure: null, expected_result: null });
+    renderPage(perfil, undefined, "/projetos/project-1?caso=case-1&tc=Clock_001");
+
+    const painel = await screen.findByRole("dialog");
+    expect(within(painel).getByRole("heading", { name: "Clock_001" })).toBeInTheDocument();
+    expect(casosTesteApi.obter).toHaveBeenCalledWith("case-1");
+  });
+
+  it("falha: sem ?caso na URL, nenhum painel abre sozinho", async () => {
+    renderPage();
+    await screen.findByRole("row", { name: /Clock_001/ });
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
   it.each([
     ["Developer", { ...perfil, perfil_codigo: "USUARIO_PADRAO", permissoes: [...perfil.permissoes, "form_factor.consultar"] }],
     ["gestão", { ...perfil, id: "admin", perfil_codigo: "ADMIN_UNIDADE", perfil: "Administrador" }],

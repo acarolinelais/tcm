@@ -3,7 +3,7 @@ import * as XLSX from "@e965/xlsx";
 
 import { ApiError } from "@/shared/api/problem-details";
 import { ORDEM_KANBAN, STATUS_CASO_TESTE } from "@/modules/projetos/model/projeto";
-import { mockAuth, mockCasosTesteApi, mockFormFactorApi, mockModelosDispositivoApi, mockProjetosApi, mockTimesApi, mockUsuarioApi, resetMockDatabase } from "./database";
+import { mockAuditoriaApi, mockAuth, mockCasosTesteApi, mockFormFactorApi, mockModelosDispositivoApi, mockProjetosApi, mockTimesApi, mockUsuarioApi, resetMockDatabase } from "./database";
 
 const STORAGE_KEY = "sdf.mock.database.v1";
 
@@ -900,5 +900,30 @@ describe("cor do avatar no modo mock (spec 036)", () => {
 
     expect(mockAuth.currentUser(sessionStorage.getItem("sdf.access")).cor_avatar).toBe("azul");
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}").schemaVersion).toBe(21);
+  });
+});
+
+describe("auditoria mock (spec 052)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    resetMockDatabase();
+  });
+
+  it("lista só os registros da unidade, do mais recente ao mais antigo, com filtros", () => {
+    entrar("admin@sdfmanager.com");
+
+    const todos = mockAuditoriaApi.listar(1, 20);
+    const formFactor = mockAuditoriaApi.listar(1, 20, { origem: "form_factor" });
+
+    expect(todos.items.every((registro) => registro.projeto_id === "mock-project-clock")).toBe(true);
+    expect(todos.items.map((registro) => registro.id)).toEqual([6, 5, 4, 3, 2]);
+    expect(formFactor.items.map((registro) => registro.tc_id)).toEqual(["Clock_002"]);
+  });
+
+  it("falha: quem não é admin recebe 403", () => {
+    entrar("kaique.pereira@example.com");
+
+    expect(() => mockAuditoriaApi.listar(1, 20)).toThrow(ApiError);
   });
 });
