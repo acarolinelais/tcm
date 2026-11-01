@@ -7,7 +7,7 @@
 > Os testes de integração precisam do Postgres (`SDF_TEST_DATABASE_URL`).
 
 ## Fase 1: Backend
-- [ ] **T01. Consulta paginada e filtrada da auditoria**
+- [x] **T01. Consulta paginada e filtrada da auditoria**
   - Arquivos: `backend/src/domain/queries/auditoria.py`,
     `backend/src/domain/entities/interfaces/auditoria_repository.py`,
     `backend/src/infrastructure/repositories/auditoria_repository.py`,
@@ -26,7 +26,7 @@
     - outra unidade nunca aparece;
     - a linha que só mudou `updated_at` não aparece.
   - Verificação: `cd backend && uv run pytest tests/integration/test_auditoria_repository.py` → verde
-- [ ] **T02. Caso de uso e mapeamento compartilhado com o histórico**
+- [x] **T02. Caso de uso e mapeamento compartilhado com o histórico**
   - Arquivos: `backend/src/application/schemas/historico_caso_teste.py`,
     `backend/src/application/schemas/auditoria.py`,
     `backend/src/application/services/auditoria_service.py` e a interface,
@@ -42,7 +42,7 @@
     - gerente, KP e dev recebem `ForbiddenException`;
     - um período invertido recebe `InvalidInputException`, sem consultar o repositório.
   - Verificação: `cd backend && uv run pytest tests/unit/application/services/test_auditoria_service.py tests/unit/application/services/test_caso_teste_service.py` → verde
-- [ ] **T03. Rota `GET /api/auditoria`**
+- [x] **T03. Rota `GET /api/auditoria`**
   - Arquivos: `backend/src/api/routers/auditoria.py`, `backend/src/api/main.py`,
     `backend/src/api/dependencies.py`, `backend/tests/functional/test_auditoria_api.py` (novo)
   - Cobre: CA-01, CA-07, CA-10
@@ -56,7 +56,7 @@
   - Verificação: `cd backend && uv run pytest tests/functional/test_auditoria_api.py && uv run ruff check src tests` → verde
 
 ## Fase 2: Frontend
-- [ ] **T04. Cliente, modo mock, hook e rótulos compartilhados**
+- [x] **T04. Cliente, modo mock, hook e rótulos compartilhados**
   - Arquivos: `frontend/src/modules/auditoria/api/auditoria.api.ts`, `model/auditoria.ts`,
     `hooks/useAuditoria.ts` e o teste, `frontend/src/shared/lib/auditoria.ts` e o teste,
     `frontend/src/core/mock/database.ts`
@@ -71,7 +71,7 @@
     - os rótulos traduzem Status e campos nos três idiomas;
     - o mock não devolve registros de outra unidade.
   - Verificação: `cd frontend && npx vitest run src/modules/auditoria src/shared/lib/auditoria` → verde
-- [ ] **T05. Tela Auditoria com tabela, filtros, detalhe e exportação**
+- [x] **T05. Tela Auditoria com tabela, filtros, detalhe e exportação**
   - Arquivos: `frontend/src/modules/auditoria/pages/AuditoriaPage.tsx` e o teste,
     `components/DetalheAuditoriaDrawer.tsx` e o teste, `routes.tsx`, `index.ts`, `frontend/src/core/router.tsx`,
     `frontend/src/core/layout/Sidebar.tsx` e o teste, `frontend/src/core/i18n/resources.ts`
@@ -93,7 +93,7 @@
     - um período invertido não é aplicado;
     - exportar todos usa os filtros.
   - Verificação: `cd frontend && npx vitest run src/modules/auditoria src/core/layout && npm run lint` → verde
-- [ ] **T06. E2E e fechamento**
+- [x] **T06. E2E e fechamento**
   - Arquivos: `frontend/e2e/auditoria.spec.ts` (novo), `docs/specs/052-tela-auditoria/spec.md`,
     `docs/specs/README.md`
   - Cobre: CA-01, CA-02, CA-03 (navegador)
@@ -102,4 +102,38 @@
   - Verificação: `cd frontend && npx playwright test e2e/auditoria.spec.ts && npm test && npm run lint` e `cd backend && uv run pytest` → verde
 
 ## Backlog
-- Nenhum item por enquanto.
+- **Duas declarações de `auditoria_alteracoes`** (simplify da fase 1): `auditoria_repository.py` e
+  `overview_repository.py` declaram cada um o seu `table(...)`. Um módulo só serviria aos dois, mas mexe no
+  repositório do Overview, que está fora desta spec.
+- **Linha do banco para `RegistroAuditoria` repetida** (simplify da fase 1): o mesmo trecho está em
+  `auditoria_repository.py` e `historico_caso_teste_repository.py`. Um `registro_de_linha(linha)` serviria aos
+  dois, mas exige mexer no repositório da 038.
+- **`_Cenario` importado de outro módulo de teste** (simplify da fase 1): `test_auditoria_repository.py` e
+  `test_historico_caso_teste_repository.py` importam o cenário de `test_resultado_form_factor_repository.py`.
+  Uma fixture no `tests/integration/conftest.py` seria mais limpa.
+- **"Último registro durante a animação de saída" repetido em 4 painéis** (simplify da fase 2):
+  `DetalheAuditoriaDrawer`, `ResumoExecucoesDrawer`, `JustificativaExclusaoDrawer` e `DetalhesCasoTesteDrawer`
+  repetem o mesmo estado `exibido`. O hook `useUltimoValor` já existe em `UploadPlanilha.tsx`; levá-lo para
+  `shared/lib` e usá-lo nos quatro mexe no módulo de projetos.
+- **Rótulos de Status, Difficulty, Situation e Automation Level duplicados** (shortcut da fase 2):
+  `shared/lib/auditoria.ts` repete os `ROTULO_*` de `modules/projetos/model/projeto.ts`, porque `shared` não
+  importa módulos. Quando a seção Histórico da 038 (Fase 4) usar os rótulos, os de projetos passam a vir de
+  `shared`.
+- **Filtro de perfil pelo nome atual** (code-review do fechamento): as opções vêm de `listarPerfis` e o backend
+  compara com o nome gravado no momento (plan). Registros de um perfil renomeado ou removido não aparecem em
+  nenhuma opção. Oferecer os nomes distintos de `auditoria_alteracoes.perfil_nome` resolve.
+- **`%` e `_` sem escape no `ILIKE`** (code-review do fechamento): os filtros de TC ID e Tela tratam `_` como
+  curinga ("Clock_01" casa "ClockX01"). O mesmo acontece em outros repositórios; um helper que escape o termo
+  serviria a todos.
+- **Consulta da auditoria percorre o histórico da unidade a cada página** (code-review do fechamento): os `CASE`
+  e o cast do JSON rodam na subconsulta antes do período, e a contagem repete o join. Aguenta o volume atual;
+  com centenas de milhares de registros, levar o período e o `table_name` para dentro da subconsulta e rever a
+  contagem (o plan já cita índice trigram e particionamento).
+- **Opções de usuários e projetos carregadas inteiras ao abrir a tela** (code-review do fechamento): são várias
+  páginas em sequência antes de qualquer filtro ser aberto. Carregar ao abrir o filtro pede mudança no
+  `DataTableMultiFilter`.
+- **Projeto inativo fora do filtro de projeto** (code-review do fechamento): a listagem de projetos esconde os
+  inativos, mas os registros deles continuam na auditoria.
+- **Atalho para Test Case excluído** (code-review do fechamento): o link aparece também para casos inativos; o
+  painel do projeto mostra "Test Case não encontrado". Esconder o link pede o `ativo` do caso na resposta.
+

@@ -1,6 +1,6 @@
 # 052. Tela de auditoria: Spec
 
-- **Status:** Rascunho
+- **Status:** Concluída
 - **Data:** 2026-10-30
 - **Depende de:** spec 038 (histórico gravado no banco) e [ADR 0044](../../adr/0044-auditoria-por-triggers-no-postgresql.md)
 
