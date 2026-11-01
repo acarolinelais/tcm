@@ -123,9 +123,11 @@ no lugar das linhas:
 
 - Status de domínio aparece como etiqueta (`TagChip`), nunca como texto solto: 17px de altura, raio pleno,
   Inter 500 12px, fundo claro e texto na cor forte. O rótulo sempre aparece junto da cor.
-- As cores ficam no código, não aqui: `statusChipTons` (`modules/projetos/components/status-chip-estilos.ts`)
-  para o status do Test Case, e `TONS_ETIQUETA` (`shared/ui/tag-chip.tsx`) para ativo (`ativo`), inativo e
-  atributos neutros como a TC Situation (`neutro`). Um status novo ganha a cor no mapa do módulo dono.
+- As cores ficam no código, não aqui: `TONS_STATUS_CASO_TESTE` (`shared/lib/tom-etiqueta.ts`, reexportado como
+  `statusChipTons` no módulo de projetos) para o status do Test Case, que a Auditoria também mostra, e
+  `TONS_ETIQUETA` (`shared/ui/tag-chip.tsx`) para ativo (`ativo`), inativo e atributos neutros como a TC
+  Situation (`neutro`). Um status novo ganha a cor no mapa do módulo dono; se outro módulo também mostrar esse
+  status, o mapa sobe para `shared`.
 - Atributos de texto (Difficulty, Category, pessoas) aparecem como texto, não como etiqueta.
 
 ## 7. Edição inline

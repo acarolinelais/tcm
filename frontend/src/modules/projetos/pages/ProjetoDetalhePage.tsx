@@ -87,7 +87,11 @@ function ProjetoDetalhe() {
   const [drawerCasoAberto, setDrawerCasoAberto] = useState(false);
   const [aberturasDrawer, setAberturasDrawer] = useState(0);
   const [editar, setEditar] = useState<CasoTeste | null>(null);
-  const [casoDetalhado, setCasoDetalhado] = useState<CasoTesteResumo | null>(null);
+  // `?caso=<id>&tc=<TC ID>` abre o painel do Test Case direto (atalho da Auditoria, spec 052).
+  const [casoDetalhado, setCasoDetalhado] = useState<CasoTesteResumo | null>(() => {
+    const id = parametros.get("caso");
+    return id ? { id, tc_id: parametros.get("tc") ?? "" } : null;
+  });
   const [semana, setSemana] = useState("");
   const [assigneeFormFactor, setAssigneeFormFactor] = useState<string[]>([]);
   const [filtrosResumo, setFiltrosResumo] = useState({ tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" });
@@ -403,7 +407,11 @@ function ProjetoDetalhe() {
       onConfirm={() => { if (casoParaTransferir) transferir(casoParaTransferir.id); }}
     />
     <JustificativaExclusaoDrawer caso={casoComJustificativa} onFechar={() => setCasoComJustificativa(null)} />
-    <DetalhesCasoTesteDrawer caso={casoDetalhado} perfil={perfil} onFechar={() => setCasoDetalhado(null)} />
+    <DetalhesCasoTesteDrawer caso={casoDetalhado} perfil={perfil} onFechar={() => {
+      setCasoDetalhado(null);
+      // Tira o atalho da Auditoria da URL: recarregar ou voltar não reabre o painel.
+      if (parametros.has("caso")) setParametros((atuais) => { atuais.delete("caso"); atuais.delete("tc"); return atuais; }, { replace: true });
+    }} />
     <CasoTesteDrawer key={aberturasDrawer} isOpen={drawerCasoAberto} onOpenChange={setDrawerCasoAberto} projetoId={projetoId} editar={editar} membrosAtivos={membrosAtivos} />
     <FormFactorCriarRodadaDialog
       aberto={abrirCriacaoRodada}
