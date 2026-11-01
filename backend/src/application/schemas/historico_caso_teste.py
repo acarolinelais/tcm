@@ -41,20 +41,26 @@ def to_historico_response(
     registros: Sequence[RegistroAuditoria], nomes: Mapping[UUID, str]
 ) -> HistoricoCasoTesteResponse:
     return HistoricoCasoTesteResponse(
-        itens=[
-            AlteracaoCasoTesteResponse(
-                campo=campo,
-                valor_anterior=anterior,
-                valor_novo=novo,
-                usuario_nome=registro.usuario_nome,
-                usuario_perfil=registro.usuario_perfil,
-                origem=registro.origem,
-                alterado_em=timestamp_utc(registro.created_at),
-            )
-            for registro in registros
-            for campo, anterior, novo in alteracoes_do_registro(registro, nomes)
-        ]
+        itens=[item for registro in registros for item in alteracoes_response(registro, nomes)]
     )
+
+
+def alteracoes_response(
+    registro: RegistroAuditoria, nomes: Mapping[UUID, str]
+) -> list[AlteracaoCasoTesteResponse]:
+    """Os itens de um registro no formato do histórico (038), também usado pela timeline (054)."""
+    return [
+        AlteracaoCasoTesteResponse(
+            campo=campo,
+            valor_anterior=anterior,
+            valor_novo=novo,
+            usuario_nome=registro.usuario_nome,
+            usuario_perfil=registro.usuario_perfil,
+            origem=registro.origem,
+            alterado_em=timestamp_utc(registro.created_at),
+        )
+        for campo, anterior, novo in alteracoes_do_registro(registro, nomes)
+    ]
 
 
 def alteracoes_do_registro(

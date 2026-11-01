@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Annotated
 from uuid import UUID
 
@@ -35,6 +36,7 @@ from src.application.schemas.projeto import (
     CriarProjetoRequest,
     ProjetoResponse,
 )
+from src.application.schemas.timeline import TimelineResponse
 from src.application.services.interfaces.caso_teste_service import CasoTesteService
 from src.application.services.interfaces.form_factor_service import FormFactorService
 from src.application.services.interfaces.importacao_projeto_service import ImportacaoProjetoService
@@ -153,6 +155,28 @@ async def listar_test_cases(
         responsavel_id,
         associados_a_mim,
         **({"semana": semana, "fuso_horario": fuso_horario} if semana else {}),
+    )
+
+
+@router.get("/{projeto_id}/timeline", response_model=TimelineResponse)
+async def obter_timeline(
+    projeto_id: UUID,
+    inicio: date,
+    fim: date,
+    fuso_horario: str = Query("UTC", min_length=1, max_length=64),
+    responsavel_ids: list[UUID] | None = Query(None),
+    caso_teste_ids: list[UUID] | None = Query(None),
+    service: CasoTesteService = Depends(get_caso_teste_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.timeline(
+        usuario_atual,
+        projeto_id,
+        inicio,
+        fim,
+        fuso_horario,
+        responsavel_ids or (),
+        caso_teste_ids or (),
     )
 
 

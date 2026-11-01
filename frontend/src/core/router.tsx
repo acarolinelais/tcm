@@ -11,6 +11,7 @@ import { overviewRoutes } from "@/modules/overview";
 import { perfisRoutes } from "@/modules/perfis";
 import { projetosRoutes } from "@/modules/projetos";
 import { setoresRoutes } from "@/modules/setores";
+import { timelineRoutes } from "@/modules/timeline";
 import { timesRoutes } from "@/modules/times";
 import { usuariosRoutes } from "@/modules/usuarios";
 
@@ -25,7 +26,7 @@ export const router = createBrowserRouter([
       ...overviewRoutes,
       ...projetosRoutes,
       ...modelosDispositivoRoutes,
-      { path: "timeline", element: <EmBreve titulo="timeline" ilustracao="timeline" /> },
+      ...timelineRoutes,
       { path: "documentation", element: <EmBreve titulo="documentation" /> },
       ...configuracoesRoutes,
       ...usuariosRoutes,

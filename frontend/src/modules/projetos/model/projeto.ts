@@ -362,3 +362,14 @@ export interface ErroPlanilha {
   valor: string | null;
   parametros?: { esperados?: string[]; primeira_linha?: number; maximo?: number } | null;
 }
+
+/** Uma mudança do histórico do Test Case (spec 038), também usada pela timeline (spec 054). */
+export interface AlteracaoCasoTeste {
+  campo: string;
+  valor_anterior: string | null;
+  valor_novo: string | null;
+  usuario_nome: string | null;
+  usuario_perfil: string | null;
+  origem: string;
+  alterado_em: string;
+}

@@ -46,3 +46,20 @@ def intervalo_dia(
         raise InvalidInputException("Dia deve usar o formato AAAA-MM-DD.") from erro
     fim = inicio + timedelta(days=1)
     return inicio.astimezone(UTC).replace(tzinfo=None), fim.astimezone(UTC).replace(tzinfo=None)
+
+
+PERIODO_MAXIMO_DIAS = 31
+
+
+def intervalo_periodo(inicio: date, fim: date, fuso: ZoneInfo) -> tuple[datetime, datetime]:
+    """Do início do dia `inicio` ao fim do dia `fim` (inclusivo) no fuso pedido, em UTC (spec 054).
+
+    Fica com fuso porque a auditoria grava `created_at` como TIMESTAMPTZ.
+    """
+    if fim < inicio:
+        raise InvalidInputException("A data final não pode ser anterior à inicial.")
+    if (fim - inicio).days + 1 > PERIODO_MAXIMO_DIAS:
+        raise InvalidInputException(f"O período pode ter no máximo {PERIODO_MAXIMO_DIAS} dias.")
+    comeco = datetime.combine(inicio, datetime.min.time(), fuso)
+    termino = datetime.combine(fim + timedelta(days=1), datetime.min.time(), fuso)
+    return comeco.astimezone(UTC), termino.astimezone(UTC)

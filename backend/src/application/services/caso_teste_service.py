@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from datetime import date
 from uuid import UUID
 
 from src.application.schemas.caso_teste import (
@@ -26,7 +27,12 @@ from src.application.schemas.link_pull_request import (
     LinksPullRequestResponse,
 )
 from src.application.schemas.link_pull_request import to_response as link_to_response
-from src.application.validators.semana import intervalo_semana_iso
+from src.application.schemas.timeline import TimelineResponse, to_timeline_response
+from src.application.validators.semana import (
+    fuso_horario_valido,
+    intervalo_periodo,
+    intervalo_semana_iso,
+)
 from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
@@ -106,6 +112,35 @@ class CasoTesteServiceImpl:
             usuario_atual.unidade_id, tuple(ids_de_usuarios(registros))
         )
         return to_historico_response(registros, {id_: nome for id_, (nome, *_) in dados.items()})
+
+    async def timeline(
+        self,
+        usuario_atual: UsuarioAutenticado,
+        projeto_id: UUID,
+        inicio: date,
+        fim: date,
+        fuso_horario: str,
+        responsavel_ids: Sequence[UUID],
+        caso_ids: Sequence[UUID],
+    ) -> TimelineResponse:
+        """Mudanças dos casos de um projeto no período, agrupadas em cards (spec 054)."""
+        self._exigir_permissao(usuario_atual, "test_cases.consultar")
+        fuso = fuso_horario_valido(fuso_horario)
+        comeco, termino = intervalo_periodo(inicio, fim, fuso)
+        await self._obter_projeto_visivel(usuario_atual, projeto_id)
+        registros = await self._historico_repo.listar_por_projeto(
+            usuario_atual.unidade_id, projeto_id, comeco, termino
+        )
+        dados = await self._usuario_repo.dados_por_usuarios(
+            usuario_atual.unidade_id, tuple(ids_de_usuarios([r.registro for r in registros]))
+        )
+        return to_timeline_response(
+            registros,
+            {id_: nome for id_, (nome, *_) in dados.items()},
+            fuso,
+            set(responsavel_ids),
+            set(caso_ids),
+        )
 
     async def listar(
         self,
