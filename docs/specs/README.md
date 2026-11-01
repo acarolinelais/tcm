@@ -80,8 +80,7 @@ sem paginação, também pagina ([ADR 0039](../adr/0039-resultados-gerais-com-pa
 | 051 | Estilização da tela de redefinição de senha (visual do login, olho, idioma, tema e sair; HeroUI) | Concluída |
 | 052 | Tela de auditoria (Administration, só admin da unidade, filtros, detalhe e exportação; depende da 038) | Concluída |
 | 053 | Seletor de projeto com busca na General Results (no lugar das abas por projeto) | Aprovada |
-
-> A Timeline ainda não tem spec: o produto não foi definido. A opção natural é um feed dos eventos da spec 038 por projeto e time.
+| 054 | Timeline dos Test Cases por projeto (Dia, Semana e Mês, filtros por pessoa e caso, sobre a auditoria da 038) | Concluída (e2e com API simulada) |
 
 > As duas specs 012 foram criadas em paralelo. Os diretórios e históricos foram preservados nesta integração; a harmonização da numeração está registrada no backlog da spec de perfil Dev.
 
