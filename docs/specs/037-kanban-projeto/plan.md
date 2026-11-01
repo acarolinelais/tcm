@@ -18,7 +18,8 @@ Mover um card reaproveita o `PUT /api/test-cases/{id}` com `{ status }`, ou com
 da gestão, do responsável principal e do backup (só exclusão), e recusa os demais com 403.
 
 No frontend:
-- a tela do projeto ganha a aba `kanban`, e a aba ativa passa a ficar na URL (`?aba=kanban`);
+- a tela do projeto ganha a aba `kanban`, e a aba ativa passa a ficar na URL (`?aba=kanban`). (Revisto em
+  2026-10-30: a aba saiu; ver "Ajuste: aba Kanban sai da tela do projeto");
 - a rota `/board` troca o `EmBreve` pela escolha em cascata;
 - o arrasto usa `useDrag` e `useDrop` do `react-aria`, que já é dependência direta (ADR 0037) e oferece
   arrastar e soltar acessível por teclado, então nenhuma biblioteca nova entra;
@@ -144,11 +145,14 @@ Sem alteração. O Kanban lê `CasoTeste.status` (`To-Do`, `InProgress`, `InRevi
 | CA-10 | Vitest | A mutation rejeitada volta o card e mostra o toast |
 | CA-11, CA-12 | Vitest | Projeto vazio com 7 colunas e aviso; erro com "Tentar de novo" sem o aviso de vazio |
 | CA-13 | Funcional + e2e | `test_kanban_1000_casos_totais`; o e2e abre o projeto com a seed de 1.000 |
-| CA-14 | Vitest | `?aba=kanban` abre a aba |
+| CA-14 | Vitest + e2e | `?aba=kanban` redireciona para `/board/{id}` (revisto em 2026-10-30) |
 | CA-15 | Unidade + funcional + Vitest | `test_navegacao_gerente_dois_setores` (inclui time em que participa); cascata em `BoardPage.test.tsx` |
-| CA-16, CA-17, CA-18 | Vitest + e2e | Autosseleção, navegação direta para `?aba=kanban`, limpeza ao trocar o setor |
+| CA-16, CA-17, CA-18 | Vitest + e2e | Busca nos cards, entrada direta em `/board/{id}`, último projeto aberto |
 | CA-19 | Funcional + Vitest | `test_navegacao_sem_times_retorna_vazio`; o aviso "sem times" |
-| CA-20 | Funcional + e2e | `test_kanban_fora_do_escopo_retorna_404` (outro setor, outra unidade, inexistente) |
+| CA-20 | Funcional + e2e | `test_kanban_fora_do_escopo_retorna_404` (outro setor, outra unidade, inexistente); o e2e entra pelo link antigo `?aba=kanban` |
+| CA-21 | e2e | Arrasto segurado: origem com `opacity` 0.4, coluna que não aceita com 0.5 e a que aceita com 1 (fechamento, 2026-10-30) |
+| CA-28 | Vitest | A tela do projeto lista só as abas Test Cases e Form Factor |
+| CA-29 | Vitest | Dev sem casos com `?aba=kanban` é redirecionado ao Board; sem `aba`, vai para a entrada de Projects |
 
 ## Ajuste: arrasto, cor do avatar e filtros (2026-10-30)
 
@@ -176,6 +180,42 @@ Sem alteração. O Kanban lê `CasoTeste.status` (`To-Do`, `InProgress`, `InRevi
 - `GET /api/projetos/navegacao` ganha `membros` por time: uma subconsulta conta os membros ativos na mesma query.
 - `BoardKanbanPage` grava o projeto aberto como o último. `ROTULO_STATUS_PROJETO` vai para `model/projeto.ts`
   e é usado pela lista de Projects e pelos cards.
+
+## Ajuste: aba Kanban sai da tela do projeto (2026-10-30)
+
+Spec: RN-01, RN-04a, RN-11, RN-12, CA-14, CA-20, CA-28 e CA-29. O Board já abre o mesmo `KanbanBoard` em
+`/board/{id}`, então a aba repetia a tela. Só o frontend muda: a API do Kanban continua a mesma e é usada
+pelo `BoardKanbanPage`.
+
+- `modules/projetos/pages/ProjetoDetalhePage.tsx`:
+  - `Aba` volta a ser `"cases" | "form-factor"`; saem a entrada `kanban` de `ROTULO_ABA` e de
+    `abasDisponiveis`, o `PageTabPanel` do Kanban e o import do `KanbanBoard`;
+  - link antigo: com `?aba=kanban`, a página devolve
+    `<Navigate replace to={`/board/${projetoId}?${resto}`} />`, sendo `resto` os demais parâmetros da URL
+    (os filtros da RN-11d continuam valendo). O redirecionamento vem antes da regra do dev da spec 012, para
+    o dev sem casos que abre um link antigo chegar ao Kanban (RN-04a). Fora do escopo, quem responde é o
+    `BoardKanbanPage`, que já mostra "projeto não encontrado" (RN-17);
+  - a regra do dev volta à forma da spec 012, sem a exceção `aba !== "kanban"`, e sai o comentário sobre ela;
+  - o WeekPicker e as `actions` do `PageTabs` perdem as condições `aba !== "kanban"` / `aba === "kanban"`;
+  - o `ExcluirCasoTesteDialog` da página fica: ele serve à aba Test Cases. O Kanban tem o dele no
+    `KanbanBoard`.
+- `core/i18n/resources.ts`: sai a chave `kanbanTab` (en, pt e ko). Nenhum outro uso.
+- Testes:
+  - `ProjetoDetalhePage.test.tsx`: o teste "abre direto na aba Kanban pelo link" vira "link antigo
+    `?aba=kanban` redireciona para `/board/project-1`, mantendo os filtros"; o teste do dev sem casos passa a
+    conferir o redirecionamento com `?aba=kanban` e a entrada de Projects sem `aba`; um teste novo confere que
+    as abas são só Test Cases e Form Factor (CA-28). O teste "aba desconhecida cai em Test Cases" fica.
+  - `core/api/http-client.test.ts`: troca o caminho de exemplo `/projetos/7f3a?aba=kanban` por
+    `/board/7f3a?status=InReview`. O teste é da spec 038 e só usa a URL como exemplo de query removida do `X-Tela`.
+  - `e2e/projetos-kanban.spec.ts`: os `page.goto("/projetos/{id}?aba=kanban")` passam a `"/board/{id}"`. O
+    teste de projeto fora do escopo continua entrando pelo link antigo, que cobre o redirecionamento ponta a
+    ponta. O teste "a aba Test Cases reflete" passa a abrir `/projetos/{id}` depois do arrasto, em vez de
+    clicar na aba.
+
+### Riscos do ajuste
+- **Último projeto do Board:** abrir um link antigo grava aquele projeto como o último aberto pelo Board,
+  como qualquer abertura do `BoardKanbanPage`. É o comportamento esperado de quem chega ao Kanban.
+- **Links salvos com outras abas:** `?aba=cases` e `?aba=form-factor` não mudam; só `kanban` redireciona.
 
 ## Riscos e decisões pendentes
 

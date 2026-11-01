@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button, SearchField } from "@heroui/react";
 import { FolderOpen, Search } from "lucide-react";
-import { useOutletContext } from "react-router";
+import { useOutletContext, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import type { PerfilAtual } from "@/core/auth/api";
@@ -9,18 +9,18 @@ import { buscarTodasAsPaginas } from "@/shared/lib/exportar-planilha";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { ErroComRetry } from "@/shared/ui/erro-com-retry";
 import { PageCard, PageTitle } from "@/shared/ui/page-card";
-import { PageTabPanel, PageTabs } from "@/shared/ui/page-tabs";
 import { WeekPickerHero } from "@/shared/ui/week-picker-hero";
 import { useHistoricoProjeto, useProjetosSeletor } from "../hooks/useProjetos";
 import { formFactorApi } from "../api/projetos.api";
 import type { CasoHistorico, FiltrosHistoricoProjeto } from "../model/projeto";
 import { HistoricoProjetoTabela, type ResultadoAberto } from "../components/resultados-gerais/HistoricoProjetoTabela";
+import { ProjetoSwitcher } from "../components/ProjetoSwitcher";
 import { ResultadoExecucaoModal } from "../components/resultados-gerais/ResultadoExecucaoModal";
 import { ResumoExecucoesDrawer } from "../components/resultados-gerais/ResumoExecucoesDrawer";
 
 const SEM_FILTROS: FiltrosHistoricoProjeto = {};
 
-/** Resultados Gerais (spec 032): uma aba por projeto, com o histórico por data e o modelo escolhido em cada linha. */
+/** Resultados Gerais (spec 032): o histórico por data de um projeto por vez, escolhido no título (spec 053). */
 export function ResultadosGeraisPage() {
   const { t } = useTranslation();
   const perfil = useOutletContext<PerfilAtual>();
@@ -32,15 +32,19 @@ export function ResultadosGeraisPage() {
     if (permitido && hasNextPage && !isFetchingNextPage) void fetchNextPage();
   }, [permitido, fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-  const [abaEscolhida, setAbaEscolhida] = useState("");
-  const projetoId = projetos.some((projeto) => projeto.id === abaEscolhida) ? abaEscolhida : projetos[0]?.id ?? "";
+  // O projeto fica no endereço (?projeto=); um id fora da lista abre o primeiro, sem erro (spec 053, RN-03).
+  // Enquanto a lista ainda carrega páginas, o id do link pode estar numa delas: só então cai no primeiro.
+  const [parametros, setParametros] = useSearchParams();
+  const pedido = parametros.get("projeto");
+  const projetoAberto = projetos.find((projeto) => projeto.id === pedido) ?? (pedido && hasNextPage ? undefined : projetos[0]);
+  const projetoId = projetoAberto?.id ?? "";
   const [filtros, setFiltros] = useState(SEM_FILTROS);
   // Página e tamanho (spec 033): fora de `filtros`, que só guarda o que a pessoa filtrou.
   const [pagina, setPagina] = useState(1);
   const [tamanhoPagina, setTamanhoPagina] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const [rascunhoBusca, setRascunhoBusca] = useState("");
   const [buscaAberta, setBuscaAberta] = useState(false);
-  // Modelo escolhido por linha (RN-03): só estado de tela, esquecido ao trocar de aba ou de filtro e mantido ao trocar de página.
+  // Modelo escolhido por linha (RN-03): só estado de tela, esquecido ao trocar de projeto ou de filtro e mantido ao trocar de página.
   const [escolhas, setEscolhas] = useState<Record<string, string>>({});
   const [resultadoAberto, setResultadoAberto] = useState<ResultadoAberto | null>(null);
   const [casoDoResumo, setCasoDoResumo] = useState<CasoHistorico | null>(null);
@@ -56,6 +60,12 @@ export function ResultadosGeraisPage() {
     setFiltros(proximos);
     setPagina(1);
     setEscolhas({});
+  }
+
+  function trocarProjeto(id: string) {
+    // replace: a troca não entra no histórico, então voltar no navegador não reabre um projeto com os filtros de outro.
+    setParametros({ projeto: id }, { replace: true });
+    limparFiltros();
   }
 
   function limparFiltros() {
@@ -74,7 +84,9 @@ export function ResultadosGeraisPage() {
 
   const cabecalho = <header className="mb-[25px] flex shrink-0 flex-wrap items-start gap-4">
     <div className="min-w-0 flex-1">
-      <PageTitle>{t("generalResults")}</PageTitle>
+      {projetoAberto
+        ? <ProjetoSwitcher projetoId={projetoId} nome={projetoAberto.nome} projetos={projetos} buscavel onEscolher={trocarProjeto} />
+        : <PageTitle>{t("generalResults")}</PageTitle>}
       <p className="mt-1.5 text-[14px] leading-5 text-muted">{t("generalResultsDescription")}</p>
     </div>
   </header>;
@@ -120,35 +132,28 @@ export function ResultadosGeraisPage() {
 
   return <PageCard>
     {cabecalho}
-    <PageTabs
-      aria-label={t("generalResultsProjects")}
-      tabs={projetos.map((projeto) => ({ id: projeto.id, label: projeto.nome }))}
-      selectedKey={projetoId}
-      onSelectionChange={(id) => { setAbaEscolhida(id); limparFiltros(); }}
-      actions={barra}
-    >
-      {projetos.map((projeto) => <PageTabPanel key={projeto.id} id={projeto.id} className="flex min-h-0 flex-1 flex-col p-0">
-        {projeto.id === projetoId && <HistoricoProjetoTabela
-          dados={dados}
-          carregando={historico.isLoading}
-          erro={historico.isError}
-          onTentarDeNovo={() => void historico.refetch()}
-          filtros={filtros}
-          onFiltroChange={(campo, valor) => alterarFiltros({ ...filtros, [campo]: valor || undefined })}
-          temFiltros={temFiltros}
-          onLimparFiltros={limparFiltros}
-          modeloDaLinha={modeloDaLinha}
-          onModeloChange={(casoId, modeloId) => setEscolhas((atuais) => ({ ...atuais, [casoId]: modeloId }))}
-          onAbrirResultado={setResultadoAberto}
-          onAbrirResumo={setCasoDoResumo}
-          buscarTodos={buscarCasosParaExportar}
-          page={pagina}
-          pageSize={tamanhoPagina}
-          onPageChange={setPagina}
-          onPageSizeChange={(tamanho) => { setTamanhoPagina(tamanho); setPagina(1); }}
-        />}
-      </PageTabPanel>)}
-    </PageTabs>
+    <div className="mb-5 flex shrink-0 justify-end">{barra}</div>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <HistoricoProjetoTabela
+        dados={dados}
+        carregando={historico.isLoading}
+        erro={historico.isError}
+        onTentarDeNovo={() => void historico.refetch()}
+        filtros={filtros}
+        onFiltroChange={(campo, valor) => alterarFiltros({ ...filtros, [campo]: valor || undefined })}
+        temFiltros={temFiltros}
+        onLimparFiltros={limparFiltros}
+        modeloDaLinha={modeloDaLinha}
+        onModeloChange={(casoId, modeloId) => setEscolhas((atuais) => ({ ...atuais, [casoId]: modeloId }))}
+        onAbrirResultado={setResultadoAberto}
+        onAbrirResumo={setCasoDoResumo}
+        buscarTodos={buscarCasosParaExportar}
+        page={pagina}
+        pageSize={tamanhoPagina}
+        onPageChange={setPagina}
+        onPageSizeChange={(tamanho) => { setTamanhoPagina(tamanho); setPagina(1); }}
+      />
+    </div>
     <ResumoExecucoesDrawer caso={casoDoResumo} perfil={perfil} onFechar={() => setCasoDoResumo(null)} onAbrirResultado={setResultadoAberto} />
     <ResultadoExecucaoModal resultado={resultadoAberto} onFechar={() => setResultadoAberto(null)} />
   </PageCard>;

@@ -39,12 +39,12 @@ test("gestão arrasta de In Review para In Validation e a aba Test Cases reflete
   await dados.caso("Kanban_001", 1, 2, "InReview");
   await entrarComoAdmin(request, page);
 
-  await page.goto(`/projetos/${dados.projeto.id}?aba=kanban`);
+  await page.goto(`/board/${dados.projeto.id}`);
   await arrastar(page, "Kanban_001", /^In Validation/);
 
   await expect(coluna(page, /^In Validation, 1 case/)).toBeVisible();
   await expect(coluna(page, /^In Review, 0 cases/)).toBeVisible();
-  await page.getByRole("tab", { name: "Test Cases" }).click();
+  await page.goto(`/projetos/${dados.projeto.id}`);
   await expect(page.getByRole("row", { name: /Kanban_001/ })).toContainText("In Validation");
 });
 
@@ -52,7 +52,7 @@ test("excluir pelo Kanban grava a justificativa", async ({ request, page }) => {
   const dados = await preparar(request, page);
   const caso = await dados.caso("Kanban_001", 0, 1);
 
-  await page.goto(`/projetos/${dados.projeto.id}?aba=kanban`);
+  await page.goto(`/board/${dados.projeto.id}`);
   await page.getByRole("button", { name: "Move Kanban_001 to" }).click();
   await page.getByRole("menuitem", { name: "Excluded" }).click();
   await page.getByRole("alertdialog").getByRole("textbox").fill("Depende de hardware");
@@ -72,7 +72,7 @@ test("dev vê todos os casos, só move os seus, e o backup só exclui", async ({
   await dados.caso("Backup_001", 1, 0);
   await dados.caso("Colega_001", 1, 2);
 
-  await page.goto(`/projetos/${dados.projeto.id}?aba=kanban`);
+  await page.goto(`/board/${dados.projeto.id}`);
   await expect(coluna(page, /^To-Do, 3 cases/)).toBeVisible();
   await expect(page.getByRole("article", { name: "Colega_001" }).getByRole("button")).toHaveCount(0);
   await page.getByRole("button", { name: "Move Backup_001 to" }).click();
@@ -84,9 +84,30 @@ test("dev vê todos os casos, só move os seus, e o backup só exclui", async ({
   await expect(coluna(page, /^In Progress, 1 case/)).toBeVisible();
 
   // A aba Test Cases do dev continua mostrando só os casos ligados a ele.
-  await page.getByRole("tab", { name: "Test Cases" }).click();
+  await page.goto(`/projetos/${dados.projeto.id}`);
   await expect(page.getByRole("row", { name: /Proprio_001/ })).toBeVisible();
   await expect(page.getByText("Colega_001")).toHaveCount(0);
+});
+
+test("durante o arrasto, a origem fica marcada e só as colunas que aceitam o card ficam em destaque", async ({ request, page }) => {
+  const dados = await preparar(request, page);
+  // O dev é o backup deste caso: só pode levá-lo para Excluded.
+  await dados.caso("Arrasto_001", 1, 0);
+
+  await page.goto(`/board/${dados.projeto.id}`);
+  const card = page.getByRole("article", { name: "Arrasto_001" });
+  const origem = await card.boundingBox();
+  const alvo = await coluna(page, /^Excluded/).boundingBox();
+  if (!origem || !alvo) throw new Error("card ou coluna fora da tela");
+  await page.mouse.move(origem.x + origem.width / 2, origem.y + origem.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(alvo.x + alvo.width / 2, alvo.y + 80, { steps: 15 });
+
+  await expect(card).toHaveCSS("opacity", "0.4");
+  await expect(coluna(page, /^In Progress/)).toHaveCSS("opacity", "0.5");
+  await expect(coluna(page, /^Excluded/)).toHaveCSS("opacity", "1");
+  await page.keyboard.press("Escape");
+  await page.mouse.up();
 });
 
 test("link para o Kanban de projeto fora do escopo mostra não encontrado", async ({ request, page }) => {
@@ -95,7 +116,9 @@ test("link para o Kanban de projeto fora do escopo mostra não encontrado", asyn
   const outroTime = await post(request, "times", { nome: `Fora ${crypto.randomUUID()}`, setor_id: outroSetor.id }, dados.admin.access_token);
   const fora = await post(request, "projetos", { time_id: outroTime.id, app: "Fora", one_ui: "9.5", modelos_ids: [] }, dados.admin.access_token);
 
+  // Link antigo da aba Kanban: cai no Kanban do Board, que responde como projeto inexistente.
   await page.goto(`/projetos/${fora.id}?aba=kanban`);
+  await expect(page).toHaveURL(new RegExp(`/board/${fora.id}$`));
 
   // A consulta do projeto refaz a chamada com espera crescente antes de mostrar o erro.
   await expect(page.getByRole("alert")).toBeVisible({ timeout: 20_000 });
@@ -108,7 +131,7 @@ test("projeto com 1.000 casos abre com os totais certos", async ({ request, page
     await Promise.all(Array.from({ length: 100 }, (_, i) => dados.caso(`Carga_${String(lote * 100 + i).padStart(4, "0")}`, 0, 1)));
   }
 
-  await page.goto(`/projetos/${dados.projeto.id}?aba=kanban`);
+  await page.goto(`/board/${dados.projeto.id}`);
 
   await expect(coluna(page, /^To-Do, 1000 cases/)).toBeVisible({ timeout: 15_000 });
   await expect(coluna(page, /^To-Do/).getByRole("article")).toHaveCount(50);
@@ -132,7 +155,7 @@ test.describe("tela de 1280 px", () => {
   test("arrastar até a borda rola o quadro e o card chega em Excluded", async ({ request, page }) => {
     const dados = await preparar(request, page);
     await dados.caso("Borda_001", 0, 1);
-    await page.goto(`/projetos/${dados.projeto.id}?aba=kanban`);
+    await page.goto(`/board/${dados.projeto.id}`);
 
     const excluded = page.getByRole("region", { name: /^Excluded/ });
     await expect(excluded).not.toBeInViewport();
