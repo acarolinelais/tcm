@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
@@ -8,7 +8,12 @@ from src.application.schemas.caso_teste import AtualizarCasoTesteRequest, CriarC
 from src.application.schemas.link_pull_request import AdicionarLinkPullRequestRequest
 from src.application.services.caso_teste_service import CasoTesteServiceImpl
 from src.domain.common.cor_avatar import CorAvatar
-from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
+from src.domain.common.exceptions import (
+    ConflictException,
+    ForbiddenException,
+    InvalidInputException,
+    NotFoundException,
+)
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.caso_teste import (
@@ -26,7 +31,7 @@ from src.domain.entities.time_membro import TimeMembro
 from src.domain.entities.usuario import Usuario
 from src.domain.queries.caso_teste_com_responsavel import CasoTesteComResponsavel
 from src.domain.queries.link_pull_request_com_autor import LinkPullRequestComAutor
-from src.domain.queries.registro_auditoria import RegistroAuditoria
+from src.domain.queries.registro_auditoria import RegistroAuditoria, RegistroTimeline
 
 
 @pytest.fixture
@@ -1137,3 +1142,62 @@ async def test_historico_de_caso_fora_do_alcance_e_recusado_sem_ler_a_auditoria(
         await service.historico(admin, uuid4())
 
     historico.listar.assert_not_awaited()
+
+
+# Spec 054: timeline do projeto.
+
+
+async def test_timeline_le_o_periodo_no_fuso_e_agrupa_os_registros(historico_contexto):
+    service, historico, admin, caso = historico_contexto
+    historico.listar_por_projeto.return_value = [
+        RegistroTimeline(
+            registro=_registro(
+                "casos_teste", "UPDATE", {"status": "A"}, {"status": "B"}, ("status",)
+            ),
+            caso_teste_id=caso.id,
+            tc_id="Clock_001",
+            title=None,
+            responsavel_id=admin.id,
+            responsavel_nome="Ana",
+            responsavel_cor_avatar=CorAvatar.ROXO,
+        )
+    ]
+    service._usuario_repo.dados_por_usuarios.return_value = {}
+
+    resposta = await service.timeline(
+        admin, caso.projeto_id, date(2026, 10, 26), date(2026, 11, 1), "America/Sao_Paulo", (), ()
+    )
+
+    assert [(c.tc_id, c.responsavel_nome, len(c.alteracoes)) for c in resposta.cards] == [
+        ("Clock_001", "Ana", 1)
+    ]
+    historico.listar_por_projeto.assert_awaited_once_with(
+        admin.unidade_id,
+        caso.projeto_id,
+        datetime(2026, 10, 26, 3, tzinfo=UTC),
+        datetime(2026, 11, 2, 3, tzinfo=UTC),
+    )
+
+
+async def test_falha_timeline_fora_do_escopo_sem_permissao_ou_periodo_invalido_nao_le_a_auditoria(
+    historico_contexto,
+):
+    service, historico, admin, caso = historico_contexto
+    inicio, fim = date(2026, 10, 26), date(2026, 11, 1)
+    fora_do_time = UsuarioAutenticado(
+        uuid4(), admin.unidade_id, "USUARIO_PADRAO", permissoes=frozenset({"test_cases.consultar"})
+    )
+    sem_permissao = UsuarioAutenticado(uuid4(), admin.unidade_id, "USUARIO_PADRAO")
+
+    with pytest.raises(NotFoundException):
+        await service.timeline(fora_do_time, caso.projeto_id, inicio, fim, "UTC", (), ())
+    with pytest.raises(ForbiddenException):
+        await service.timeline(sem_permissao, caso.projeto_id, inicio, fim, "UTC", (), ())
+    with pytest.raises(InvalidInputException):
+        await service.timeline(admin, caso.projeto_id, fim, inicio, "UTC", (), ())
+    with pytest.raises(InvalidInputException):
+        await service.timeline(admin, caso.projeto_id, inicio, fim, "Inexistente/Teste", (), ())
+    service._projeto_repo.obter_por_id.return_value = None
+    with pytest.raises(NotFoundException):
+        await service.timeline(admin, uuid4(), inicio, fim, "UTC", (), ())
+    historico.listar_por_projeto.assert_not_awaited()

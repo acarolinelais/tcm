@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from datetime import date
 from typing import Protocol
 from uuid import UUID
 
@@ -15,6 +16,7 @@ from src.application.schemas.link_pull_request import (
     LinkPullRequestResponse,
     LinksPullRequestResponse,
 )
+from src.application.schemas.timeline import TimelineResponse
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 
@@ -27,6 +29,17 @@ class CasoTesteService(Protocol):
     async def historico(
         self, usuario_atual: UsuarioAutenticado, caso_id: UUID
     ) -> HistoricoCasoTesteResponse: ...
+
+    async def timeline(
+        self,
+        usuario_atual: UsuarioAutenticado,
+        projeto_id: UUID,
+        inicio: date,
+        fim: date,
+        fuso_horario: str,
+        responsavel_ids: Sequence[UUID],
+        caso_ids: Sequence[UUID],
+    ) -> TimelineResponse: ...
 
     async def listar(
         self,
