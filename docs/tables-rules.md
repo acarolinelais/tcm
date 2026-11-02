@@ -59,7 +59,7 @@ painel, sem filtros, ações nem paginação, usa `<table>` semântico (`caption
   const [pagina, setPagina] = useState(1);
   const [tamanho, setTamanho] = useState(DEFAULT_TABLE_PAGE_SIZE);
   ```
-- A `DataTablePagination` mostra o total (`t("totalItems")`) e o seletor de itens por página à esquerda, e
+- A `DataTablePagination` mostra o seletor de itens por página à esquerda, sem o total (ADR 0045), e
   "Anterior", os números das páginas (com reticências acima de 7) e "Próxima" à direita. A página atual fica
   destacada num círculo.
 - Trocar o tamanho da página volta para a página 1: `onPageSizeChange={(n) => { setTamanho(n); setPagina(1); }}`.

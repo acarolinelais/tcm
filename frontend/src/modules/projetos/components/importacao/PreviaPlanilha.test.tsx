@@ -27,12 +27,12 @@ const celulas = (linha: HTMLElement) => Array.from(linha.querySelectorAll<HTMLEl
 const molduraDaPrevia = () => screen.getByRole("region", { name: "Test Case preview" }).lastElementChild;
 
 describe("PreviaPlanilha", () => {
-  it("mostra o total e pagina 1.000 casos, 20 por página, com anterior e próxima", async () => {
+  it("pagina 1.000 casos, 20 por página, com anterior e próxima, e sem total no rodapé", async () => {
     const user = userEvent.setup();
     render(<PreviaPlanilha previa={previa(1000)} />);
 
     expect(screen.getByText("1,000 Test Cases")).toBeInTheDocument();
-    expect(screen.getByText("1000 total")).toBeInTheDocument();
+    expect(screen.queryByText("1000 total")).not.toBeInTheDocument();
     expect(linhasDoCorpo()).toHaveLength(DEFAULT_TABLE_PAGE_SIZE);
     expect(screen.getByRole("button", { name: "Previous page" })).toBeDisabled();
 

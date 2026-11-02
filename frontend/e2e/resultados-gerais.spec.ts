@@ -161,7 +161,7 @@ test("navega até a última página com as mesmas colunas de data (spec 033)", a
 
   await expect(page.getByRole("row", { name: /Clock_001/ })).toBeVisible();
   await expect(page.getByRole("row")).toHaveCount(1 + 20);
-  await expect(page.getByText("45 no total")).toBeVisible();
+  await expect(page.getByText("45 no total")).toHaveCount(0);
   const datas = await page.getByRole("columnheader").allTextContents();
 
   await page.getByRole("button", { name: "Página 3" }).click();

@@ -55,7 +55,7 @@ describe("HistoricoProjetoTabela", () => {
     const handlers = renderizar();
 
     expect(screen.getByRole("navigation", { name: "Pagination" })).toBeInTheDocument();
-    expect(screen.getByText("45 total")).toBeInTheDocument();
+    expect(screen.queryByText("45 total")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Page 3" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Next page" }));
     expect(handlers.onPageChange).toHaveBeenCalledWith(2);
