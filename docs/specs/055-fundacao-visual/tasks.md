@@ -31,7 +31,7 @@
 
 ## Fase 2: tokens, logotipo, sidebars e login
 
-- [ ] **T03. Tokens do tema claro**
+- [x] **T03. Tokens do tema claro**
   - Arquivos: `core/global.css` (só `:root`, nada em `:root.dark`), `core/theme/contraste-tema-claro.test.ts`
     (novo), `core/theme/tema-escuro-intacto.test.ts` (novo)
   - O que muda: `--accent`, `--accent-text`, `--accent-tint`, `--primary`, `--ring`, `--body`, `--subtle` e
@@ -40,15 +40,20 @@
     o acento, `--accent-text` sobre o cartão e sobre o painel, ≥ 4,5:1). O teste do tema escuro compara o bloco
     `:root.dark` com o texto de antes da spec.
   - Cobre: CA-14, RN-01, RN-08
+  - Feito: o Figma (#0081F9) virou `--accent` #006cd1, o menor escurecimento que passa 4,5:1 sobre o branco, o painel e o
+    fundo do item ativo (o #0081F9 dá 3,81:1 com branco). O fundo do item ativo é #e6f3ff, lido do frame. Os testes ficaram
+    em `contraste-tema-escuro.test.ts`, que já tinha os utilitários de contraste; o escuro é conferido por um hash do bloco.
   - Verificação: `cd frontend && npm test -- contraste-tema-claro tema-escuro-intacto cores-por-token
     contraste-tema-escuro` → verde.
-- [ ] **T04. Logotipo novo e topo da Sidebar**
+- [x] **T04. Logotipo novo e topo da Sidebar**
   - Arquivos: `shared/assets/figma/icons/` (logotipo novo, símbolo e versão com o nome; sai o `logo-icone.svg` se
     nada mais o usa), `core/layout/Sidebar.tsx`, `core/layout/Sidebar.test.tsx`
   - O que muda: aberta, o topo mostra o logotipo com o nome (sai o texto "TCM"); recolhida, só o símbolo. O
     destaque do item ativo (fundo `--accent-tint`, ícone e texto de acento) sai dos tokens da T03. Os itens por
     perfil não mudam.
   - Cobre: CA-03, CA-04, CA-05
+  - Feito: o mesmo `logo-tcm.svg` (símbolo + nome) fica cortado no símbolo quando a Sidebar recolhe. O `logo-icone.svg`
+    novo ficou sem uso; o `logo.svg` foi apagado por já não ter uso.
   - Verificação: `cd frontend && npm test -- Sidebar` → um caso por perfil (admin, gerente, KP, dev) com o
     logotipo e os itens de hoje; o link ativo tem `aria-current="page"`; recolhida, o nome some e o símbolo fica.
 - [ ] **T05. Ícones com a espessura do protótipo**
@@ -56,6 +61,8 @@
   - O que muda: o traço dos ícones passa a ter a espessura dos frames 2216:614 a 2216:1015. Só atributo de
     traço, sem trocar o desenho.
   - Cobre: CA-03 (visual)
+  - **Pendente:** o traço dos ícones novos só sai do Figma (exportar os SVGs dos frames 2216:614 a 2216:1015, ou esperar o
+    limite do MCP). Hoje eles vêm do export antigo, com traço de cerca de 1px.
   - Verificação: `cd frontend && npm test -- Sidebar figma-icons` e `npm run lint` → verde; conferência no
     navegador contra os quatro frames de sidebar, sem diferença de traço.
 - [ ] **T06. Login com a identidade nova**
@@ -64,6 +71,9 @@
     cores como no frame 2524:1945. A ilustração só muda se o frame trouxer outra. A redefinição de senha
     (`AlterarSenhaPage`) usa o mesmo layout e herda.
   - Cobre: CA-01, CA-02
+  - **Pendente:** a ilustração do login mudou no Figma (outra figura e fundo em degradê) e precisa ser exportada em SVG.
+    Logotipo, cores e espaçamento interno já conferem com o frame; o cartão fica 25px mais baixo porque tema e idioma
+    ficam numa linha acima dele, decisão da spec 050 mantida.
   - Verificação: `cd frontend && npm test -- LoginPage AlterarSenhaPage` → login renderiza logotipo, título, campos
     e botão; credenciais recusadas mostram o erro (`role="alert"`) e mantêm o e-mail digitado.
 
@@ -114,13 +124,13 @@
 
 ## Fase 4: ponta a ponta e conferência
 
-- [ ] **T11. e2e do login e do foco por teclado**
+- [x] **T11. e2e do login e do foco por teclado**
   - Arquivos: `e2e/identidade-visual.spec.ts` (novo)
   - O que muda: abre o login, confere logotipo, título, campos e botão; percorre com Tab e confere o foco
     visível em cada controle; entra com um usuário e percorre a sidebar também só com Tab.
   - Cobre: CA-01, CA-12
   - Verificação: `cd frontend && npm run e2e -- identidade-visual` → verde.
-- [ ] **T12. e2e dos três idiomas**
+- [x] **T12. e2e dos três idiomas**
   - Arquivos: `e2e/identidade-visual.spec.ts`
   - O que muda: em en, pt e ko, confere que login, sidebar e um estado vazio não têm texto cortado nem
     sobreposto (`scrollWidth <= clientWidth` nos rótulos).
@@ -136,3 +146,9 @@
 - Paleta do tema escuro novo: spec seguinte do redesign (RN-10).
 - **Chave `pageOfTotal` sem uso** (simplify da fase 1): "Page {{page}} of {{total}}" está em `core/i18n/resources.ts`
   nos três idiomas e nenhum `.ts` ou `.tsx` a usa. Já estava morta antes da 055; vale remover numa limpeza do i18n.
+- **Logotipo no tema escuro** (simplify da fase 2): o SVG tem cores fixas (esferas #005DB3, cerca de 2,6:1 sobre #1b1b1b).
+  Falta uma variante escura; entra com a paleta escura nova (RN-10).
+- **`logo-icone.svg` sem uso**: a Sidebar usa só o `logo-tcm.svg` (cortado no símbolo). O arquivo é um asset enviado pelo
+  usuário, então fica até ele decidir apagar.
+- **`alt` do logotipo**: o login diz "TCM" (um e2e depende disso) e a Sidebar diz "Test Case Manager". Padronizar numa
+  limpeza, junto com a tradução do texto.

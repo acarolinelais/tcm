@@ -17,6 +17,14 @@ function renderSidebar(currentProfile: PerfilAtual) {
 }
 
 describe("Sidebar project navigation", () => {
+  it("mostra o logotipo com o nome, e só o símbolo quando recolhida (spec 055, CA-03 e CA-05)", () => {
+    const { unmount } = renderSidebar(perfil);
+    expect(screen.getByRole("img", { name: "Test Case Manager" }).parentElement).toHaveClass("max-w-[184px]");
+    unmount();
+    render(<MemoryRouter><Sidebar perfil={perfil} recolhida onToggle={() => undefined} /></MemoryRouter>);
+    expect(screen.getByRole("img", { name: "Test Case Manager" }).parentElement).toHaveClass("max-w-[27px]");
+  });
+
   it("mostra Projects para dev sem depender de projetos ou TCs associados", () => {
     renderSidebar({ ...perfil, perfil_codigo: "USUARIO_PADRAO", permissoes: ["test_cases.consultar"] });
     expect(screen.getByRole("link", { name: "Projects" })).toHaveAttribute("href", "/projetos");
@@ -106,7 +114,9 @@ describe("destaque dos itens (spec 050)", () => {
       expect(item, item.textContent ?? "").toHaveClass("rounded-full", "focus-visible:ring-2");
       expect(item.className).not.toMatch(/rounded-lg/);
     }
+    expect(screen.getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Overview" })).toHaveClass("bg-accent-tint");
+    expect(screen.getByRole("link", { name: "Projects" })).not.toHaveAttribute("aria-current");
     expect(screen.getByRole("link", { name: "Projects" })).toHaveClass("hover:bg-secondary");
   });
 

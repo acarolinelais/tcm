@@ -101,3 +101,53 @@ describe("contraste do tema escuro (spec 050)", () => {
     expect(contraste("#ffffff", "#000000")).toBeCloseTo(21);
   });
 });
+
+// Spec 055: o redesign muda só o claro (RN-10); a paleta escura nova é uma spec à parte. Se este hash falhar, o escuro mudou.
+const HASH_DO_ESCURO = "929e2c46";
+
+/** FNV-1a de 32 bits: basta para notar uma edição acidental do bloco, e não pede tipos do Node. */
+function hash(texto: string) {
+  let h = 0x811c9dc5;
+  for (const c of texto) h = Math.imul(h ^ c.codePointAt(0)!, 0x01000193);
+  return (h >>> 0).toString(16);
+}
+
+/** "209 100% 41%" (tripla do shadcn) em RGB, para comparar com o acento. */
+function hslParaRgb(tripla: string): number[] {
+  const [h, s, l] = tripla.match(/[\d.]+/g)!.map(Number);
+  const a = (s / 100) * Math.min(l / 100, 1 - l / 100);
+  const canal = (n: number) => { const k = (n + h / 30) % 12; return Math.round(255 * (l / 100 - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))); };
+  return [canal(0), canal(8), canal(4)];
+}
+
+describe("tema claro do redesign (spec 055)", () => {
+  it("o acento e o texto de acento passam de 4,5:1 sobre o branco, o painel e o fundo do item ativo", () => {
+    const claro = tokens(":root");
+    const falhas = [
+      ...["#ffffff", valor(claro, "panel"), valor(claro, "accent-tint")].map((fundo): [string, string] => [valor(claro, "accent-text"), fundo]),
+      ["#ffffff", valor(claro, "accent")] as [string, string], // texto branco sobre o botão e o preenchimento de acento
+    ].flatMap(([texto, fundo]) => {
+      const medida = contraste(texto, fundo);
+      return medida < 4.5 ? [`${texto} sobre ${fundo}: ${medida.toFixed(2)}`] : [];
+    });
+    expect(falhas).toEqual([]);
+  });
+
+  it("o acento é o azul do Figma (#0081F9) escurecido, e o item ativo usa o fundo #e6f3ff", () => {
+    const claro = tokens(":root");
+    expect([claro.accent, claro["accent-tint"]]).toEqual(["#006cd1", "#e6f3ff"]);
+  });
+
+  it("o --primary e o --ring do shadcn são o mesmo azul do --accent", () => {
+    const claro = tokens(":root");
+    const accent = [1, 3, 5].map((k) => parseInt(claro.accent.slice(k, k + 2), 16));
+    for (const nome of ["primary", "ring"]) {
+      hslParaRgb(claro[nome]).forEach((canal, k) => expect(Math.abs(canal - accent[k]), `--${nome}`).toBeLessThanOrEqual(1));
+    }
+  });
+
+  it("os tokens do tema escuro não mudaram", () => {
+    // Lê as declarações, e não o texto: editar um comentário ou o espaçamento não quebra o teste.
+    expect(hash(JSON.stringify([tokens(":root.dark"), blocoDoContraste(":root.dark")]))).toBe(HASH_DO_ESCURO);
+  });
+});
