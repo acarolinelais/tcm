@@ -77,9 +77,9 @@ describe("contraste do tema escuro (spec 050)", () => {
       .toEqual(["#0a0a0a", "#1b1b1b", "#232325", "#161616", "#2f2f2f"]);
   });
 
-  it("no claro, só entram a borda #eeeeee e o corpo da tabela igual ao cartão", () => {
+  it("no claro, só entram a borda #f2f2f2 e o corpo da tabela igual ao cartão", () => {
     const claro = tokens(":root");
-    expect(claro.edge).toBe("#eeeeee");
+    expect(claro.edge).toBe("#f2f2f2");
     expect(claro["table-body"]).toBe("var(--surface)");
     expect([claro.page, claro.panel, claro.body, claro["etiqueta-todo-bg"], claro["etiqueta-neutro-bg"]])
       .toEqual(["#fbfbfb", "#f3f5f7", "#454442", "#edfaff", "#edeff1"]);

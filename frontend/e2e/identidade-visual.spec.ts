@@ -64,7 +64,7 @@ test("o login mostra o logotipo, o título azul, os campos e o botão do protót
   await expect(page.getByLabel("Email")).toBeVisible();
   await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
-  await expect(page.locator("aside img")).toBeVisible();
+  await expect(page.locator("aside img:visible")).toBeVisible();
 });
 
 test("só com o teclado, cada controle do login mostra o foco", async ({ page }) => {

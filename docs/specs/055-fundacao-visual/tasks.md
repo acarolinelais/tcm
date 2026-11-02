@@ -56,24 +56,25 @@
     novo ficou sem uso; o `logo.svg` foi apagado por já não ter uso.
   - Verificação: `cd frontend && npm test -- Sidebar` → um caso por perfil (admin, gerente, KP, dev) com o
     logotipo e os itens de hoje; o link ativo tem `aria-current="page"`; recolhida, o nome some e o símbolo fica.
-- [ ] **T05. Ícones com a espessura do protótipo**
+- [x] **T05. Ícones com a espessura do protótipo**
   - Arquivos: `core/layout/sidebar-icons.tsx`, `shared/ui/figma-icons.tsx`
   - O que muda: o traço dos ícones passa a ter a espessura dos frames 2216:614 a 2216:1015. Só atributo de
     traço, sem trocar o desenho.
   - Cobre: CA-03 (visual)
-  - **Pendente:** o traço dos ícones novos só sai do Figma (exportar os SVGs dos frames 2216:614 a 2216:1015, ou esperar o
-    limite do MCP). Hoje eles vêm do export antigo, com traço de cerca de 1px.
+  - Feito sem mudar o código: o export novo das sidebars (admin e dev) usa o traço padrão de 1px, e os ícones atuais têm
+    0,999 a 1,03px, que na prática é o mesmo. A geometria dos desenhos não foi comparada ícone a ícone. A cor do ícone ativo
+    (#0081F9 no Figma) já sai do acento. A borda dos cartões e da sidebar é #f2f2f2 no Figma, e o `--edge` do claro passou a ser esse.
   - Verificação: `cd frontend && npm test -- Sidebar figma-icons` e `npm run lint` → verde; conferência no
     navegador contra os quatro frames de sidebar, sem diferença de traço.
-- [ ] **T06. Login com a identidade nova**
+- [x] **T06. Login com a identidade nova**
   - Arquivos: `core/auth/AuthLayout.tsx`, `core/auth/LoginPage.tsx`, `core/auth/LoginPage.test.tsx`
   - O que muda: logotipo e título em azul, campos e botão arredondados, espaçamento entre letras, ícone do olho e
     cores como no frame 2524:1945. A ilustração só muda se o frame trouxer outra. A redefinição de senha
     (`AlterarSenhaPage`) usa o mesmo layout e herda.
   - Cobre: CA-01, CA-02
-  - **Pendente:** a ilustração do login mudou no Figma (outra figura e fundo em degradê) e precisa ser exportada em SVG.
-    Logotipo, cores e espaçamento interno já conferem com o frame; o cartão fica 25px mais baixo porque tema e idioma
-    ficam numa linha acima dele, decisão da spec 050 mantida.
+  - Feito: ilustração e degradê novos (`illustrations/illustration-login.svg` e `background-illustration-login.svg`) no claro; o
+    escuro segue com a ilustração antiga (RN-10), marcada com `shortcut:` no `AuthLayout`. O cartão fica 25px mais baixo que no
+    frame porque tema e idioma ficam numa linha acima dele, decisão da spec 050 mantida.
   - Verificação: `cd frontend && npm test -- LoginPage AlterarSenhaPage` → login renderiza logotipo, título, campos
     e botão; credenciais recusadas mostram o erro (`role="alert"`) e mantêm o e-mail digitado.
 
@@ -136,11 +137,18 @@
     sobreposto (`scrollWidth <= clientWidth` nos rótulos).
   - Cobre: CA-11
   - Verificação: `cd frontend && npm run e2e -- identidade-visual` → verde nos três idiomas.
-- [ ] **T13. Suíte completa e revisão visual por perfil**
+- [x] **T13. Suíte completa e revisão visual por perfil**
   - Verificação: `cd frontend && npm test && npm run lint && npm run build && npm run e2e` → tudo verde.
     Revisão visual no navegador, uma vez por perfil (admin, gerente, KP e dev), no tema claro e no escuro, contra
     os frames de sidebar, login, vazio e Teams; o escuro precisa estar igual ao de antes (CA-14). Backend sem
     mudança. Depois, `simplify` sobre o diff da spec e marcar o roadmap.
+  - Feito: `tsc` e `lint` limpos; `build` ok; testes unitários 698 de 702, e as 4 falhas são todas do `ProjetoDetalhePage.test.tsx`,
+    que já falhava na `dev` por timeout nesta máquina (passa isolado); 11 e2e com sessão simulada, 57 passaram e 1
+    (`ERR_ABORTED` no reload) passou na segunda rodada. **Não rodei** os 9 e2e que entram na API real (auditoria, cor-avatar,
+    form-factor-rodadas, overview, projetos-dev, projetos-kanban, tema, times, trocar-senha): criam dados no banco local.
+    Revisão visual por screenshot: os 4 perfis no claro e o admin no escuro, na tela de Configurações, e o login nos dois temas.
+    Observação fora do escopo: nos frames, Manager e KP agrupam Users, Sectors e Teams em Administration; o app mostra esses
+    itens de outro jeito. A RN-07 manda não mudar o menu, então ficou como está.
 
 ## Backlog
 - Paleta do tema escuro novo: spec seguinte do redesign (RN-10).
@@ -152,3 +160,9 @@
   usuário, então fica até ele decidir apagar.
 - **`alt` do logotipo**: o login diz "TCM" (um e2e depende disso) e a Sidebar diz "Test Case Manager". Padronizar numa
   limpeza, junto com a tradução do texto.
+- **Imagens do login baixadas em dobro** (code-review): a ilustração clara (60KB) e a escura (22KB) são buscadas mesmo com uma
+  escondida. Some quando o escuro ganhar a ilustração nova.
+- **Hash do escuro opaco** (code-review): `HASH_DO_ESCURO` falha sem dizer qual token mudou. Se incomodar, trocar por um snapshot
+  legível dos tokens, na spec da paleta escura.
+- **Total só para leitor de tela** (code-review): sem o total, a mudança de resultados do filtro deixa de ser anunciada. A ADR 0045
+  recusou a alternativa; reabrir se o uso real pedir.

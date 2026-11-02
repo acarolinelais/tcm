@@ -1,6 +1,6 @@
 # 055. Fundação visual do redesign: Spec
 
-- **Status:** Aprovada
+- **Status:** Concluída
 - **Data:** 2026-11-02
 - **Specs relacionadas:** 034 (tema claro e escuro), 050 (ajustes visuais), 051 (redefinição de senha)
 - **Referência visual:** protótipo do Figma "Test Case Manager" (frames citados em cada regra)

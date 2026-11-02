@@ -81,7 +81,7 @@ sem paginação, também pagina ([ADR 0039](../adr/0039-resultados-gerais-com-pa
 | 052 | Tela de auditoria (Administration, só admin da unidade, filtros, detalhe e exportação; depende da 038) | Concluída |
 | 053 | Seletor de projeto com busca na General Results (no lugar das abas por projeto) | Aprovada |
 | 054 | Timeline dos Test Cases por projeto (Dia, Semana e Mês, filtros por pessoa e caso, sobre a auditoria da 038) | Concluída (e2e com API simulada) |
-| 055 | Fundação visual do redesign (tokens claros, logotipo, sidebars, login, título azul, estado vazio e tabelas sem total, ADR 0045) | Aprovada |
+| 055 | Fundação visual do redesign (tokens claros, logotipo, sidebars, login, título azul, estado vazio e tabelas sem total, ADR 0045) | Concluída (e2e com API real pendentes; validação manual no navegador pendente) |
 
 > As duas specs 012 foram criadas em paralelo. Os diretórios e históricos foram preservados nesta integração; a harmonização da numeração está registrada no backlog da spec de perfil Dev.
 

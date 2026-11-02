@@ -98,7 +98,7 @@
 /* Tokens do projeto (ADR 0041): cores do Figma sem equivalente no HeroUI, nomeadas pelo papel. */
 :root {
   --page: #fbfbfb;        /* fundo das páginas, atrás dos cartões */
-  --edge: #eeeeee;        /* borda dos cartões, dos botões em pílula, da busca e do botão de tema (spec 050) */
+  --edge: #f2f2f2;        /* borda dos cartões, dos botões em pílula, da busca e do botão de tema (spec 050) */
   --table-body: var(--surface); /* corpo da tabela */
   --accent-tint: #e6f3ff; /* fundo azul claro do Figma: item ativo da sidebar, ilustração do login, dropzone */
   --body: #454442;        /* texto corrido das telas do Figma */
