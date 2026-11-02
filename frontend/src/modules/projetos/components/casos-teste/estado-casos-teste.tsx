@@ -1,5 +1,4 @@
 import type { TFunction } from "i18next";
-import { ClipboardList } from "lucide-react";
 
 import { estadoDaTabela } from "@/shared/ui/data-table-state";
 
@@ -9,7 +8,7 @@ export function estadoCasosTeste(t: TFunction, e: { isLoading: boolean; isError:
     ...e,
     loadingLabel: t("loading"),
     clearFiltersLabel: t("clearFilters"),
-    empty: { icon: <ClipboardList aria-hidden="true" className="size-5" />, title: t("noTestCases"), hint: t("noTestCasesHint") },
+    empty: { title: t("noTestCases"), hint: t("noTestCasesHint") },
     filtered: { title: t("noTestCasesResults"), hint: t("adjustFilters") },
   });
 }

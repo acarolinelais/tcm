@@ -1,5 +1,5 @@
 import { Button, Tooltip } from "@heroui/react";
-import { History, ListChecks } from "lucide-react";
+import { ListChecks } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -130,7 +130,7 @@ export function HistoricoProjetoTabela(props: Props) {
       errorLabel: t("resultsLoadError"),
       clearFiltersLabel: t("clearFilters"),
       retry: { label: t("retryQuery"), onRetry: props.onTentarDeNovo },
-      empty: { icon: <History aria-hidden="true" className="size-5" />, title: t("noProjectCases"), hint: t("noProjectCasesHint") },
+      empty: { title: t("noProjectCases"), hint: t("noProjectCasesHint") },
       filtered: { title: t("noResults"), hint: t("noGlobalResultsFiltered") },
     })}
     pagination={<DataTablePagination page={props.page} pageSize={props.pageSize} totalCount={dados?.total_count ?? 0} onPageChange={props.onPageChange} onPageSizeChange={props.onPageSizeChange} />}

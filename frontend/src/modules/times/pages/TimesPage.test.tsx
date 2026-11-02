@@ -44,6 +44,14 @@ describe("TimesPage", () => {
     expect(await screen.findByText("detalhe")).toBeInTheDocument();
   });
 
+  it("título na cor de acento e rodapé com a paginação, sem total (spec 055, CA-10)", async () => {
+    renderPage(gerente);
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Teams" })).toHaveClass("text-accent-text");
+    expect(screen.getByRole("navigation", { name: "Pagination" })).toBeInTheDocument();
+    expect(screen.queryByText(/\btotal\b/i)).not.toBeInTheDocument();
+  });
+
   it("gerente sem setor nem participação não tem a ação de abrir o detalhe", async () => {
     renderPage(gerente);
 

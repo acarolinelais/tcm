@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, FolderKanban, Pencil, Plus, Smartphone, Trash2 } from "lucide-react";
+import { ChevronLeft, Pencil, Plus, Smartphone, Trash2 } from "lucide-react";
 import { Link, useNavigate, useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Button as HeroButton, Tooltip } from "@heroui/react";
@@ -216,14 +216,14 @@ export function ProjetosPage() {
     loadingLabel: t("loadingProjects"),
     errorLabel: t("projectsLoadError"),
     clearFiltersLabel: t("clearFilters"),
-    empty: { icon: <FolderKanban aria-hidden="true" className="size-5" />, title: t("noProjects"), hint: t("noProjectsHint") },
+    empty: { title: t("noProjects"), hint: t("noProjectsHint") },
     filtered: { title: t("noResults"), hint: t("noProjectResults") },
   });
 
   return <section className={criacaoAberta ? "relative flex h-full min-h-0 flex-col" : "flex h-full min-h-0 flex-col overflow-hidden rounded-[42px] border border-edge bg-card px-7 py-8 sm:px-11 sm:py-10"}>
     {!criacaoAberta ? <>
       <header className="mb-7 flex shrink-0 items-center justify-between gap-4">
-        <h1 className="text-2xl font-medium text-foreground">{t("myProjects")}</h1>
+        <h1 className="text-2xl font-medium text-accent-text">{t("myProjects")}</h1>
         {podeGerenciar && <HeroButton variant="primary" size="sm" className="rounded-full px-4" onPress={() => { limparFormulario(); setCriacaoAberta(true); }}><Plus aria-hidden="true" className="size-4" />{t("newProject")}</HeroButton>}
       </header>
       <DataTable
@@ -243,7 +243,7 @@ export function ProjetosPage() {
       <div className="thin-scroll min-h-0 flex-1 overflow-auto">
         <div className="flex min-h-full w-full flex-col">
           <header className="mb-4 flex items-center justify-between gap-4">
-            <h1 className="text-2xl font-medium text-foreground">{t("newProject")}</h1>
+            <h1 className="text-2xl font-medium text-accent-text">{t("newProject")}</h1>
             <div className="relative grid w-52 shrink-0 grid-cols-2 rounded-xl bg-panel p-1" role="tablist" aria-label={t("projectCreationMethod")}>
               <span aria-hidden="true" className="pointer-events-none absolute inset-y-1 left-1 right-1 grid grid-cols-2"><span className={`col-start-1 rounded-lg bg-surface shadow-sm transition-transform duration-150 ease-out motion-reduce:transition-none ${modo === "manual" ? "translate-x-full" : "translate-x-0"}`} /></span>
               <button id="project-import-tab" role="tab" aria-controls={modo === "planilha" ? "project-import-panel" : undefined} aria-selected={modo === "planilha"} type="button" onClick={() => setModo("planilha")} className={`relative z-10 rounded-lg px-3 py-2 text-sm transition-colors duration-150 motion-reduce:transition-none ${modo === "planilha" ? "font-medium text-accent-text" : "text-muted-foreground hover:text-foreground"}`}>{t("import")}</button>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@heroui/react";
-import { Plus, Trash2, UsersRound } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useOutletContext, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
@@ -83,7 +83,7 @@ export function TimeDetalhePage({ modoAdmin = false }: { modoAdmin?: boolean }) 
     loadingLabel: t("loading"),
     errorLabel: t("teamMembersLoadError"),
     clearFiltersLabel: t("clearFilters"),
-    empty: { icon: <UsersRound aria-hidden="true" className="size-5" />, title: t("noTeamMembers"), hint: t("addMemberToTeam") },
+    empty: { title: t("noTeamMembers"), hint: t("addMemberToTeam") },
     filtered: { title: t("noResults"), hint: t("noTeamResults") },
   });
 
@@ -91,7 +91,7 @@ export function TimeDetalhePage({ modoAdmin = false }: { modoAdmin?: boolean }) 
     <header className="mb-5 flex shrink-0 items-start gap-4">
       <div className="min-w-0 flex-1">
         <p className="text-[14px] font-medium leading-5 text-muted">{t("teamDetails")}</p>
-        <PageTitle className="mt-1 text-accent-text">{time?.nome ?? t("team")}</PageTitle>
+        <PageTitle className="mt-1">{time?.nome ?? t("team")}</PageTitle>
       </div>
       {podeGerenciarMembros && time && <div className="ml-auto flex flex-wrap justify-end gap-2">
         <Button variant="outline" isIconOnly aria-label={t("addMemberToTeam")} onPress={() => setAdicionarMembroAberto(true)}>

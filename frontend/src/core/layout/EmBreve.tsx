@@ -16,7 +16,7 @@ export function EmBreve({ titulo }: { titulo: string }) {
             <Construction aria-hidden="true" className="size-4" />
             {t("inDevelopment")}
           </span>
-          <h1 className="mt-5 text-3xl font-semibold tracking-tight text-foreground">{t(titulo.toLowerCase())}</h1>
+          <h1 className="mt-5 text-3xl font-semibold tracking-tight text-accent-text">{t(titulo.toLowerCase())}</h1>
           <p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground">{t("comingSoonMessage")}</p>
           <Link
             to="/overview"

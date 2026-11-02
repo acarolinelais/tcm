@@ -1,4 +1,3 @@
-import { History } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { formatDate } from "@/core/i18n/format";
@@ -67,7 +66,7 @@ export function FormFactorResultadosTabela({ onAbrirDetalhes, dados, carregando,
       loadingLabel: t("loading"),
       errorLabel: t("resultsLoadError"),
       clearFiltersLabel: t("clearFilters"),
-      empty: { icon: <History aria-hidden="true" className="size-5" />, title: t("noResults"), hint: t("formFactorResultsHint") },
+      empty: { title: t("noResults"), hint: t("formFactorResultsHint") },
       filtered: { title: t("noResults"), hint: t("adjustFilters") },
     })}
     pagination={<DataTablePagination page={page} pageSize={pageSize} totalCount={dados?.total_count ?? 0} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} />}

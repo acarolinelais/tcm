@@ -12,7 +12,7 @@ export function PageCard({ className, ...props }: HTMLAttributes<HTMLElement>) {
   );
 }
 
-/** Título da página: Inter 500 22px `#454442`. */
+/** Título da página: Inter 500 22px na cor de acento (spec 055, RN-09). */
 export function PageTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
-  return <h1 className={cn("truncate text-[22px] font-medium leading-[27px] text-body", className)} {...props} />;
+  return <h1 className={cn("truncate text-[22px] font-medium leading-[27px] text-accent-text", className)} {...props} />;
 }

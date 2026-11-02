@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
-import { Eye, ScrollText } from "lucide-react";
+import { Eye } from "lucide-react";
 
 import type { PerfilAtual } from "@/core/auth/api";
 import { formatDate } from "@/core/i18n/format";
@@ -152,7 +152,7 @@ export function AuditoriaPage() {
     loadingLabel: t("auditLoading"),
     errorLabel: t("auditLoadError"),
     clearFiltersLabel: t("clearFilters"),
-    empty: { icon: <ScrollText aria-hidden="true" className="size-5" />, title: t("noAuditRecords"), hint: t("noAuditRecordsHint") },
+    empty: { title: t("noAuditRecords"), hint: t("noAuditRecordsHint") },
     filtered: { title: t("noAuditResults"), hint: t("noAuditResultsHint") },
   });
 

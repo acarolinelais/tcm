@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Button, ToggleButton, ToggleButtonGroup } from "@heroui/react";
-import { ChevronLeft, ChevronRight, FolderOpen } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useOutletContext, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
@@ -12,6 +12,7 @@ import type { CasoTesteResumo } from "@/modules/projetos/model/projeto";
 import { formatarDiaIso } from "@/shared/lib/utils";
 import { AvatarUsuario } from "@/shared/ui/avatar-usuario";
 import { ErroComRetry } from "@/shared/ui/erro-com-retry";
+import { EstadoVazio } from "@/shared/ui/estado-vazio";
 import { MultiSelectCombobox } from "@/shared/ui/multi-select-combobox";
 import { PageCard, PageTitle } from "@/shared/ui/page-card";
 
@@ -94,11 +95,7 @@ export function TimelinePage() {
   if (!projetos.length) {
     return <PageCard>
       {cabecalho}
-      <div role="status" className="mx-auto mt-10 max-w-md text-center">
-        <div className="mx-auto mb-4 flex size-11 items-center justify-center rounded-full bg-accent/10 text-accent-text"><FolderOpen aria-hidden="true" className="size-5" /></div>
-        <h2 className="text-[15px] font-medium text-body">{t("noAccessibleProjects")}</h2>
-        <p className="mt-1.5 text-[14px] leading-6 text-muted">{t("noAccessibleProjectsHint")}</p>
-      </div>
+      <EstadoVazio className="mx-auto mt-10" titulo={t("noAccessibleProjects")} dica={t("noAccessibleProjectsHint")} />
     </PageCard>;
   }
 

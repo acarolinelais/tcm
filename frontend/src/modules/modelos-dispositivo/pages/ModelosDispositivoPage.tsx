@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Button } from "@heroui/react";
-import { Pencil, Plus, Power, PowerOff, Smartphone } from "lucide-react";
+import { Pencil, Plus, Power, PowerOff } from "lucide-react";
 
 import type { PerfilAtual } from "@/core/auth/api";
 import { formatDate } from "@/core/i18n/format";
@@ -83,7 +83,7 @@ export function ModelosDispositivoPage() {
     loadingLabel: t("loadingDeviceModels"),
     errorLabel: t("deviceModelsLoadError"),
     clearFiltersLabel: t("clearFilters"),
-    empty: { icon: <Smartphone aria-hidden="true" className="size-5" />, title: t("noDeviceModelsYet"), hint: t("noDeviceModelsHint") },
+    empty: { title: t("noDeviceModelsYet"), hint: t("noDeviceModelsHint") },
     filtered: { title: t("noResults"), hint: t("noDeviceModelsResults") },
   });
 
