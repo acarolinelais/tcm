@@ -15,9 +15,9 @@ import { ErroComRetry } from "@/shared/ui/erro-com-retry";
 import { EstadoVazio } from "@/shared/ui/estado-vazio";
 import { MultiSelectCombobox } from "@/shared/ui/multi-select-combobox";
 import { PageCard, PageTitle } from "@/shared/ui/page-card";
+import { PilhaAvatares } from "@/shared/ui/pilha-avatares";
 
 import { AlteracoesCardDrawer } from "../components/AlteracoesCardDrawer";
-import { PilhaAvatares } from "../components/PilhaAvatares";
 import { TimelineGrade } from "../components/TimelineGrade";
 import { useTimeline } from "../hooks/useTimeline";
 import type { CardTimeline, FiltrosTimeline, VisaoTimeline } from "../model/timeline";
@@ -85,7 +85,7 @@ export function TimelinePage() {
         : <PageTitle>{t("timeline")}</PageTitle>}
       <p className="mt-1.5 text-[14px] leading-5 text-muted">{t("timelineDescription")}</p>
     </div>
-    {dados && <PilhaAvatares pessoas={dados.pessoas} />}
+    {dados && <PilhaAvatares pessoas={dados.pessoas} rotulo={t("timelinePeopleInPeriod")} rotuloMais={(count) => t("timelineMorePeople", { count })} />}
   </header>;
 
   if (projetosQuery.isError) {

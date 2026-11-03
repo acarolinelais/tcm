@@ -10,7 +10,7 @@
 
 ## Fase 1: peças compartilhadas
 
-- [ ] **T01. Pilha de avatares em `shared/ui`**
+- [x] **T01. Pilha de avatares em `shared/ui`**
   - Arquivos: `shared/ui/pilha-avatares.tsx` (movido de `modules/timeline/components/PilhaAvatares.tsx`),
     `shared/ui/pilha-avatares.test.tsx` (novo), `modules/timeline/pages/TimelinePage.tsx`,
     `modules/timeline/components/TimelineCard.test.tsx`
@@ -19,25 +19,28 @@
     O teste novo cobre cinco pessoas (sem "+N"), seis (com "+1") e lista vazia (não renderiza).
   - Cobre: CA-02
   - Verificação: `npm test -- pilha-avatares TimelinePage TimelineCard` → verde.
-- [ ] **T02. Ícones Filter e History**
+- [x] **T02. Ícones Filter e History**
   - Arquivos: `shared/ui/figma-icons.tsx`
   - O que muda: `FilterIcon` (15×10) e `HistoryIcon` (9×9), copiados dos SVGs, no tamanho nativo e com
     `currentColor`, no padrão dos outros ícones do arquivo. O `HistoryIcon` só entra em uso nas specs 058 e 059.
+  - Feito: só o `FilterIcon`. O `HistoryIcon` entra na spec 058, onde passa a ter uso (evita ícone sem uso).
   - Cobre: CA-03 (o botão Filter usa o ícone)
   - Verificação: `npx tsc -b` e `npm run lint` → sem erro; ícone novo sem uso gera aviso só se o lint barrar
     exports (se barrar, o `HistoryIcon` fica para a 058).
-- [ ] **T03. Seletor de projeto fora do `h1`**
+- [x] **T03. Seletor de projeto fora do `h1`**
   - Arquivos: `modules/projetos/components/ProjetoSwitcher.tsx`, `ProjetoSwitcher.test.tsx`
   - O que muda: prop `comoTitulo` (padrão `true`). Com `false`, o seletor renderiza um `div` em vez do `h1` e usa
     `text-body`, mantendo menu, busca e teclado. O teste confere os dois modos e que o `h1` some só no modo novo.
   - Cobre: CA-01
   - Verificação: `npm test -- ProjetoSwitcher` → verde; `npm test -- page-card` (varredura de `<h1`) → verde.
-- [ ] **T04. Textos nos três idiomas**
+- [x] **T04. Textos nos três idiomas**
   - Arquivos: `core/i18n/resources.ts`
-  - O que muda: `boardKanbanHint` (descrição do Board), `boardPeople` e `boardMorePeople` (acessibilidade da
-    pilha) e `filter` (rótulo do botão), em inglês, português e coreano. Se `filter` já existir, reaproveita.
+  - O que muda: `boardKanbanHint` (descrição do Board), `boardPeople` (acessibilidade da pilha) e `filter`
+    (rótulo do botão), em inglês, português e coreano. Se `filter` já existir, reaproveita.
+  - Feito: o "+N" da pilha reaproveita `timelineMorePeople` (mesmo texto). A chave `filter` já existia ("Filter: {{label}}", com parâmetro), então o rótulo do botão é `filterButton`.
+    O teste de presença das chaves ficou em `core/i18n/resources.test.ts`.
   - Cobre: CA-01, CA-10
-  - Verificação: `npm test -- i18n` → verde (teste de paridade entre idiomas).
+  - Verificação: `npm test -- resources` → verde (teste de paridade entre idiomas).
 
 ## Fase 2: botão Filter
 

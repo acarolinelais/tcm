@@ -52,8 +52,8 @@ Nenhum.
   `Filter` (com `FilterIcon`, contador de filtros ativos e "Limpar filtros" dentro do painel) mora aqui.
 - `pages/BoardPage.tsx` (escolha do projeto): `PageTitle` azul, busca e cards de time com as bordas e cores do
   protótipo. Estrutura e comportamento iguais.
-- `core/i18n/resources.ts`: `boardKanbanHint` (descrição), `boardPeople` e `boardMorePeople` (acessibilidade da
-  pilha), `filter` (rótulo do botão), nos três idiomas.
+- `core/i18n/resources.ts`: `boardKanbanHint` (descrição), `boardPeople` (acessibilidade da pilha) e `filterButton`
+  (rótulo do botão), nos três idiomas. O "+N" da pilha reaproveita `timelineMorePeople`, que tem o mesmo texto.
 
 ## Critérios de aceite → testes
 

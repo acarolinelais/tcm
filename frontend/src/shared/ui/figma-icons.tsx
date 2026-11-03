@@ -102,3 +102,12 @@ export function PasswordEyeIcon({ className, ...props }: IconProps) {
     </svg>
   );
 }
+
+/** Três linhas decrescentes do botão Filter (Figma TCM 2550:4207): 15×10px, preenchido. */
+export function FilterIcon({ className, ...props }: IconProps) {
+  return (
+    <svg aria-hidden="true" width="15" height="10" viewBox="0 0 15 10" fill="currentColor" xmlns="http://www.w3.org/2000/svg" {...props} className={cn("m-0 h-[10px] w-[15px] shrink-0", className)}>
+      <path fillRule="evenodd" clipRule="evenodd" d="M0 0.805556C0 0.360663 0.360663 0 0.805556 0H13.6944C14.1394 0 14.5 0.360663 14.5 0.805556C14.5 1.25045 14.1394 1.61111 13.6944 1.61111H0.805556C0.360663 1.61111 0 1.25045 0 0.805556ZM2.41667 4.83333C2.41667 4.38843 2.77733 4.02778 3.22222 4.02778H11.2778C11.7227 4.02778 12.0833 4.38843 12.0833 4.83333C12.0833 5.27824 11.7227 5.63889 11.2778 5.63889H3.22222C2.77733 5.63889 2.41667 5.27824 2.41667 4.83333ZM4.83333 8.86111C4.83333 8.4162 5.194 8.05556 5.63889 8.05556H8.86111C9.30602 8.05556 9.66667 8.4162 9.66667 8.86111C9.66667 9.30602 9.30602 9.66667 8.86111 9.66667H5.63889C5.194 9.66667 4.83333 9.30602 4.83333 8.86111Z" />
+    </svg>
+  );
+}
