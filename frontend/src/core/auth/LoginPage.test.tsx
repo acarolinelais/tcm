@@ -39,11 +39,38 @@ describe("tema na tela de login", () => {
     await user.type(screen.getByLabelText("Email"), "dev@example.com");
 
     // O mesmo botão da Navbar, sem variante (spec 050, RN-07).
-    expect(screen.getByRole("button", { name: "Dark theme" })).toHaveClass("size-[29px]", "border-edge");
+    expect(screen.getByRole("button", { name: "Dark theme" })).toHaveClass("size-[29px]", "border-auth-borda", "bg-auth-card", "text-auth-controle");
     await user.click(screen.getByRole("button", { name: "Dark theme" }));
 
     expect(document.documentElement).toHaveClass("dark");
     expect(screen.getByLabelText("Email")).toHaveValue("dev@example.com");
+  });
+});
+
+describe("ilustração do login na troca de tema (spec 049)", () => {
+  it("mantém as duas ilustrações e as duas camadas de fundo na tela, e o tema só muda a opacidade delas", async () => {
+    await i18n.changeLanguage("en");
+    const { container } = render(<QueryClientProvider client={new QueryClient()}><MemoryRouter initialEntries={["/login"]}><Routes><Route path="/login" element={<LoginPage />} /></Routes></MemoryRouter></QueryClientProvider>);
+
+    const [clara, escura] = Array.from(container.querySelectorAll("aside img"));
+    // A que sai fica com 1% (e não 0) e como camada própria: com 0 o navegador não desenha o SVG, e a primeira troca trava.
+    expect(clara).toHaveClass("opacity-100", "dark:opacity-[.01]", "will-change-[opacity]");
+    expect(escura).toHaveClass("opacity-[.01]", "dark:opacity-100", "will-change-[opacity]");
+    // Nenhuma das duas some por `display`: isso não tem transição e dava o salto.
+    expect(clara.className).not.toMatch(/hidden|dark:block/);
+    expect(escura.className).not.toMatch(/hidden|dark:block/);
+    const camadas = container.querySelectorAll("aside > div[aria-hidden='true']");
+    expect(camadas).toHaveLength(2);
+    expect(camadas[1]).toHaveClass("opacity-[.01]", "dark:opacity-100", "will-change-[opacity]");
+    // A camada clara também quase some no escuro: com ela opaca por baixo, o branco vaza pela borda curva (anti-aliasing duplo).
+    expect(camadas[0]).toHaveClass("opacity-100", "dark:opacity-[.01]");
+    expect(camadas[0].className).not.toMatch(/rounded/);
+    expect(camadas[1].className).not.toMatch(/rounded/);
+    // O fundo é imagem pronta (WebP, com o vidro do Figma assado) e não filtro em tempo de execução.
+    for (const camada of camadas) {
+      expect((camada as HTMLElement).style.backgroundImage).toContain(".webp");
+      expect(camada.className).not.toMatch(/backdrop-blur/);
+    }
   });
 });
 

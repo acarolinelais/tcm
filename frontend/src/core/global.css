@@ -125,6 +125,43 @@
   --chart-3: #8e8e93;               /* systemGray: 5,1:1 sobre o cartão (gráfico com significado pede ≥ 3:1) */
 }
 
+/* Login e troca de senha (ajuste de 2026-11-03, Figma login claro e escuro): só a moldura de entrada lê estes tokens;
+   o resto do tema escuro segue a paleta de cima. O subtítulo e o título claros ficam abaixo de 4,5:1 por decisão do
+   protótipo (a lista de cores fixa os valores). */
+:root {
+  --auth-titulo: #0081f9;
+  --auth-subtitulo: #7e7e7e;
+  --auth-texto: #454442;        /* Email, Password e os rótulos */
+  --auth-controle: #454442;     /* botão de idioma e ícone do botão de tema */
+  --auth-card: #ffffff;
+  --auth-borda: #f2f2f2;        /* bordas do cartão e linha vertical entre os controles */
+  --auth-campo: #ffffff;
+  --auth-campo-borda: #f2f2f2;
+  --auth-icone: #7e7e7e;        /* olho da senha */
+  --auth-fundo-claro: #ffffff;  /* base de cada camada do fundo da ilustração: fixa, para a troca de tema não repintar a camada */
+  --auth-fundo-escuro: #0f0f0f;
+  --auth-pagina: #fbfbfb;       /* fundo atrás do cartão */
+  --auth-botao: #0081f9;        /* botão de entrar e de salvar a senha */
+  --auth-botao-hover: #006cd1;
+  --auth-botao-texto: #ffffff;
+}
+
+:root.dark {
+  --auth-titulo: #0c8aff;
+  --auth-subtitulo: #b5b5b5;
+  --auth-texto: #ffffff;
+  --auth-controle: #b5b5b5;
+  --auth-card: #0f0f0f;
+  --auth-borda: #1b1b1b;
+  --auth-campo: #1b1b1b;
+  --auth-campo-borda: #262626;
+  --auth-icone: #b5b5b5;
+  --auth-pagina: #000000;
+  --auth-botao: #0c8aff;
+  --auth-botao-hover: #0a72d1;
+  --auth-botao-texto: #ffffff;
+}
+
 /* Paleta da cor do avatar (ADR 0043), na ordem de `CorAvatar`: o fundo do avatar enquanto a esfera do HeroUI não carrega
    (ou se ela não carregar). No claro, tons fortes; no escuro, tons claros. O contraste com o fundo é travado por
    src/core/theme/contraste-avatar.test.ts. */
@@ -302,6 +339,21 @@
   --color-subtle: var(--subtle);
   --color-panel: var(--panel);
   --color-edge: var(--edge);
+  --color-auth-titulo: var(--auth-titulo);
+  --color-auth-subtitulo: var(--auth-subtitulo);
+  --color-auth-texto: var(--auth-texto);
+  --color-auth-controle: var(--auth-controle);
+  --color-auth-card: var(--auth-card);
+  --color-auth-borda: var(--auth-borda);
+  --color-auth-campo: var(--auth-campo);
+  --color-auth-campo-borda: var(--auth-campo-borda);
+  --color-auth-icone: var(--auth-icone);
+  --color-auth-fundo-claro: var(--auth-fundo-claro);
+  --color-auth-fundo-escuro: var(--auth-fundo-escuro);
+  --color-auth-pagina: var(--auth-pagina);
+  --color-auth-botao: var(--auth-botao);
+  --color-auth-botao-hover: var(--auth-botao-hover);
+  --color-auth-botao-texto: var(--auth-botao-texto);
   --color-table-body: var(--table-body);
   --color-avatar-1: var(--avatar-1);
   --color-avatar-2: var(--avatar-2);
@@ -375,13 +427,14 @@
 }
 
 /* Troca de tema pelo toggle (spec 049): todos os elementos ganham a mesma transição de cor, então a tela muda
-   junto e aos poucos. Só cor, sem movimento: vale também com movimento reduzido. A duração é a DURACAO_TROCA_MS
+   junto e aos poucos. Só cor e opacidade (as camadas por tema do login e da Timeline se dissolvem), sem movimento:
+   vale também com movimento reduzido. A duração é a DURACAO_TROCA_MS
    do core/theme/use-theme.ts. */
 :root.trocando-tema,
 :root.trocando-tema *,
 :root.trocando-tema *::before,
 :root.trocando-tema *::after {
-  transition-property: background-color, border-color, color, fill, stroke, outline-color, text-decoration-color, box-shadow !important;
+  transition-property: background-color, border-color, color, fill, stroke, outline-color, text-decoration-color, box-shadow, opacity !important;
   transition-duration: 450ms !important;
   transition-timing-function: ease-in-out !important;
   transition-delay: 0s !important;

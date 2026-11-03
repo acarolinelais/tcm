@@ -166,3 +166,33 @@
   legível dos tokens, na spec da paleta escura.
 - **Total só para leitor de tela** (code-review): sem o total, a mudança de resultados do filtro deixa de ser anunciada. A ADR 0045
   recusou a alternativa; reabrir se o uso real pedir.
+
+## Ajuste de 2026-11-03: cores do login e da troca de senha
+
+Pedido do usuário, com os frames do login claro e escuro (`login-light-mode.svg` e `login-dark-mode.svg`) e a lista de
+cores. **Exceção à RN-10 (tema escuro não muda):** o login e a troca de senha ganham uma paleta escura própria.
+- Tokens `--auth-*` (claro e escuro) em `core/global.css`, lidos só por `AuthLayout`, `LoginPage` e `AlterarSenhaPage`; o
+  resto do tema escuro continua igual (o teste do hash ignora só os `--auth-*`, e eles têm teste próprio).
+- Ilustração e fundo escuros novos; a ilustração clara trocou `#454442` por `#303030`; o `login.svg` antigo saiu.
+- Lua nova no botão de tema escuro (`DarkModeIcon`, do `icon-dark-mode.svg`), em qualquer tela que use o `ThemeToggle`.
+- Linha vertical entre o botão de tema e o de idioma, como nos frames.
+- Fundo da ilustração como imagem pronta (`background-illustration-login*.webp`, 11 KB e 8 KB), gerada por
+  `frontend/scripts/rasterizar-fundo-login.cjs` a partir dos SVGs do Figma. Os SVGs usam desfoques enormes e um
+  `backdrop-filter` (o "vidro"): como imagem de fundo o navegador perde o vidro (as manchas ficavam três vezes mais
+  fortes que no frame), e rasterizá-los custava centenas de ms. Refazer o script quando o Figma exportar de novo.
+- Transição de tema (spec 049) no login: as ilustrações e o fundo se dissolvem por opacidade (`opacity` entrou na lista
+  da `.trocando-tema`), e o quadriculado da Timeline também (`dark:opacity-0` no lugar de `dark:bg-none`). Antes,
+  `display` e imagem de fundo não têm transição e davam um salto. A camada que sai fica com 1% e como camada própria,
+  com base de cor fixa. Medido no Chromium, a maior lacuna entre quadros na troca caiu de 887 ms para 27 ms (6 quadros
+  contra 74 em 1,2 s); o e2e guarda o limite de 250 ms.
+- Linha clara na borda curva do cartão lateral, no escuro (anti-aliasing duplo): com a camada de fundo clara opaca por
+  baixo da escura, os pixels suavizados da curva deixam o branco passar. As duas camadas se dissolvem de forma simétrica
+  (a clara vai a 1% no escuro) e só o `aside` faz o recorte arredondado. Conferido nos quatro cantos, nos dois temas.
+- Contraste, por decisão do protótipo: o subtítulo claro `#7e7e7e` mede 4,05:1 sobre o branco (abaixo do AA de 4,5:1) e o
+  título claro `#0081f9` mede 3,8:1 (texto grande, mínimo 3:1); a borda do campo `#f2f2f2` sobre branco é decorativa.
+- Botão "Sign in" e fundo da página, igualados ao frame a pedido do usuário (também na troca de senha): tokens
+  `--auth-botao` (`#0081f9` no claro, `#0c8aff` no escuro), `--auth-botao-hover`, `--auth-botao-texto` (branco) e
+  `--auth-pagina` (`#fbfbfb` no claro, `#000000` no escuro). O fundo escuro do resto do app continua `#0a0a0a`.
+  Contraste, por decisão do protótipo: o texto branco do botão mede 3,8:1 no claro e 3,45:1 no escuro (abaixo do AA de
+  4,5:1 para texto de 15px); o hover foi escurecido para passar de 4,5:1.
+- A ilustração do login desce 56px (`top-14`), como no protótipo.

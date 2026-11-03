@@ -34,7 +34,8 @@ test("primeiro acesso cai na troca de senha com o visual do login", async ({ pag
 test("a ilustração aparece em tela larga e some no celular, sem rolagem horizontal", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await entrarComSenhaInicial(page);
-  const ilustracao = page.locator("aside img:visible");
+  // As duas ilustrações (clara e escura) ocupam o mesmo lugar; a que não é do tema atual só está transparente.
+  const ilustracao = page.locator("aside img").first();
   await expect(ilustracao).toBeVisible();
 
   await page.setViewportSize({ width: 375, height: 812 });
