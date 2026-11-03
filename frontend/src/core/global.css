@@ -19,7 +19,7 @@
   --foreground: hsl(222 47% 11%);
   --border: hsl(214 32% 91%);
   --muted: #6d6d76; /* zinc-500 do HeroUI, escurecido para o AA sobre a moldura das tabelas */
-  --accent: #2f6ae6; /* azul do Figma (#3672F2) escurecido o mínimo para o texto branco passar no AA */
+  --accent: #006cd1; /* azul do Figma (#0081F9) escurecido o mínimo para o AA: 4,5:1 sobre o branco, o painel e o fundo do item ativo */
   --accent-text: var(--accent); /* texto e ícones de acento; no escuro é um passo próprio da rampa */
   --focus: var(--accent);
   --radius: 0.5rem;
@@ -70,7 +70,7 @@
 :root {
   --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
-  --primary: 221 83% 53%; /* 219 92% 58% do Figma, escurecido para o AA sobre branco */
+  --primary: 209 100% 41%; /* o mesmo --accent em HSL (Figma #0081F9 = 208 100% 49%, escurecido para o AA) */
   --primary-foreground: 0 0% 100%;
   --secondary: 210 20% 96%;
   --secondary-foreground: 222 47% 11%;
@@ -78,7 +78,7 @@
   --input: 214 32% 91%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --ring: 221 83% 53%;
+  --ring: 209 100% 41%;
 }
 
 :root.dark {
@@ -98,9 +98,9 @@
 /* Tokens do projeto (ADR 0041): cores do Figma sem equivalente no HeroUI, nomeadas pelo papel. */
 :root {
   --page: #fbfbfb;        /* fundo das páginas, atrás dos cartões */
-  --edge: #eeeeee;        /* borda dos cartões, dos botões em pílula, da busca e do botão de tema (spec 050) */
+  --edge: #f2f2f2;        /* borda dos cartões, dos botões em pílula, da busca e do botão de tema (spec 050) */
   --table-body: var(--surface); /* corpo da tabela */
-  --accent-tint: #eaf1ff; /* fundo azul claro do Figma: item ativo da sidebar, ilustração do login, dropzone */
+  --accent-tint: #e6f3ff; /* fundo azul claro do Figma: item ativo da sidebar, ilustração do login, dropzone */
   --body: #454442;        /* texto corrido das telas do Figma */
   --subtle: #6d6d6d;      /* texto de apoio (Figma #7E7E7E/#777777, escurecido para o AA) */
   --panel: #f3f5f7;       /* moldura das tabelas e painéis */

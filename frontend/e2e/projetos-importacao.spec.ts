@@ -35,7 +35,7 @@ test("pagina a prévia e informa quantos Test Cases foram criados", async ({ pag
   await page.locator('input[type="file"]').setInputFiles(planilha(casos(45)));
   const previa = page.getByRole("region", { name: "Prévia dos Test Cases" });
   await expect(previa).toContainText("45 Test Cases");
-  await expect(previa).toContainText("45 no total");
+  await expect(previa).not.toContainText("no total");
   await expect(previa).not.toContainText("Clock_021");
   await previa.getByRole("button", { name: "Próxima página" }).click();
   await previa.getByRole("button", { name: "Próxima página" }).click();

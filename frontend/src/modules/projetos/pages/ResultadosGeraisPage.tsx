@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button, SearchField } from "@heroui/react";
-import { FolderOpen, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useOutletContext, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
@@ -8,6 +8,7 @@ import type { PerfilAtual } from "@/core/auth/api";
 import { buscarTodasAsPaginas } from "@/shared/lib/exportar-planilha";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { ErroComRetry } from "@/shared/ui/erro-com-retry";
+import { EstadoVazio } from "@/shared/ui/estado-vazio";
 import { PageCard, PageTitle } from "@/shared/ui/page-card";
 import { WeekPickerHero } from "@/shared/ui/week-picker-hero";
 import { useHistoricoProjeto, useProjetosSeletor } from "../hooks/useProjetos";
@@ -98,11 +99,7 @@ export function ResultadosGeraisPage() {
   if (!projetos.length) {
     return <PageCard>
       {cabecalho}
-      <div role="status" className="mx-auto mt-10 max-w-md text-center">
-        <div className="mx-auto mb-4 flex size-11 items-center justify-center rounded-full bg-accent/10 text-accent-text"><FolderOpen aria-hidden="true" className="size-5" /></div>
-        <h2 className="text-[15px] font-medium text-body">{t("noAccessibleProjects")}</h2>
-        <p className="mt-1.5 text-[14px] leading-6 text-muted">{t("noAccessibleProjectsHint")}</p>
-      </div>
+      <EstadoVazio className="mx-auto mt-10" titulo={t("noAccessibleProjects")} dica={t("noAccessibleProjectsHint")} />
     </PageCard>;
   }
 

@@ -15,7 +15,7 @@ interface DataTablePaginationProps {
   className?: string;
 }
 
-// Figma (TCM 2070:1476): total à esquerda; "Prev", números e "Next" à direita; Inter 500 12px.
+// Figma (TCM 2070:1476): seletor de itens por página à esquerda, sem total (ADR 0045); "Prev", números e "Next" à direita; Inter 500 12px.
 const botaoPagina = "inline-flex h-[26px] min-w-[26px] items-center justify-center gap-1.5 rounded-full px-1.5 text-[12px] font-medium leading-[17px] text-body outline-none transition-colors hover:bg-default/60 data-[disabled]:cursor-not-allowed data-[disabled]:text-subtle data-[disabled]:hover:bg-transparent data-[focus-visible]:ring-2 data-[focus-visible]:ring-focus";
 
 export function DataTablePagination({
@@ -33,7 +33,6 @@ export function DataTablePagination({
   return (
     <div className={cn("flex w-full shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 px-6 py-3", className)}>
       <div className="flex items-center gap-3 text-[12px] font-medium leading-[17px] text-subtle">
-        <span aria-live="polite">{t("totalItems", { count: totalCount })}</span>
         <Select aria-label={t("pageSize")} value={pageSize} onChange={(valor) => { if (valor !== null) onPageSizeChange(Number(valor)); }} className="w-auto">
           <Select.Trigger className="h-[22px] min-h-0 items-center gap-1 rounded-full border-0 bg-transparent px-1.5 py-0 pe-1.5 text-[12px] font-medium text-subtle shadow-none hover:bg-default/60">
             <Select.Value className="leading-[17px]" />

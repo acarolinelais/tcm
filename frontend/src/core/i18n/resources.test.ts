@@ -22,6 +22,13 @@ describe("translation resources", () => {
     expect(resources.en.translation.caseProcedure).toBe("Test Procedure(English)");
   });
 
+  it("names the Board header and the Filter button in every language (spec 056)", () => {
+    for (const language of ["en", "pt-BR", "ko"] as const) {
+      const { translation } = resources[language];
+      for (const key of ["boardKanbanHint", "boardPeople", "filterButton", "kanbanNoMatchesHint", "activeFilters_one", "activeFilters_other", "timelineFilters", "timelineEmptyHint", "originSpreadsheet", "viewExecutionHistory"] as const) expect(translation[key], `${language} ${key}`).toBeTruthy();
+    }
+  });
+
   it("has the PR link section texts in every language", () => {
     const chaves = ["pullRequests", "pullRequestUrl", "noPullRequests", "pullRequestsLoadError", "pullRequestAddedBy", "removePullRequest", "removePullRequestTitle", "removePullRequestDescription", "pullRequestAdded", "pullRequestRemoved", "pullRequestAddError", "pullRequestRemoveError", "pullRequestNotFound", "pullRequestDuplicate", "pullRequestUrlRequired", "pullRequestUrlInvalid", "pullRequestUrlDomain", "pullRequestUrlMax"] as const;
     for (const language of ["en", "pt-BR", "ko"] as const) {

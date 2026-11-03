@@ -7,10 +7,10 @@ import { projetosApi } from "../api/projetos.api";
 import { ProjetoSwitcher } from "./ProjetoSwitcher";
 
 vi.mock("../api/projetos.api", () => ({ projetosApi: { listar: vi.fn() } }));
-function abrir() {
+function abrir(props: { comoTitulo?: boolean; azul?: boolean } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   function Contexto() { return <Outlet context={{ id: "dev", unidade_id: "u", perfil_codigo: "USUARIO_PADRAO" }} />; }
-  function Pagina() { const location = useLocation(); return <><ProjetoSwitcher projetoId="p0" nome="Clock" /><p>{location.pathname}</p></>; }
+  function Pagina() { const location = useLocation(); return <><ProjetoSwitcher projetoId="p0" nome="Clock" {...props} /><p>{location.pathname}</p></>; }
   render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/projetos/p0"]}><Routes><Route element={<Contexto />}><Route path="projetos/:id" element={<Pagina />} /></Route></Routes></MemoryRouter></QueryClientProvider>);
 }
 beforeEach(() => vi.clearAllMocks());
@@ -126,3 +126,49 @@ describe("com busca (spec 053)", () => {
   });
 });
 
+describe("comoTitulo", () => {
+  const dois = { items: [{ id: "p0", nome: "Clock" }, { id: "p1", nome: "Existente" }], page: 1, page_size: 100, total_count: 2 };
+
+  it("por padrão o seletor é o título azul da página", async () => {
+    vi.mocked(projetosApi.listar).mockResolvedValue(dois as never);
+    abrir();
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Clock" })).toHaveClass("text-accent-text");
+  });
+
+  it("com azul falso, continua sendo o h1 da página, mas na cor do texto (spec 058)", async () => {
+    vi.mocked(projetosApi.listar).mockResolvedValue(dois as never);
+    abrir({ azul: false });
+
+    // O menu só aparece depois que a lista de projetos chega.
+    const botao = await screen.findByRole("button", { name: "Clock" });
+    const titulo = screen.getByRole("heading", { level: 1, name: "Clock" });
+    expect(titulo).toHaveClass("text-body");
+    expect(titulo).not.toHaveClass("text-accent-text");
+    expect(botao).toHaveClass("text-body");
+  });
+
+  it("com comoTitulo falso, continua trocando de projeto, mas sem o h1 e na cor do texto", async () => {
+    const user = userEvent.setup();
+    vi.mocked(projetosApi.listar).mockResolvedValue(dois as never);
+    abrir({ comoTitulo: false });
+
+    const botao = await screen.findByRole("button", { name: "Clock" });
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+    expect(botao).toHaveClass("text-body");
+    await user.click(botao);
+    await user.keyboard("{ArrowDown}");
+    await user.click(await screen.findByRole("menuitemradio", { name: "Existente" }));
+    expect(screen.getByText("/projetos/p1")).toBeInTheDocument();
+  });
+
+  it("com um projeto só e comoTitulo falso, mostra o nome sem h1 (falha da troca)", async () => {
+    vi.mocked(projetosApi.listar).mockResolvedValue({ ...dois, items: [dois.items[0]], total_count: 1 } as never);
+    abrir({ comoTitulo: false });
+
+    await waitFor(() => expect(projetosApi.listar).toHaveBeenCalled());
+    expect(await screen.findByText("Clock")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Clock" })).not.toBeInTheDocument();
+  });
+});

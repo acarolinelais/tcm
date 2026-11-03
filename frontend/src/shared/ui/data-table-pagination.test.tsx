@@ -13,9 +13,9 @@ function renderizar(page: number, totalCount: number) {
 }
 
 describe("DataTablePagination", () => {
-  it("mostra o total e vai para a página 2", async () => {
+  it("não mostra o total de itens (ADR 0045) e vai para a página 2", async () => {
     const { onPageChange } = renderizar(1, 45);
-    expect(screen.getByText("45 total")).toBeInTheDocument();
+    expect(screen.queryByText(/total/i)).not.toBeInTheDocument();
     const nav = screen.getByRole("navigation", { name: "Pagination" });
     expect(within(nav).getByRole("button", { name: "Page 1" })).toHaveAttribute("aria-current", "page");
     await userEvent.click(within(nav).getByRole("button", { name: "Page 2" }));

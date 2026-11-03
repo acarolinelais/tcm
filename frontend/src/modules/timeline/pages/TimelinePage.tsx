@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Button, ToggleButton, ToggleButtonGroup } from "@heroui/react";
-import { ChevronLeft, ChevronRight, FolderOpen } from "lucide-react";
+import { ChevronLeft, ChevronRight, SearchX } from "lucide-react";
 import { useOutletContext, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
@@ -12,11 +12,12 @@ import type { CasoTesteResumo } from "@/modules/projetos/model/projeto";
 import { formatarDiaIso } from "@/shared/lib/utils";
 import { AvatarUsuario } from "@/shared/ui/avatar-usuario";
 import { ErroComRetry } from "@/shared/ui/erro-com-retry";
-import { MultiSelectCombobox } from "@/shared/ui/multi-select-combobox";
+import { EstadoVazio } from "@/shared/ui/estado-vazio";
 import { PageCard, PageTitle } from "@/shared/ui/page-card";
+import { PilhaAvatares } from "@/shared/ui/pilha-avatares";
 
 import { AlteracoesCardDrawer } from "../components/AlteracoesCardDrawer";
-import { PilhaAvatares } from "../components/PilhaAvatares";
+import { TimelineFiltros } from "../components/TimelineFiltros";
 import { TimelineGrade } from "../components/TimelineGrade";
 import { useTimeline } from "../hooks/useTimeline";
 import type { CardTimeline, FiltrosTimeline, VisaoTimeline } from "../model/timeline";
@@ -77,14 +78,12 @@ export function TimelinePage() {
 
   if (!permitido) return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
 
-  const cabecalho = <header className="mb-6 flex shrink-0 flex-wrap items-start gap-4">
-    <div className="min-w-0 flex-1">
-      {projetoAberto
-        ? <ProjetoSwitcher projetoId={projetoAberto.id} nome={projetoAberto.nome} projetos={projetos} buscavel onEscolher={trocarProjeto} />
-        : <PageTitle>{t("timeline")}</PageTitle>}
-      <p className="mt-1.5 text-[14px] leading-5 text-muted">{t("timelineDescription")}</p>
+  const cabecalho = <header className="mb-5 flex shrink-0 flex-wrap items-start justify-between gap-4">
+    <div className="grid min-w-0 gap-2">
+      <PageTitle>{t("timeline")}</PageTitle>
+      <p className="text-[15px] leading-[21px] text-subtle">{t("timelineDescription")}</p>
     </div>
-    {dados && <PilhaAvatares pessoas={dados.pessoas} />}
+    {dados && <PilhaAvatares pessoas={dados.pessoas} rotulo={t("timelinePeopleInPeriod")} rotuloMais={(count) => t("timelineMorePeople", { count })} />}
   </header>;
 
   if (projetosQuery.isError) {
@@ -94,69 +93,55 @@ export function TimelinePage() {
   if (!projetos.length) {
     return <PageCard>
       {cabecalho}
-      <div role="status" className="mx-auto mt-10 max-w-md text-center">
-        <div className="mx-auto mb-4 flex size-11 items-center justify-center rounded-full bg-accent/10 text-accent-text"><FolderOpen aria-hidden="true" className="size-5" /></div>
-        <h2 className="text-[15px] font-medium text-body">{t("noAccessibleProjects")}</h2>
-        <p className="mt-1.5 text-[14px] leading-6 text-muted">{t("noAccessibleProjectsHint")}</p>
-      </div>
+      <EstadoVazio className="mx-auto mt-10" titulo={t("noAccessibleProjects")} dica={t("noAccessibleProjectsHint")} />
     </PageCard>;
   }
 
-  const barra = <div className="mb-5 flex shrink-0 flex-wrap items-start gap-3 border-b border-separator pb-5">
-    <ToggleButtonGroup
-      aria-label={t("timelineViews")}
-      selectionMode="single"
-      disallowEmptySelection
-      selectedKeys={[visao]}
-      onSelectionChange={(chaves) => { const [chave] = chaves; if (chave) trocarVisao(chave as VisaoTimeline); }}
-      className="w-fit gap-0 rounded-xl bg-panel p-1"
-    >
-      {VISOES.map(({ id, rotulo }) => (
-        <ToggleButton key={id} id={id} className="h-8 min-w-16 rounded-lg border-0 bg-transparent px-4 text-[13px] font-medium text-body shadow-none data-[selected=true]:bg-surface data-[selected=true]:text-accent-text data-[selected=true]:shadow-sm">
-          {t(rotulo)}
-        </ToggleButton>
-      ))}
-    </ToggleButtonGroup>
-    <div className="flex h-10 items-center gap-1 rounded-xl border border-edge px-1">
-      <Button isIconOnly variant="ghost" size="sm" aria-label={t("previousPeriod")} onPress={() => setPeriodo(avancar(visao, periodo, -1))}>
-        <ChevronLeft aria-hidden="true" className="size-4" />
-      </Button>
-      <span aria-live="polite" className="min-w-28 text-center text-[13px] tabular-nums text-body">{rotuloPeriodo(visao, periodo)}</span>
-      <Button isIconOnly variant="ghost" size="sm" aria-label={t("nextPeriod")} onPress={() => setPeriodo(avancar(visao, periodo, 1))}>
-        <ChevronRight aria-hidden="true" className="size-4" />
-      </Button>
-    </div>
-    <Button variant="outline" size="sm" className="h-10" onPress={() => setPeriodo(periodoDe(visao, new Date()))}>{t("today")}</Button>
-    <div className="ml-auto grid w-full gap-3 sm:w-auto sm:grid-cols-2">
-      <div className="sm:w-56">
-        <MultiSelectCombobox
-          label={t("timelinePeople")}
-          placeholder={t("timelinePeoplePlaceholder")}
-          options={opcoes(dados?.pessoas.map((pessoa) => pessoa.id) ?? [], filtros.responsavelIds)}
-          value={filtros.responsavelIds}
-          onValueChange={(responsavelIds) => setFiltros({ ...filtros, responsavelIds })}
-          emptyLabel={t("noResults")}
-          removeLabel={(nome) => t("removeSelectedModel", { name: nome })}
-        />
+  const barra = <div className="mb-5 flex shrink-0 flex-wrap items-center gap-3 border-b border-separator pb-5">
+    {projetoAberto && <div className="min-w-0"><ProjetoSwitcher comoTitulo={false} projetoId={projetoAberto.id} nome={projetoAberto.nome} projetos={projetos} buscavel onEscolher={trocarProjeto} /></div>}
+    {/* Como no frame 2550:3921: o projeto à esquerda e, agrupados à direita, as visões, o intervalo, o Hoje e o Filter. */}
+    <div className="ml-auto flex flex-wrap items-center gap-3">
+      <ToggleButtonGroup
+        aria-label={t("timelineViews")}
+        selectionMode="single"
+        disallowEmptySelection
+        selectedKeys={[visao]}
+        onSelectionChange={(chaves) => { const [chave] = chaves; if (chave) trocarVisao(chave as VisaoTimeline); }}
+        className="w-fit gap-0 rounded-full bg-panel p-1"
+      >
+        {VISOES.map(({ id, rotulo }) => (
+          <ToggleButton key={id} id={id} className="h-8 min-w-16 rounded-full border-0 bg-transparent px-4 text-[13px] font-medium text-body shadow-none data-[selected=true]:bg-surface data-[selected=true]:text-accent-text data-[selected=true]:shadow-sm">
+            {t(rotulo)}
+          </ToggleButton>
+        ))}
+      </ToggleButtonGroup>
+      <div className="flex h-9 items-center gap-1 rounded-full border border-edge px-1">
+        <Button isIconOnly variant="ghost" size="sm" aria-label={t("previousPeriod")} onPress={() => setPeriodo(avancar(visao, periodo, -1))}>
+          <ChevronLeft aria-hidden="true" className="size-4" />
+        </Button>
+        <span aria-live="polite" className="min-w-28 text-center text-[13px] tabular-nums text-body">{rotuloPeriodo(visao, periodo)}</span>
+        <Button isIconOnly variant="ghost" size="sm" aria-label={t("nextPeriod")} onPress={() => setPeriodo(avancar(visao, periodo, 1))}>
+          <ChevronRight aria-hidden="true" className="size-4" />
+        </Button>
       </div>
-      <div className="sm:w-56">
-        <MultiSelectCombobox
-          label={t("timelineCases")}
-          placeholder={t("timelineCasesPlaceholder")}
-          options={opcoes(dados?.casos.map((caso) => caso.id) ?? [], filtros.casoIds)}
-          value={filtros.casoIds}
-          onValueChange={(casoIds) => setFiltros({ ...filtros, casoIds })}
-          emptyLabel={t("noResults")}
-          removeLabel={(nome) => t("removeSelectedModel", { name: nome })}
+      <Button variant="outline" size="sm" className="h-9 rounded-full" onPress={() => setPeriodo(periodoDe(visao, new Date()))}>{t("today")}</Button>
+      <TimelineFiltros
+          opcoesPessoas={opcoes(dados?.pessoas.map((pessoa) => pessoa.id) ?? [], filtros.responsavelIds)}
+          opcoesCasos={opcoes(dados?.casos.map((caso) => caso.id) ?? [], filtros.casoIds)}
+          filtros={filtros}
+          onAlterar={setFiltros}
+          onLimpar={() => setFiltros(SEM_FILTROS)}
         />
-      </div>
     </div>
   </div>;
 
-  const vazio = <div role="status" className="grid justify-items-center gap-3 text-center">
-    <p className="text-[14px] text-muted">{t("timelineEmpty")}</p>
-    {temFiltros && <Button variant="outline" size="sm" onPress={() => setFiltros(SEM_FILTROS)}>{t("clearFilters")}</Button>}
-  </div>;
+  const vazio = <EstadoVazio
+    titulo={t("timelineEmpty")}
+    dica={t(temFiltros ? "kanbanNoMatchesHint" : "timelineEmptyHint")}
+    icone={temFiltros ? <SearchX aria-hidden="true" className="size-7" /> : undefined}
+  >
+    {temFiltros && <Button variant="outline" size="sm" className="mt-5" onPress={() => setFiltros(SEM_FILTROS)}>{t("clearFilters")}</Button>}
+  </EstadoVazio>;
 
   return <PageCard>
     {cabecalho}

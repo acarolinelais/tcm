@@ -76,6 +76,7 @@ describe("entrar (spec 050: botões e campos no HeroUI)", () => {
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Invalid email or password."));
     expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
+    expect(screen.getByLabelText("Email")).toHaveValue("dev@example.com");
     expect(screen.queryByText("início")).not.toBeInTheDocument();
   });
 

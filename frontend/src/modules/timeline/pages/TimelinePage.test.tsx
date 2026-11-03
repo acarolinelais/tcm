@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -37,6 +37,14 @@ function renderPage(perfilAtual = perfil) {
   return render(<MemoryRouter><Routes><Route path="/" element={<Contexto />}><Route index element={<TimelinePage />} /></Route></Routes></MemoryRouter>);
 }
 
+/** Com o painel do Filter aberto, o resto da tela fica oculto para a acessibilidade: fecha a lista e depois o painel. */
+async function fecharFiltros(user: ReturnType<typeof userEvent.setup>) {
+  await waitFor(async () => {
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  }, { timeout: 3000 });
+}
+
 /** Últimos argumentos de `useTimeline`: projeto, início, fim e filtros. */
 const ultimaConsulta = () => vi.mocked(useTimeline).mock.lastCall?.slice(0, 4);
 
@@ -57,7 +65,11 @@ describe("TimelinePage", () => {
   it("abre o primeiro projeto na semana atual, de segunda a domingo, com os cards e a pilha de avatares (CA-01)", () => {
     renderPage();
 
+    // Título azul da página; o projeto fica no seletor da barra, ao lado do botão Filter (spec 057).
+    expect(screen.getByRole("heading", { level: 1, name: "Timeline" })).toHaveClass("text-accent-text");
+    expect(screen.getByText("What changed in the project's Test Cases, day by day.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Clock 9.5" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Filter" })).toBeInTheDocument();
     expect(ultimaConsulta()).toEqual(["clock", "2026-12-28", "2027-01-03", SEM_FILTROS]);
     expect(within(screen.getByRole("list", { name: "Tuesday, December 29" })).getByRole("button", { name: "Clock_00046, Ana, 1 change" })).toBeInTheDocument();
     expect(screen.getByRole("list", { name: "People with changes in this period" })).toBeInTheDocument();
@@ -78,11 +90,13 @@ describe("TimelinePage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(screen.getByRole("button", { name: "People" }));
+    await user.click(screen.getByRole("button", { name: "Filter" }));
+    await user.click(await screen.findByRole("button", { name: "People" }));
     await user.click(await screen.findByRole("option", { name: "Ana" }));
     await user.click(screen.getByRole("option", { name: "Bia" }));
-    await user.keyboard("{Escape}");
     expect(ultimaConsulta()?.[3]).toEqual({ responsavelIds: ["ana", "bia"], casoIds: [] });
+    await fecharFiltros(user);
+    expect(screen.getByRole("button", { name: "Filter 1 active" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("radio", { name: "Month" }));
     expect(ultimaConsulta()).toEqual(["clock", "2026-12-01", "2026-12-31", { responsavelIds: ["ana", "bia"], casoIds: [] }]);
@@ -96,7 +110,8 @@ describe("TimelinePage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(screen.getByRole("button", { name: "Test Cases" }));
+    await user.click(screen.getByRole("button", { name: "Filter" }));
+    await user.click(await screen.findByRole("button", { name: "Test Cases" }));
     await user.type(await screen.findByRole("searchbox"), "alarme");
     await user.click(screen.getByRole("option", { name: /Clock_00046/ }));
 
@@ -119,11 +134,16 @@ describe("TimelinePage", () => {
     vi.mocked(useTimeline).mockReturnValue({ data: { ...timeline, cards: [] }, isError: false, refetch: vi.fn() } as never);
     renderPage();
     expect(screen.getByText("No changes in this period")).toBeInTheDocument();
+    expect(screen.getByText("Try another period or project.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "People" }));
+    await user.click(screen.getByRole("button", { name: "Filter" }));
+    await user.click(await screen.findByRole("button", { name: "People" }));
     await user.click(await screen.findByRole("option", { name: "Ana" }));
-    await user.keyboard("{Escape}");
+    await fecharFiltros(user);
+    // Com filtro, o vazio ganha a dica de filtros e o botão de limpar; o Filter continua à mão.
+    expect(screen.getByText("Try other filters or clear them.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Filter 1 active" })).toBeEnabled();
     await user.click(screen.getByRole("button", { name: "Clear filters" }));
 
     expect(ultimaConsulta()?.[3]).toEqual(SEM_FILTROS);

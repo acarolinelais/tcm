@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { cn } from "@/shared/lib/utils";
 
-import logo from "@/shared/assets/figma/icons/logo-icone.svg";
+import logo from "@/shared/assets/figma/icons/logo-tcm.svg";
 import type { PerfilAtual } from "@/core/auth/api";
 import {
   AdministrationIcon,
@@ -82,10 +82,11 @@ export function Sidebar({
       >
         <CollapseIcon aria-hidden="true" className={`transition-transform duration-200 motion-reduce:transition-none ${recolhida ? "rotate-180" : ""}`} />
       </button>
-      <div className={"flex w-full items-center gap-2 px-[10.5px] pt-7"}>
-        {/* max-w-none: o max-width: 100% padrão das imagens espremia o ícone no fim do recolhimento. */}
-        <img src={logo} alt="" className="size-[27px] max-w-none shrink-0" />
-        <span aria-hidden={recolhida} className={`${transicaoRotulo} text-xl font-semibold tracking-tight text-accent-text ${larguraRotulo}`}>TCM</span>
+      <div className="flex w-full items-center px-[10.5px] pt-7">
+        {/* O mesmo SVG tem o símbolo (27px) e o nome: recolhida, ou abaixo de 640px (coluna de 144px), a moldura corta no símbolo. max-w-none: o max-width: 100% padrão das imagens o espremia. */}
+        <div className={cn("min-w-0 overflow-hidden transition-[max-width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none", recolhida ? "max-w-[27px]" : "max-w-[184px] max-sm:max-w-[27px]")}>
+          <img src={logo} alt="Test Case Manager" className="h-[27px] w-[184px] max-w-none" />
+        </div>
       </div>
       <nav aria-label={t("mainNav")} className="mt-[19px] flex w-full min-w-0 flex-col gap-0.5">
         {itens.map((item) => (

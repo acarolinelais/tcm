@@ -1,22 +1,19 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
-import { useDrop } from "react-aria";
+import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
 import { Button } from "@heroui/react";
+import { SearchX } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { PerfilAtual } from "@/core/auth/api";
 
 import { toast } from "@/shared/lib/toast";
-import { cn } from "@/shared/lib/utils";
 import { ErroComRetry } from "@/shared/ui/erro-com-retry";
+import { EstadoVazio } from "@/shared/ui/estado-vazio";
 import { ExcluirCasoTesteDialog } from "../casos-teste/ExcluirCasoTesteDialog";
-import { StatusPill } from "../status/StatusBadge";
 import { useKanban, useMoverCasoKanban } from "../../hooks/useKanban";
-import { ROTULO_STATUS, type KanbanCard as Card, type KanbanColuna, type StatusCasoTeste } from "../../model/projeto";
-import { KanbanCard, TIPO_ARRASTO_CASO } from "./KanbanCard";
+import type { KanbanCard as Card, StatusCasoTeste } from "../../model/projeto";
+import { KanbanColuna } from "./KanbanColuna";
 import { filtrarKanban, useFiltrosKanban } from "../../hooks/useFiltrosKanban";
 import { KanbanFiltros } from "./KanbanFiltros";
 
-/** Cards renderizados por coluna antes do "Mostrar mais": mantém leve um projeto com 1.000 casos (RN-10). */
-const CARDS_POR_VEZ = 50;
 /** Distância da borda do quadro, em px, em que o arrasto começa a rolar as colunas (RN-11a). */
 const BORDA_DE_ROLAGEM = 80;
 /** Pixels por quadro de animação: cerca de 700 px/s a 60 fps. */
@@ -59,7 +56,8 @@ function useRolagemNaBorda(arrastando: boolean) {
   };
 }
 
-export function KanbanBoard({ projetoId, perfil, podeGerenciar }: { projetoId: string; perfil: PerfilAtual; podeGerenciar: boolean }) {
+/** `faixa` é o que a tela põe à esquerda dos filtros, na linha abaixo do cabeçalho (o seletor de projeto, na spec 056). */
+export function KanbanBoard({ projetoId, perfil, podeGerenciar, faixa }: { projetoId: string; perfil: PerfilAtual; podeGerenciar: boolean; faixa?: ReactNode }) {
   const { t } = useTranslation();
   const kanban = useKanban(projetoId, perfil);
   const mover = useMoverCasoKanban(projetoId, perfil);
@@ -83,25 +81,36 @@ export function KanbanBoard({ projetoId, perfil, podeGerenciar }: { projetoId: s
     });
   };
 
-  if (kanban.isLoading) return <p role="status" className="py-8 text-[14px] text-muted">{t("loading")}</p>;
+  const topo = (filtrosDoQuadro?: ReactNode) => (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-edge pb-3">
+      <div className="min-w-0">{faixa}</div>
+      {filtrosDoQuadro}
+    </div>
+  );
+
+  if (kanban.isLoading) return <div>{topo()}<p role="status" className="py-8 text-[14px] text-muted">{t("loading")}</p></div>;
   if (kanban.isError || !kanban.data) {
-    return <div className="py-8"><ErroComRetry mensagem={t("kanbanLoadError")} retry={{ label: t("retryQuery"), onRetry: () => void kanban.refetch() }} /></div>;
+    return <div>{topo()}<div className="py-8"><ErroComRetry mensagem={t("kanbanLoadError")} retry={{ label: t("retryQuery"), onRetry: () => void kanban.refetch() }} /></div></div>;
   }
 
   const semResultado = ativos && kanban.data.total > 0 && colunas.every((coluna) => coluna.casos.length === 0);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <KanbanFiltros colunas={kanban.data.colunas} filtros={filtros} ativos={ativos} onAlterar={alterar} onLimpar={limpar} />
-      {kanban.data.total === 0 && <p role="status" className="text-[14px] text-muted">{t("kanbanEmpty")}</p>}
-      {semResultado && <p role="status" className="text-[14px] text-muted">{t("kanbanNoMatches")}</p>}
+      {topo(<KanbanFiltros colunas={kanban.data.colunas} filtros={filtros} ativos={ativos} onAlterar={alterar} onLimpar={limpar} />)}
+      {kanban.data.total === 0 && <EstadoVazio className="mx-auto py-4" titulo={t("kanbanEmpty")} dica={t("noProjectCasesHint")} />}
+      {semResultado && (
+        <EstadoVazio className="mx-auto py-4" titulo={t("kanbanNoMatches")} dica={t("kanbanNoMatchesHint")} icone={<SearchX aria-hidden="true" className="size-7" />}>
+          <Button variant="outline" size="sm" className="mt-5" onPress={limpar}>{t("clearFilters")}</Button>
+        </EstadoVazio>
+      )}
       <div
         className="thin-scroll flex min-h-0 flex-1 gap-3 overflow-x-auto pb-2"
         // Captura: o useDrop das colunas para a propagação do dragover.
         {...(arrastando ? rolagem : {})}
       >
         {colunas.map((coluna) => (
-          <Coluna
+          <KanbanColuna
             key={coluna.status}
             coluna={coluna}
             arrastando={Boolean(arrastando)}
@@ -121,52 +130,5 @@ export function KanbanBoard({ projetoId, perfil, podeGerenciar }: { projetoId: s
         onConfirmar={(justificativa) => { if (excluindo) pedirMovimento(excluindo, "Cancelled", justificativa); }}
       />
     </div>
-  );
-}
-
-function Coluna({ coluna, arrastando, aceita, onSoltar, onMover, onArrastar }: {
-  coluna: KanbanColuna;
-  arrastando: boolean;
-  aceita: boolean;
-  onSoltar: () => void;
-  onMover: (card: Card, destino: StatusCasoTeste) => void;
-  onArrastar: (card: Card | null) => void;
-}) {
-  const { t } = useTranslation();
-  const ref = useRef<HTMLElement>(null);
-  const [visiveis, setVisiveis] = useState(CARDS_POR_VEZ);
-  const { dropProps, isDropTarget } = useDrop({
-    ref,
-    getDropOperation: (tipos) => (tipos.has(TIPO_ARRASTO_CASO) && aceita ? "move" : "cancel"),
-    onDrop: () => onSoltar(),
-  });
-  const rotulo = t(ROTULO_STATUS[coluna.status]);
-
-  return (
-    <section
-      {...dropProps}
-      ref={ref}
-      aria-label={t("kanbanColumn", { status: rotulo, count: coluna.total })}
-      className={cn(
-        "flex w-72 shrink-0 flex-col gap-2 rounded-xl bg-panel p-2 transition-colors",
-        arrastando && (aceita ? "bg-accent-soft" : "opacity-50"),
-        isDropTarget && "ring-2 ring-focus",
-      )}
-    >
-      <header className="flex items-center justify-between gap-2 px-1 py-1">
-        <StatusPill status={coluna.status} label={rotulo} />
-        <span className="text-[13px] font-medium tabular-nums text-muted">{coluna.total}</span>
-      </header>
-      <ul className="thin-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
-        {coluna.casos.slice(0, visiveis).map((card) => (
-          <li key={card.id}><KanbanCard card={card} onMover={onMover} onArrastar={onArrastar} /></li>
-        ))}
-      </ul>
-      {coluna.casos.length > visiveis && (
-        <Button variant="ghost" size="sm" onPress={() => setVisiveis((atual) => atual + CARDS_POR_VEZ)}>
-          {t("showMoreCases", { count: coluna.casos.length - visiveis })}
-        </Button>
-      )}
-    </section>
   );
 }

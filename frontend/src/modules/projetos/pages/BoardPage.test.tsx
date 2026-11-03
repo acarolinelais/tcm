@@ -67,6 +67,9 @@ describe("BoardPage", () => {
     expect(await screen.findByRole("heading", { name: /^SVP/ })).toHaveTextContent("SVP2 teams");
     expect(screen.getByRole("heading", { name: /^Web/ })).toBeInTheDocument();
     const time = screen.getByRole("article", { name: "SDF Automation" });
+    // Estilo do protótipo (spec 056): título azul e cartão de time no painel cinza, sem borda.
+    expect(screen.getByRole("heading", { level: 1, name: "Board" })).toHaveClass("text-accent-text");
+    expect(time).toHaveClass("bg-panel");
     expect(within(time).getByText(/11 members/)).toHaveTextContent("11 members·2 projects");
     expect(within(screen.getByRole("article", { name: "QA Mobile" })).getByText("This team has no projects yet.")).toBeInTheDocument();
     await user.click(within(time).getByRole("link", { name: /Clock 9\.5/ }));

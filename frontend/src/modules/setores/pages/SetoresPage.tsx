@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useOutletContext } from "react-router";
 import { Button as HeroButton } from "@heroui/react";
-import { Building2, Pencil, Plus, UserRoundCheck, UserRoundX, UsersRound } from "lucide-react";
+import { Pencil, Plus, UserRoundCheck, UserRoundX, UsersRound } from "lucide-react";
 
 import type { PerfilAtual } from "@/core/auth/api";
 import { CACHE_EXPORTACAO_MS, buscarTodasAsPaginas } from "@/shared/lib/exportar-planilha";
@@ -84,7 +84,7 @@ export function SetoresPage() {
     loadingLabel: t("loadingSectors"),
     errorLabel: t("sectorsLoadError"),
     clearFiltersLabel: t("clearFilters"),
-    empty: { icon: <Building2 aria-hidden="true" className="size-5" />, title: t("noSector"), hint: t("noSectorHint") },
+    empty: { title: t("noSector"), hint: t("noSectorHint") },
     filtered: { title: t("noResults"), hint: t("noSectorResults") },
   });
 

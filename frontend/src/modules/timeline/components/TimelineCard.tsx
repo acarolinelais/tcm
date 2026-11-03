@@ -17,20 +17,22 @@ export function TimelineCard({ card, compacto = false, onAbrir }: { card: CardTi
   const nome = card.responsavel_nome;
   const total = card.alteracoes.length;
   const mudancas = t("timelineChanges", { count: total });
-  const resumo = total > 1 ? `${nome} · ${mudancas}` : nome;
+  // O espaço não separável mantém o número junto da palavra se o resumo quebrar de linha.
+  const resumo = total > 1 ? `${nome} · ${mudancas.replace(/ /g, "\u00a0")}` : nome;
   const botao = <Button
     variant="ghost"
     onPress={() => onAbrir(card)}
     aria-label={t("timelineCardLabel", { tcId: card.tc_id, name: nome, changes: mudancas })}
     className={cn(
-      "h-auto min-h-[45px] w-full min-w-0 justify-start gap-1.5 rounded-xl border border-edge bg-surface px-2 py-2 text-left shadow-sm hover:bg-panel",
+      "h-auto min-h-[45px] w-full min-w-0 justify-start gap-1.5 rounded-[10px] border border-edge bg-surface px-2 py-2 text-left shadow-sm hover:bg-panel",
       compacto && "w-fit",
     )}
   >
     <span aria-hidden="true" className={cn("h-[17px] w-0.5 shrink-0 rounded-full", AVATAR_POR_COR[cor]?.fundo)} />
     {!compacto && <span className="grid min-w-0 flex-1">
       <span className="truncate text-[12px] font-medium leading-4 text-body">{card.tc_id}</span>
-      <span className="truncate text-[11px] leading-4 text-muted">{resumo}</span>
+      {/* O Button do HeroUI não quebra linha (`whitespace-nowrap`): sem `whitespace-normal`, o resumo passava por baixo do avatar. */}
+      <span className="whitespace-normal text-[11px] leading-4 text-muted [overflow-wrap:anywhere]">{resumo}</span>
     </span>}
     <AvatarUsuario cor={cor} className="shrink-0" />
   </Button>;

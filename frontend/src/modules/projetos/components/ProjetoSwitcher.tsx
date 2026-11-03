@@ -12,12 +12,16 @@ import { useProjetosSeletor } from "../hooks/useProjetos";
 // Título do projeto (Figma TCM 2070:1476); com outros projetos visíveis, vira um menu para trocar de projeto.
 // O Board (spec 037) passa a própria lista, do escopo do Board, e o destino na tela só do Kanban.
 // A General Results (spec 053) liga a busca e troca de projeto pelo `onEscolher`, sem navegar.
-export function ProjetoSwitcher({ projetoId, nome, projetos: lista, destino = (id) => `/projetos/${id}`, buscavel = false, onEscolher }: {
+// Com `comoTitulo={false}` (Board, spec 056) o seletor não é o `h1` da página e usa a cor do texto. Com `azul={false}`
+// (Projects, spec 058) continua `h1`, mas na cor do texto, como no frame.
+export function ProjetoSwitcher({ projetoId, nome, projetos: lista, destino = (id) => `/projetos/${id}`, buscavel = false, comoTitulo = true, azul = true, onEscolher }: {
   projetoId: string;
   nome: string;
   projetos?: { id: string; nome: string }[];
   destino?: (projetoId: string) => string;
   buscavel?: boolean;
+  comoTitulo?: boolean;
+  azul?: boolean;
   onEscolher?: (projetoId: string) => void;
 }) {
   const { t } = useTranslation();
@@ -29,8 +33,12 @@ export function ProjetoSwitcher({ projetoId, nome, projetos: lista, destino = (i
   const { contains } = useFilter({ sensitivity: "base" });
   const escolher = onEscolher ?? ((id: string) => navigate(destino(id)));
   const [aberto, setAberto] = useState(false);
+  const Raiz = comoTitulo ? "h1" : "div";
+  const cor = comoTitulo && azul ? "text-accent-text" : "text-body";
 
-  if (!outros.length && !projetos.hasNextPage && !projetos.isError) return <PageTitle>{nome}</PageTitle>;
+  if (!outros.length && !projetos.hasNextPage && !projetos.isError) {
+    return comoTitulo ? <PageTitle className={cor}>{nome}</PageTitle> : <p className="truncate text-[22px] font-medium leading-[27px] text-body">{nome}</p>;
+  }
 
   const menu = (
     <Dropdown.Menu
@@ -51,11 +59,11 @@ export function ProjetoSwitcher({ projetoId, nome, projetos: lista, destino = (i
   );
 
   return (
-    <h1 className="min-w-0">
+    <Raiz className={`min-w-0 ${cor}`}>
       <Dropdown isOpen={aberto} onOpenChange={setAberto}>
-        <Button variant="ghost" className="h-auto min-h-0 max-w-full gap-1 rounded-lg px-0 text-[22px] font-medium leading-[27px] text-body hover:bg-transparent data-[focus-visible]:ring-2 data-[focus-visible]:ring-focus">
+        <Button variant="ghost" className={`h-auto min-h-0 max-w-full gap-1 rounded-lg px-0 text-[22px] font-medium leading-[27px] ${cor} hover:bg-transparent data-[focus-visible]:ring-2 data-[focus-visible]:ring-focus`}>
           <span className="truncate">{nome}</span>
-          <SmallChevronIcon className="h-[23px] w-[23px] text-body" />
+          <SmallChevronIcon className={`h-[23px] w-[23px] ${cor}`} />
         </Button>
         <Dropdown.Popover placement="bottom start" className="max-h-80 min-w-56 overflow-y-auto">
           {buscavel ? (
@@ -75,6 +83,6 @@ export function ProjetoSwitcher({ projetoId, nome, projetos: lista, destino = (i
           {(projetos.hasNextPage || projetos.isError) && <Button variant="ghost" size="sm" className="m-1" isDisabled={projetos.isFetching} onPress={() => void (projetos.isError && !projetos.isFetchNextPageError ? projetos.refetch() : projetos.fetchNextPage())}>{t(projetos.isError ? "retryQuery" : "moreProjects")}</Button>}
         </Dropdown.Popover>
       </Dropdown>
-    </h1>
+    </Raiz>
   );
 }

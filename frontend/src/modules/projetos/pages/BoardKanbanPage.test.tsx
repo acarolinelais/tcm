@@ -45,9 +45,40 @@ describe("BoardKanbanPage", () => {
     vi.mocked(casosTesteApi.kanban).mockResolvedValue({ projeto_id: "p1", total: 0, colunas: [] });
     renderPagina();
 
-    expect(await screen.findByRole("heading", { name: "Weather 9.5" })).toBeInTheDocument();
+    // O título da página é o Board; o projeto fica no seletor da linha de baixo, ao lado do botão Filter.
+    expect(await screen.findByRole("heading", { level: 1, name: "Board" })).toBeInTheDocument();
+    expect(screen.getByText("Follow the project's Test Cases by status and move them as the work advances.")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Weather 9.5" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Filter" })).toBeInTheDocument();
     expect(await screen.findByText("This project has no Test Cases yet.")).toBeInTheDocument();
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+  });
+
+  it("mostra as sete colunas e os responsáveis dos casos em avatares, cinco e +1 (CA-01, CA-02)", async () => {
+    vi.mocked(projetosApi.obter).mockResolvedValue(projeto);
+    const nomes = ["Ana", "Bia", "Caio", "Dani", "Edu", "Fabi"];
+    const casos = nomes.map((nome) => ({ id: `c-${nome}`, tc_id: `Clock_${nome}`, category: "A", difficulty: "Low" as const, situation: "New" as const, responsavel_id: nome, responsavel_nome: nome, responsavel_cor_avatar: "azul" as const, destinos: [] }));
+    vi.mocked(casosTesteApi.kanban).mockResolvedValue({
+      projeto_id: "p1", total: 6,
+      colunas: ["To-Do", "InProgress", "InReview", "InValidation", "InFixes", "Done", "Cancelled"].map((status) => ({ status, total: status === "To-Do" ? 6 : 0, casos: status === "To-Do" ? casos : [] })),
+    } as never);
+    renderPagina();
+
+    expect(await screen.findAllByRole("region")).toHaveLength(7);
+    const lista = screen.getByRole("list", { name: "Assignees in this project" });
+    expect(lista.querySelectorAll("li")).toHaveLength(6);
+    expect(screen.getByLabelText("1 more")).toHaveTextContent("+1");
+    expect(casosTesteApi.kanban).toHaveBeenCalledTimes(1);
+  });
+
+  it("a consulta do Kanban com erro mostra a mensagem e o botão de tentar de novo, mantendo o seletor (falha, CA-08)", async () => {
+    vi.mocked(projetosApi.obter).mockResolvedValue(projeto);
+    vi.mocked(casosTesteApi.kanban).mockRejectedValue(new Error("offline"));
+    renderPagina();
+
+    expect(await screen.findByRole("button", { name: "Try again" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Weather 9.5" })).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Assignees in this project" })).not.toBeInTheDocument();
   });
 
   it("o seletor do título troca para o Kanban de outro projeto do Board", async () => {

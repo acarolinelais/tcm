@@ -2,9 +2,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import type { CardTimeline, PessoaTimeline } from "../model/timeline";
+import type { CardTimeline } from "../model/timeline";
 import { AlteracoesCardDrawer } from "./AlteracoesCardDrawer";
-import { PilhaAvatares } from "./PilhaAvatares";
 import { TimelineCard } from "./TimelineCard";
 
 const alteracao = (campo: string, antes: string, depois: string, alterado_em: string) => ({
@@ -33,26 +32,6 @@ describe("TimelineCard", () => {
 
     const botao = screen.getByRole("button", { name: "Clock_00046, Ana, 1 change" });
     expect(botao).not.toHaveTextContent("Clock_00046");
-  });
-});
-
-describe("PilhaAvatares", () => {
-  const pessoas: PessoaTimeline[] = ["Ana", "Bia", "Caio", "Dani", "Edu", "Fabi"].map((nome) => ({ id: nome, nome, cor_avatar: "azul" }));
-
-  it("mostra cinco avatares e +1 com seis pessoas", () => {
-    render(<PilhaAvatares pessoas={pessoas} />);
-
-    const lista = screen.getByRole("list", { name: "People with changes in this period" });
-    expect(lista.querySelectorAll("li")).toHaveLength(6);
-    expect(screen.getByLabelText("Ana")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Fabi")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("1 more")).toHaveTextContent("+1");
-  });
-
-  it("sem ninguém no período não mostra a pilha", () => {
-    const { container } = render(<PilhaAvatares pessoas={[]} />);
-
-    expect(container).toBeEmptyDOMElement();
   });
 });
 

@@ -24,10 +24,21 @@ const filtravel = () => kanban({
   Done: [card("Clock_005", [])],
 });
 
+const botaoFilter = () => screen.getByRole("button", { name: /^Filter( \d+ active)?$/ });
+
 async function filtrar(user: ReturnType<typeof userEvent.setup>, filtro: string, opcao: string) {
-  await user.click(screen.getByRole("button", { name: `Filter by ${filtro}` }));
+  // Os filtros ficam no painel do botão Filter. Com o painel aberto o resto da tela fica oculto para a
+  // acessibilidade, então cada filtro abre o painel, escolhe e fecha o menu e depois o painel.
+  await user.click(botaoFilter());
+  await user.click(await screen.findByRole("button", { name: `Filter by ${filtro}` }));
   await user.click(await screen.findByRole("option", { name: opcao }));
   await user.keyboard("{Escape}");
+  await waitFor(() => expect(screen.queryByRole("listbox")).not.toBeInTheDocument(), { timeout: 3000 });
+  // O foco volta ao painel de forma assíncrona; um Escape que chega antes disso se perde, então repete até fechar.
+  await waitFor(async () => {
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  }, { timeout: 3000 });
 }
 
 function kanban(porStatus: Partial<Record<StatusCasoTeste, KanbanCard[]>>): KanbanProjeto {
@@ -85,6 +96,17 @@ describe("KanbanBoard", () => {
     expect(coluna(/^Done/)).toHaveAccessibleName("Done, 0 cases");
   });
 
+  it("cada coluna tem um ponto na cor do Status, e o To-Do é um anel vazio", async () => {
+    vi.mocked(casosTesteApi.kanban).mockResolvedValue(kanban({ InReview: [card("Clock_001", [])] }));
+    renderBoard();
+
+    const ponto = (nome: RegExp) => (within(coluna(nome)).getByText(/^(To-Do|In Review)$/).previousElementSibling as HTMLElement);
+    await screen.findByRole("article", { name: "Clock_001" });
+    expect(ponto(/^In Review/)).toHaveStyle({ backgroundColor: "var(--etiqueta-review-fg)" });
+    expect(ponto(/^To-Do/)).toHaveClass("border-body");
+    expect(ponto(/^To-Do/).getAttribute("style")).toBeNull();
+  });
+
   it("o filtro de Status mostra só as colunas escolhidas", async () => {
     vi.mocked(casosTesteApi.kanban).mockResolvedValue(filtravel());
     renderBoard("/?status=InReview&status=Done");
@@ -100,17 +122,29 @@ describe("KanbanBoard", () => {
 
     await screen.findByRole("article", { name: "Clock_003" });
     expect(screen.getAllByRole("article")).toHaveLength(1);
-    await user.click(screen.getByRole("button", { name: "Clear filters" }));
+    // Dois filtros ativos (responsável e TC ID): o botão mostra o número.
+    expect(botaoFilter()).toHaveTextContent("2");
+    await user.click(botaoFilter());
+    await user.click(await screen.findByRole("button", { name: "Clear filters" }));
+    await user.keyboard("{Escape}");
     expect(screen.getAllByRole("article")).toHaveLength(5);
+    expect(botaoFilter()).toHaveTextContent(/^Filter$/);
   });
 
   it("filtros sem resultado mostram o aviso próprio, não o de projeto vazio", async () => {
     vi.mocked(casosTesteApi.kanban).mockResolvedValue(filtravel());
     renderBoard("/?tc=nao-existe");
 
-    expect(await screen.findByText("No cases match the filters.")).toBeInTheDocument();
+    const user = userEvent.setup();
+
+    expect(await screen.findByRole("heading", { name: "No cases match the filters." })).toBeInTheDocument();
     expect(screen.queryByText("This project has no Test Cases yet.")).not.toBeInTheDocument();
     expect(screen.getAllByRole("region")).toHaveLength(7);
+    // O botão Filter continua à mão, e o estado vazio também limpa os filtros.
+    expect(botaoFilter()).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(screen.getAllByRole("article")).toHaveLength(5);
+    expect(screen.queryByRole("heading", { name: "No cases match the filters." })).not.toBeInTheDocument();
   });
 
   it("mostra só os primeiros 50 cards e carrega o resto com Mostrar mais", async () => {

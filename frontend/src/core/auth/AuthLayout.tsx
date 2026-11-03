@@ -1,10 +1,12 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { PerfilAtual } from "@/core/auth/api";
 import { LanguageSelector } from "@/core/i18n/LanguageSelector";
 import { ThemeToggle } from "@/core/theme/ThemeToggle";
-import ilustracao from "@/shared/assets/figma/illustrations/login.svg";
+import ilustracao from "@/shared/assets/figma/illustrations/illustration-login.svg";
+import fundoDaIlustracao from "@/shared/assets/figma/illustrations/background-illustration-login.svg";
+import ilustracaoEscura from "@/shared/assets/figma/illustrations/login.svg";
 import logo from "@/shared/assets/figma/icons/logo-tcm.svg";
 
 /** Moldura das telas de entrada (login e troca de senha). Com `perfil`, a troca de idioma é salva na conta. */
@@ -22,8 +24,10 @@ export function AuthLayout({ titulo, dica, perfil, children }: { titulo: string;
       <div className="flex flex-1 items-center justify-center py-5">
         {/* Layout do Figma (TCM, node 2191:99): card de 1042×612, ilustração à esquerda e formulário à direita. */}
         <section className="grid w-full max-w-[65.125rem] overflow-hidden rounded-[2rem] border border-edge bg-surface lg:min-h-[38.25rem] lg:grid-cols-2 lg:rounded-[50px]">
-          <aside className="hidden items-center justify-center rounded-[50px] border border-edge bg-accent-tint px-10 lg:flex">
-            <img src={ilustracao} alt="" className="w-full max-w-[27.375rem] dark:brightness-[.85]" />
+          {/* Claro: ilustração e degradê do protótipo novo (spec 055). shortcut: o escuro segue com a ilustração antiga (RN-10), trocar com a paleta escura nova. */}
+          <aside style={{ "--fundo": `url("${fundoDaIlustracao}")` } as CSSProperties} className="hidden items-center justify-center rounded-[50px] border border-edge bg-accent-tint bg-[image:var(--fundo)] bg-cover px-10 lg:flex dark:bg-none">
+            <img src={ilustracao} alt="" className="w-full max-w-[26.1875rem] dark:hidden" />
+            <img src={ilustracaoEscura} alt="" className="hidden w-full max-w-[27.375rem] dark:block dark:brightness-[.85]" />
           </aside>
 
           <div className="flex flex-col px-6 pb-[35px] pt-[55px] sm:px-12 lg:px-[5.5rem]">

@@ -154,7 +154,7 @@ class FormFactorServiceImpl:
         self, usuario_atual: UsuarioAutenticado, caso_teste_id: UUID, fuso_horario: str = "UTC"
     ) -> ResumoExecucoesResponse:
         """Todas as execuções de um caso, por dia e modelo (spec 032, RN-13)."""
-        self._exigir_consulta_resultados_gerais(usuario_atual)
+        self._exigir_consulta_execucoes(usuario_atual)
         fuso_horario_valido(fuso_horario)
         caso = await self._historico_repo.obter_caso(usuario_atual.unidade_id, caso_teste_id)
         if caso is None:
@@ -170,6 +170,15 @@ class FormFactorServiceImpl:
             usuario_atual.unidade_id, projeto.id, [caso.caso_teste_id], fuso_horario
         )
         return to_resumo_response(caso, modelos, linhas)
+
+    @staticmethod
+    def _exigir_consulta_execucoes(usuario_atual: UsuarioAutenticado) -> None:
+        """Como a General Results, mais o dev, que já lê os resultados do time dele (spec 058)."""
+        if (
+            usuario_atual.perfil_codigo not in {"ADMIN_UNIDADE", "GERENTE", "KP", "USUARIO_PADRAO"}
+            or "form_factor.consultar" not in usuario_atual.permissoes
+        ):
+            raise ForbiddenException("Você não tem permissão para consultar as execuções.")
 
     @staticmethod
     def _exigir_consulta_resultados_gerais(usuario_atual: UsuarioAutenticado) -> None:

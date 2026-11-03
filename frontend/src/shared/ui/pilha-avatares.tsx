@@ -1,18 +1,19 @@
 import { Tooltip } from "@heroui/react";
-import { useTranslation } from "react-i18next";
 
+import type { CorAvatar } from "@/core/auth/api";
 import { AvatarUsuario } from "@/shared/ui/avatar-usuario";
-
-import type { PessoaTimeline } from "../model/timeline";
 
 const VISIVEIS = 5;
 
-/** Quem mudou algo no período: até 5 avatares sobrepostos e "+N" (spec 054, RN-08). */
-export function PilhaAvatares({ pessoas }: { pessoas: PessoaTimeline[] }) {
-  const { t } = useTranslation();
+/** Até 5 avatares sobrepostos e "+N" (spec 054, RN-08; também no Board, spec 056). Os textos de acessibilidade vêm de quem usa. */
+export function PilhaAvatares({ pessoas, rotulo, rotuloMais }: {
+  pessoas: { id: string; nome: string; cor_avatar: CorAvatar }[];
+  rotulo: string;
+  rotuloMais: (quantidade: number) => string;
+}) {
   if (!pessoas.length) return null;
   const resto = pessoas.slice(VISIVEIS);
-  return <ul aria-label={t("timelinePeopleInPeriod")} className="flex items-center -space-x-2">
+  return <ul aria-label={rotulo} className="flex items-center -space-x-2">
     {pessoas.slice(0, VISIVEIS).map((pessoa) => <li key={pessoa.id}>
       <Tooltip delay={200} closeDelay={0}>
         <Tooltip.Trigger aria-label={pessoa.nome} className="rounded-full outline-none ring-2 ring-surface data-[focus-visible]:ring-focus">
@@ -24,7 +25,7 @@ export function PilhaAvatares({ pessoas }: { pessoas: PessoaTimeline[] }) {
     {resto.length > 0 && <li>
       <Tooltip delay={200} closeDelay={0}>
         <Tooltip.Trigger
-          aria-label={t("timelineMorePeople", { count: resto.length })}
+          aria-label={rotuloMais(resto.length)}
           className="flex size-8 items-center justify-center rounded-full bg-panel text-[11px] font-medium text-body outline-none ring-2 ring-surface data-[focus-visible]:ring-focus"
         >
           +{resto.length}

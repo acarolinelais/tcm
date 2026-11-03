@@ -7,7 +7,7 @@ import type { PerfilAtual } from "@/core/auth/api";
 import { useTranslation } from "react-i18next";
 import { Skeleton } from "@heroui/react";
 import { ErroComRetry } from "@/shared/ui/erro-com-retry";
-import { InboxIcon } from "@/shared/ui/figma-icons";
+import { EstadoVazio } from "@/shared/ui/estado-vazio";
 
 export function OverviewPage() {
   const perfil = useOutletContext<PerfilAtual>();
@@ -39,10 +39,8 @@ export function OverviewPage() {
   // Sem casos no escopo: explica em vez de mostrar zeros soltos (spec 039, RN-05).
   if (data.total === 0) {
     return (
-      <div role="status" className="rounded-3xl border border-edge bg-card px-6 py-10 text-center">
-        <InboxIcon className="mx-auto mb-3 text-body" />
-        <h1 className="text-base font-medium text-foreground">{t("overviewEmpty")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("overviewEmptyHint")}</p>
+      <div className="flex justify-center rounded-3xl border border-edge bg-card px-6 py-10">
+        <EstadoVazio tituloDaPagina titulo={t("overviewEmpty")} dica={t("overviewEmptyHint")} />
       </div>
     );
   }

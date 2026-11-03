@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Pencil, UserRoundCheck, UserRoundCog, UserRoundX, UsersRound } from "lucide-react";
+import { Pencil, UserRoundCheck, UserRoundCog, UserRoundX } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { listarPerfis } from "@/modules/perfis/api/perfis.api";
@@ -155,7 +155,7 @@ export function UsuariosTable({
     loadingLabel: t("loadingUsers"),
     errorLabel: t("usersLoadError"),
     clearFiltersLabel: t("clearFilters"),
-    empty: { icon: <UsersRound aria-hidden="true" className="size-5" />, title: t("noUsers"), hint: t("noUsersHint") },
+    empty: { title: t("noUsers"), hint: t("noUsersHint") },
     filtered: { title: t("noResults"), hint: t("noUsersResults") },
   });
 

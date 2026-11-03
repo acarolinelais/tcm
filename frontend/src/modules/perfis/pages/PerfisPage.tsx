@@ -273,7 +273,7 @@ export function PerfisPage() {
             loadingLabel: t("loading"),
             errorLabel: t("profilesLoadError"),
             clearFiltersLabel: t("clearFilters"),
-            empty: { icon: <ShieldCheck aria-hidden="true" className="size-5" />, title: t("noProfiles"), hint: t("noProfilesHint") },
+            empty: { title: t("noProfiles"), hint: t("noProfilesHint") },
             filtered: { title: t("noProfiles"), hint: t("noProfilesHint") },
           })}
           pagination={<DataTablePagination page={pagina} pageSize={itensPorPagina} totalCount={listaPerfis.length} onPageChange={setPagina} onPageSizeChange={(quantidade) => { setItensPorPagina(quantidade); setPagina(1); }} />}
