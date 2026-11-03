@@ -1,8 +1,9 @@
-import { Moon, Sun } from "lucide-react";
+import { Sun } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { cn } from "@/shared/lib/utils";
+import { DarkModeIcon } from "@/shared/ui/figma-icons";
 import { useTheme } from "./use-theme";
 
 /**
@@ -15,7 +16,6 @@ export function ThemeToggle({ className }: { className?: string }) {
   // A animação do ícone só roda depois de uma troca por este toggle, não quando a página carrega.
   const [trocou, setTrocou] = useState(false);
   const escuro = tema === "dark";
-  const Icone = escuro ? Moon : Sun;
   return (
     <button
       type="button"
@@ -29,7 +29,9 @@ export function ThemeToggle({ className }: { className?: string }) {
       className={cn("flex size-[29px] shrink-0 items-center justify-center rounded-full border border-edge bg-surface text-body transition-[color,background-color,transform] duration-100 ease-out hover:bg-default hover:text-foreground active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", className)}
     >
       {/* A key remonta o ícone a cada troca, para a animação de entrada rodar de novo (spec 049). */}
-      <Icone key={tema} aria-hidden="true" className={cn("size-3.5", trocou && "tema-icone-entrar")} strokeWidth={1.75} />
+      {escuro
+        ? <DarkModeIcon key={tema} className={cn(trocou && "tema-icone-entrar")} />
+        : <Sun key={tema} aria-hidden="true" className={cn("size-3.5", trocou && "tema-icone-entrar")} strokeWidth={1.75} />}
     </button>
   );
 }

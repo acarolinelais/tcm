@@ -77,7 +77,7 @@ describe("TimelineGrade", () => {
 
     const fundo = screen.getByTestId("fundo-grade");
     expect(fundo).toHaveAttribute("aria-hidden", "true");
-    expect(fundo).toHaveClass("pointer-events-none", "dark:bg-none");
+    expect(fundo).toHaveClass("pointer-events-none", "dark:opacity-0");
     expect(fundo.getAttribute("style")).toContain("background-timeline");
     // O fundo não tira os cards da árvore de acessibilidade.
     expect(screen.getByRole("button", { name: /Clock_00046/ })).toBeInTheDocument();

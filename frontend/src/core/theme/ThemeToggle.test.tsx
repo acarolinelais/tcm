@@ -23,7 +23,11 @@ describe("ThemeToggle", () => {
     expect(botao).toHaveClass("size-[29px]", "rounded-full", "border-edge", "bg-surface", "active:scale-[0.97]", "motion-reduce:active:scale-100");
     expect(botao.querySelector("svg")).toHaveClass("lucide-sun");
     await user.click(botao);
-    expect(botao.querySelector("svg")).toHaveClass("lucide-moon");
+    // No escuro, a lua com brilho do Figma (10×10, na cor do texto), e não mais o ícone da biblioteca.
+    const lua = botao.querySelector("svg");
+    expect(lua).not.toHaveClass("lucide-sun");
+    expect(lua).toHaveAttribute("viewBox", "0 0 10 10");
+    expect(lua).toHaveAttribute("fill", "currentColor");
   });
 
   it("alterna do claro para o escuro e de volta, guardando a escolha", async () => {

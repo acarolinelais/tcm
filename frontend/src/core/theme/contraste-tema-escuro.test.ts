@@ -147,7 +147,48 @@ describe("tema claro do redesign (spec 055)", () => {
   });
 
   it("os tokens do tema escuro não mudaram", () => {
-    // Lê as declarações, e não o texto: editar um comentário ou o espaçamento não quebra o teste.
-    expect(hash(JSON.stringify([tokens(":root.dark"), blocoDoContraste(":root.dark")]))).toBe(HASH_DO_ESCURO);
+    // Lê as declarações, e não o texto: editar um comentário ou o espaçamento não quebra o teste. Os `--auth-*` do
+    // login (ajuste de 2026-11-03) têm teste próprio, abaixo, e ficam fora deste hash.
+    const escuroSemLogin = Object.fromEntries(Object.entries(tokens(":root.dark")).filter(([nome]) => !nome.startsWith("auth-")));
+    expect(hash(JSON.stringify([escuroSemLogin, blocoDoContraste(":root.dark")]))).toBe(HASH_DO_ESCURO);
   });
 });
+
+describe("cores do login e da troca de senha (ajuste de 2026-11-03)", () => {
+  const claro = tokens(":root");
+  const escuro = { ...claro, ...tokens(":root.dark") };
+
+  it("usam os valores da lista do protótipo, no claro e no escuro", () => {
+    const esperado = (m: Tokens) => ["titulo", "subtitulo", "texto", "controle", "card", "borda", "campo", "campo-borda", "icone", "pagina", "botao", "botao-hover", "botao-texto"].map((nome) => valor(m, `auth-${nome}`));
+    expect(esperado(claro)).toEqual(["#0081f9", "#7e7e7e", "#454442", "#454442", "#ffffff", "#f2f2f2", "#ffffff", "#f2f2f2", "#7e7e7e", "#fbfbfb", "#0081f9", "#006cd1", "#ffffff"]);
+    expect(esperado(escuro)).toEqual(["#0c8aff", "#b5b5b5", "#ffffff", "#b5b5b5", "#0f0f0f", "#1b1b1b", "#1b1b1b", "#262626", "#b5b5b5", "#000000", "#0c8aff", "#0a72d1", "#ffffff"]);
+  });
+
+  // [texto, fundo, mínimo, motivo]. Os mínimos abaixo de 4,5 são os valores que o protótipo fixa, e não um descuido:
+  // o título é texto grande (25px, mínimo 3:1), e o subtítulo claro #7e7e7e mede 4,05:1 sobre o branco.
+  const LIMITES: [string, string, number, string][] = [
+    ["auth-texto", "auth-card", 4.5, "texto principal"],
+    ["auth-texto", "auth-campo", 4.5, "texto digitado"],
+    ["auth-controle", "auth-card", 4.5, "botão de idioma e ícone do tema"],
+    ["auth-subtitulo", "auth-card", 4, "subtítulo (claro: 4,05:1, abaixo do AA por decisão do protótipo)"],
+    ["auth-titulo", "auth-card", 3, "título grande (claro: 3,8:1)"],
+    ["auth-icone", "auth-campo", 3, "olho da senha, componente de interface"],
+    ["auth-botao-texto", "auth-botao", 3.4, "texto branco do botão (claro: 3,8:1; escuro: 3,45:1, abaixo do AA por decisão do protótipo)"],
+    ["auth-botao-texto", "auth-botao-hover", 4.5, "texto do botão com o mouse em cima"],
+  ];
+
+  it.each([["claro", claro], ["escuro", escuro]] as [string, Tokens][])("cada par de texto passa do mínimo dele no tema %s", (_, mapa) => {
+    const falhas = LIMITES.flatMap(([texto, fundo, minimo, motivo]) => {
+      const medida = contraste(valor(mapa, texto), valor(mapa, fundo));
+      return medida < minimo ? [`${motivo}: ${valor(mapa, texto)} sobre ${valor(mapa, fundo)} = ${medida.toFixed(2)} (mínimo ${minimo})`] : [];
+    });
+    expect(falhas).toEqual([]);
+  });
+
+  it("no escuro, o título e o subtítulo passam do AA sobre o card #0f0f0f", () => {
+    for (const nome of ["auth-titulo", "auth-subtitulo"]) {
+      expect(contraste(valor(escuro, nome), valor(escuro, "auth-card")), nome).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+

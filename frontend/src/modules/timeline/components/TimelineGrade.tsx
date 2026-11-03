@@ -50,7 +50,7 @@ export function TimelineGrade({ visao, periodo, cards, onAbrir, vazio, agora = n
       <div
         data-testid="fundo-grade"
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 top-[4.25rem] bg-[image:var(--grade)] bg-top bg-repeat-x dark:bg-none"
+        className="pointer-events-none absolute inset-x-0 bottom-0 top-[4.25rem] bg-[image:var(--grade)] bg-top bg-repeat-x dark:opacity-0"
         style={{ "--grade": `url("${fundoDaGrade}")` } as CSSProperties}
       />
       {colunas.map((coluna, i) => {

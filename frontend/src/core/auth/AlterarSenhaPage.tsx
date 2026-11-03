@@ -24,11 +24,11 @@ function CampoSenha({ label, value, onChange, error, inputRef }: {
   const [visivel, setVisivel] = useState(false);
   return (
     <TextField value={value} onChange={onChange} isInvalid={Boolean(error)} isRequired validationBehavior="aria" type={visivel ? "text" : "password"} autoComplete="new-password" className="flex flex-col gap-2.5">
-      <Label className="text-[15px] font-medium leading-[21px] text-body after:hidden">{label}</Label>
-      <InputGroup className="h-10 rounded-full border border-border bg-field data-[invalid=true]:border-destructive">
-        <InputGroup.Input ref={inputRef} maxLength={128} className="px-4 text-body" />
+      <Label className="text-[15px] font-medium leading-[21px] text-auth-texto after:hidden">{label}</Label>
+      <InputGroup className="h-10 rounded-full border border-auth-campo-borda bg-auth-campo data-[invalid=true]:border-destructive">
+        <InputGroup.Input ref={inputRef} maxLength={128} className="px-4 text-auth-texto" />
         <InputGroup.Suffix className="items-center border-0 px-1 pt-0">
-          <Button isIconOnly variant="ghost" size="sm" aria-label={t("showPassword")} aria-pressed={visivel} onPress={() => setVisivel((atual) => !atual)} className="rounded-full text-muted hover:text-body">
+          <Button isIconOnly variant="ghost" size="sm" aria-label={t("showPassword")} aria-pressed={visivel} onPress={() => setVisivel((atual) => !atual)} className="rounded-full text-auth-icone hover:text-auth-texto">
             {visivel ? <EyeOff aria-hidden="true" className="size-[13px]" strokeWidth={1.5} /> : <PasswordEyeIcon className="h-[11px] w-[13px]" />}
           </Button>
         </InputGroup.Suffix>
@@ -92,10 +92,10 @@ export function AlterarSenhaPage() {
         </div>
 
         {erro && <p role="alert" className="mt-6 text-sm text-destructive">{erro}</p>}
-        <Button type="submit" isDisabled={salvando} className="mt-[37px] h-[46px] w-full rounded-full bg-accent text-[15px] font-medium leading-[21px] text-accent-foreground hover:bg-accent-hover">
+        <Button type="submit" isDisabled={salvando} className="mt-[37px] h-[46px] w-full rounded-full bg-auth-botao text-[15px] font-medium leading-[21px] text-auth-botao-texto hover:bg-auth-botao-hover">
           {salvando ? t("saving") : t("savePassword")}
         </Button>
-        <Button variant="ghost" isDisabled={salvando} onPress={sair} className="mt-3 w-full rounded-full text-sm text-subtle hover:text-body">
+        <Button variant="ghost" isDisabled={salvando} onPress={sair} className="mt-3 w-full rounded-full text-sm text-auth-subtitulo hover:text-auth-texto">
           {t("logout")}
         </Button>
       </form>
