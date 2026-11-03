@@ -25,7 +25,7 @@ describe("translation resources", () => {
   it("names the Board header and the Filter button in every language (spec 056)", () => {
     for (const language of ["en", "pt-BR", "ko"] as const) {
       const { translation } = resources[language];
-      for (const key of ["boardKanbanHint", "boardPeople", "filterButton", "kanbanNoMatchesHint", "kanbanActiveFilters"] as const) expect(translation[key], `${language} ${key}`).toBeTruthy();
+      for (const key of ["boardKanbanHint", "boardPeople", "filterButton", "kanbanNoMatchesHint", "activeFilters_one", "activeFilters_other", "timelineFilters", "timelineEmptyHint"] as const) expect(translation[key], `${language} ${key}`).toBeTruthy();
     }
   });
 

@@ -1,7 +1,8 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import { formatDate } from "@/core/i18n/format";
 import { cn, formatarDiaIso } from "@/shared/lib/utils";
+import fundoDaGrade from "@/shared/assets/figma/illustrations/background-timeline.svg";
 
 import type { CardTimeline, Periodo, VisaoTimeline } from "../model/timeline";
 import { colunas as colunasDe } from "../utils/periodo";
@@ -41,19 +42,32 @@ export function TimelineGrade({ visao, periodo, cards, onAbrir, vazio, agora = n
     : iHoje === undefined ? undefined : iHoje + minutos / 1440;
   const template = { gridTemplateColumns: `repeat(${colunas.length}, minmax(${LARGURA_COLUNA[visao]}, 1fr))` };
 
+  // O cabeçalho tem linhas de altura fixa (2rem do mês e 2.25rem dos dias, em `grid-rows`): o fundo, a linha do agora e o
+  // vazio começam logo abaixo dele, em `top-[4.25rem]`. Se uma altura mudar, mude as três.
   return <div className="thin-scroll min-h-0 flex-1 overflow-auto">
-    <div className="relative grid min-h-full min-w-full grid-rows-[auto_auto_1fr]" style={template}>
+    <div className="relative grid min-h-full min-w-full grid-rows-[2rem_2.25rem_1fr]" style={template}>
+      {/* Fundo quadriculado do protótipo, só no claro (RN-07). Decorativo: não captura clique nem entra na leitura. */}
+      <div
+        data-testid="fundo-grade"
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 top-[4.25rem] bg-[image:var(--grade)] bg-top bg-repeat-x dark:bg-none"
+        style={{ "--grade": `url("${fundoDaGrade}")` } as CSSProperties}
+      />
       {colunas.map((coluna, i) => {
         // O mês aparece na primeira coluna e onde um novo mês começa; no Dia, a data por extenso.
         const rotuloMes = porHora ? (i === 0 ? formatDate(coluna, { dateStyle: "full" }) : "")
           : i === 0 || coluna.getDate() === 1 ? formatDate(coluna, { month: "long", year: "numeric" }) : "";
-        return <p key={`mes-${i}`} aria-hidden="true" className="whitespace-nowrap pb-3 text-[15px] font-medium text-body" style={{ gridColumn: i + 1 }}>{rotuloMes}</p>;
+        // O mês do começo do período é cor de texto; o que começa no meio dele é cinza (spec 057, RN-05).
+        return <p key={`mes-${i}`} aria-hidden="true" className={cn("whitespace-nowrap text-[18px] font-medium leading-8", i === 0 ? "text-body" : "text-subtle")} style={{ gridColumn: i + 1 }}>{rotuloMes}</p>;
       })}
       {colunas.map((coluna, i) => {
         const atual = porHora ? iAgora !== undefined && Math.floor(iAgora) === i : chave(coluna, i) === hoje;
-        return <p key={`dia-${i}`} aria-hidden="true" className={cn("whitespace-nowrap border-b border-separator pb-2 text-[13px] text-muted", atual && "font-medium text-accent-text")}>
-          {porHora ? formatDate(coluna, { hour: "2-digit", minute: "2-digit" })
-            : <><span className="mr-1 text-[11px]">{formatDate(coluna, { weekday: "narrow" })}</span><span className="tabular-nums">{String(coluna.getDate()).padStart(2, "0")}</span></>}
+        // O dia de hoje fica azul e sublinhado; o sublinhado cobre a linha fina do cabeçalho (`-bottom-px`).
+        return <p key={`dia-${i}`} aria-hidden="true" className="whitespace-nowrap border-b border-separator">
+          <span className={cn("relative inline-block h-full pt-1 text-subtle", atual && "font-medium text-accent-text after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-accent")}>
+            {porHora ? <span className="text-[14px]">{formatDate(coluna, { hour: "2-digit", minute: "2-digit" })}</span>
+              : <><span className="mr-1 text-[13px]">{formatDate(coluna, { weekday: "narrow" })}</span><span className={cn("text-[16px] tabular-nums", !atual && "text-body")}>{String(coluna.getDate()).padStart(2, "0")}</span></>}
+          </span>
         </p>;
       })}
       {colunas.map((coluna, i) => <ul
@@ -68,11 +82,11 @@ export function TimelineGrade({ visao, periodo, cards, onAbrir, vazio, agora = n
       {iAgora !== undefined && <div
         data-testid="linha-agora"
         aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 top-8 w-px bg-accent"
+        className="pointer-events-none absolute bottom-0 top-[4.25rem] -ml-px w-0.5 bg-accent"
         style={{ left: `${(iAgora / colunas.length) * 100}%` }}
       />}
       {cardsPorColuna.every((lista) => !lista.length)
-        ? <div className="pointer-events-none absolute inset-x-0 bottom-0 top-16 flex items-center justify-center [&>*]:pointer-events-auto">{vazio}</div>
+        ? <div className="pointer-events-none absolute inset-x-0 bottom-0 top-[4.25rem] flex items-center justify-center [&>*]:pointer-events-auto">{vazio}</div>
         : null}
     </div>
   </div>;

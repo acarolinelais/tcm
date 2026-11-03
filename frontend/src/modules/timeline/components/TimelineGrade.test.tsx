@@ -50,6 +50,46 @@ describe("TimelineGrade", () => {
     expect(screen.queryByTestId("linha-agora")).not.toBeInTheDocument();
   });
 
+  it("o dia de hoje fica em azul e sublinhado, e os outros dias não (spec 057, CA-06)", () => {
+    montar();
+
+    const hoje = screen.getByText("30").parentElement as HTMLElement;
+    expect(hoje).toHaveClass("text-accent-text", "after:bg-accent");
+    const outro = screen.getByText("29").parentElement as HTMLElement;
+    expect(outro).not.toHaveClass("text-accent-text");
+    expect(outro).not.toHaveClass("after:bg-accent");
+    // A linha do agora começa logo abaixo do cabeçalho de alturas fixas (2rem do mês + 2.25rem dos dias).
+    expect(screen.getByTestId("linha-agora")).toHaveClass("top-[4.25rem]");
+  });
+
+  it("o mês do começo do período é cor de texto e o que começa no meio dele é cinza (spec 057, CA-07)", () => {
+    montar();
+
+    expect(screen.getByText("December 2026")).toHaveClass("text-body");
+    const novo = screen.getByText("January 2027");
+    expect(novo).toHaveClass("text-subtle");
+    // O mês novo fica na coluna do dia 1º (5ª coluna de segunda a domingo).
+    expect(novo).toHaveStyle({ gridColumn: "5" });
+  });
+
+  it("tem o fundo quadriculado decorativo, que some no tema escuro (spec 057, CA-08)", () => {
+    montar({ cards: [card("2026-12-29")] });
+
+    const fundo = screen.getByTestId("fundo-grade");
+    expect(fundo).toHaveAttribute("aria-hidden", "true");
+    expect(fundo).toHaveClass("pointer-events-none", "dark:bg-none");
+    expect(fundo.getAttribute("style")).toContain("background-timeline");
+    // O fundo não tira os cards da árvore de acessibilidade.
+    expect(screen.getByRole("button", { name: /Clock_00046/ })).toBeInTheDocument();
+  });
+
+  it("falha: um período dentro de um mês só mostra um nome de mês", () => {
+    montar({ periodo: periodoDe("semana", new Date(2026, 11, 14)) });
+
+    expect(screen.getByText("December 2026")).toBeInTheDocument();
+    expect(screen.queryByText(/2027/)).not.toBeInTheDocument();
+  });
+
   it("sem card no período mostra o aviso de vazio", () => {
     montar({ cards: [card("2026-12-10")] });
 
