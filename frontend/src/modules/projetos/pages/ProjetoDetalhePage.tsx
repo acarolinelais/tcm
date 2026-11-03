@@ -36,6 +36,8 @@ import { FormFactorTabela } from "../components/form-factor/FormFactorTabela";
 import { FormFactorManualDialog } from "../components/form-factor/FormFactorManualDialog";
 import { FormFactorCriarRodadaDialog } from "../components/form-factor/FormFactorCriarRodadaDialog";
 import { FormFactorResultadosTabela } from "../components/form-factor/FormFactorResultadosTabela";
+import { HistoricoCasoPainel } from "../components/form-factor/HistoricoCasoPainel";
+import type { CasoDoResumo } from "../components/resultados-gerais/ResumoExecucoesDrawer";
 import { ProjetoSwitcher } from "../components/ProjetoSwitcher";
 import { statusChipTons } from "../components/status/status-chip-estilos";
 import { ProjetosEntradaPage } from "./ProjetosEntradaPage";
@@ -87,6 +89,7 @@ function ProjetoDetalhe() {
   const [drawerCasoAberto, setDrawerCasoAberto] = useState(false);
   const [aberturasDrawer, setAberturasDrawer] = useState(0);
   const [editar, setEditar] = useState<CasoTeste | null>(null);
+  const [casoDoHistorico, setCasoDoHistorico] = useState<CasoDoResumo | null>(null);
   // `?caso=<id>&tc=<TC ID>` abre o painel do Test Case direto (atalho da Auditoria, spec 052).
   const [casoDetalhado, setCasoDetalhado] = useState<CasoTesteResumo | null>(() => {
     const id = parametros.get("caso");
@@ -337,7 +340,7 @@ function ProjetoDetalhe() {
 
   return <PageCard>
     <header className="mb-[25px] flex shrink-0 flex-wrap items-start gap-4">
-      <div className="min-w-0 flex-1">{projeto.data ? <ProjetoSwitcher projetoId={projetoId} nome={projeto.data.nome} /> : <PageTitle>{t("loadingProjects")}</PageTitle>}</div>
+      <div className="min-w-0 flex-1">{projeto.data ? <ProjetoSwitcher projetoId={projetoId} nome={projeto.data.nome} azul={false} /> : <PageTitle>{t("loadingProjects")}</PageTitle>}</div>
       {projeto.data && <WeekPickerHero label={t("week")} value={aba === "cases" ? semanaCasos : semana} onChange={(valor) => { if (aba === "cases") setSemanaCasos(valor); else setSemana(valor); setPagina(1); }} className="ml-auto" />}
     </header>
     {/* Figma: o seletor de visão do Form Factor fica entre o título e as abas, com Results primeiro. */}
@@ -384,7 +387,7 @@ function ProjetoDetalhe() {
                 <FormFactorTabela dados={resultados.data} carregando={resultados.isLoading} erro={resultados.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} assignee={assigneeFormFactor} onAssigneeChange={(valor) => { setAssigneeFormFactor(valor); setPagina(1); }} tcId={filtrosResumo.tcId} sdfId={filtrosResumo.sdfId} onFiltroTexto={(campo, valor) => { setFiltrosResumo((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} modeloDispositivoId={filtrosResumo.modeloDispositivoId} resultadoFiltro={filtrosResumo.resultado} onFiltroResultado={(modeloId, valor) => { setFiltrosResumo({ ...filtrosResumo, modeloDispositivoId: valor ? modeloId : "", resultado: valor }); setPagina(1); }} podeRegistrar={podeRegistrarResultado ? podeRegistrarLinha : undefined} onRegistrar={setLinhaManual} onAbrirDetalhes={setCasoDetalhado} buscarTodos={buscarResumoParaExportar} temFiltros={Boolean(semana || assigneeFormFactor.length || filtrosResumo.tcId || filtrosResumo.sdfId || filtrosResumo.resultado)} onLimparFiltros={() => { setSemana(""); setAssigneeFormFactor([]); setFiltrosResumo({ tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" }); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
               </div>
             : <div className="flex min-h-0 flex-1 flex-col">
-                <FormFactorResultadosTabela onAbrirDetalhes={setCasoDetalhado} buscarTodos={buscarResultadosParaExportar} dados={historico.data} carregando={historico.isLoading} erro={historico.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} filtros={filtrosResultados} responsaveis={responsaveisResultados} onResponsaveisChange={(valores) => { setResponsaveisResultados(valores); setPagina(1); }} onFiltroChange={(campo, valor) => { setFiltrosResultados((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} onFiltroResultado={(modeloId, valor) => { setFiltrosResultados((atual) => ({ ...atual, modeloDispositivoId: valor ? modeloId : "", resultado: valor })); setPagina(1); }} onLimparFiltros={() => { setFiltrosResultados({ tcId: "", sdfId: "", origem: "", modeloDispositivoId: "", resultado: "" }); setResponsaveisResultados([]); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
+                <FormFactorResultadosTabela onAbrirDetalhes={setCasoDetalhado} onAbrirHistorico={setCasoDoHistorico} mostrarAssignee={!dev} buscarTodos={buscarResultadosParaExportar} dados={historico.data} carregando={historico.isLoading} erro={historico.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} filtros={filtrosResultados} responsaveis={responsaveisResultados} onResponsaveisChange={(valores) => { setResponsaveisResultados(valores); setPagina(1); }} onFiltroChange={(campo, valor) => { setFiltrosResultados((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} onFiltroResultado={(modeloId, valor) => { setFiltrosResultados((atual) => ({ ...atual, modeloDispositivoId: valor ? modeloId : "", resultado: valor })); setPagina(1); }} onLimparFiltros={() => { setFiltrosResultados({ tcId: "", sdfId: "", origem: "", modeloDispositivoId: "", resultado: "" }); setResponsaveisResultados([]); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
               </div>}
         </PageTabPanel>}
       </PageTabs>
@@ -407,6 +410,7 @@ function ProjetoDetalhe() {
       onConfirm={() => { if (casoParaTransferir) transferir(casoParaTransferir.id); }}
     />
     <JustificativaExclusaoDrawer caso={casoComJustificativa} onFechar={() => setCasoComJustificativa(null)} />
+    <HistoricoCasoPainel caso={casoDoHistorico} perfil={perfil} onFechar={() => setCasoDoHistorico(null)} />
     <DetalhesCasoTesteDrawer caso={casoDetalhado} perfil={perfil} onFechar={() => {
       setCasoDetalhado(null);
       // Tira o atalho da Auditoria da URL: recarregar ou voltar não reabre o painel.

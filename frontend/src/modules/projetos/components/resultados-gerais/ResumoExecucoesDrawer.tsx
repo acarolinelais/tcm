@@ -10,8 +10,11 @@ import { formatarDia } from "./formatar-dia";
 import type { ResultadoAberto } from "./HistoricoProjetoTabela";
 import { ResultadoBotao, SemExecucao } from "./ResultadoBotao";
 
+/** O que o painel lê do caso: a General Results e a aba Form Factor do projeto (spec 058) o preenchem de formas diferentes. */
+export type CasoDoResumo = Pick<CasoHistorico, "caso_teste_id" | "tc_id" | "responsavel_identificador">;
+
 interface Props {
-  caso: CasoHistorico | null;
+  caso: CasoDoResumo | null;
   perfil: PerfilAtual;
   onFechar: () => void;
   onAbrirResultado: (resultado: ResultadoAberto) => void;

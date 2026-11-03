@@ -220,16 +220,49 @@ async def test_periodo_ou_fuso_invalido_e_recusado_sem_consultar(ctx, filtros):
 
 @pytest.mark.parametrize(
     "perfil,permissoes",
-    [("DEV", ("form_factor.consultar",)), ("KP", ()), ("ADMIN_UNIDADE", ())],
+    [("USUARIO_PADRAO", ("form_factor.consultar",)), ("KP", ()), ("ADMIN_UNIDADE", ())],
 )
-async def test_perfil_ou_permissao_insuficiente_recebe_403(ctx, perfil, permissoes):
+async def test_historico_do_projeto_recusa_o_dev_e_quem_nao_tem_permissao(ctx, perfil, permissoes):
+    # A General Results segue sem o dev (spec 059 trata dela); só as execuções de um caso o aceitam.
     with pytest.raises(ForbiddenException):
         await ctx.service.historico_projeto(ctx.usuario(perfil, permissoes), ctx.projeto.id)
+
+    ctx.historico.listar_casos.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "perfil,permissoes",
+    [
+        ("USUARIO_PADRAO", ()),
+        ("KP", ()),
+        ("ADMIN_UNIDADE", ()),
+        ("PERFIL_DESCONHECIDO", ("form_factor.consultar",)),
+    ],
+)
+async def test_execucoes_do_caso_recusam_quem_nao_tem_permissao_ou_perfil(ctx, perfil, permissoes):
     with pytest.raises(ForbiddenException):
         await ctx.service.resumo_execucoes(ctx.usuario(perfil, permissoes), ctx.caso.caso_teste_id)
 
-    ctx.historico.listar_casos.assert_not_awaited()
     ctx.historico.obter_caso.assert_not_awaited()
+
+
+async def test_dev_com_permissao_consulta_as_execucoes_de_um_caso_do_escopo(ctx):
+    # Spec 058: o dev já lê os resultados do time dele, então abre o histórico dos casos dele.
+    resposta = await ctx.service.resumo_execucoes(
+        ctx.usuario("USUARIO_PADRAO"), ctx.caso.caso_teste_id
+    )
+
+    assert resposta.tc_id == "Clock_001"
+    ctx.historico.listar_resultados.assert_awaited_once()
+
+
+async def test_dev_nao_abre_as_execucoes_de_caso_de_projeto_de_outro_time(ctx):
+    fora = ctx.usuario("USUARIO_PADRAO", time_ids=(uuid4(),))
+
+    with pytest.raises(NotFoundException):
+        await ctx.service.resumo_execucoes(fora, ctx.caso.caso_teste_id)
+
+    ctx.historico.listar_resultados.assert_not_awaited()
 
 
 async def test_projeto_fora_do_escopo_ou_inativo_recebe_404_e_gerente_membro_ve(ctx):

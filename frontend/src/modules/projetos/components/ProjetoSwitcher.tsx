@@ -12,14 +12,16 @@ import { useProjetosSeletor } from "../hooks/useProjetos";
 // Título do projeto (Figma TCM 2070:1476); com outros projetos visíveis, vira um menu para trocar de projeto.
 // O Board (spec 037) passa a própria lista, do escopo do Board, e o destino na tela só do Kanban.
 // A General Results (spec 053) liga a busca e troca de projeto pelo `onEscolher`, sem navegar.
-// Com `comoTitulo={false}` (Board, spec 056) o seletor não é o `h1` da página e usa a cor do texto.
-export function ProjetoSwitcher({ projetoId, nome, projetos: lista, destino = (id) => `/projetos/${id}`, buscavel = false, comoTitulo = true, onEscolher }: {
+// Com `comoTitulo={false}` (Board, spec 056) o seletor não é o `h1` da página e usa a cor do texto. Com `azul={false}`
+// (Projects, spec 058) continua `h1`, mas na cor do texto, como no frame.
+export function ProjetoSwitcher({ projetoId, nome, projetos: lista, destino = (id) => `/projetos/${id}`, buscavel = false, comoTitulo = true, azul = true, onEscolher }: {
   projetoId: string;
   nome: string;
   projetos?: { id: string; nome: string }[];
   destino?: (projetoId: string) => string;
   buscavel?: boolean;
   comoTitulo?: boolean;
+  azul?: boolean;
   onEscolher?: (projetoId: string) => void;
 }) {
   const { t } = useTranslation();
@@ -32,10 +34,10 @@ export function ProjetoSwitcher({ projetoId, nome, projetos: lista, destino = (i
   const escolher = onEscolher ?? ((id: string) => navigate(destino(id)));
   const [aberto, setAberto] = useState(false);
   const Raiz = comoTitulo ? "h1" : "div";
-  const cor = comoTitulo ? "text-accent-text" : "text-body";
+  const cor = comoTitulo && azul ? "text-accent-text" : "text-body";
 
   if (!outros.length && !projetos.hasNextPage && !projetos.isError) {
-    return comoTitulo ? <PageTitle>{nome}</PageTitle> : <p className="truncate text-[22px] font-medium leading-[27px] text-body">{nome}</p>;
+    return comoTitulo ? <PageTitle className={cor}>{nome}</PageTitle> : <p className="truncate text-[22px] font-medium leading-[27px] text-body">{nome}</p>;
   }
 
   const menu = (

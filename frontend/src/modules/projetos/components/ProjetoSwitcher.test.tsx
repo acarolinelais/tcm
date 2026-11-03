@@ -7,7 +7,7 @@ import { projetosApi } from "../api/projetos.api";
 import { ProjetoSwitcher } from "./ProjetoSwitcher";
 
 vi.mock("../api/projetos.api", () => ({ projetosApi: { listar: vi.fn() } }));
-function abrir(props: { comoTitulo?: boolean } = {}) {
+function abrir(props: { comoTitulo?: boolean; azul?: boolean } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   function Contexto() { return <Outlet context={{ id: "dev", unidade_id: "u", perfil_codigo: "USUARIO_PADRAO" }} />; }
   function Pagina() { const location = useLocation(); return <><ProjetoSwitcher projetoId="p0" nome="Clock" {...props} /><p>{location.pathname}</p></>; }
@@ -134,6 +134,18 @@ describe("comoTitulo", () => {
     abrir();
 
     expect(await screen.findByRole("heading", { level: 1, name: "Clock" })).toHaveClass("text-accent-text");
+  });
+
+  it("com azul falso, continua sendo o h1 da página, mas na cor do texto (spec 058)", async () => {
+    vi.mocked(projetosApi.listar).mockResolvedValue(dois as never);
+    abrir({ azul: false });
+
+    // O menu só aparece depois que a lista de projetos chega.
+    const botao = await screen.findByRole("button", { name: "Clock" });
+    const titulo = screen.getByRole("heading", { level: 1, name: "Clock" });
+    expect(titulo).toHaveClass("text-body");
+    expect(titulo).not.toHaveClass("text-accent-text");
+    expect(botao).toHaveClass("text-body");
   });
 
   it("com comoTitulo falso, continua trocando de projeto, mas sem o h1 e na cor do texto", async () => {
