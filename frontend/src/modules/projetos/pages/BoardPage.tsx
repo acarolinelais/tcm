@@ -60,7 +60,7 @@ export function BoardPage() {
     <BoardCard
       busca={
         <SearchField aria-label={t("boardSearch")} value={busca} onChange={setBusca} className="w-full sm:w-72">
-          <SearchField.Group className="h-9">
+          <SearchField.Group className="h-9 rounded-full">
             <SearchField.SearchIcon />
             <SearchField.Input placeholder={t("boardSearch")} className="text-[14px]" />
             <SearchField.ClearButton />
@@ -98,10 +98,10 @@ function CardTime({ time }: { time: Time }) {
   return (
     <article
       aria-label={time.nome}
-      className="flex flex-col gap-4 rounded-2xl border border-edge bg-surface p-5 shadow-xs transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+      className="flex flex-col gap-4 rounded-3xl bg-panel p-5 transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0"
     >
       <header className="flex items-center gap-3">
-        <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-[14px] font-semibold text-accent-text">
+        <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface text-[14px] font-semibold text-accent-text">
           {iniciais(time.nome)}
         </span>
         <div className="grid min-w-0 gap-0.5">
@@ -121,7 +121,7 @@ function CardTime({ time }: { time: Time }) {
               <Link
                 to={linkDoKanban(projeto.id)}
                 className={cn(
-                  "group/projeto flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] transition-colors hover:bg-panel focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+                  "group/projeto flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
                   encerrado(projeto.status) ? "text-muted" : "text-body",
                 )}
               >
@@ -133,7 +133,7 @@ function CardTime({ time }: { time: Time }) {
             </li>
           ))}
         </ul>
-      ) : <p className="rounded-xl bg-panel px-3 py-3 text-[13px] text-muted">{t("boardTeamWithoutProjects")}</p>}
+      ) : <p className="rounded-xl bg-surface px-3 py-3 text-[13px] text-muted">{t("boardTeamWithoutProjects")}</p>}
     </article>
   );
 }

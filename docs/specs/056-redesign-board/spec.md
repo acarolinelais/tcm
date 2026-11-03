@@ -1,6 +1,6 @@
 # 056. Redesign do Board: Spec
 
-- **Status:** Aprovada
+- **Status:** Concluída
 - **Data:** 2026-11-02
 - **Specs relacionadas:** 037 (Kanban e Board), 055 (fundação visual), 054 (pilha de avatares da Timeline)
 - **Referência visual:** protótipo do Figma, frame 2550-4207 (Board do perfil dev, tema claro)

@@ -8,8 +8,8 @@
 ## Abordagem
 
 Só frontend; banco, API e regras não mudam. O Kanban, os filtros e o arrasto ficam como estão: muda o que cada
-peça desenha. As cores saem dos tokens que já existem (`--status-*-icon` para o ponto da coluna, `--etiqueta-*`
-para as etiquetas), sem token novo. O botão **Filter** passa a abrir os mesmos filtros num Popover do HeroUI, e
+peça desenha. As cores saem dos tokens que já existem (`--etiqueta-*`, tanto para o ponto da coluna quanto para as
+etiquetas), sem token novo. O botão **Filter** passa a abrir os mesmos filtros num Popover do HeroUI, e
 `useFiltrosKanban` (URL, combinação, limpar) não muda. A pilha de avatares da Timeline sobe para `shared/ui`,
 porque dois módulos passam a usá-la (ADR 0009). No Board, o nome do projeto deixa de ser o `h1`: o `h1` vira o
 título "Board" e o seletor de projeto fica na faixa de baixo.
@@ -44,7 +44,7 @@ Nenhum.
   montada pela página. As colunas têm `bg-panel`, raio maior e largura do frame. O arrasto mantém `useDrop`,
   rolagem na borda e os destaques (RN-07); só trocam as classes.
 - `components/kanban/KanbanColuna.tsx` (extraída de `KanbanBoard.tsx`, que passa de 170 linhas): cabeçalho com
-  ponto (`bg-status-*-icon`), nome e total, no lugar do `StatusPill`.
+  ponto (cor de `statusChipTons`, tokens `--etiqueta-*`), nome e total, no lugar do `StatusPill`.
 - `components/kanban/KanbanCard.tsx`: card branco com sombra leve; etiquetas com cor por valor: Difficulty `Low`
   neutro, `Medium` progress e `High` fixes; TC Situation `New` todo e as outras neutro; Category neutro. A alça de
   arrastar fica com opacidade baixa e aparece no hover e no foco. Os testes de arrasto e menu não mudam.
@@ -75,8 +75,8 @@ Nenhum.
 ## Riscos e decisões pendentes
 
 - **Filtro dentro de Popover:** os filtros de Status, responsável e Category são menus que abrem outros popovers.
-  Se o foco ou o fechamento ficarem estranhos com um popover dentro do outro, o plano alternativo é o
-  `SideDrawer` que o projeto já tem, sem mudar a regra. Decido na primeira task, com o teste de teclado.
+  Testado na T05: o Popover funciona por teclado com os menus dentro (Escape fecha o menu e depois o painel; o foco
+  volta ao botão). O `SideDrawer` ficou como plano B e não foi preciso.
 - **Título do protótipo:** o frame diz "Board Tasks", e o menu diz "Board". A spec fala em "Board". Mantenho
   "Board" (a spec e a sidebar) e a troca é uma linha de i18n, se você preferir o texto do frame.
 - **Etiquetas de TC Situation:** o protótipo só mostra `New` (azul). `New Step` e `Without Changes` ficam
