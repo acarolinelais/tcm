@@ -50,10 +50,11 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0036](0036-escopo-gerente-inclui-times-em-que-participa.md) | Escopo do gerente inclui os times em que ele participa | Aceito |
 | [0037](0037-heroui-como-base-de-ui.md) | HeroUI como base de UI, com migração gradual a partir do shadcn/ui | Aceito |
 | [0038](0038-resultados-gerais-sem-paginacao.md) | Resultados Gerais sem paginação de Test Cases (exceção aos ADRs 0022 e 0034) | Substituído por 0039 |
-| [0039](0039-resultados-gerais-com-paginacao.md) | Resultados Gerais com paginação de Test Cases (substitui 0038) | Aceito |
+| [0039](0039-resultados-gerais-com-paginacao.md) | Resultados Gerais com paginação de Test Cases (substitui 0038) | Aceito; limite de 7 datas substituído por 0046 |
 | [0040](0040-tema-claro-escuro-no-navegador.md) | Tema claro e escuro por classe no `<html>`, guardado no navegador | Aceito |
 | [0041](0041-cores-somente-por-tokens-semanticos.md) | Cores somente por tokens semânticos | Aceito |
 | [0042](0042-exportacao-de-tabelas-para-excel-no-navegador.md) | Exportação de tabelas para Excel gerada no navegador | Aceito |
 | [0043](0043-cor-do-avatar-por-conta.md) | Cor do avatar por conta | Aceito |
 | [0044](0044-auditoria-por-triggers-no-postgresql.md) | Auditoria de alterações por triggers no PostgreSQL | Aceito |
 | [0045](0045-tabelas-sem-total-de-itens-no-rodape.md) | Tabelas sem o total de itens no rodapé | Aceito |
+| [0046](0046-resultados-gerais-com-cinco-datas.md) | Resultados Gerais com no máximo 5 datas (substitui em parte o 0039) | Aceito |

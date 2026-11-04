@@ -68,8 +68,9 @@ painel, sem filtros, ações nem paginação, usa `<table>` semântico (`caption
 - Paginação no cliente só para listas pequenas que já chegam inteiras (ex.: membros de um time).
 - Testes não fixam `10`/`20` à mão: importam `DEFAULT_TABLE_PAGE_SIZE`.
 - Não há exceção: toda tabela é paginada. A tela Resultados Gerais, que era a única exceção (ADR 0038), também
-  pagina os Test Cases, mantendo as até 7 colunas de data estáveis entre as páginas
-  ([ADR 0039](adr/0039-resultados-gerais-com-paginacao.md)). Uma tela sem paginação precisa de ADR próprio.
+  pagina os Test Cases, mantendo as até 5 colunas de data estáveis entre as páginas
+  ([ADR 0039](adr/0039-resultados-gerais-com-paginacao.md) e [ADR 0046](adr/0046-resultados-gerais-com-cinco-datas.md)).
+  Uma tela sem paginação precisa de ADR próprio.
 
 ## 3. Filtros
 

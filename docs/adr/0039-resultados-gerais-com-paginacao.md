@@ -1,6 +1,6 @@
 # 0039. Resultados Gerais com paginação de Test Cases
 
-- **Status:** Aceito
+- **Status:** Aceito; limite de 7 datas substituído por [0046](0046-resultados-gerais-com-cinco-datas.md)
 - **Data:** 2026-10-29
 - **Relacionado:** ADRs 0004, 0022 e 0034, spec 032
 - **Substitui:** [0038](0038-resultados-gerais-sem-paginacao.md) (Resultados Gerais sem paginação)
