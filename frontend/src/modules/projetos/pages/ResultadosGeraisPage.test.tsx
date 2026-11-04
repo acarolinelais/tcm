@@ -234,6 +234,23 @@ describe("ResultadosGeraisPage", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
+  it("a janela do resultado mostra a descrição do relatório SDF; sem descrição, a linha some (spec 060, CA-02)", async () => {
+    const comDescricao = { ...historico.items[0], resultados: { [DIA]: { ...historico.items[0].resultados[DIA], s26: { ...resultado("e1", "PASS"), descricao: "# PASS: Test case was executed successfully" } } } };
+    vi.mocked(useHistoricoProjeto).mockReturnValue({ data: { ...historico, items: [comDescricao, historico.items[1]] }, isLoading: false, isError: false, refetch: vi.fn() } as never);
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(within(linha("Clock_001")).getByRole("button", { name: `PASS on SM-S26, ${formatarDia(DIA)}` }));
+    const janela = await screen.findByRole("dialog");
+    expect(within(janela).getByText("Description")).toBeInTheDocument();
+    expect(within(janela).getByText("# PASS: Test case was executed successfully")).toBeInTheDocument();
+    await user.click(within(janela).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    await user.click(within(linha("Clock_002")).getByRole("button", { name: `PASS on SM-S26, ${formatarDia(DIA)}` }));
+    expect(within(await screen.findByRole("dialog")).queryByText("Description")).not.toBeInTheDocument();
+  });
+
   it("o histórico da linha mostra o tester e a grade devices × datas, com as duas execuções do dia (CA-18)", async () => {
     const user = userEvent.setup();
     renderPage(dev);
@@ -241,7 +258,7 @@ describe("ResultadosGeraisPage", () => {
     await user.click(within(linha("Clock_001")).getByRole("button", { name: "View execution history Clock_001" }));
     const painel = await screen.findByRole("dialog");
     expect(within(painel).getByText("ANA-001")).toBeInTheDocument();
-    expect(within(painel).getAllByRole("columnheader").map((cabecalho) => cabecalho.textContent)).toEqual(["Device", formatarDia("2026-10-09"), formatarDia(DIA)]);
+    expect(within(painel).getAllByRole("columnheader").map((cabecalho) => cabecalho.textContent)).toEqual(["Device", formatarDia(DIA), formatarDia("2026-10-09")]);
     const rotulo = (valor: string) => `${valor} on SM-S26, ${formatarDia(DIA)}`;
     expect(within(painel).getByRole("button", { name: rotulo("FAIL") })).toBeInTheDocument();
     await user.click(within(painel).getByRole("button", { name: rotulo("PASS") }));

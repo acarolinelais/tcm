@@ -99,6 +99,46 @@ describe("AcoesGerenciaFormFactor", () => {
     expect(invalidar).not.toHaveBeenCalled();
   });
 
+  it("falha: o relatório recusado lista os problemas no idioma da tela, com a linha (CA-16, CA-18)", async () => {
+    const erro = (codigo: string, linha: number | null, coluna: string | null, valor: string | null) => ({ campo: "x", mensagem: "em português", codigo, linha, coluna, valor });
+    vi.mocked(formFactorApi.importar).mockRejectedValue(new ApiError({
+      type: "about:blank", title: "Planilha inválida.", status: 422,
+      errors: [erro("sdf_data_invalida", null, "F4", "ontem"), erro("sdf_tc_fora_do_projeto", 9, "Script Name", "Keyboard_000099")],
+    }));
+    const user = userEvent.setup();
+    const { container } = renderAcoes(base);
+
+    await user.upload(container.querySelector<HTMLInputElement>('input[type="file"]')!, new File(["report"], "123456-789012_0_Test_1_Detail.xlsx"));
+    await user.click(screen.getByRole("button", { name: /^import$/i }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Could not import the SDF report.", expect.anything()));
+    const [, opcoes] = vi.mocked(toast.error).mock.calls[0];
+    // A lista não se lê em 4 s: o aviso fica aberto até a pessoa fechar.
+    expect(opcoes?.timeout).toBe(0);
+    render(<>{opcoes?.description}</>);
+    expect(screen.getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+      "Cell F4 (Start Time) doesn't have a valid date. Use month/day/year and time, like 10/21/2026 6:43:35 PM.",
+      'Row 9: TC ID "Keyboard_000099" isn\'t in this project.',
+    ]);
+  });
+
+  it("falha: com muitos problemas, o toast mostra 5 e conta o resto", async () => {
+    const errors = Array.from({ length: 8 }, (_, indice) => ({ campo: "x", mensagem: "x", codigo: "sdf_tc_fora_do_projeto", linha: indice + 8, coluna: "Script Name", valor: `TC_${indice}` }));
+    vi.mocked(formFactorApi.importar).mockRejectedValue(new ApiError({ type: "about:blank", title: "Planilha inválida.", status: 422, errors }));
+    const user = userEvent.setup();
+    const { container } = renderAcoes(base);
+
+    await user.upload(container.querySelector<HTMLInputElement>('input[type="file"]')!, new File(["report"], "sdf.xlsx"));
+    await user.click(screen.getByRole("button", { name: /^import$/i }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    const [, opcoes] = vi.mocked(toast.error).mock.calls[0];
+    render(<>{opcoes?.description}</>);
+    const itens = screen.getAllByRole("listitem");
+    expect(itens).toHaveLength(6);
+    expect(itens.at(-1)).toHaveTextContent("And 3 more problems.");
+  });
+
   it("falha: SDF ID repetido mostra a mensagem traduzida e mantém o diálogo aberto", async () => {
     const mensagem = "Este SDF ID já tem uma rodada neste projeto.";
     vi.mocked(formFactorApi.criarRodada).mockRejectedValue(new ApiError({ type: "about:blank", title: "Conflito.", status: 409, detail: mensagem, errors: [{ campo: "sdf_id", mensagem }] }));

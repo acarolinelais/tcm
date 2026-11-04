@@ -30,6 +30,7 @@ export function formatarErroPlanilha(t: TFunction, erro: ErroPlanilhaExibivel): 
     primeira_linha: erro.parametros?.primeira_linha,
     maximo: maximo === undefined ? "" : formatNumber(maximo),
     esperados: esperados ? formatList(esperados, "disjunction") : "",
+    esperado: erro.parametros?.esperado ?? "",
   });
 }
 

@@ -7,7 +7,11 @@ import type { PerfilAtual } from "@/core/auth/api";
 import { ApiError } from "@/shared/api/problem-details";
 import { toast } from "@/shared/lib/toast";
 import { useCriarRodadaFormFactor, useImportarRelatorioSdf } from "../../hooks/useProjetos";
+import { errosDaApi, formatarErroPlanilha } from "../../utils/formatar-erro-planilha";
 import { FormFactorCriarRodadaDialog } from "./FormFactorCriarRodadaDialog";
+
+// Mais que isso não cabe no toast; o resto vira "e mais N".
+const MAX_PROBLEMAS = 5;
 
 /**
  * Import SDF Report e Create test round do projeto aberto na General Results (spec 059, RN-03 a RN-05).
@@ -33,7 +37,21 @@ export function AcoesGerenciaFormFactor({ projetoId, perfil }: { projetoId: stri
       setArquivoSdf(null);
       toast.success(t("sdfImportSuccess", { rows: result.quantidade_execucoes, results: result.quantidade_resultados }));
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : t("sdfImportError")),
+    onError: (error) => {
+      // Relatório recusado (422, ADR 0033): os problemas vêm com código e viram texto no idioma da tela.
+      const problemas = error instanceof ApiError && error.problem.status === 422 ? errosDaApi(error.problem) : [];
+      if (!problemas.length) return toast.error(error instanceof Error ? error.message : t("sdfImportError"));
+      toast.error(t("sdfImportError"), {
+        // Uma lista de problemas não se lê nos 4 s padrão: fica aberta até a pessoa fechar.
+        timeout: 0,
+        description: <ul className="list-disc space-y-0.5 ps-4">
+          {problemas.slice(0, MAX_PROBLEMAS).map((problema, indice) => <li key={indice}>
+            {problema.linha ? `${t("spreadsheetRow", { linha: problema.linha })}: ` : ""}{formatarErroPlanilha(t, problema)}
+          </li>)}
+          {problemas.length > MAX_PROBLEMAS && <li>{t("moreProblems", { count: problemas.length - MAX_PROBLEMAS })}</li>}
+        </ul>,
+      });
+    },
   });
 
   return <>
