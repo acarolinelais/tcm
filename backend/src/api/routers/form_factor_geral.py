@@ -17,8 +17,9 @@ router = APIRouter(prefix="/api/form-factor/general", tags=["form-factor"])
 @router.get("/projetos/{projeto_id}/historico", response_model=HistoricoProjetoResponse)
 async def historico_projeto(
     projeto_id: UUID,
-    busca: Annotated[str | None, Query(max_length=100)] = None,
     tc_id: Annotated[str | None, Query(max_length=100)] = None,
+    responsavel: Annotated[str | None, Query(max_length=100)] = None,
+    sdf_id: Annotated[str | None, Query(max_length=100)] = None,
     modelo_dispositivo_id: UUID | None = Query(None),
     dia: str | None = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
     semana: str | None = Query(None, pattern=r"^\d{4}-W\d{2}$"),
@@ -31,8 +32,9 @@ async def historico_projeto(
     return await service.historico_projeto(
         usuario_atual,
         projeto_id,
-        busca=busca,
         tc_id=tc_id,
+        responsavel=responsavel,
+        sdf_id=sdf_id,
         modelo_dispositivo_id=modelo_dispositivo_id,
         dia=dia,
         semana=semana,

@@ -14,7 +14,6 @@ from src.domain.queries.historico_form_factor import (
 from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
 from src.infrastructure.data.models.execucao_sdf_model import ExecucaoSdfModel
 from src.infrastructure.data.models.importacao_sdf_model import ImportacaoSdfModel
-from src.infrastructure.data.models.modelo_dispositivo_model import ModeloDispositivoModel
 from src.infrastructure.data.models.projeto_modelo_model import ProjetoModeloModel
 from src.infrastructure.data.models.resultado_form_factor_model import ResultadoFormFactorModel
 from src.infrastructure.data.models.usuario_model import UsuarioModel
@@ -85,7 +84,7 @@ def _periodo(inicio: datetime | None, fim: datetime | None) -> list:
 
 
 def _filtros_casos(unidade_id: UUID, projeto_id: UUID, filtros: FiltrosCasoHistorico) -> list:
-    """Condições de busca, filtros e período sobre `CasoTesteModel` e o tester (`UsuarioModel`)."""
+    """Condições dos filtros e do período sobre `CasoTesteModel` e o tester (`UsuarioModel`)."""
     periodo = _periodo(filtros.inicio, filtros.fim)
 
     def existe(*condicoes):
@@ -103,18 +102,11 @@ def _filtros_casos(unidade_id: UUID, projeto_id: UUID, filtros: FiltrosCasoHisto
     ]
     if filtros.tc_id and filtros.tc_id.strip():
         condicoes.append(CasoTesteModel.tc_id.ilike(f"%{filtros.tc_id.strip()}%"))
-    if filtros.busca and filtros.busca.strip():
-        termo = f"%{filtros.busca.strip()}%"
-        condicoes.append(
-            or_(
-                UsuarioModel.user_id.ilike(termo),
-                existe(ExecucaoSdfModel.sdf_id.ilike(termo)),
-                existe(
-                    ModeloDispositivoModel.id == ResultadoFormFactorModel.modelo_dispositivo_id,
-                    ModeloDispositivoModel.nome.ilike(termo),
-                ),
-            )
-        )
+    if filtros.responsavel and filtros.responsavel.strip():
+        condicoes.append(UsuarioModel.user_id.ilike(f"%{filtros.responsavel.strip()}%"))
+    if filtros.sdf_id and filtros.sdf_id.strip():
+        # Qualquer device do caso (spec 059, RN-13), não só o que a linha recolhida mostra.
+        condicoes.append(existe(ExecucaoSdfModel.sdf_id.ilike(f"%{filtros.sdf_id.strip()}%")))
     if filtros.modelo_dispositivo_id is not None:
         condicoes.append(
             existe(ResultadoFormFactorModel.modelo_dispositivo_id == filtros.modelo_dispositivo_id)
@@ -186,7 +178,8 @@ class HistoricoFormFactorRepositoryImpl:
         projeto_id: UUID,
         filtros: FiltrosCasoHistorico,
         fuso_horario: str,
-        limite: int = 7,
+        *,
+        limite: int,
     ) -> tuple[date, ...]:
         """Datas de todos os casos que passam pelos filtros, não só os da página (spec 033, RN-03).
 
@@ -249,16 +242,19 @@ class HistoricoFormFactorRepositoryImpl:
         )
         return tuple(LinhaHistoricoExecucao(*linha) for linha in linhas.all())
 
-    async def listar_modelos_da_ultima_execucao(
+    async def listar_ultimo_sdf_por_modelo(
         self, unidade_id: UUID, projeto_id: UUID, caso_ids: Sequence[UUID]
-    ) -> dict[UUID, tuple[UUID, ...]]:
-        """Modelos da execução mais recente de cada caso, em qualquer data (spec 032, RN-04)."""
+    ) -> dict[UUID, dict[UUID, str | None]]:
+        """SDF ID da execução mais recente de cada caso em cada modelo, em qualquer data (059)."""
         if not caso_ids:
             return {}
         posicao = (
-            func.dense_rank()
+            func.row_number()
             .over(
-                partition_by=ExecucaoSdfModel.caso_teste_id,
+                partition_by=(
+                    ExecucaoSdfModel.caso_teste_id,
+                    ResultadoFormFactorModel.modelo_dispositivo_id,
+                ),
                 order_by=(
                     ExecucaoSdfModel.data_reportada.desc(),
                     _ordem_de_gravacao().desc(),
@@ -273,17 +269,18 @@ class HistoricoFormFactorRepositoryImpl:
                 projeto_id,
                 ExecucaoSdfModel.caso_teste_id.label("caso_teste_id"),
                 ResultadoFormFactorModel.modelo_dispositivo_id.label("modelo_dispositivo_id"),
+                ExecucaoSdfModel.sdf_id.label("sdf_id"),
                 posicao,
             )
             .where(ExecucaoSdfModel.caso_teste_id.in_(caso_ids))
             .subquery()
         )
         linhas = await self.session.execute(
-            select(ordenadas.c.caso_teste_id, ordenadas.c.modelo_dispositivo_id).where(
-                ordenadas.c.posicao == 1
-            )
+            select(
+                ordenadas.c.caso_teste_id, ordenadas.c.modelo_dispositivo_id, ordenadas.c.sdf_id
+            ).where(ordenadas.c.posicao == 1)
         )
-        modelos: dict[UUID, tuple[UUID, ...]] = {}
-        for caso_id, modelo_id in linhas.all():
-            modelos[caso_id] = (*modelos.get(caso_id, ()), modelo_id)
-        return modelos
+        ultimos: dict[UUID, dict[UUID, str | None]] = {}
+        for caso_id, modelo_id, sdf_id in linhas.all():
+            ultimos.setdefault(caso_id, {})[modelo_id] = sdf_id
+        return ultimos

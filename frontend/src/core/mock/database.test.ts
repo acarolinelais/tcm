@@ -620,7 +620,7 @@ describe("base mock de projetos", () => {
     expect(migrado.casosTeste.map((testCase: { status: string }) => testCase.status)).toEqual(["InFixes", "InReview"]);
   });
 
-  it("Resultados Gerais por projeto: 7 datas mais recentes, modelo padrão e resumo com as execuções do dia (spec 032)", () => {
+  it("Resultados Gerais por projeto: 5 datas mais recentes, filtros, último SDF por device e resumo do dia (specs 032 e 059)", () => {
     const projeto = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: ["mock-model-s26-ultra", "mock-model-s27-ultra"] });
     const caso = mockCasosTesteApi.criar(projeto.id, { tc_id: "Clock_001", category: "A", difficulty: "Low", situation: "New", responsavel_id: "mock-user-kp", backup_id: "mock-user-dev" });
     const semExecucao = mockCasosTesteApi.criar(projeto.id, { tc_id: "Clock_002", category: "A", difficulty: "Low", situation: "New", responsavel_id: "mock-user-kp", backup_id: "mock-user-dev" });
@@ -637,20 +637,47 @@ describe("base mock de projetos", () => {
 
     const historico = mockFormFactorApi.historicoProjeto(projeto.id);
     const daSemana = mockFormFactorApi.historicoProjeto(projeto.id, { periodo: "2026-W40" });
-    const porDevice = mockFormFactorApi.historicoProjeto(projeto.id, { busca: "s27" });
+    const porSdf = mockFormFactorApi.historicoProjeto(projeto.id, { sdfId: "sdf-e3" });
+    const semSdf = mockFormFactorApi.historicoProjeto(projeto.id, { sdfId: "nada" });
     const resumo = mockFormFactorApi.resumoExecucoes(caso.id);
 
-    expect(historico.datas).toEqual(["2026-10-10", "2026-10-09", "2026-10-08", "2026-10-07", "2026-10-06", "2026-10-05", "2026-10-04"]);
-    expect(historico.items.map((item) => [item.tc_id, item.modelo_padrao_id])).toEqual([["Clock_001", "mock-model-s27-ultra"], ["Clock_002", historico.modelos[0].id]]);
+    expect(historico.datas).toEqual(["2026-10-10", "2026-10-09", "2026-10-08", "2026-10-07", "2026-10-06"]);
+    expect(historico.items[0].ultimo_sdf_por_modelo).toEqual({ "mock-model-s26-ultra": null, "mock-model-s27-ultra": "SDF-ultima" });
+    expect(historico.items[1].ultimo_sdf_por_modelo).toEqual({});
     expect(historico.items[0].resultados["2026-10-10"]["mock-model-s26-ultra"]).toMatchObject({ execucao_id: "manual", origem: "MANUAL", sdf_id: null });
     expect(historico.items[1].caso_teste_id).toBe(semExecucao.id);
     expect(daSemana.datas).toEqual(["2026-10-04", "2026-10-03", "2026-10-02", "2026-10-01"]);
     expect(daSemana.items.map((item) => item.tc_id)).toEqual(["Clock_001"]);
-    expect(porDevice.modelo_destacado_id).toBe("mock-model-s27-ultra");
+    expect(porSdf.items.map((item) => item.tc_id)).toEqual(["Clock_001"]);
+    expect(semSdf.items).toEqual([]);
     expect(resumo.datas[0]).toBe("2026-10-01");
     expect(resumo.resultados["2026-10-10"]["mock-model-s26-ultra"].map((item) => item.execucao_id)).toEqual(["e10", "manual"]);
+    // Spec 059: o dev do time também consulta; sem a permissão, não.
     entrar("daniel.oliveira@example.com");
+    expect(mockFormFactorApi.historicoProjeto(projeto.id).items).toHaveLength(2);
+    const semPermissao = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+    const developer = semPermissao.perfis.find((perfil: { codigo: string }) => perfil.codigo === "USUARIO_PADRAO");
+    developer.permissoes = developer.permissoes.filter((permissao: string) => permissao !== "form_factor.consultar");
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(semPermissao));
     expect(() => mockFormFactorApi.historicoProjeto(projeto.id)).toThrow("permissão");
+  });
+
+  it("Resultados Gerais filtram pelo Assignee (spec 059)", () => {
+    const projeto = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: ["mock-model-s26-ultra"] });
+    mockCasosTesteApi.criar(projeto.id, { tc_id: "Clock_001", category: "A", difficulty: "Low", situation: "New", responsavel_id: "mock-user-kp", backup_id: "mock-user-dev" });
+    mockCasosTesteApi.criar(projeto.id, { tc_id: "Clock_002", category: "A", difficulty: "Low", situation: "New", responsavel_id: "mock-user-dev", backup_id: "mock-user-kp" });
+    mockTimesApi.adicionar("mock-team-platform", "mock-user-kp");
+    const database = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+    database.usuarios.find((usuario: { id: string }) => usuario.id === "mock-user-dev").user_id = "daniel.oliveira";
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(database));
+    entrar("kaique.pereira@example.com");
+
+    const doDev = mockFormFactorApi.historicoProjeto(projeto.id, { responsavel: " DANIEL " });
+    const ninguem = mockFormFactorApi.historicoProjeto(projeto.id, { responsavel: "ninguem-tem-esse-id" });
+
+    expect(doDev.items.map((item) => item.tc_id)).toEqual(["Clock_002"]);
+    expect(doDev.items[0].responsavel_identificador).toBe("daniel.oliveira");
+    expect(ninguem.items).toEqual([]);
   });
 
   it("Resultados Gerais paginam os casos e mantêm as datas de todos os filtrados (spec 033)", () => {

@@ -11,7 +11,7 @@ import { useProjetosSeletor } from "../hooks/useProjetos";
 
 // Título do projeto (Figma TCM 2070:1476); com outros projetos visíveis, vira um menu para trocar de projeto.
 // O Board (spec 037) passa a própria lista, do escopo do Board, e o destino na tela só do Kanban.
-// A General Results (spec 053) liga a busca e troca de projeto pelo `onEscolher`, sem navegar.
+// A Timeline liga a busca e troca de projeto pelo `onEscolher`, sem navegar (specs 053 e 054).
 // Com `comoTitulo={false}` (Board, spec 056) o seletor não é o `h1` da página e usa a cor do texto. Com `azul={false}`
 // (Projects, spec 058) continua `h1`, mas na cor do texto, como no frame.
 export function ProjetoSwitcher({ projetoId, nome, projetos: lista, destino = (id) => `/projetos/${id}`, buscavel = false, comoTitulo = true, azul = true, onEscolher }: {

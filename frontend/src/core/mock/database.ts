@@ -116,7 +116,7 @@ const permissoes: Permissao[] = [
   ["projetos.gerenciar", "Criar e gerenciar projetos", "projetos", "Projects", 5],
   ["test_cases.consultar", "Consultar Test Cases do time", "test_cases", "Test Cases", 6],
   ["test_cases.gerenciar", "Gerenciar Test Cases do time", "test_cases", "Test Cases", 6],
-  ["form_factor.consultar", "Consultar Resumo e histórico Form Factor dos projetos no escopo permitido, incluindo Resultados Gerais para Administrador, Gerente e KP", "form_factor", "Form Factor", 7],
+  ["form_factor.consultar", "Consultar Resumo e histórico Form Factor dos projetos no escopo permitido, incluindo Resultados Gerais para Administrador, Gerente, KP e Developer", "form_factor", "Form Factor", 7],
   ["form_factor.importar", "Importar resultados SDF", "form_factor", "Form Factor", 7],
   ["form_factor.registrar", "Criar rodadas e lançar resultados Form Factor", "form_factor", "Form Factor", 7],
   ["modelos_dispositivo.gerenciar", "Cadastrar, editar, ativar e inativar modelos no catálogo da unidade", "modelos_dispositivo", "Device models", 8],
@@ -1158,7 +1158,7 @@ function semanaIso(value: string) {
 function projetosMockResultadosGerais(db: Database) {
   const { user, profile } = mockProfile();
   if (
-    !profile || !profile.codigo || !["ADMIN_UNIDADE", "GERENTE", "KP"].includes(profile.codigo) ||
+    !profile || !profile.codigo || !["ADMIN_UNIDADE", "GERENTE", "KP", "USUARIO_PADRAO"].includes(profile.codigo) ||
     !profile.permissoes.includes("form_factor.consultar")
   ) throw new Error("Você não tem permissão para consultar Resultados Gerais.");
   if (profile.codigo === "ADMIN_UNIDADE") return db.projetos.filter((project) => project.ativo);
@@ -1220,15 +1220,13 @@ export const mockFormFactorApi = {
   historicoProjeto(projectId: string, filtros: FiltrosHistoricoProjeto = {}): HistoricoProjeto {
     const { db } = mockProfile();
     const { modelos, casos, execucoes } = execucoesMockDoProjeto(db, projetoMockResultadosGerais(db, projectId));
-    const termo = filtros.busca?.trim().toLocaleLowerCase();
-    const nomeModelo = new Map(modelos.map((model) => [model.id, model.nome.toLocaleLowerCase()]));
     const userId = (responsavelId: string) => db.usuarios.find((item) => item.id === responsavelId)?.user_id ?? null;
     const selecionados = casos.filter((testCase) => {
       // Como na API, filtro e período casam com a mesma execução.
       const doCaso = execucoes.filter((item) => item.caso_teste_id === testCase.id && noPeriodoMock(item.dia, filtros.periodo));
-      return (!filtros.tcId || testCase.tc_id.toLocaleLowerCase().includes(filtros.tcId.toLocaleLowerCase())) &&
-        (!termo || (userId(testCase.responsavel_id) ?? "").toLocaleLowerCase().includes(termo) ||
-          doCaso.some((item) => (item.sdf_id ?? "").toLocaleLowerCase().includes(termo) || nomeModelo.get(item.modelo_dispositivo_id)!.includes(termo))) &&
+      return contem(testCase.tc_id, filtros.tcId) &&
+        contem(userId(testCase.responsavel_id), filtros.responsavel) &&
+        (!filtros.sdfId?.trim() || doCaso.some((item) => contem(item.sdf_id, filtros.sdfId))) &&
         (!filtros.modeloDispositivoId || doCaso.some((item) => item.modelo_dispositivo_id === filtros.modeloDispositivoId)) &&
         (!filtros.periodo || doCaso.length > 0);
     }).sort((a, b) => a.tc_id.localeCompare(b.tc_id));
@@ -1239,32 +1237,27 @@ export const mockFormFactorApi = {
       .filter((item) => noPeriodoMock(item.dia, filtros.periodo) && (!filtros.modeloDispositivoId || item.modelo_dispositivo_id === filtros.modeloDispositivoId))
       .map((item) => item.dia))]
       .sort((a, b) => b.localeCompare(a))
-      .slice(0, 7);
-    const ordem = modelos.map((model) => model.id);
-    const destacados = filtros.modeloDispositivoId ? [filtros.modeloDispositivoId]
-      : termo ? modelos.filter((model) => model.nome.toLocaleLowerCase().includes(termo)).map((model) => model.id) : [];
+      .slice(0, 5); // ADR 0046
     const pagina = page(selecionados, filtros.page ?? 1, filtros.pageSize ?? DEFAULT_TABLE_PAGE_SIZE);
     return {
       ...pagina,
       modelos,
       datas,
-      modelo_destacado_id: destacados[0] ?? null,
       items: pagina.items.map((testCase) => {
         const doCaso = doFiltro.filter((item) => item.caso_teste_id === testCase.id);
         const resultados: HistoricoProjeto["items"][number]["resultados"] = {};
         doCaso.filter((item) => datas.includes(item.dia)).forEach(({ execucao_id, resultado, sdf_id, origem, dia, modelo_dispositivo_id }) => {
           (resultados[dia] ??= {})[modelo_dispositivo_id] = { execucao_id, resultado, sdf_id, origem };
         });
-        const ultima = doCaso.at(-1);
-        const daUltima = new Set(doCaso.filter((item) => item.execucao_id === ultima?.execucao_id).map((item) => item.modelo_dispositivo_id));
+        // `doCaso` vem da mais antiga para a mais recente: a última de cada modelo fica, em qualquer data.
+        const ultimo_sdf_por_modelo: Record<string, string | null> = {};
+        doCaso.forEach((item) => { ultimo_sdf_por_modelo[item.modelo_dispositivo_id] = item.sdf_id; });
         return {
           caso_teste_id: testCase.id,
           tc_id: testCase.tc_id,
           responsavel_id: testCase.responsavel_id,
           responsavel_identificador: userId(testCase.responsavel_id),
-          // A linha abre no device da busca se ele tem resultado nas datas; senão, a regra padrão (RN-04).
-          modelo_padrao_id: destacados.find((modelId) => Object.values(resultados).some((porModelo) => porModelo[modelId]))
-            ?? ordem.find((modelId) => daUltima.has(modelId)) ?? ordem[0] ?? null,
+          ultimo_sdf_por_modelo,
           resultados,
         };
       }),
@@ -1453,7 +1446,8 @@ const registrosAuditoriaMock: RegistroAuditoriaMock[] = [
 
 /** O dia `AAAA-MM-DD` do registro no fuso do navegador, como o backend faz com `fuso_horario`. */
 const diaLocal = (iso: string) => formatarDiaIso(new Date(iso));
-const contem = (texto: string | null, termo: string) => (texto ?? "").toLocaleLowerCase().includes(termo.toLocaleLowerCase());
+// Termo vazio casa com tudo; a comparação ignora maiúsculas e os espaços das pontas do termo.
+const contem = (texto: string | null, termo?: string) => !termo?.trim() || (texto ?? "").toLocaleLowerCase().includes(termo.trim().toLocaleLowerCase());
 
 export const mockAuditoriaApi = {
   listar(pageNumber: number, pageSize: number, filtros: FiltrosAuditoria = {}): PagedResult<RegistroAuditoria> {

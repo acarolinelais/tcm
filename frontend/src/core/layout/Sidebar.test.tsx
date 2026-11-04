@@ -29,14 +29,14 @@ describe("Sidebar project navigation", () => {
     renderSidebar({ ...perfil, perfil_codigo: "USUARIO_PADRAO", permissoes: ["test_cases.consultar"] });
     expect(screen.getByRole("link", { name: "Projects" })).toHaveAttribute("href", "/projetos");
   });
-  it("mostra General Results para admin, gerente e KP com permissão Form Factor", () => {
-    for (const perfilCodigo of ["ADMIN_UNIDADE", "GERENTE", "KP"] as const) {
+  it("mostra General Results para admin, gerente, KP e dev com permissão Form Factor (spec 059, CA-01)", () => {
+    for (const perfilCodigo of ["ADMIN_UNIDADE", "GERENTE", "KP", "USUARIO_PADRAO"] as const) {
       const { unmount } = renderSidebar({ ...perfil, perfil_codigo: perfilCodigo, permissoes: ["form_factor.consultar"] });
       expect(screen.getByRole("link", { name: "General Results" })).toHaveAttribute("href", "/resultados-gerais");
       unmount();
     }
     for (const current of [
-      { perfil_codigo: "USUARIO_PADRAO", permissoes: ["form_factor.consultar"] },
+      { perfil_codigo: "USUARIO_PADRAO", permissoes: ["test_cases.consultar"] },
       { perfil_codigo: "KP", permissoes: [] },
     ]) {
       const { unmount } = renderSidebar({ ...perfil, ...current });

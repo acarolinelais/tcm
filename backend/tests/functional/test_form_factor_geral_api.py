@@ -35,14 +35,13 @@ async def test_historico_repassa_filtros_e_devolve_o_pivo(api_client):
     service.historico_projeto.return_value = HistoricoProjetoResponse(
         modelos=[FormFactorModeloResponse(id=modelo_id, nome="SM-S26")],
         datas=[date(2026, 10, 10)],
-        modelo_destacado_id=modelo_id,
         items=[
             CasoHistoricoResponse(
                 caso_teste_id=caso_id,
                 tc_id="Clock_001",
                 responsavel_id=uuid4(),
                 responsavel_identificador="ANA-001",
-                modelo_padrao_id=modelo_id,
+                ultimo_sdf_por_modelo={modelo_id: "SDF-9"},
                 resultados={
                     date(2026, 10, 10): {
                         modelo_id: ResultadoNaDataResponse(
@@ -60,16 +59,19 @@ async def test_historico_repassa_filtros_e_devolve_o_pivo(api_client):
     _usar(service)
 
     response = await api_client.get(
-        f"/api/form-factor/general/projetos/{projeto_id}/historico?busca=S26&tc_id=001"
-        f"&modelo_dispositivo_id={modelo_id}&semana=2026-W41&fuso_horario=America/Manaus&page=2&page_size=10"
+        f"/api/form-factor/general/projetos/{projeto_id}/historico?tc_id=001&responsavel=ana"
+        f"&sdf_id=SDF&busca=ignorada&modelo_dispositivo_id={modelo_id}&semana=2026-W41"
+        "&fuso_horario=America/Manaus&page=2&page_size=10"
     )
 
     assert response.status_code == 200
+    # A busca livre saiu (spec 059, RN-13): o parâmetro antigo é ignorado.
     service.historico_projeto.assert_awaited_once_with(
         USUARIO,
         projeto_id,
-        busca="S26",
         tc_id="001",
+        responsavel="ana",
+        sdf_id="SDF",
         modelo_dispositivo_id=modelo_id,
         dia=None,
         semana="2026-W41",
@@ -81,6 +83,8 @@ async def test_historico_repassa_filtros_e_devolve_o_pivo(api_client):
     assert corpo["datas"] == ["2026-10-10"]
     assert (corpo["page"], corpo["total_count"], corpo["total_pages"]) == (2, 11, 2)
     assert corpo["items"][0]["resultados"]["2026-10-10"][str(modelo_id)]["origem"] == "MANUAL"
+    assert corpo["items"][0]["ultimo_sdf_por_modelo"] == {str(modelo_id): "SDF-9"}
+    assert "modelo_destacado_id" not in corpo
 
 
 @pytest.mark.parametrize(
@@ -94,6 +98,8 @@ async def test_historico_repassa_filtros_e_devolve_o_pivo(api_client):
         "page=0",
         "page_size=0",
         "page_size=101",
+        f"responsavel={'a' * 101}",
+        f"sdf_id={'a' * 101}",
     ],
 )
 async def test_periodo_ou_filtro_invalido_retorna_422_problem_details(api_client, consulta):

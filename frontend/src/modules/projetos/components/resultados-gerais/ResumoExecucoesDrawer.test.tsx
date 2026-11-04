@@ -10,7 +10,7 @@ import { ResumoExecucoesDrawer } from "./ResumoExecucoesDrawer";
 
 vi.mock("../../hooks/useProjetos", () => ({ useResumoExecucoes: vi.fn() }));
 
-const caso: CasoHistorico = { caso_teste_id: "c1", tc_id: "Clock_001", responsavel_id: "u1", responsavel_identificador: null, modelo_padrao_id: "s26", resultados: {} };
+const caso: CasoHistorico = { caso_teste_id: "c1", tc_id: "Clock_001", responsavel_id: "u1", responsavel_identificador: null, ultimo_sdf_por_modelo: {}, resultados: {} };
 
 describe("ResumoExecucoesDrawer", () => {
   it("erro na consulta mostra tentar de novo; sem ID de tester, o marcador vazio", async () => {

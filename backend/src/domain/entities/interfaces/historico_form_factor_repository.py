@@ -31,7 +31,8 @@ class HistoricoFormFactorRepository(Protocol):
         projeto_id: UUID,
         filtros: FiltrosCasoHistorico,
         fuso_horario: str,
-        limite: int = 7,
+        *,
+        limite: int,
     ) -> tuple[date, ...]: ...
 
     async def listar_resultados(
@@ -43,6 +44,6 @@ class HistoricoFormFactorRepository(Protocol):
         datas: Sequence[date] | None = None,
     ) -> tuple[LinhaHistoricoExecucao, ...]: ...
 
-    async def listar_modelos_da_ultima_execucao(
+    async def listar_ultimo_sdf_por_modelo(
         self, unidade_id: UUID, projeto_id: UUID, caso_ids: Sequence[UUID]
-    ) -> dict[UUID, tuple[UUID, ...]]: ...
+    ) -> dict[UUID, dict[UUID, str | None]]: ...

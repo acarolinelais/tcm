@@ -1,14 +1,13 @@
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button as HeroButton, ToggleButton, ToggleButtonGroup } from "@heroui/react";
-import { MessageSquareText, Pencil, Plus, UploadCloud } from "lucide-react";
+import { MessageSquareText, Pencil, Plus } from "lucide-react";
 import { Navigate, useOutletContext, useParams, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import type { PerfilAtual } from "@/core/auth/api";
 import { formatDate } from "@/core/i18n/format";
 import { timesApi } from "@/modules/times/api/times.api";
-import { ApiError } from "@/shared/api/problem-details";
 import { buscarTodasAsPaginas } from "@/shared/lib/exportar-planilha";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { toast } from "@/shared/lib/toast";
@@ -34,14 +33,13 @@ import { JustificativaExclusaoDrawer } from "../components/casos-teste/Justifica
 import { estadoCasosTeste } from "../components/casos-teste/estado-casos-teste";
 import { FormFactorTabela } from "../components/form-factor/FormFactorTabela";
 import { FormFactorManualDialog } from "../components/form-factor/FormFactorManualDialog";
-import { FormFactorCriarRodadaDialog } from "../components/form-factor/FormFactorCriarRodadaDialog";
 import { FormFactorResultadosTabela } from "../components/form-factor/FormFactorResultadosTabela";
 import { HistoricoCasoPainel } from "../components/form-factor/HistoricoCasoPainel";
 import type { CasoDoResumo } from "../components/resultados-gerais/ResumoExecucoesDrawer";
 import { ProjetoSwitcher } from "../components/ProjetoSwitcher";
 import { statusChipTons } from "../components/status/status-chip-estilos";
 import { ProjetosEntradaPage } from "./ProjetosEntradaPage";
-import { useCasosTeste, useCriarRodadaFormFactor, useFormFactor, useFormFactorResultados, useProjeto, useRegistrarResultadosRodadaFormFactor, useTransferirCasoTeste } from "../hooks/useProjetos";
+import { useCasosTeste, useFormFactor, useFormFactorResultados, useProjeto, useRegistrarResultadosRodadaFormFactor, useTransferirCasoTeste } from "../hooks/useProjetos";
 
 import { casosTesteApi, formFactorApi, type CasoTeste, type LinhaFormFactor } from "../api/projetos.api";
 import { DIFICULDADES_CASO_TESTE as dificuldades, OPCOES_CATEGORIA, NIVEIS_AUTOMACAO_CASO_TESTE as niveisAutomacao, ROTULO_AUTOMACAO, ROTULO_DIFICULDADE, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, opcoesRotuladas, perfilGerenciaCasos, type AtualizarCasoTesteInput, type CasoTesteResumo, type StatusCasoTeste } from "../model/projeto";
@@ -102,10 +100,7 @@ function ProjetoDetalhe() {
   const [filtrosResultados, setFiltrosResultados] = useState({ tcId: "", sdfId: "", origem: "", modeloDispositivoId: "", resultado: "" });
   const [responsaveisResultados, setResponsaveisResultados] = useState<string[]>([]);
   const [linhaManual, setLinhaManual] = useState<LinhaFormFactor | null>(null);
-  const [abrirCriacaoRodada, setAbrirCriacaoRodada] = useState(false);
   const [semanaCasos, setSemanaCasos] = useState("");
-  const [arquivoSdf, setArquivoSdf] = useState<File | null>(null);
-  const inputSdf = useRef<HTMLInputElement>(null);
 
   const admin = perfil.perfil_codigo === "ADMIN_UNIDADE";
   const dev = perfil.perfil_codigo === "USUARIO_PADRAO";
@@ -114,11 +109,9 @@ function ProjetoDetalhe() {
   const podeConsultarCasos = admin || perfil.permissoes.includes("test_cases.consultar");
   const podeConsultarFormFactor = admin || perfil.permissoes.includes("form_factor.consultar");
   const perfilGestao = admin || ["GERENTE", "KP"].includes(perfil.perfil_codigo ?? "");
-  const podeCriarRodada = perfilGestao && (admin || perfil.permissoes.includes("form_factor.registrar"));
-  const podeImportarSdf = perfilGestao && (admin || perfil.permissoes.includes("form_factor.importar"));
   const podeRegistrarResultado = admin || (["GERENTE", "KP", "USUARIO_PADRAO"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("form_factor.registrar"));
   const podeRegistrarLinha = (linha: LinhaFormFactor) => Boolean(linha.rodada_pendente_id) && (perfilGestao || linha.responsavel_id === perfil.id || linha.backup_id === perfil.id);
-  const abasDisponiveis: Aba[] = [...(podeConsultarCasos ? ["cases"] as const : []), ...(podeConsultarFormFactor || podeImportarSdf ? ["form-factor"] as const : [])];
+  const abasDisponiveis: Aba[] = [...(podeConsultarCasos ? ["cases"] as const : []), ...(podeConsultarFormFactor ? ["form-factor"] as const : [])];
   const abaDaUrl = parametros.get("aba") as Aba | null;
   const aba: Aba = abaDaUrl && abasDisponiveis.includes(abaDaUrl) ? abaDaUrl : podeConsultarCasos ? "cases" : "form-factor";
   const projeto = useProjeto(projetoId, perfil, podeConsultar);
@@ -130,7 +123,6 @@ function ProjetoDetalhe() {
   const filtrosApiResultados = { semana: semana || undefined, tcId: filtrosResultados.tcId || undefined, sdfId: filtrosResultados.sdfId || undefined, responsavelIds: responsaveisResultados.length ? responsaveisResultados : undefined, origem: filtrosResultados.origem ? filtrosResultados.origem as "SDF" | "MANUAL" : undefined, modeloDispositivoId: filtrosResultados.modeloDispositivoId || undefined, resultado: filtrosResultados.resultado || undefined };
   const resultados = useFormFactor(projetoId, { page: pagina, pageSize: tamanhoPagina, ...filtrosApiResumo }, perfil, projeto.isSuccess && podeConsultarFormFactor && aba === "form-factor" && visaoFormFactor === "summary");
   const historico = useFormFactorResultados(projetoId, { page: pagina, pageSize: tamanhoPagina, ...filtrosApiResultados }, perfil, projeto.isSuccess && podeConsultarFormFactor && aba === "form-factor" && visaoFormFactor === "results");
-  const criarRodada = useCriarRodadaFormFactor(projetoId);
   const registrarResultadoRodada = useRegistrarResultadosRodadaFormFactor(projetoId);
 
   const [casoParaExcluir, setCasoParaExcluir] = useState<CasoTeste | null>(null);
@@ -160,14 +152,6 @@ function ProjetoDetalhe() {
   const transferir = (id: string) => transfer.mutate(id, {
     onSuccess: () => { setCasoParaTransferir(null); toast.success(t("caseTransferred")); },
     onError: (error) => toast.error(error.message || t("caseTransferError")),
-  });
-  const importReport = useMutation({
-    mutationFn: () => {
-      if (!arquivoSdf) throw new Error(t("projectFileRequired"));
-      return formFactorApi.importar(projetoId, arquivoSdf);
-    },
-    onSuccess: async (result) => { await client.invalidateQueries({ queryKey: ["projetos", projetoId, "form-factor"] }); setArquivoSdf(null); toast.success(t("sdfImportSuccess", { rows: result.quantidade_execucoes, results: result.quantidade_resultados })); },
-    onError: (error) => toast.error(error instanceof Error ? error.message : t("sdfImportError")),
   });
 
   const opcoes = useMemo(() => ({
@@ -217,7 +201,7 @@ function ProjetoDetalhe() {
     setDrawerCasoAberto(true);
   }
 
-  if (!podeConsultar || (!podeConsultarCasos && !podeConsultarFormFactor && !podeImportarSdf)) return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
+  if (!podeConsultar || (!podeConsultarCasos && !podeConsultarFormFactor)) return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
   if (dev && !podeConsultarCasos) return <p role="alert">{t("permissionDenied")}</p>;
   if (projeto.isError) return <p role="alert" className="p-6 text-sm">{t("projectNotFound")}</p>;
   // Spec 012: dev sem casos no projeto vai para a entrada de Projects.
@@ -344,7 +328,7 @@ function ProjetoDetalhe() {
       {projeto.data && <WeekPickerHero label={t("week")} value={aba === "cases" ? semanaCasos : semana} onChange={(valor) => { if (aba === "cases") setSemanaCasos(valor); else setSemana(valor); setPagina(1); }} className="ml-auto" />}
     </header>
     {/* Figma: o seletor de visão do Form Factor fica entre o título e as abas, com Results primeiro. */}
-    {projeto.data && aba === "form-factor" && (podeConsultarFormFactor || podeImportarSdf) && <div className="mb-5 flex shrink-0 flex-wrap items-center justify-between gap-3">
+    {projeto.data && aba === "form-factor" && podeConsultarFormFactor && <div className="mb-5 flex shrink-0 flex-wrap items-center justify-between gap-3">
       <ToggleButtonGroup
         aria-label={t("formFactorViews")}
         selectionMode="single"
@@ -368,7 +352,7 @@ function ProjetoDetalhe() {
         tabs={abasDisponiveis.map((id) => ({ id, label: t(ROTULO_ABA[id]) }))}
         selectedKey={aba}
         onSelectionChange={(chave) => trocarAba(chave as Aba)}
-        actions={aba === "cases" ? podeGerenciarCasos && <HeroButton variant="primary" size="sm" onPress={() => abrirCaso(null)}><Plus aria-hidden="true" className="size-4" />{t("newTestCase")}</HeroButton> : <>{podeCriarRodada && <HeroButton variant="primary" size="sm" onPress={() => setAbrirCriacaoRodada(true)}><Plus aria-hidden="true" className="size-4" />{t("createTestRound")}</HeroButton>}{podeImportarSdf && <><input ref={inputSdf} className="sr-only" type="file" accept=".xls,.xlsx" tabIndex={-1} aria-hidden="true" onChange={(event) => { setArquivoSdf(event.target.files?.[0] ?? null); event.target.value = ""; }} /><HeroButton size="sm" variant="outline" className="h-auto min-h-8 whitespace-normal text-left leading-tight" onPress={() => inputSdf.current?.click()}><UploadCloud aria-hidden="true" className="size-4 shrink-0" />{arquivoSdf?.name ?? t("importSdf")}</HeroButton>{arquivoSdf && <HeroButton size="sm" variant="primary" isDisabled={importReport.isPending} onPress={() => importReport.mutate()}>{importReport.isPending ? t("saving") : t("import")}</HeroButton>}</>}</>}
+        actions={aba === "cases" ? podeGerenciarCasos && <HeroButton variant="primary" size="sm" onPress={() => abrirCaso(null)}><Plus aria-hidden="true" className="size-4" />{t("newTestCase")}</HeroButton> : null}
       >
         {podeConsultarCasos && <PageTabPanel id="cases" className="flex min-h-0 flex-1 flex-col p-0">
           <DataTable
@@ -381,7 +365,7 @@ function ProjetoDetalhe() {
             rowDependencies={[t, opcoes, identificadoresMembros, opcoesMembros, podeGerenciarCasos, responsavelAtual, mostrarAcoes, transfer.isPending, primeiraDaPagina, ordemDosCasos]}
           />
         </PageTabPanel>}
-        {(podeConsultarFormFactor || podeImportarSdf) && <PageTabPanel id="form-factor" className="flex min-h-0 flex-1 flex-col gap-4 p-0">
+        {podeConsultarFormFactor && <PageTabPanel id="form-factor" className="flex min-h-0 flex-1 flex-col gap-4 p-0">
           {visaoFormFactor === "summary"
             ? <div className="flex min-h-0 flex-1 flex-col">
                 <FormFactorTabela dados={resultados.data} carregando={resultados.isLoading} erro={resultados.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} assignee={assigneeFormFactor} onAssigneeChange={(valor) => { setAssigneeFormFactor(valor); setPagina(1); }} tcId={filtrosResumo.tcId} sdfId={filtrosResumo.sdfId} onFiltroTexto={(campo, valor) => { setFiltrosResumo((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} modeloDispositivoId={filtrosResumo.modeloDispositivoId} resultadoFiltro={filtrosResumo.resultado} onFiltroResultado={(modeloId, valor) => { setFiltrosResumo({ ...filtrosResumo, modeloDispositivoId: valor ? modeloId : "", resultado: valor }); setPagina(1); }} podeRegistrar={podeRegistrarResultado ? podeRegistrarLinha : undefined} onRegistrar={setLinhaManual} onAbrirDetalhes={setCasoDetalhado} buscarTodos={buscarResumoParaExportar} temFiltros={Boolean(semana || assigneeFormFactor.length || filtrosResumo.tcId || filtrosResumo.sdfId || filtrosResumo.resultado)} onLimparFiltros={() => { setSemana(""); setAssigneeFormFactor([]); setFiltrosResumo({ tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" }); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
@@ -417,18 +401,6 @@ function ProjetoDetalhe() {
       if (parametros.has("caso")) setParametros((atuais) => { atuais.delete("caso"); atuais.delete("tc"); return atuais; }, { replace: true });
     }} />
     <CasoTesteDrawer key={aberturasDrawer} isOpen={drawerCasoAberto} onOpenChange={setDrawerCasoAberto} projetoId={projetoId} editar={editar} membrosAtivos={membrosAtivos} />
-    <FormFactorCriarRodadaDialog
-      aberto={abrirCriacaoRodada}
-      onAbertoChange={setAbrirCriacaoRodada}
-      salvando={criarRodada.isPending}
-      onCriar={(sdfId) => criarRodada.mutate({ sdf_id: sdfId }, {
-        onSuccess: () => { setAbrirCriacaoRodada(false); toast.success(t("testRoundCreated")); },
-        // Erros no toast, com o modal aberto para corrigir; o SDF ID repetido usa a mensagem traduzida.
-        onError: (error) => toast.error(error instanceof ApiError && error.problem.errors?.some((erro) => erro.campo === "sdf_id")
-          ? t("sdfIdAlreadyUsed")
-          : error instanceof Error ? error.message : t("roundCreateError")),
-      })}
-    />
     <FormFactorManualDialog
       aberto={Boolean(linhaManual)}
       onAbertoChange={(aberto) => { if (!aberto) setLinhaManual(null); }}
