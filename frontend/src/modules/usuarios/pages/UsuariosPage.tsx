@@ -3,7 +3,7 @@ import { useOutletContext } from "react-router";
 import { Button } from "@heroui/react";
 import { Plus } from "lucide-react";
 
-import { PageCard, PageTitle } from "@/shared/ui/page-card";
+import { PageCard, PageDescription, PageTitle } from "@/shared/ui/page-card";
 import { toast } from "@/shared/lib/toast";
 
 import { UsuarioDrawer } from "../components/UsuarioDrawer";
@@ -82,8 +82,8 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
 
   return (
     <PageCard>
-      <header className="mb-[30px] flex shrink-0 items-center justify-between gap-4">
-        <PageTitle>{t("users")}</PageTitle>
+      <header className="mb-5 flex shrink-0 items-start justify-between gap-4">
+        <div className="min-w-0"><PageTitle>{t("users")}</PageTitle><PageDescription>{t("usersDescription")}</PageDescription></div>
         {podeGerenciar && (
           <Button variant="primary" onPress={abrirCriar}>
             <Plus aria-hidden="true" absoluteStrokeWidth strokeWidth={1.5} className="size-4" />{t("newUser")}

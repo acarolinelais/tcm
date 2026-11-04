@@ -11,7 +11,7 @@ import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
 import { DataTablePagination } from "@/shared/ui/data-table-pagination";
 import { estadoDaTabela } from "@/shared/ui/data-table-state";
 import { EyeIcon } from "@/shared/ui/figma-icons";
-import { PageCard, PageTitle } from "@/shared/ui/page-card";
+import { PageCard, PageDescription, PageTitle } from "@/shared/ui/page-card";
 import { RowActions } from "@/shared/ui/row-action-button";
 import { rowActionIconProps } from "@/shared/ui/row-action-icon";
 import { PageSkeleton } from "@/shared/ui/page-skeleton";
@@ -253,8 +253,8 @@ export function PerfisPage() {
 
   return (
     <PageCard>
-      <header className="mb-[30px] flex shrink-0 items-center justify-between gap-4">
-        <PageTitle>{t("profileTitle")}</PageTitle>
+      <header className="mb-5 flex shrink-0 items-start justify-between gap-4">
+        <div className="min-w-0"><PageTitle>{t("profileTitle")}</PageTitle><PageDescription>{t("profilesDescription")}</PageDescription></div>
         {!criando && <Button variant="primary" onPress={() => pedirAcao({ tipo: "novo" })}><Plus aria-hidden="true" absoluteStrokeWidth strokeWidth={1.5} className="size-4" />{t("newProfile")}</Button>}
       </header>
 
