@@ -26,14 +26,14 @@ class CasoHistoricoResponse(BaseModel):
     tc_id: str
     responsavel_id: UUID
     responsavel_identificador: str | None
-    modelo_padrao_id: UUID | None
+    # SDF ID da execução mais recente de cada modelo, em qualquer data; sem execução, fica fora.
+    ultimo_sdf_por_modelo: dict[UUID, str | None]
     resultados: dict[date, dict[UUID, ResultadoNaDataResponse]]
 
 
 class HistoricoProjetoResponse(BaseModel):
     modelos: list[FormFactorModeloResponse]
     datas: list[date]
-    modelo_destacado_id: UUID | None
     items: list[CasoHistoricoResponse]
     page: int
     page_size: int
@@ -66,10 +66,9 @@ def _resultado(linha: LinhaHistoricoExecucao) -> ResultadoNaDataResponse:
 def to_historico_response(
     modelos: Sequence[ModeloDoProjeto],
     datas: Sequence[date],
-    modelo_destacado_id: UUID | None,
     casos: PagedResult[CasoHistorico],
     linhas: Sequence[LinhaHistoricoExecucao],
-    modelos_padrao: dict[UUID, UUID | None],
+    ultimos_sdf: dict[UUID, dict[UUID, str | None]],
 ) -> HistoricoProjetoResponse:
     """`linhas` vêm da mais antiga para a mais recente.
 
@@ -82,14 +81,13 @@ def to_historico_response(
     return HistoricoProjetoResponse(
         modelos=_modelos_response(modelos),
         datas=list(datas),
-        modelo_destacado_id=modelo_destacado_id,
         items=[
             CasoHistoricoResponse(
                 caso_teste_id=caso.caso_teste_id,
                 tc_id=caso.tc_id,
                 responsavel_id=caso.responsavel_id,
                 responsavel_identificador=caso.responsavel_identificador,
-                modelo_padrao_id=modelos_padrao.get(caso.caso_teste_id),
+                ultimo_sdf_por_modelo=ultimos_sdf.get(caso.caso_teste_id, {}),
                 resultados=resultados.get(caso.caso_teste_id, {}),
             )
             for caso in casos.items

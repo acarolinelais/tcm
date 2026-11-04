@@ -44,8 +44,8 @@ class _Contexto:
         self.historico.obter_caso.return_value = self.caso
         self.historico.listar_datas.return_value = (DIA,)
         self.historico.listar_resultados.return_value = ()
-        self.historico.listar_modelos_da_ultima_execucao.return_value = {
-            self.caso.caso_teste_id: (self.s26.id,)
+        self.historico.listar_ultimo_sdf_por_modelo.return_value = {
+            self.caso.caso_teste_id: {self.s26.id: "SDF-9", self.s25.id: None}
         }
         self.service = FormFactorServiceImpl(
             self.projeto_repo,
@@ -94,7 +94,6 @@ async def test_historico_pivota_por_data_e_modelo_e_mantem_a_execucao_mais_recen
 
     assert [modelo.nome for modelo in resposta.modelos] == ["SM-S25", "SM-S26"]
     assert resposta.datas == [DIA]
-    assert resposta.modelo_destacado_id is None
     linha, vazia = resposta.items
     assert linha.responsavel_identificador == "ANA-001"
     assert linha.resultados[DIA][ctx.s26.id].execucao_id == manual.execucao_id
@@ -111,51 +110,43 @@ async def test_historico_pivota_por_data_e_modelo_e_mantem_a_execucao_mais_recen
     )
 
 
-async def test_modelo_padrao_e_o_da_execucao_mais_recente_ou_o_primeiro_do_projeto(ctx):
+async def test_cada_caso_traz_o_sdf_da_ultima_execucao_de_cada_device(ctx):
     resposta = await ctx.service.historico_projeto(ctx.usuario(), ctx.projeto.id)
 
-    assert [caso.modelo_padrao_id for caso in resposta.items] == [ctx.s26.id, ctx.s25.id]
-
-
-async def test_busca_por_device_abre_so_as_linhas_com_resultado_nele(ctx):
-    ctx.historico.listar_resultados.return_value = (ctx.linha(ctx.s25, "FAIL", 9),)
-
-    resposta = await ctx.service.historico_projeto(ctx.usuario(), ctx.projeto.id, busca=" s25 ")
-    filtrado = await ctx.service.historico_projeto(
-        ctx.usuario(), ctx.projeto.id, modelo_dispositivo_id=ctx.s26.id
-    )
-    tester = await ctx.service.historico_projeto(ctx.usuario(), ctx.projeto.id, busca="ana")
-
-    assert resposta.modelo_destacado_id == ctx.s25.id
-    # O caso com resultado no S25 abre nele; o outro segue a regra padrão (RN-04).
-    assert [caso.modelo_padrao_id for caso in resposta.items] == [ctx.s25.id, ctx.s25.id]
-    assert filtrado.modelo_destacado_id == ctx.s26.id
-    assert filtrado.items[0].modelo_padrao_id == ctx.s26.id
-    assert tester.modelo_destacado_id is None
-    assert tester.items[0].modelo_padrao_id == ctx.s26.id
+    # Spec 059, RN-10 e RN-11: o SDF da coluna vem da última execução do device, em qualquer data.
+    com_execucao, sem_execucao = resposta.items
+    assert com_execucao.ultimo_sdf_por_modelo == {ctx.s26.id: "SDF-9", ctx.s25.id: None}
+    assert sem_execucao.ultimo_sdf_por_modelo == {}
 
 
 async def test_historico_repassa_filtros_e_o_intervalo_do_dia_no_fuso(ctx):
     await ctx.service.historico_projeto(
         ctx.usuario(),
         ctx.projeto.id,
-        "sdf",
-        "001",
-        ctx.s25.id,
+        tc_id="001",
+        responsavel="ana",
+        sdf_id="sdf",
+        modelo_dispositivo_id=ctx.s25.id,
         dia="2026-10-10",
         fuso_horario="America/Manaus",
     )
 
     inicio, fim = datetime(2026, 10, 10, 4), datetime(2026, 10, 11, 4)
     filtros = FiltrosCasoHistorico(
-        busca="sdf", tc_id="001", modelo_dispositivo_id=ctx.s25.id, inicio=inicio, fim=fim
+        tc_id="001",
+        responsavel="ana",
+        sdf_id="sdf",
+        modelo_dispositivo_id=ctx.s25.id,
+        inicio=inicio,
+        fim=fim,
     )
     ctx.historico.listar_casos.assert_awaited_once_with(
         ctx.unidade_id, ctx.projeto.id, filtros, 1, 20
     )
     # As datas usam os mesmos filtros, não os IDs da página (spec 033, RN-03).
+    # No máximo 5 datas (ADR 0046).
     ctx.historico.listar_datas.assert_awaited_once_with(
-        ctx.unidade_id, ctx.projeto.id, filtros, "America/Manaus"
+        ctx.unidade_id, ctx.projeto.id, filtros, "America/Manaus", limite=5
     )
 
 
@@ -180,7 +171,7 @@ async def test_historico_pagina_os_casos_e_busca_resultados_so_da_pagina(ctx):
     ctx.historico.listar_resultados.assert_awaited_once_with(
         ctx.unidade_id, ctx.projeto.id, [ctx.sem_execucao.caso_teste_id], "UTC", (DIA,)
     )
-    ctx.historico.listar_modelos_da_ultima_execucao.assert_awaited_once_with(
+    ctx.historico.listar_ultimo_sdf_por_modelo.assert_awaited_once_with(
         ctx.unidade_id, ctx.projeto.id, [ctx.sem_execucao.caso_teste_id]
     )
 
@@ -188,7 +179,7 @@ async def test_historico_pagina_os_casos_e_busca_resultados_so_da_pagina(ctx):
 async def test_sem_casos_nao_consulta_datas(ctx):
     ctx.historico.listar_casos.return_value = PagedResult([], 1, 20, 0)
 
-    resposta = await ctx.service.historico_projeto(ctx.usuario(), ctx.projeto.id, busca="nada")
+    resposta = await ctx.service.historico_projeto(ctx.usuario(), ctx.projeto.id, tc_id="nada")
 
     assert (resposta.items, resposta.datas, resposta.total_count) == ([], [], 0)
     ctx.historico.listar_datas.assert_not_awaited()
@@ -220,12 +211,41 @@ async def test_periodo_ou_fuso_invalido_e_recusado_sem_consultar(ctx, filtros):
 
 @pytest.mark.parametrize(
     "perfil,permissoes",
-    [("USUARIO_PADRAO", ("form_factor.consultar",)), ("KP", ()), ("ADMIN_UNIDADE", ())],
+    [
+        ("USUARIO_PADRAO", ()),
+        ("KP", ()),
+        ("ADMIN_UNIDADE", ()),
+        ("PERFIL_DESCONHECIDO", ("form_factor.consultar",)),
+    ],
 )
-async def test_historico_do_projeto_recusa_o_dev_e_quem_nao_tem_permissao(ctx, perfil, permissoes):
-    # A General Results segue sem o dev (spec 059 trata dela); só as execuções de um caso o aceitam.
+async def test_historico_do_projeto_recusa_quem_nao_tem_permissao_ou_perfil(
+    ctx, perfil, permissoes
+):
     with pytest.raises(ForbiddenException):
         await ctx.service.historico_projeto(ctx.usuario(perfil, permissoes), ctx.projeto.id)
+
+    ctx.historico.listar_casos.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "perfil,time_ids",
+    # Spec 059, RN-01 e RN-02: o dev entra nos projetos dos times dele; o admin, em qualquer time.
+    [("USUARIO_PADRAO", None), ("ADMIN_UNIDADE", ())],
+)
+async def test_dev_e_admin_consultam_o_historico_no_escopo_deles(ctx, perfil, time_ids):
+    escopo = {} if time_ids is None else {"time_ids": time_ids}
+
+    resposta = await ctx.service.historico_projeto(ctx.usuario(perfil, **escopo), ctx.projeto.id)
+
+    assert len(resposta.items) == 2
+
+
+async def test_dev_nao_consulta_o_historico_de_projeto_de_outro_time(ctx):
+    # O KP fora do time já está em test_projeto_fora_do_escopo_ou_inativo_recebe_404...
+    with pytest.raises(NotFoundException):
+        await ctx.service.historico_projeto(
+            ctx.usuario("USUARIO_PADRAO", time_ids=(uuid4(),)), ctx.projeto.id
+        )
 
     ctx.historico.listar_casos.assert_not_awaited()
 

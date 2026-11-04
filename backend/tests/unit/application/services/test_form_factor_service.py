@@ -121,6 +121,42 @@ async def test_criar_rodada_com_sdf_id_repetido_recusa_sem_gravar():
     uow.commit.assert_not_awaited()
 
 
+async def test_dev_nao_cria_rodada_mesmo_com_permissao_de_registrar():
+    # Spec 059, CA-07: o dev registra o resultado dos próprios casos, mas não cria rodada.
+    service, usuario, projeto, execucao_repo, rodada_repo, uow = _contexto_criar_rodada()
+    dev = UsuarioAutenticado(
+        usuario.id,
+        usuario.unidade_id,
+        "USUARIO_PADRAO",
+        permissoes=frozenset({"form_factor.registrar"}),
+        time_ids=(projeto.time_id,),
+    )
+
+    with pytest.raises(ForbiddenException):
+        await service.criar_rodada(dev, projeto.id, CriarRodadaFormFactorLoteRequest())
+
+    rodada_repo.adicionar.assert_not_awaited()
+    execucao_repo.adicionar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+async def test_kp_nao_cria_rodada_em_projeto_de_outro_time():
+    service, usuario, projeto, execucao_repo, rodada_repo, uow = _contexto_criar_rodada()
+    kp = UsuarioAutenticado(
+        usuario.id,
+        usuario.unidade_id,
+        "KP",
+        permissoes=frozenset({"form_factor.registrar"}),
+        time_ids=(uuid4(),),
+    )
+
+    with pytest.raises(NotFoundException):
+        await service.criar_rodada(kp, projeto.id, CriarRodadaFormFactorLoteRequest())
+
+    rodada_repo.adicionar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
 async def test_criar_rodada_sem_sdf_id_nao_verifica_repeticao():
     service, usuario, projeto, _, rodada_repo, uow = _contexto_criar_rodada()
 

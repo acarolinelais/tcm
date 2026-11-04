@@ -30,10 +30,11 @@ class LinhaHistoricoExecucao:
 
 @dataclass(frozen=True, kw_only=True)
 class FiltrosCasoHistorico:
-    """Busca, filtros de coluna e período da tela Resultados Gerais: valem para casos e datas."""
+    """Filtros de coluna e período da tela Resultados Gerais: valem para casos e datas."""
 
-    busca: str | None = None
     tc_id: str | None = None
+    responsavel: str | None = None
+    sdf_id: str | None = None
     modelo_dispositivo_id: UUID | None = None
     inicio: datetime | None = None
     fim: datetime | None = None

@@ -51,6 +51,8 @@ from src.domain.entities.resultado_form_factor import ResultadoFormFactor
 from src.domain.entities.rodada_form_factor import RodadaFormFactor
 from src.domain.queries.historico_form_factor import FiltrosCasoHistorico
 
+LIMITE_DATAS_RESULTADOS_GERAIS = 5  # ADR 0046
+
 
 class FormFactorServiceImpl:
     def __init__(
@@ -81,8 +83,9 @@ class FormFactorServiceImpl:
         self,
         usuario_atual: UsuarioAutenticado,
         projeto_id: UUID,
-        busca: str | None = None,
         tc_id: str | None = None,
+        responsavel: str | None = None,
+        sdf_id: str | None = None,
         modelo_dispositivo_id: UUID | None = None,
         dia: str | None = None,
         semana: str | None = None,
@@ -90,8 +93,8 @@ class FormFactorServiceImpl:
         page: int = 1,
         page_size: int = 20,
     ) -> HistoricoProjetoResponse:
-        """Resultados Gerais de um projeto (specs 032 e 033): uma página de casos e até 7 datas."""
-        self._exigir_consulta_resultados_gerais(usuario_atual)
+        """Resultados Gerais de um projeto (specs 032, 033 e 059): página de casos e até 5 datas."""
+        self._exigir_consulta_execucoes(usuario_atual)
         if dia is not None and semana is not None:
             raise InvalidInputException("Escolha um dia ou uma semana, não os dois.")
         fuso_horario_valido(fuso_horario)
@@ -102,8 +105,9 @@ class FormFactorServiceImpl:
         unidade_id = usuario_atual.unidade_id
         modelos = await self._projeto_modelo_repo.listar_modelos_do_projeto(unidade_id, projeto.id)
         filtros = FiltrosCasoHistorico(
-            busca=busca,
             tc_id=tc_id,
+            responsavel=responsavel,
+            sdf_id=sdf_id,
             modelo_dispositivo_id=modelo_dispositivo_id,
             inicio=inicio,
             fim=fim,
@@ -113,42 +117,23 @@ class FormFactorServiceImpl:
         )
         caso_ids = [caso.caso_teste_id for caso in casos.items]
         datas = (
-            await self._historico_repo.listar_datas(unidade_id, projeto.id, filtros, fuso_horario)
+            await self._historico_repo.listar_datas(
+                unidade_id,
+                projeto.id,
+                filtros,
+                fuso_horario,
+                limite=LIMITE_DATAS_RESULTADOS_GERAIS,
+            )
             if casos.total_count
             else ()
         )
         linhas = await self._historico_repo.listar_resultados(
             unidade_id, projeto.id, caso_ids, fuso_horario, datas
         )
-        ultimos = await self._historico_repo.listar_modelos_da_ultima_execucao(
+        ultimos_sdf = await self._historico_repo.listar_ultimo_sdf_por_modelo(
             unidade_id, projeto.id, caso_ids
         )
-        ordem = [modelo.id for modelo in modelos]
-        termo = busca.strip().lower() if busca and busca.strip() else None
-        destacados = (
-            [modelo_dispositivo_id]
-            if modelo_dispositivo_id
-            else [modelo.id for modelo in modelos if termo and termo in modelo.nome.lower()]
-        )
-        com_resultado: dict[UUID, set[UUID]] = {}
-        for linha in linhas:
-            com_resultado.setdefault(linha.caso_teste_id, set()).add(linha.modelo_dispositivo_id)
-        primeiro = ordem[0] if ordem else None
-
-        def modelo_padrao(caso_id: UUID) -> UUID | None:
-            # Busca ou filtro por device (RN-10): a linha abre no device encontrado, se ele tem
-            # resultado nas datas da tabela. Senão (RN-04), o da execução mais recente (o primeiro
-            # do projeto, se ela teve vários); sem execução, o primeiro do projeto.
-            casados = com_resultado.get(caso_id, set())
-            return next((m for m in destacados if m in casados), None) or next(
-                (m for m in ordem if m in ultimos.get(caso_id, ())), primeiro
-            )
-
-        modelo_destacado_id = destacados[0] if destacados else None
-        modelos_padrao = {caso_id: modelo_padrao(caso_id) for caso_id in caso_ids}
-        return to_historico_response(
-            modelos, datas, modelo_destacado_id, casos, linhas, modelos_padrao
-        )
+        return to_historico_response(modelos, datas, casos, linhas, ultimos_sdf)
 
     async def resumo_execucoes(
         self, usuario_atual: UsuarioAutenticado, caso_teste_id: UUID, fuso_horario: str = "UTC"
@@ -173,20 +158,12 @@ class FormFactorServiceImpl:
 
     @staticmethod
     def _exigir_consulta_execucoes(usuario_atual: UsuarioAutenticado) -> None:
-        """Como a General Results, mais o dev, que já lê os resultados do time dele (spec 058)."""
+        """General Results e execuções de um caso: os quatro perfis, cada um no seu escopo."""
         if (
             usuario_atual.perfil_codigo not in {"ADMIN_UNIDADE", "GERENTE", "KP", "USUARIO_PADRAO"}
             or "form_factor.consultar" not in usuario_atual.permissoes
         ):
             raise ForbiddenException("Você não tem permissão para consultar as execuções.")
-
-    @staticmethod
-    def _exigir_consulta_resultados_gerais(usuario_atual: UsuarioAutenticado) -> None:
-        if (
-            usuario_atual.perfil_codigo not in {"ADMIN_UNIDADE", "GERENTE", "KP"}
-            or "form_factor.consultar" not in usuario_atual.permissoes
-        ):
-            raise ForbiddenException("Você não tem permissão para consultar Resultados Gerais.")
 
     async def _obter_projeto_ativo_no_escopo(
         self, usuario_atual: UsuarioAutenticado, projeto_id: UUID
