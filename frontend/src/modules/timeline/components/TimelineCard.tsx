@@ -24,7 +24,7 @@ export function TimelineCard({ card, compacto = false, onAbrir }: { card: CardTi
     onPress={() => onAbrir(card)}
     aria-label={t("timelineCardLabel", { tcId: card.tc_id, name: nome, changes: mudancas })}
     className={cn(
-      "h-auto min-h-[45px] w-full min-w-0 justify-start gap-1.5 rounded-[10px] border border-edge bg-surface px-2 py-2 text-left shadow-sm hover:bg-panel",
+      "h-auto min-h-[45px] w-full min-w-0 justify-start gap-1.5 rounded-[10px] border border-edge bg-elevado px-2 py-2 text-left shadow-sm hover:bg-panel",
       compacto && "w-fit",
     )}
   >

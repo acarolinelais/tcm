@@ -92,7 +92,7 @@ test("mostra a semana, filtra duas pessoas, troca para Mês e abre um card", asy
 
 /** Spec 057: o visual novo da Timeline (CA-03, CA-06, CA-11 e CA-12), com a mesma API simulada. */
 const IDIOMAS = ["en", "pt-BR", "ko"] as const;
-const AZUL = "rgb(0, 108, 209)"; // --accent-text do tema claro (#006cd1)
+const AZUL = "rgb(0, 129, 249)"; // --accent-text do tema claro (#0081f9)
 
 async function abrirTimeline(page: Page, idioma: string) {
   await page.clock.setFixedTime(new Date(2026, 11, 30, 12));

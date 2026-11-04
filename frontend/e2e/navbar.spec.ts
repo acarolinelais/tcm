@@ -66,7 +66,7 @@ for (const idioma of IDIOMAS) {
   });
 }
 
-test("no escuro, a busca da Navbar tem o fundo dos painéis e a borda #2f2f2f", async ({ page }) => {
+test("no escuro, a busca da Navbar tem o fundo dos painéis e a borda #1b1b1b", async ({ page }) => {
   await abrir(page, "en", "dark");
   const busca = page.getByRole("banner").locator('label:has(input[type="search"])');
   const estilo = await busca.evaluate((elemento) => {
@@ -74,7 +74,7 @@ test("no escuro, a busca da Navbar tem o fundo dos painéis e a borda #2f2f2f", 
     return [css.backgroundColor, css.borderTopColor, css.height];
   });
 
-  expect(estilo).toEqual(["rgb(27, 27, 27)", "rgb(47, 47, 47)", "29px"]);
+  expect(estilo).toEqual(["rgb(15, 15, 15)", "rgb(27, 27, 27)", "29px"]);
 });
 
 test("no detalhe do projeto, o botão de voltar não invade a busca em 1280px", async ({ page }) => {

@@ -71,10 +71,10 @@ describe("contraste do tema escuro (spec 050)", () => {
     expect(falhas).toEqual([]);
   });
 
-  it("os fundos do escuro são os do protótipo e a borda é #2f2f2f", () => {
+  it("os fundos do escuro são os do protótipo (Timeline e login, ajuste de 2026-11-04) e a borda é #1b1b1b", () => {
     const escuro = { ...tokens(":root"), ...tokens(":root.dark") };
     expect(["background", "surface", "panel", "table-body", "edge"].map((nome) => valor(escuro, nome)))
-      .toEqual(["#0a0a0a", "#1b1b1b", "#232325", "#161616", "#2f2f2f"]);
+      .toEqual(["#000000", "#0f0f0f", "#1b1b1b", "#0f0f0f", "#1b1b1b"]);
   });
 
   it("no claro, só entram a borda #f2f2f2 e o corpo da tabela igual ao cartão", () => {
@@ -102,8 +102,8 @@ describe("contraste do tema escuro (spec 050)", () => {
   });
 });
 
-// Spec 055: o redesign muda só o claro (RN-10); a paleta escura nova é uma spec à parte. Se este hash falhar, o escuro mudou.
-const HASH_DO_ESCURO = "929e2c46";
+// Paleta escura do protótipo (Timeline e login, ajuste de 2026-11-04). Se este hash falhar, o escuro mudou.
+const HASH_DO_ESCURO = "1fccd7dd";
 
 /** FNV-1a de 32 bits: basta para notar uma edição acidental do bloco, e não pede tipos do Node. */
 function hash(texto: string) {
@@ -121,21 +121,24 @@ function hslParaRgb(tripla: string): number[] {
 }
 
 describe("tema claro do redesign (spec 055)", () => {
-  it("o acento e o texto de acento passam de 4,5:1 sobre o branco, o painel e o fundo do item ativo", () => {
+  // O azul do protótipo (#0081f9) mede 3,81:1 sobre o branco, 3,49:1 sobre o painel e 3,38:1 sobre o item ativo:
+  // abaixo do AA para texto pequeno, por decisão do protótipo (ajuste de 2026-11-04). Serve a título grande, aba e
+  // ícone (mínimo de 3:1); o piso abaixo trava uma piora além dessa escolha.
+  it("o azul do protótipo passa de 3,3:1 sobre o branco, o painel e o fundo do item ativo", () => {
     const claro = tokens(":root");
     const falhas = [
       ...["#ffffff", valor(claro, "panel"), valor(claro, "accent-tint")].map((fundo): [string, string] => [valor(claro, "accent-text"), fundo]),
       ["#ffffff", valor(claro, "accent")] as [string, string], // texto branco sobre o botão e o preenchimento de acento
     ].flatMap(([texto, fundo]) => {
       const medida = contraste(texto, fundo);
-      return medida < 4.5 ? [`${texto} sobre ${fundo}: ${medida.toFixed(2)}`] : [];
+      return medida < 3.3 ? [`${texto} sobre ${fundo}: ${medida.toFixed(2)}`] : [];
     });
     expect(falhas).toEqual([]);
   });
 
-  it("o acento é o azul do Figma (#0081F9) escurecido, e o item ativo usa o fundo #e6f3ff", () => {
+  it("o acento é o azul do Figma (#0081F9), e o item ativo usa o fundo #e6f3ff", () => {
     const claro = tokens(":root");
-    expect([claro.accent, claro["accent-tint"]]).toEqual(["#006cd1", "#e6f3ff"]);
+    expect([claro.accent, claro["accent-tint"]]).toEqual(["#0081f9", "#e6f3ff"]);
   });
 
   it("o --primary e o --ring do shadcn são o mesmo azul do --accent", () => {
