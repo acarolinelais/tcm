@@ -11,13 +11,12 @@ import type { NivelAutomacaoCasoTeste } from "../model/projeto";
 import { timesApi } from "@/modules/times/api/times.api";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { formatarDiaIso, semanaIso } from "@/shared/lib/utils";
-import { ApiError } from "@/shared/api/problem-details";
 import { toast } from "@/shared/lib/toast";
 import { baixarPlanilha, montarPlanilha } from "@/shared/lib/exportar-planilha";
 
 vi.mock("../api/projetos.api", () => ({
   projetosApi: { obter: vi.fn(), listar: vi.fn() }, casosTesteApi: { listar: vi.fn(), obter: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), transferirParaBackup: vi.fn(), listarPullRequests: vi.fn() },
-  formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), resumoExecucoes: vi.fn(), criarRodada: vi.fn(), registrarResultadosRodada: vi.fn(), importar: vi.fn() }, modelosDispositivoApi: {},
+  formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), resumoExecucoes: vi.fn(), registrarResultadosRodada: vi.fn() }, modelosDispositivoApi: {},
 }));
 vi.mock("@/modules/times/api/times.api", () => ({ timesApi: { membros: vi.fn() } }));
 vi.mock("@/shared/lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -35,16 +34,6 @@ const perfil: PerfilAtual = {
   perfil_codigo: null, perfil: "Desenvolvedor", permissoes: ["projetos.consultar", "test_cases.consultar"], times: [], setores_gerenciados: [],
   time_atual_id: "team-1", tem_multiplos_times: false, senha_alteracao_obrigatoria: false, idioma_preferido: "en", cor_avatar: "azul",
 };
-
-/** Admin na aba Form Factor com o diálogo de criar rodada aberto. */
-async function abrirCriacaoRodada() {
-  const user = userEvent.setup();
-  renderPage({ ...perfil, id: "admin", perfil_codigo: "ADMIN_UNIDADE", perfil: "Administrador" });
-  await screen.findByRole("heading", { name: "Clock 9.5" });
-  await user.click(screen.getByRole("tab", { name: "Form Factor" }));
-  await user.click(screen.getByRole("button", { name: "Create test round" }));
-  return { user, dialog: await screen.findByRole("dialog") };
-}
 
 /** Mostra o endereço em que o redirecionamento para o Board terminou. */
 function BoardDestino() {
@@ -70,7 +59,6 @@ describe("ProjetoDetalhePage", () => {
     vi.mocked(casosTesteApi.listarPullRequests).mockResolvedValue({ itens: [], pode_remover: false });
     vi.mocked(formFactorApi.listar).mockResolvedValue({ modelos: [], items: [], page: 1, page_size: 10, total_count: 0 });
     vi.mocked(formFactorApi.listarResultados).mockResolvedValue({ modelos: [], items: [], page: 1, page_size: 20, total_count: 0 });
-    vi.mocked(formFactorApi.importar).mockResolvedValue({ quantidade_execucoes: 1, quantidade_resultados: 4 } as never);
     vi.mocked(timesApi.membros).mockResolvedValue([
       { id: "m1", time_id: "team-1", usuario_id: "user-1", usuario_nome: "Daniel Oliveira", usuario_user_id: "daniel-id", usuario_perfil: "Developer", usuario_perfil_codigo: null, ativo: true },
       { id: "m3", time_id: "team-1", usuario_id: "user-2", usuario_nome: "Outro desenvolvedor", usuario_user_id: "outro-id", usuario_perfil: "Developer", usuario_perfil_codigo: null, ativo: true },
@@ -740,26 +728,7 @@ describe("ProjetoDetalhePage", () => {
     expect(await screen.findByRole("heading", { name: "No test cases yet" })).toBeInTheDocument();
   });
 
-  it("avisa no toast que o SDF ID já tem rodada e mantém o diálogo aberto", async () => {
-    const mensagem = "Este SDF ID já tem uma rodada neste projeto.";
-    vi.mocked(formFactorApi.criarRodada).mockRejectedValueOnce(new ApiError({ type: "about:blank", title: "Conflito.", status: 409, detail: mensagem, errors: [{ campo: "sdf_id", mensagem }] }));
-    const { user, dialog } = await abrirCriacaoRodada();
-    await user.type(within(dialog).getByLabelText("SDF ID"), "SDF-001");
-    await user.click(within(dialog).getByRole("button", { name: "Create test round" }));
-
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("This SDF ID already has a round in this project. Use a different one."));
-    expect(within(dialog).getByLabelText("SDF ID")).toHaveValue("SDF-001");
-  });
-
-  it("mantém no toast os outros erros ao criar a rodada", async () => {
-    vi.mocked(formFactorApi.criarRodada).mockRejectedValueOnce(new ApiError({ type: "about:blank", title: "Conflito.", status: 409, detail: "Não há Test Cases em In Validation para iniciar uma rodada." }));
-    const { user, dialog } = await abrirCriacaoRodada();
-    await user.click(within(dialog).getByRole("button", { name: "Create test round" }));
-
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Não há Test Cases em In Validation para iniciar uma rodada."));
-  });
-
-  it("apresenta resultados do Form Factor com filtros e importa relatório SDF", async () => {
+  it("apresenta resultados do Form Factor com filtros, sem a importação SDF (spec 059, CA-11)", async () => {
     vi.mocked(formFactorApi.listar).mockResolvedValue({
       modelos: [{ id: "model-1", nome: "S27 Ultra" }],
       casos_elegiveis: [{ caso_teste_id: "case-2", tc_id: "Clock_002", responsavel_id: "user-2", backup_id: "backup-1" }],
@@ -800,11 +769,9 @@ describe("ProjetoDetalhePage", () => {
     await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("project-1", { page: 1, pageSize: DEFAULT_TABLE_PAGE_SIZE, semana: undefined, responsavelIds: ["user-2"] }));
     await user.keyboard("{Escape}");
 
-    const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]');
-    expect(fileInput).not.toBeNull();
-    await user.upload(fileInput!, new File(["report"], "sdf.xlsx"));
-    await user.click(screen.getByRole("button", { name: /^import$/i }));
-    await waitFor(() => expect(formFactorApi.importar).toHaveBeenCalledWith("project-1", expect.any(File)));
+    // A importação e a criação de rodada saíram daqui para a General Results.
+    expect(container.querySelector('input[type="file"]')).toBeNull();
+    expect(screen.queryByRole("button", { name: "Create test round" })).not.toBeInTheDocument();
   });
 
   it("registra resultado pela linha do Resumo só com rodada pendente e vínculo com o TC", async () => {
@@ -962,12 +929,12 @@ describe("ProjetoDetalhePage: histórico de execuções e Assignee (spec 058)", 
     expect(screen.getByText("Tester ID:").nextSibling).toHaveTextContent("daniel-id");
   });
 
-  it("a gestão vê a coluna Assignee e os botões de rodada e de importação; o dev não vê os botões (CA-09)", async () => {
+  it("a gestão vê a coluna Assignee, sem os botões de rodada e de importação (spec 059, CA-11)", async () => {
     await abrirResultados(gestao);
 
     expect(screen.getAllByRole("columnheader").map((coluna) => coluna.textContent)).toContain("Assignee");
-    expect(screen.getByRole("button", { name: "Create test round" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Import SDF report" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Create test round" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Import SDF report" })).not.toBeInTheDocument();
   });
 
   it("falha: o dev sem permissão de consultar Form Factor não tem a aba nem o histórico", async () => {

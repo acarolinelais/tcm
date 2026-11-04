@@ -25,7 +25,7 @@ describe("translation resources", () => {
   it("names the Board header and the Filter button in every language (spec 056)", () => {
     for (const language of ["en", "pt-BR", "ko"] as const) {
       const { translation } = resources[language];
-      for (const key of ["boardKanbanHint", "boardPeople", "filterButton", "kanbanNoMatchesHint", "activeFilters_one", "activeFilters_other", "timelineFilters", "timelineEmptyHint", "originSpreadsheet", "viewExecutionHistory"] as const) expect(translation[key], `${language} ${key}`).toBeTruthy();
+      for (const key of ["boardKanbanHint", "boardPeople", "filterButton", "kanbanNoMatchesHint", "activeFilters_one", "activeFilters_other", "timelineFilters", "timelineEmptyHint", "originSpreadsheet", "viewExecutionHistory", "rowDevices"] as const) expect(translation[key], `${language} ${key}`).toBeTruthy();
     }
   });
 
@@ -125,7 +125,7 @@ describe("translation resources", () => {
   });
 
   it("has the General Results texts (spec 032) in every language", () => {
-    const chaves = ["sdfResult", "resultOriginImported", "resultOriginManual", "executionSummary", "testerId", "device", "formFactorOfCase", "resultChipLabel", "noRunLabel", "generalResultsSearch", "noAccessibleProjects", "noProjectCases", "noCaseRuns", "dayOrWeek"] as const;
+    const chaves = ["sdfResult", "resultOriginImported", "resultOriginManual", "executionSummary", "testerId", "device", "resultChipLabel", "noRunLabel", "noAccessibleProjects", "noProjectCases", "noCaseRuns", "dayOrWeek"] as const;
     for (const language of ["en", "pt-BR", "ko"] as const) {
       for (const key of chaves) expect(resources[language].translation[key], `${language} ${key}`).toBeTruthy();
       expect(resources[language].translation.sdfResult).toBe("SDF Result");

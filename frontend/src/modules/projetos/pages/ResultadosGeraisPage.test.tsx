@@ -14,28 +14,30 @@ vi.mock("../hooks/useProjetos", () => ({
   useHistoricoProjeto: vi.fn(),
   useResumoExecucoes: vi.fn(),
   useProjetosSeletor: vi.fn(),
+  useCriarRodadaFormFactor: () => ({ mutate: vi.fn(), isPending: false }),
+  useImportarRelatorioSdf: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 const perfil = {
   id: "manager-1", nome: "Gerente", email: "manager@example.com", unidade_id: "unit-1", unidade_nome: "Unit",
-  perfil_codigo: "GERENTE", perfil: "Gerente", permissoes: ["form_factor.consultar"], times: [], setores_gerenciados: [],
+  perfil_codigo: "GERENTE", perfil: "Gerente", permissoes: ["form_factor.consultar", "form_factor.registrar", "form_factor.importar"], times: [], setores_gerenciados: [],
   time_atual_id: null, tem_multiplos_times: false, senha_alteracao_obrigatoria: false, idioma_preferido: "en", cor_avatar: "azul",
 } as PerfilAtual;
+const dev = { ...perfil, id: "dev-1", perfil_codigo: "USUARIO_PADRAO", perfil: "Developer", permissoes: ["form_factor.consultar", "form_factor.registrar"] } as PerfilAtual;
 
 const DIA = "2026-10-10";
-const projetos = [{ id: "clock", nome: "Clock 9.5" }, { id: "gallery", nome: "Gallery 9.5" }];
+const projetos = [{ id: "clock", nome: "Clock 2.0", app: "Clock" }, { id: "gallery", nome: "Gallery 9.5", app: "Gallery" }];
 const resultado = (execucao_id: string, valor: string, origem: "SDF" | "MANUAL" = "SDF") => ({ execucao_id, resultado: valor, sdf_id: origem === "SDF" ? `SDF-${execucao_id}` : null, origem });
 
 const historico: HistoricoProjeto = {
   modelos: [{ id: "s26", nome: "SM-S26" }, { id: "s27", nome: "SM-S27" }],
   datas: [DIA],
-  modelo_destacado_id: null,
   page: 1,
   page_size: DEFAULT_TABLE_PAGE_SIZE,
   total_count: 45,
   items: [
-    { caso_teste_id: "c1", tc_id: "Clock_001", responsavel_id: "u1", responsavel_identificador: "ANA-001", modelo_padrao_id: "s27", resultados: { [DIA]: { s26: resultado("e1", "PASS"), s27: resultado("e2", "FAIL") } } },
-    { caso_teste_id: "c2", tc_id: "Clock_002", responsavel_id: "u1", responsavel_identificador: null, modelo_padrao_id: "s26", resultados: { [DIA]: { s26: resultado("e3", "PASS", "MANUAL"), s27: resultado("e4", "PASS") } } },
+    { caso_teste_id: "c1", tc_id: "Clock_001", responsavel_id: "u1", responsavel_identificador: "ANA-001", ultimo_sdf_por_modelo: { s26: "SDF-e1", s27: "SDF-e2" }, resultados: { [DIA]: { s26: resultado("e1", "PASS"), s27: resultado("e2", "FAIL") } } },
+    { caso_teste_id: "c2", tc_id: "Clock_002", responsavel_id: "u1", responsavel_identificador: null, ultimo_sdf_por_modelo: { s26: null, s27: "SDF-e4" }, resultados: { [DIA]: { s26: resultado("e3", "PASS", "MANUAL"), s27: resultado("e4", "PASS") } } },
   ],
 };
 
@@ -57,12 +59,6 @@ function renderPage(currentProfile: PerfilAtual = perfil, url = "/") {
   return render(<MemoryRouter initialEntries={[url]}><Routes><Route path="/" element={<Contexto />}><Route index element={<><ResultadosGeraisPage /><Endereco /></>} /></Route></Routes></MemoryRouter>);
 }
 
-/** Troca de projeto pelo seletor do título (spec 053). */
-async function trocarProjeto(user: ReturnType<typeof userEvent.setup>, atual: string, destino: string) {
-  await user.click(screen.getByRole("button", { name: atual }));
-  await user.click(await screen.findByRole("menuitemradio", { name: destino }));
-}
-
 /** Filtros enviados ao hook: os da tela mais a página (spec 033). */
 const comPagina = (filtros: FiltrosHistoricoProjeto = {}, page = 1, pageSize = DEFAULT_TABLE_PAGE_SIZE): FiltrosHistoricoProjeto => ({ ...filtros, page, pageSize });
 
@@ -76,45 +72,46 @@ describe("ResultadosGeraisPage", () => {
     vi.mocked(useResumoExecucoes).mockImplementation((casoId) => ({ data: casoId ? resumo : undefined, isLoading: false, isError: false, refetch: vi.fn() }) as never);
   });
 
-  it("abre o primeiro projeto com o nome no título e troca pelo seletor, gravando o projeto no endereço (spec 053, CA-02)", async () => {
+  it("mostra o título, uma aba por projeto com só o nome do app, e troca pela aba gravando o endereço (spec 059, CA-12)", async () => {
     const user = userEvent.setup();
     renderPage();
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Clock 9.5");
-    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
-    expect(screen.getAllByRole("row")).toHaveLength(3);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("General Results");
+    expect(screen.getAllByRole("tab").map((aba) => aba.textContent)).toEqual(["Clock", "Gallery"]);
+    expect(screen.getByRole("tab", { name: "Clock" })).toHaveAttribute("aria-selected", "true");
     expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina(), perfil);
 
-    await trocarProjeto(user, "Clock 9.5", "Gallery 9.5");
+    await user.click(screen.getByRole("tab", { name: "Gallery" }));
     expect(useHistoricoProjeto).toHaveBeenLastCalledWith("gallery", comPagina(), perfil);
     expect(screen.getByTestId("endereco")).toHaveTextContent("?projeto=gallery");
   });
 
-  it("com 40 projetos, mostra só o primeiro no título, sem abas, e a busca acha os outros (spec 053, CA-01)", async () => {
-    const user = userEvent.setup();
-    const muitos = Array.from({ length: 40 }, (_, i) => ({ id: `p${i}`, nome: `Projeto ${String(i).padStart(2, "0")}` }));
-    vi.mocked(useProjetosSeletor).mockReturnValue({ data: { pages: [{ items: muitos, page: 1, page_size: 100, total_count: 40 }] }, isError: false, isLoading: false } as never);
+  it("o dev vê os projetos do time dele, sem os botões de gerência (CA-01, CA-06)", () => {
+    renderPage(dev);
+
+    expect(screen.getAllByRole("tab")).toHaveLength(2);
+    expect(useProjetosSeletor).toHaveBeenCalledWith(dev, true);
+    expect(screen.queryByRole("button", { name: "Import SDF report" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Create test round" })).not.toBeInTheDocument();
+  });
+
+  it("o gerente com as permissões vê Import SDF Report e Create test round no topo da tabela (CA-05)", () => {
     renderPage();
 
-    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
-    expect(screen.queryByText("Projeto 39")).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Projeto 00" }));
-    await user.type(await screen.findByRole("searchbox", { name: "Search project" }), "39");
-    await user.click(screen.getByRole("menuitemradio", { name: "Projeto 39" }));
-    expect(useHistoricoProjeto).toHaveBeenLastCalledWith("p39", comPagina(), perfil);
+    expect(screen.getByRole("button", { name: "Import SDF report" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create test round" })).toBeInTheDocument();
   });
 
   it("o projeto do endereço abre direto (spec 053, CA-04)", () => {
     renderPage(perfil, "/?projeto=gallery");
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Gallery 9.5");
+    expect(screen.getByRole("tab", { name: "Gallery" })).toHaveAttribute("aria-selected", "true");
     expect(useHistoricoProjeto).toHaveBeenLastCalledWith("gallery", comPagina(), perfil);
   });
 
-  it("um projeto do endereço fora da lista abre o primeiro, sem consultar o id do link (spec 053, CA-05)", () => {
-    renderPage(perfil, "/?projeto=outra-unidade");
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Clock 9.5");
-    expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina(), perfil);
-    expect(vi.mocked(useHistoricoProjeto).mock.calls.map(([id]) => id)).not.toContain("outra-unidade");
+  it("falha: um projeto do endereço fora do escopo abre o primeiro, sem consultar o id do link (CA-02)", () => {
+    renderPage(dev, "/?projeto=outro-time");
+    expect(screen.getByRole("tab", { name: "Clock" })).toHaveAttribute("aria-selected", "true");
+    expect(vi.mocked(useHistoricoProjeto).mock.calls.map(([id]) => id)).not.toContain("outro-time");
   });
 
   it("com páginas de projetos ainda por carregar, o link espera em vez de abrir o primeiro (spec 053, CA-04)", () => {
@@ -123,79 +120,64 @@ describe("ResultadosGeraisPage", () => {
     expect(vi.mocked(useHistoricoProjeto).mock.calls.map(([id]) => id)).not.toContain("clock");
   });
 
-  it("com um projeto só, o título não abre seletor (spec 053, CA-07)", () => {
-    vi.mocked(useProjetosSeletor).mockReturnValue({ data: { pages: [{ items: [projetos[0]], page: 1, page_size: 100, total_count: 1 }] }, isError: false, isLoading: false } as never);
-    renderPage();
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Clock 9.5");
-    expect(screen.queryByRole("button", { name: "Clock 9.5" })).not.toBeInTheDocument();
-  });
-
-  it("abre cada linha no modelo padrão e guarda a escolha de cada linha, esquecida ao trocar de projeto (CA-05, CA-06)", async () => {
+  it("a seta abre a linha com todos os devices, e trocar de página recolhe (CA-14, RN-12)", async () => {
     const user = userEvent.setup();
     renderPage();
-    const chamadas = vi.mocked(useHistoricoProjeto).mock.calls.length;
 
+    const seta = within(linha("Clock_001")).getByRole("button", { name: "Show all devices of Clock_001" });
+    expect(within(linha("Clock_001")).queryByText("SM-S27")).not.toBeInTheDocument();
+    await user.click(seta);
+    expect(within(linha("Clock_001")).getByText("SM-S27")).toBeInTheDocument();
     expect(within(linha("Clock_001")).getByRole("button", { name: `FAIL on SM-S27, ${formatarDia(DIA)}` })).toBeInTheDocument();
-    await user.click(within(linha("Clock_001")).getByRole("button", { name: "Form Factor Clock_001" }));
-    await user.click(await screen.findByRole("option", { name: "SM-S26" }));
-    await user.click(within(linha("Clock_002")).getByRole("button", { name: "Form Factor Clock_002" }));
-    await user.click(await screen.findByRole("option", { name: "SM-S27" }));
+    expect(within(linha("Clock_002")).queryByText("SM-S27")).not.toBeInTheDocument();
 
-    expect(within(linha("Clock_001")).getByRole("button", { name: `PASS on SM-S26, ${formatarDia(DIA)}` })).toBeInTheDocument();
-    expect(within(linha("Clock_002")).getByRole("button", { name: `PASS on SM-S27, ${formatarDia(DIA)}` })).toBeInTheDocument();
-    for (const [projetoId, filtros] of vi.mocked(useHistoricoProjeto).mock.calls.slice(chamadas)) expect([projetoId, filtros]).toEqual(["clock", comPagina()]);
-
-    await trocarProjeto(user, "Clock 9.5", "Gallery 9.5");
-    await trocarProjeto(user, "Gallery 9.5", "Clock 9.5");
-    expect(within(linha("Clock_001")).getByRole("button", { name: "Form Factor Clock_001" })).toHaveTextContent("SM-S27");
-  });
-
-  it("a lupa envia a busca e as linhas usam o modelo destacado; o filtro de cabeçalho envia TC ID e modelo (CA-10, CA-10a)", async () => {
-    const user = userEvent.setup();
-    renderPage();
-
-    await user.click(screen.getByRole("button", { name: "Search by tester ID, SDF ID or device" }));
-    await user.type(screen.getByRole("searchbox", { name: "Search by tester ID, SDF ID or device" }), "s26{Enter}");
-    await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina({ busca: "s26" }), perfil));
-
-    const casosNoS26 = historico.items.map((caso) => ({ ...caso, modelo_padrao_id: "s26" }));
-    vi.mocked(useHistoricoProjeto).mockReturnValue({ data: { ...historico, modelo_destacado_id: "s26", items: casosNoS26 }, isLoading: false, isError: false, refetch: vi.fn() } as never);
-    await user.click(screen.getByRole("button", { name: "Filter by TC ID" }));
-    await user.type(await screen.findByRole("searchbox", { name: "TC ID" }), "001{Enter}");
-    await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina({ busca: "s26", tcId: "001" }), perfil));
-    expect(within(linha("Clock_001")).getByRole("button", { name: "Form Factor Clock_001" })).toHaveTextContent("SM-S26");
-
-    await user.click(screen.getByRole("button", { name: "Filter by Form Factor" }));
-    await user.click(await screen.findByRole("option", { name: "SM-S27" }));
-    await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina({ busca: "s26", tcId: "001", modeloDispositivoId: "s27" }), perfil));
-  });
-
-  it("pagina os casos; filtro, tamanho e projeto voltam à página 1 e a escolha da linha sobrevive à troca de página (spec 033)", async () => {
-    const user = userEvent.setup();
-    renderPage();
+    // CA-16: a mesma seta recolhe, de volta ao primeiro device, e a outra linha continua como estava.
+    await user.click(within(linha("Clock_002")).getByRole("button", { name: "Show all devices of Clock_002" }));
+    await user.click(within(linha("Clock_001")).getByRole("button", { name: "Show all devices of Clock_001" }));
+    expect(within(linha("Clock_001")).queryByText("SM-S27")).not.toBeInTheDocument();
+    expect(within(linha("Clock_001")).getByText("SM-S26")).toBeInTheDocument();
+    expect(within(linha("Clock_002")).getByText("SM-S27")).toBeInTheDocument();
+    await user.click(within(linha("Clock_001")).getByRole("button", { name: "Show all devices of Clock_001" }));
 
     await user.click(screen.getByRole("button", { name: "Next page" }));
     expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina({}, 2), perfil);
+    expect(within(linha("Clock_001")).queryByText("SM-S27")).not.toBeInTheDocument();
+  });
 
-    // CA-06: a escolha é por caso, então volta igual ao ir e voltar de página.
-    await user.click(within(linha("Clock_001")).getByRole("button", { name: "Form Factor Clock_001" }));
-    await user.click(await screen.findByRole("option", { name: "SM-S26" }));
-    await user.click(screen.getByRole("button", { name: "Page 1" }));
-    expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina(), perfil);
-    expect(within(linha("Clock_001")).getByRole("button", { name: "Form Factor Clock_001" })).toHaveTextContent("SM-S26");
+  it("os filtros de cabeçalho enviam TC ID, Assignee, SDF ID e modelo (CA-17)", async () => {
+    const user = userEvent.setup();
+    renderPage();
 
-    // CA-04: filtro volta para a página 1.
+    await user.click(screen.getByRole("button", { name: "Filter by SDF ID" }));
+    await user.type(await screen.findByRole("searchbox", { name: "SDF ID" }), "SDF-e4{Enter}");
+    await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina({ sdfId: "SDF-e4" }), perfil));
+    await user.click(screen.getByRole("button", { name: "Filter by Assignee" }));
+    await user.type(await screen.findByRole("searchbox", { name: "Assignee" }), "ana{Enter}");
+    await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina({ sdfId: "SDF-e4", responsavel: "ana" }), perfil));
+    await user.click(screen.getByRole("button", { name: "Filter by TC ID" }));
+    await user.type(await screen.findByRole("searchbox", { name: "TC ID" }), "001{Enter}");
+    await user.click(screen.getByRole("button", { name: "Filter by Form Factor" }));
+    await user.click(await screen.findByRole("option", { name: "SM-S27" }));
+    await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina({ sdfId: "SDF-e4", responsavel: "ana", tcId: "001", modeloDispositivoId: "s27" }), perfil));
+    // A busca livre saiu (spec 059, RN-13).
+    expect(screen.queryByRole("button", { name: "Search by tester ID, SDF ID or device" })).not.toBeInTheDocument();
+  });
+
+  it("pagina os casos; filtro, tamanho e projeto voltam à página 1 (spec 033)", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
     await user.click(screen.getByRole("button", { name: "Page 3" }));
+    expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina({}, 3), perfil);
     await user.click(screen.getByRole("button", { name: "Filter by TC ID" }));
     await user.type(await screen.findByRole("searchbox", { name: "TC ID" }), "001{Enter}");
     await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina({ tcId: "001" }), perfil));
 
-    // CA-05 (e spec 053, CA-06): o outro projeto abre sem filtros, na página 1.
+    // O outro projeto abre sem filtros, na página 1 (spec 053, CA-06).
     await user.click(screen.getByRole("button", { name: "Page 2" }));
-    await trocarProjeto(user, "Clock 9.5", "Gallery 9.5");
+    await user.click(screen.getByRole("tab", { name: "Gallery" }));
     expect(useHistoricoProjeto).toHaveBeenLastCalledWith("gallery", comPagina(), perfil);
 
-    // CA-04: trocar o tamanho também.
     await user.click(screen.getByRole("button", { name: "Page 2" }));
     await user.click(screen.getByRole("button", { name: /Items per page/ }));
     await user.click(await screen.findByRole("option", { name: "50" }));
@@ -203,30 +185,30 @@ describe("ResultadosGeraisPage", () => {
   });
 
   it("se o total encolhe, volta para a última página que existe (spec 033)", async () => {
+    // A página 3 já não existe quando chega: casos foram removidos e o total caiu para 30.
+    vi.mocked(useHistoricoProjeto).mockImplementation((_, filtros) => ({ data: filtros.page === 3 ? { ...historico, page: 3, items: [], total_count: 30 } : historico, isLoading: false, isError: false, refetch: vi.fn() }) as never);
     const user = userEvent.setup();
     renderPage();
 
     await user.click(screen.getByRole("button", { name: "Page 3" }));
-    vi.mocked(useHistoricoProjeto).mockReturnValue({ data: { ...historico, page: 3, items: [], total_count: 30 }, isLoading: false, isError: false, refetch: vi.fn() } as never);
-    await user.click(screen.getByRole("button", { name: "Search by tester ID, SDF ID or device" })); // só para renderizar de novo
 
     await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina({}, 2), perfil));
   });
 
-  it("sem correspondência mostra nenhum resultado e limpar volta a tudo (CA-11, RN-12)", async () => {
+  it("falha: sem correspondência mostra nenhum resultado e limpar volta a tudo", async () => {
     vi.mocked(useHistoricoProjeto).mockReturnValue({ data: { ...historico, items: [], total_count: 0 }, isLoading: false, isError: false, refetch: vi.fn() } as never);
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(screen.getByRole("button", { name: "Search by tester ID, SDF ID or device" }));
-    await user.type(screen.getByRole("searchbox", { name: "Search by tester ID, SDF ID or device" }), "nada{Enter}");
+    await user.click(screen.getByRole("button", { name: "Filter by SDF ID" }));
+    await user.type(await screen.findByRole("searchbox", { name: "SDF ID" }), "nada{Enter}");
     expect(await screen.findByText("No results found")).toBeInTheDocument();
     await user.click(screen.getAllByRole("button", { name: "Clear filters" }).at(-1)!);
 
     await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina(), perfil));
   });
 
-  it("o calendário envia a semana escolhida como período e limpar volta às datas recentes (CA-12)", async () => {
+  it("o calendário envia a semana escolhida como período e limpar volta às datas recentes", async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -238,7 +220,7 @@ describe("ResultadosGeraisPage", () => {
     await waitFor(() => expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina(), perfil));
   });
 
-  it("o resultado abre a janela com SDF ID, origem e só Fechar; manual sem SDF ID mostra o marcador vazio (CA-09)", async () => {
+  it("o resultado abre a janela com SDF ID, origem e só Fechar; manual sem SDF ID mostra o marcador vazio", async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -252,15 +234,14 @@ describe("ResultadosGeraisPage", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
-  it("o Resumo de execuções mostra o tester e a grade devices × datas, com as duas execuções do dia (CA-08, CA-13)", async () => {
+  it("o histórico da linha mostra o tester e a grade devices × datas, com as duas execuções do dia (CA-18)", async () => {
     const user = userEvent.setup();
-    renderPage();
+    renderPage(dev);
 
-    await user.click(within(linha("Clock_001")).getByRole("button", { name: "Execution summary Clock_001" }));
+    await user.click(within(linha("Clock_001")).getByRole("button", { name: "View execution history Clock_001" }));
     const painel = await screen.findByRole("dialog");
     expect(within(painel).getByText("ANA-001")).toBeInTheDocument();
     expect(within(painel).getAllByRole("columnheader").map((cabecalho) => cabecalho.textContent)).toEqual(["Device", formatarDia("2026-10-09"), formatarDia(DIA)]);
-    expect(within(painel).getAllByRole("rowheader").map((cabecalho) => cabecalho.textContent)).toEqual(["SM-S26", "SM-S27"]);
     const rotulo = (valor: string) => `${valor} on SM-S26, ${formatarDia(DIA)}`;
     expect(within(painel).getByRole("button", { name: rotulo("FAIL") })).toBeInTheDocument();
     await user.click(within(painel).getByRole("button", { name: rotulo("PASS") }));
@@ -278,26 +259,17 @@ describe("ResultadosGeraisPage", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("sem projeto acessível mostra o estado vazio; perfil sem permissão continua negado (CA-02)", () => {
+  it("falha: sem projeto acessível mostra o estado vazio, sem abas nem botões; sem permissão continua negado (CA-20)", () => {
     vi.mocked(useProjetosSeletor).mockReturnValue({ data: { pages: [{ items: [], page: 1, page_size: 100, total_count: 0 }] }, isError: false, isLoading: false } as never);
     const { unmount } = renderPage();
     expect(screen.getByText("No projects to show")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("General Results");
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Create test round" })).not.toBeInTheDocument();
     unmount();
 
-    renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO" });
+    renderPage({ ...dev, permissoes: [] });
     expect(screen.getByRole("alert")).toHaveTextContent("You do not have permission");
     expect(useHistoricoProjeto).toHaveBeenLastCalledWith("", comPagina(), expect.anything());
   });
-
-  it("a lupa é o botão redondo do protótipo e abre a busca como antes (spec 050)", async () => {
-    const user = userEvent.setup();
-    renderPage();
-    const lupa = screen.getByRole("button", { name: "Search by tester ID, SDF ID or device" });
-
-    expect(lupa).toHaveClass("size-9", "rounded-full", "border-edge", "bg-surface", "data-[pressed]:scale-[0.97]");
-    await user.click(lupa);
-    expect(screen.getByRole("searchbox", { name: "Search by tester ID, SDF ID or device" })).toHaveFocus();
-  });
 });
-

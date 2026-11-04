@@ -233,18 +233,17 @@ export interface CasoHistorico {
   responsavel_id: string;
   /** ID do tester (spec 012); null quando o responsável não tem. */
   responsavel_identificador: string | null;
-  /** Device da busca ou do filtro, se o caso tem resultado nele; senão, o da execução mais recente (RN-04, RN-10). */
-  modelo_padrao_id: string | null;
+  /** Por modelo: o SDF ID da execução mais recente, em qualquer data (spec 059). Modelo sem execução fica fora. */
+  ultimo_sdf_por_modelo: Record<string, string | null>;
   /** Por data (`AAAA-MM-DD`) e por modelo: a execução mais recente do dia. */
   resultados: Record<string, Record<string, ResultadoNaData>>;
 }
 
-/** Histórico de um projeto: uma página de casos e até 7 datas, da mais recente para a mais antiga (specs 032 e 033).
+/** Histórico de um projeto: uma página de casos e até 5 datas, da mais recente para a mais antiga (specs 032, 033 e 059).
  * As datas valem para todos os casos filtrados, não só para os da página (ADR 0039). */
 export interface HistoricoProjeto extends PagedResult<CasoHistorico> {
   modelos: ModeloFormFactor[];
   datas: string[];
-  modelo_destacado_id: string | null;
 }
 
 export interface ResumoExecucoes {
@@ -260,8 +259,10 @@ export interface ResumoExecucoes {
 export interface FiltrosHistoricoProjeto {
   page?: number;
   pageSize?: number;
-  busca?: string;
   tcId?: string;
+  /** ID do tester (o Assignee da tabela). */
+  responsavel?: string;
+  sdfId?: string;
   modeloDispositivoId?: string;
   /** Um dia (`AAAA-MM-DD`) ou uma semana ISO (`AAAA-Www`). */
   periodo?: string;
