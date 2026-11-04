@@ -20,7 +20,10 @@ interface Props {
   onAbrirResultado: (resultado: ResultadoAberto) => void;
 }
 
-/** Resumo de execuções (spec 032, RN-13): grade de todos os devices × todas as datas do caso, em ordem cronológica. */
+/**
+ * Resumo de execuções (spec 032, RN-13): grade de todos os devices × todas as datas do caso. A tabela mostra só 5
+ * datas; aqui estão todas, da mais nova à esquerda, como na tabela, e as antigas ficam rolando para o lado (spec 060).
+ */
 export function ResumoExecucoesDrawer({ caso, perfil, onFechar, onAbrirResultado }: Props) {
   const { t } = useTranslation();
   // O painel continua mostrando o último caso enquanto a animação de saída roda.
@@ -33,6 +36,8 @@ export function ResumoExecucoesDrawer({ caso, perfil, onFechar, onAbrirResultado
     if (resumo.isPending) return <p role="status" className="text-[14px] text-muted">{t("loading")}</p>;
     if (resumo.isError || !dados) return <ErroComRetry mensagem={t("resultsLoadError")} retry={{ label: t("retryQuery"), onRetry: () => void resumo.refetch() }} />;
     if (!dados.datas.length) return <p className="text-[14px] text-muted">{t("noCaseRuns")}</p>;
+    // A API manda em ordem cronológica; a mais recente vem primeiro para aparecer sem rolar.
+    const datas = [...dados.datas].reverse();
     return <div className="thin-scroll overflow-x-auto">
       {/* Grade de leitura dentro do painel, sem filtros nem paginação: exceção ao DataTable (docs/tables-rules.md). */}
       <table className="w-max min-w-full border-collapse text-[14px] leading-5 text-body">
@@ -40,13 +45,13 @@ export function ResumoExecucoesDrawer({ caso, perfil, onFechar, onAbrirResultado
         <thead>
           <tr className="border-b border-separator">
             <th scope="col" className="sticky left-0 bg-surface py-2 pe-4 text-start font-medium text-muted">{t("device")}</th>
-            {dados.datas.map((dia) => <th key={dia} scope="col" className="whitespace-nowrap px-2 py-2 text-start font-medium text-muted">{formatarDia(dia)}</th>)}
+            {datas.map((dia) => <th key={dia} scope="col" className="whitespace-nowrap px-2 py-2 text-start font-medium text-muted">{formatarDia(dia)}</th>)}
           </tr>
         </thead>
         <tbody>
           {dados.modelos.map((modelo) => <tr key={modelo.id} className="border-b border-separator">
             <th scope="row" className="sticky left-0 whitespace-nowrap bg-surface py-2 pe-4 text-start font-normal">{modelo.nome}</th>
-            {dados.datas.map((dia) => {
+            {datas.map((dia) => {
               const execucoes = dados.resultados[dia]?.[modelo.id] ?? [];
               return <td key={dia} className="px-2 py-2 align-top">
                 {execucoes.length

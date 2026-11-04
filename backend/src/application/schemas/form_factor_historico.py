@@ -15,6 +15,7 @@ class ResultadoNaDataResponse(BaseModel):
     resultado: str
     sdf_id: str | None
     origem: str
+    descricao: str | None = None
 
 
 class ExecucaoNaDataResponse(ResultadoNaDataResponse):
@@ -60,6 +61,7 @@ def _resultado(linha: LinhaHistoricoExecucao) -> ResultadoNaDataResponse:
         resultado=linha.resultado,
         sdf_id=linha.sdf_id,
         origem=linha.origem,
+        descricao=linha.descricao,
     )
 
 
@@ -112,6 +114,7 @@ def to_resumo_response(
                 resultado=linha.resultado,
                 sdf_id=linha.sdf_id,
                 origem=linha.origem,
+                descricao=linha.descricao,
                 data_reportada=linha.data_reportada,
             )
         )

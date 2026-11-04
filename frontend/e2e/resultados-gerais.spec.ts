@@ -24,7 +24,8 @@ function historico(params: URLSearchParams, importado = false) {
     // Depois da importação, o S26 passa a ter o SDF do relatório novo (CA-09).
     ultimo_sdf_por_modelo: { s26: importado ? "SDF-IMPORTADO" : `SDF-e26-${indice}-0`, s27: `SDF-e27-${indice}-1` },
     resultados: Object.fromEntries(datas.map((dia, posicao) => [dia, {
-      s26: resultado(`e26-${indice}-${posicao}`, posicao % 2 ? "FAIL" : "PASS"),
+      // O relatório importado traz a descrição de cada resultado (spec 060).
+      s26: { ...resultado(`e26-${indice}-${posicao}`, posicao % 2 ? "FAIL" : "PASS"), descricao: importado ? "# PASS: Test case was executed successfully" : null },
       s27: resultado(`e27-${indice}-${posicao}`, "PASS", posicao === 0 ? "MANUAL" : "SDF"),
     }])),
   }));
@@ -58,6 +59,12 @@ async function rotas(page: Page, projetos: object[] = [project, gallery]) {
     return route.fulfill({ status: 201, json: { importacao_id: "imp-1", quantidade_execucoes: 9, quantidade_resultados: 9 } });
   });
   return { consultas, paginas, gravacoes };
+}
+
+/** Escolhe o relatório no botão Import SDF Report e confirma a importação. */
+async function importarRelatorio(page: Page, nome = "123456-789012_0_Test_1_Detail.xlsx") {
+  await page.locator('input[type="file"]').setInputFiles({ name: nome, mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from("relatorio") });
+  await page.getByRole("button", { name: "Importar", exact: true }).click();
 }
 
 test("abas por app, linha que expande, resultado, histórico e filtro por semana (spec 059)", async ({ page }) => {
@@ -97,6 +104,8 @@ test("abas por app, linha que expande, resultado, histórico e filtro por semana
   await expect(janela.getByRole("heading")).toHaveText("Clock_001 · S26 Ultra · 10/10/2026");
   await expect(janela.getByText("SDF-e26-0-0")).toBeVisible();
   await expect(janela.getByText("Importado da planilha")).toBeVisible();
+  // Sem descrição no resultado, a janela não mostra o campo (spec 060).
+  await expect(janela.getByText("Descrição", { exact: true })).toHaveCount(0);
   await janela.getByRole("button", { name: "Fechar" }).click();
   await expect(janela).toBeHidden();
 
@@ -104,6 +113,8 @@ test("abas por app, linha que expande, resultado, histórico e filtro por semana
   await linha.getByRole("button", { name: "Ver histórico de execuções Clock_001" }).click();
   const painel = page.getByRole("dialog");
   await expect(painel.getByText("GER-001")).toBeVisible();
+  // Todas as datas do caso, da mais nova à esquerda, como na tabela.
+  await expect(painel.getByRole("columnheader")).toHaveText(["Device", "10/10/2026", "09/10/2026"]);
   await expect(painel.getByRole("button", { name: /no S26 Ultra, 10\/10\/2026/ })).toHaveCount(2);
   await page.keyboard.press("Escape");
   await expect(painel).toBeHidden();
@@ -138,12 +149,17 @@ test("a gestão cria rodada e importa relatório pela General Results (CA-08, CA
   expect(gravacoes).toContain("rodada SDF-NOVA");
 
   const antes = consultas.length;
-  await page.locator('input[type="file"]').setInputFiles({ name: "123456-789012_0_Test_1_Detail.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from("relatorio") });
-  await page.getByRole("button", { name: "Importar", exact: true }).click();
+  await importarRelatorio(page);
   await expect(page.getByText("Relatório importado: 9 execuções e 9 resultados.")).toBeVisible();
   // A tabela consulta de novo, sem recarregar a página, e mostra o SDF do relatório novo.
   await expect.poll(() => consultas.length).toBeGreaterThan(antes);
-  await expect(page.getByRole("row", { name: /Clock_001/ })).toContainText("SDF-IMPORTADO");
+  const linha = page.getByRole("row", { name: /Clock_001/ });
+  await expect(linha).toContainText("SDF-IMPORTADO");
+  // A janela do resultado mostra a descrição que veio no relatório (spec 060, CA-03).
+  await linha.getByRole("button", { name: "PASS no S26 Ultra, 10/10/2026" }).click();
+  const janela = page.getByRole("dialog");
+  await expect(janela.getByText("Descrição", { exact: true })).toBeVisible();
+  await expect(janela.getByText("# PASS: Test case was executed successfully")).toBeVisible();
 });
 
 test("falha: um relatório recusado pela API mostra a mensagem dela e a tabela não muda (CA-10)", async ({ page }) => {
@@ -158,11 +174,34 @@ test("falha: um relatório recusado pela API mostra a mensagem dela e a tabela n
   await expect(page.getByRole("row", { name: /Clock_001/ })).toBeVisible();
   const antes = consultas.length;
 
-  await page.locator('input[type="file"]').setInputFiles({ name: "fora-do-escopo.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from("relatorio") });
-  await page.getByRole("button", { name: "Importar", exact: true }).click();
+  await importarRelatorio(page, "fora-do-escopo.xlsx");
 
   await expect(page.getByText("O projeto está fora do escopo permitido.")).toBeVisible();
   expect(consultas.length).toBe(antes);
+});
+
+test("falha: o relatório com dois problemas mostra os dois no toast, no idioma da tela (spec 060, CA-18)", async ({ page }) => {
+  await setupProjectSession(page);
+  await rotas(page);
+  await page.route("**/api/projetos/*/relatorios-sdf", (route) => route.fulfill({
+    status: 422,
+    contentType: "application/problem+json",
+    body: JSON.stringify({ title: "Planilha inválida.", status: 422, errors: [
+      { campo: "f4", mensagem: "A célula F4 não tem uma data válida.", codigo: "sdf_data_invalida", linha: null, coluna: "F4", valor: "ontem" },
+      { campo: "linha.9.script name", mensagem: "TC fora do projeto.", codigo: "sdf_tc_fora_do_projeto", linha: 9, coluna: "Script Name", valor: "Keyboard_000099" },
+    ] }),
+  }));
+  await page.goto("/resultados-gerais");
+  await expect(page.getByRole("row", { name: /Clock_001/ })).toBeVisible();
+
+  await importarRelatorio(page);
+
+  // Os dois problemas no mesmo aviso, na ordem da API e traduzidos (o texto da API é outro).
+  const aviso = page.getByText("Não foi possível importar o relatório SDF.").locator("xpath=ancestor::*[.//ul][1]");
+  await expect(aviso.locator("li")).toHaveText([
+    "A célula F4 (Start Time) não tem uma data válida. Use mês/dia/ano e hora, como 10/21/2026 6:43:35 PM.",
+    'Linha 9: O TC ID "Keyboard_000099" não é deste projeto.',
+  ]);
 });
 
 test("o dev vê a General Results dos projetos do time, sem os botões de gerência (CA-01, CA-06)", async ({ page }) => {

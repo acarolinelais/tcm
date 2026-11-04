@@ -44,12 +44,15 @@ async def test_importar_relatorio_sdf_retorna_201(api_client):
 
     response = await api_client.post(
         f"/api/projetos/{projeto_id}/relatorios-sdf",
-        files={"arquivo": ("resultado.xlsx", b"sdf-report")},
+        files={"arquivo": ("123456-789012_0_Test_1_Detail.xlsx", b"sdf-report")},
     )
 
     assert response.status_code == 201
     assert response.json()["quantidade_resultados"] == 8
-    service.importar.assert_awaited_once_with(usuario, projeto_id, b"sdf-report")
+    # O nome do arquivo vai junto: é dele que sai o SDF ID (spec 060).
+    service.importar.assert_awaited_once_with(
+        usuario, projeto_id, "123456-789012_0_Test_1_Detail.xlsx", b"sdf-report"
+    )
 
 
 async def test_relatorio_sdf_invalido_retorna_problem_details_422(api_client):
@@ -58,7 +61,17 @@ async def test_relatorio_sdf_invalido_retorna_problem_details_422(api_client):
     usuario = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
     service = AsyncMock()
     service.importar.side_effect = RelatorioSdfInvalido(
-        (ErroImportacaoPlanilha(2, "tc id", "TC ID inválido."),)
+        (
+            ErroImportacaoPlanilha(2, "tc id", "TC ID inválido."),
+            ErroImportacaoPlanilha(
+                9,
+                "script name",
+                "Linha 9: o TC ID 'X' não pertence ao projeto.",
+                "sdf_tc_fora_do_projeto",
+                "Script Name",
+                "X",
+            ),
+        )
     )
     app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
     app.dependency_overrides[get_importacao_sdf_service] = dependency_override(service)
@@ -73,6 +86,15 @@ async def test_relatorio_sdf_invalido_retorna_problem_details_422(api_client):
     assert response.json()["errors"][0] == {
         "campo": "linha.2.tc id",
         "mensagem": "TC ID inválido.",
+    }
+    # Com código (ADR 0033), o erro leva linha, coluna e valor para o frontend montar o texto.
+    assert response.json()["errors"][1] == {
+        "campo": "linha.9.script name",
+        "mensagem": "Linha 9: o TC ID 'X' não pertence ao projeto.",
+        "codigo": "sdf_tc_fora_do_projeto",
+        "linha": 9,
+        "coluna": "Script Name",
+        "valor": "X",
     }
 
 

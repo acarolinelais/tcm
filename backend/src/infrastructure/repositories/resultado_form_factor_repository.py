@@ -434,6 +434,7 @@ class ResultadoFormFactorRepositoryImpl(
             model.execucao_sdf_id,
             model.modelo_dispositivo_id,
             model.resultado,
+            model.descricao,
         )
         resultado.id = model.id
         resultado.ativo = model.ativo
@@ -448,6 +449,7 @@ class ResultadoFormFactorRepositoryImpl(
             execucao_sdf_id=entity.execucao_sdf_id,
             modelo_dispositivo_id=entity.modelo_dispositivo_id,
             resultado=entity.resultado,
+            descricao=entity.descricao,
             ativo=entity.ativo,
             created_at=entity.created_at,
             updated_at=entity.updated_at,

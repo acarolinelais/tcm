@@ -10,6 +10,12 @@ from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
 class ImportacaoSdfRepositoryImpl(RepositoryBaseImpl[ImportacaoSdf, ImportacaoSdfModel]):
     model = ImportacaoSdfModel
 
+    async def adicionar(self, entity: ImportacaoSdf) -> None:
+        # Sem relacionamento ORM com as execuções, o flush não ordena os INSERTs: sem gravar a
+        # importação antes, a execução pode chegar primeiro e quebrar a FK (ver ProjetoRepository).
+        self.session.add(self._to_model(entity))
+        await self.session.flush()
+
     async def listar_por_projeto(
         self, unidade_id: UUID, projeto_id: UUID
     ) -> tuple[ImportacaoSdf, ...]:

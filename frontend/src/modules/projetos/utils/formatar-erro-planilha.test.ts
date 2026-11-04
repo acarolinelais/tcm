@@ -34,6 +34,17 @@ describe("mensagens de erro da planilha", () => {
     expect(formatarErroPlanilha(i18n.t, erro)).toBe("Test Procedure(English) column: the text is longer than 10,000 characters. Shorten it.");
   });
 
+  it("monta os erros do relatório SDF com o valor lido e o esperado (spec 060)", async () => {
+    await i18n.changeLanguage("pt-BR");
+    expect(formatarErroPlanilha(i18n.t, { codigo: "sdf_one_ui_diferente", linha: 9, coluna: "Test File Path", valor: "8.0", parametros: { esperado: "9.5" } }))
+      .toBe("A One UI 8.0 não é a do projeto (9.5).");
+    await i18n.changeLanguage("en");
+    expect(formatarErroPlanilha(i18n.t, { codigo: "sdf_tc_fora_do_projeto", linha: 9, coluna: "Script Name", valor: "Keyboard_000099", parametros: null }))
+      .toBe('TC ID "Keyboard_000099" isn\'t in this project.');
+    expect(formatarErroPlanilha(i18n.t, { codigo: "valor_obrigatorio", linha: 10, coluna: "State", valor: null, parametros: null }))
+      .toBe("State column: the cell is empty.");
+  });
+
   it("converte o 422 da API e usa a mensagem do servidor quando o código é desconhecido", () => {
     const erros = errosDaApi({
       type: "about:blank", title: "Planilha inválida.", status: 422,

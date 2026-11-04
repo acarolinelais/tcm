@@ -17,3 +17,7 @@ class ExecucaoSdfRepository(RepositoryBase[ExecucaoSdf], Protocol):
     async def obter_rodada_atual_do_caso(
         self, unidade_id: UUID, caso_teste_id: UUID
     ) -> UUID | None: ...
+
+    async def existe_sdf_id_importado_no_projeto(
+        self, unidade_id: UUID, projeto_id: UUID, sdf_id: str
+    ) -> bool: ...

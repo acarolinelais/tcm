@@ -22,7 +22,8 @@ describe("FormFactorResultadosTabela", () => {
     expect(celulas(rows[0]).map((cell) => cell.textContent)).toEqual(["TC-001", "—", "ana", "Manual", "FAIL", "—", expect.stringContaining("3/23/26"), ""]);
     expect(celulas(rows[0])[4].querySelector(".chip")).not.toBeNull();
     expect(celulas(rows[2])[4]).toHaveTextContent("BLOCKED");
-    expect(celulas(rows[2])[4].querySelector(".chip")).toBeNull();
+    // Valor que não é PASS nem FAIL também vira etiqueta, no tom neutro.
+    expect(celulas(rows[2])[4].querySelector<HTMLElement>(".chip")?.style.getPropertyValue("--chip-bg")).toBe("var(--etiqueta-neutro-bg)");
   });
 
   it("o TC ID abre o painel do caso da rodada (spec 030)", async () => {

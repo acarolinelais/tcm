@@ -221,6 +221,8 @@ export interface ResultadoNaData {
   resultado: string;
   sdf_id: string | null;
   origem: "SDF" | "MANUAL";
+  /** Description do relatório SDF (spec 060); nula nos resultados manuais e nos antigos. */
+  descricao?: string | null;
 }
 
 export interface ExecucaoNaData extends ResultadoNaData {
@@ -352,6 +354,9 @@ export const CODIGOS_ERRO_PLANILHA = [
   "app_ausente", "one_ui_ausente", "valor_obrigatorio", "valor_invalido", "tc_id_duplicado",
   "pessoa_nao_encontrada", "pessoa_ambigua", "pessoa_fora_do_time", "responsavel_igual_backup",
   "texto_muito_longo",
+  // Relatório SDF no formato novo (spec 060).
+  "sdf_nome_sem_id", "sdf_formato_invalido", "sdf_data_invalida", "sdf_one_ui_invalido",
+  "sdf_sem_resultados", "sdf_tc_fora_do_projeto", "sdf_device_fora_do_projeto", "sdf_one_ui_diferente", "sdf_id_repetido",
 ] as const;
 export type CodigoErroPlanilha = (typeof CODIGOS_ERRO_PLANILHA)[number];
 
@@ -361,7 +366,7 @@ export interface ErroPlanilha {
   linha: number | null;
   coluna: string | null;
   valor: string | null;
-  parametros?: { esperados?: string[]; primeira_linha?: number; maximo?: number } | null;
+  parametros?: { esperados?: string[]; primeira_linha?: number; maximo?: number; esperado?: string } | null;
 }
 
 /** Uma mudança do histórico do Test Case (spec 038), também usada pela timeline (spec 054). */

@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import date, datetime
 from unittest.mock import AsyncMock
 from uuid import uuid4
@@ -85,7 +86,8 @@ def ctx():
 async def test_historico_pivota_por_data_e_modelo_e_mantem_a_execucao_mais_recente(ctx):
     importada = ctx.linha(ctx.s26, "FAIL", 9)
     manual = ctx.linha(ctx.s26, "PASS", 15, origem="MANUAL", sdf_id=None)
-    outro_modelo = ctx.linha(ctx.s25, "PASS", 9)
+    # Spec 060: a descrição do relatório chega na célula do resultado.
+    outro_modelo = replace(ctx.linha(ctx.s25, "PASS", 9), descricao="# PASS: ok")
     ctx.historico.listar_resultados.return_value = (importada, outro_modelo, manual)
 
     resposta = await ctx.service.historico_projeto(
@@ -100,6 +102,8 @@ async def test_historico_pivota_por_data_e_modelo_e_mantem_a_execucao_mais_recen
     assert linha.resultados[DIA][ctx.s26.id].origem == "MANUAL"
     assert linha.resultados[DIA][ctx.s26.id].sdf_id is None
     assert linha.resultados[DIA][ctx.s25.id].resultado == "PASS"
+    assert linha.resultados[DIA][ctx.s25.id].descricao == "# PASS: ok"
+    assert linha.resultados[DIA][ctx.s26.id].descricao is None
     assert vazia.resultados == {}
     ctx.historico.listar_resultados.assert_awaited_once_with(
         ctx.unidade_id,

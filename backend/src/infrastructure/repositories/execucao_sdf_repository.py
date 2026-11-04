@@ -1,9 +1,10 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import exists, func, select
 
 from src.domain.entities.execucao_sdf import ExecucaoSdf
 from src.infrastructure.data.models.execucao_sdf_model import ExecucaoSdfModel
+from src.infrastructure.data.models.importacao_sdf_model import ImportacaoSdfModel
 from src.infrastructure.data.models.rodada_form_factor_model import RodadaFormFactorModel
 from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
 
@@ -28,6 +29,27 @@ def ordem_rodada_atual(execucao):
 
 class ExecucaoSdfRepositoryImpl(RepositoryBaseImpl[ExecucaoSdf, ExecucaoSdfModel]):
     model = ExecucaoSdfModel
+
+    async def existe_sdf_id_importado_no_projeto(
+        self, unidade_id: UUID, projeto_id: UUID, sdf_id: str
+    ) -> bool:
+        """SDF ID numa importação ativa do projeto (spec 060, RN-03), como as rodadas comparam."""
+        return (
+            await self.session.execute(
+                select(
+                    exists().where(
+                        ExecucaoSdfModel.unidade_id == unidade_id,
+                        ExecucaoSdfModel.ativo.is_(True),
+                        ExecucaoSdfModel.importacao_sdf_id == ImportacaoSdfModel.id,
+                        ImportacaoSdfModel.unidade_id == unidade_id,
+                        ImportacaoSdfModel.projeto_id == projeto_id,
+                        ImportacaoSdfModel.ativo.is_(True),
+                        func.lower(func.trim(ExecucaoSdfModel.sdf_id))
+                        == func.lower(sdf_id.strip()),
+                    )
+                )
+            )
+        ).scalar_one()
 
     async def listar_por_importacao(
         self, unidade_id: UUID, importacao_sdf_id: UUID
