@@ -26,6 +26,8 @@ class LinhaHistoricoExecucao:
     sdf_id: str | None
     origem: str
     data_reportada: datetime
+    # Description do relatório SDF (spec 060); nula nos resultados manuais e nos antigos.
+    descricao: str | None = None
 
 
 @dataclass(frozen=True, kw_only=True)

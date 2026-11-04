@@ -7,5 +7,9 @@ from src.domain.common.usuario_autenticado import UsuarioAutenticado
 
 class ImportacaoSdfService(Protocol):
     async def importar(
-        self, usuario_atual: UsuarioAutenticado, projeto_id: UUID, conteudo: bytes
+        self,
+        usuario_atual: UsuarioAutenticado,
+        projeto_id: UUID,
+        nome_arquivo: str | None,
+        conteudo: bytes,
     ) -> ImportarRelatorioSdfResponse: ...

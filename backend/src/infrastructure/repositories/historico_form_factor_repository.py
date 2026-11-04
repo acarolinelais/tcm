@@ -229,6 +229,7 @@ class HistoricoFormFactorRepositoryImpl:
             ExecucaoSdfModel.sdf_id,
             ExecucaoSdfModel.origem,
             ExecucaoSdfModel.data_reportada,
+            ResultadoFormFactorModel.descricao,
         ).where(ExecucaoSdfModel.caso_teste_id.in_(caso_ids))
         if datas is not None:
             consulta = consulta.where(dia.in_(datas))

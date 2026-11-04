@@ -260,7 +260,7 @@ async def importar_relatorio_sdf(
     service: ImportacaoSdfService = Depends(get_importacao_sdf_service),
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
-    return await service.importar(usuario_atual, projeto_id, await arquivo.read())
+    return await service.importar(usuario_atual, projeto_id, arquivo.filename, await arquivo.read())
 
 
 @router.get("/{projeto_id}/form-factor", response_model=FormFactorResponse)
