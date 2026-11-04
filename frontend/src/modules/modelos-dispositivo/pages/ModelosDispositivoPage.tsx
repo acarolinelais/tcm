@@ -15,7 +15,7 @@ import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
 import { DataTableFilter } from "@/shared/ui/data-table-filter";
 import { DataTablePagination } from "@/shared/ui/data-table-pagination";
 import { estadoDaTabela } from "@/shared/ui/data-table-state";
-import { PageCard, PageTitle } from "@/shared/ui/page-card";
+import { PageCard, PageDescription, PageTitle } from "@/shared/ui/page-card";
 import { RowActions, type RowAction } from "@/shared/ui/row-action-button";
 import { rowActionIconProps } from "@/shared/ui/row-action-icon";
 import { TONS_ETIQUETA, TagChip } from "@/shared/ui/tag-chip";
@@ -88,8 +88,8 @@ export function ModelosDispositivoPage() {
   });
 
   return <PageCard>
-    <header className="mb-[30px] flex shrink-0 items-center justify-between gap-4">
-      <PageTitle>{t("deviceModels")}</PageTitle>
+    <header className="mb-5 flex shrink-0 items-start justify-between gap-4">
+      <div className="min-w-0"><PageTitle>{t("deviceModels")}</PageTitle><PageDescription>{t("deviceModelsDescription")}</PageDescription></div>
       <Button variant="primary" onPress={() => setEmEdicao(null)}><Plus aria-hidden="true" absoluteStrokeWidth strokeWidth={1.5} className="size-4" />{t("addDeviceModel")}</Button>
     </header>
     <DataTable

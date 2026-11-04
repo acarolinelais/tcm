@@ -196,3 +196,21 @@ cores. **Exceção à RN-10 (tema escuro não muda):** o login e a troca de senh
   Contraste, por decisão do protótipo: o texto branco do botão mede 3,8:1 no claro e 3,45:1 no escuro (abaixo do AA de
   4,5:1 para texto de 15px); o hover foi escurecido para passar de 4,5:1.
 - A ilustração do login desce 56px (`top-14`), como no protótipo.
+
+## Ajuste de 2026-11-04: paleta do login em todas as telas
+
+Pedido do usuário, a partir dos frames da Timeline (claro e escuro) e do login: o app inteiro usa a paleta do login. Só
+tokens do `global.css` mudaram (ADR 0041), então todas as telas acompanham.
+
+- Escuro: página `#000000`; cartões, Sidebar e busca `#0f0f0f`; bordas, linhas e campos `#1b1b1b`; borda do campo
+  `#262626`; texto `#ffffff`; apoio `#b5b5b5`; azul (títulos, item ativo, botões) `#0c8aff`; fundo do item ativo da
+  Sidebar `#081d32`. Moldura e cabeçalho da tabela `#1b1b1b`, corpo `#0f0f0f`. Menus e drawers `#1b1b1b`.
+- Claro: azul `#0081f9` (era `#006cd1`) e texto de apoio `#7e7e7e` (era `#6d6d6d`). O resto já era o do protótipo.
+- Novo token `--elevado` (`#ffffff` no claro, `#1f1f1f` no escuro): o card da Timeline sobre o cartão da página.
+- A lista do usuário traz `#0C8AFF` também para o claro, mas o login claro e o frame da Timeline claro usam `#0081f9`;
+  segui o frame. Para trocar, é o `--accent` e o `--primary` do `:root`.
+- Contraste, por decisão do protótipo: no claro, o azul mede 3,81:1 sobre o branco, 3,49:1 sobre o painel e 3,38:1 sobre
+  o item ativo, e o apoio `#7e7e7e` mede 4,05:1 (abaixo do AA para texto pequeno). No escuro, o texto branco sobre o
+  botão azul mede 3,45:1. O teste do claro passou de 4,5:1 para um piso de 3,3:1.
+- Fora deste ajuste: Board, Projects, General Results e demais telas não têm frame escuro; só herdam os tokens. Os cards do
+  Board e as cores de etiquetas e status ficaram como estavam.

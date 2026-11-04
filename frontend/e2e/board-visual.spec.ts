@@ -8,7 +8,7 @@ import { semTextoCortado, semTransicao, temFocoVisivel } from "./visual-helpers"
 test.use({ viewport: { width: 1920, height: 1080 } });
 
 const IDIOMAS = ["en", "pt-BR", "ko"] as const;
-const AZUL = "rgb(0, 108, 209)"; // --accent-text do tema claro (#006cd1)
+const AZUL = "rgb(0, 129, 249)"; // --accent-text do tema claro (#0081f9)
 const STATUS = ["To-Do", "InProgress", "InReview", "InValidation", "InFixes", "Done", "Cancelled"];
 
 const card = (id: string, nome: string, extra: Record<string, unknown> = {}) => ({

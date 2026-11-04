@@ -12,6 +12,11 @@ export function PageCard({ className, ...props }: HTMLAttributes<HTMLElement>) {
   );
 }
 
+/** Frase de apoio sob o título: o que a página faz (mesmo estilo da Teams e da General Results). */
+export function PageDescription({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
+  return <p className={cn("mt-1.5 text-[14px] leading-5 text-muted", className)} {...props} />;
+}
+
 /** Título da página: Inter 500 22px na cor de acento (spec 055, RN-09). */
 export function PageTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
   return <h1 className={cn("truncate text-[22px] font-medium leading-[27px] text-accent-text", className)} {...props} />;

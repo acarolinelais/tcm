@@ -123,7 +123,7 @@ export function Sidebar({
               className={`grid w-full transition-[grid-template-rows,opacity] duration-200 ease-in-out motion-reduce:transition-none ${adminAberto ? "grid-rows-[1fr] opacity-100" : "pointer-events-none grid-rows-[0fr] opacity-0"}`}
             >
               {/* min-w-0: sem ele, o item da grade não encolhe abaixo do texto e o destaque vaza da sidebar. */}
-              <div className="min-h-0 min-w-0 w-full">
+              <div className="flex min-h-0 min-w-0 w-full flex-col gap-0.5">
                 {itensAdmin.map(([to, label, Icon]) => (
                   <NavLink
                     key={to}

@@ -18,9 +18,10 @@
   --background: hsl(0 0% 100%);
   --foreground: hsl(222 47% 11%);
   --border: hsl(214 32% 91%);
-  --muted: #6d6d76; /* zinc-500 do HeroUI, escurecido para o AA sobre a moldura das tabelas */
-  --accent: #006cd1; /* azul do Figma (#0081F9) escurecido o mínimo para o AA: 4,5:1 sobre o branco, o painel e o fundo do item ativo */
+  --muted: #7e7e7e; /* subtítulos do protótipo: 4,05:1 sobre o branco, abaixo do AA por decisão do protótipo (ajuste de 2026-11-04) */
+  --accent: #0081f9; /* azul do Figma: 3,8:1 sobre o branco, abaixo do AA por decisão do protótipo (ajuste de 2026-11-04) */
   --accent-text: var(--accent); /* texto e ícones de acento; no escuro é um passo próprio da rampa */
+  --accent-soft-foreground: var(--accent-text); /* item ativo da Sidebar: o HeroUI escurece o azul no claro */
   --focus: var(--accent);
   --radius: 0.5rem;
   /* Campos do HeroUI vêm sem borda; num painel branco ficariam invisíveis. */
@@ -41,24 +42,25 @@
 :root.dark {
   color-scheme: dark;
   --field-shadow: 0 0 0 0 transparent inset; /* o HeroUI não usa sombra nos campos no escuro */
-  /* Fundos do protótipo escuro (Figma TCM 2482-1902, spec 050): a página é a camada mais escura e os painéis
-     ficam um passo acima. Os rótulos seguem a HIG da Apple (branco a 85% e 55%), e o que o protótipo não mostra
-     (menus, sucesso, aviso, erro) continua com as cores de sistema da spec 034. Contraste mínimo de 4,5:1, medido
-     par a par em contraste-tema-escuro.test.ts. */
-  --background: #0a0a0a;                  /* fundo da página */
-  --foreground: rgb(255 255 255 / 0.85);  /* labelColor */
-  --surface: #1b1b1b;                     /* Sidebar, cartão da página e busca */
-  --surface-secondary: #2c2c2e;           /* systemGray5 */
-  --surface-tertiary: #3a3a3c;            /* systemGray4 */
-  --overlay: #3a3a3c;                     /* fundo elevado: menus, popovers, drawers */
-  --default: #3a3a3c;
-  --field-background: #333336;            /* tertiarySystemFill (#767680 a 24%) sobre o conteúdo */
-  --separator: #38383a;                   /* opaqueSeparator */
-  --border: #48484a;                      /* systemGray3 */
-  --muted: rgb(255 255 255 / 0.55);       /* secondaryLabelColor */
-  --accent: oklch(56% 0.189 262);         /* azul da marca como preenchimento, texto branco por cima (≥ 4,6:1) */
+  /* Paleta do protótipo escuro (Figma Timeline e login, ajuste de 2026-11-04): a página é preta, os cartões #0f0f0f,
+     bordas e campos #1b1b1b, borda do campo #262626, texto branco e apoio #b5b5b5, azul #0c8aff. O que o protótipo não
+     mostra (sucesso, aviso, erro) continua com as cores de sistema da spec 034. O contraste é medido par a par em
+     contraste-tema-escuro.test.ts. */
+  --background: #000000;                  /* fundo da página */
+  --foreground: #ffffff;
+  --surface: #0f0f0f;                     /* Sidebar, cartão da página e busca */
+  --surface-secondary: #1b1b1b;
+  --surface-tertiary: #262626;
+  --overlay: #1b1b1b;                     /* fundo elevado: menus, popovers, drawers */
+  --default: #1b1b1b;
+  --field-background: #1b1b1b;
+  --field-border: #262626;
+  --separator: #1b1b1b;
+  --border: #1b1b1b;
+  --muted: #b5b5b5;
+  --accent: #0c8aff;                      /* azul do protótipo: texto branco por cima mede 3,45:1, abaixo do AA por decisão do protótipo */
   --accent-foreground: var(--snow);
-  --accent-text: #5b8fff;                 /* aba ativa do protótipo: 5,1:1 sobre a moldura da tabela */
+  --accent-text: #0c8aff;                 /* título, aba ativa e ícones de acento */
   --accent-soft-foreground: var(--accent-text);
   --focus: #409cff;                       /* keyboardFocusIndicatorColor */
   --success: #30d158;
@@ -70,7 +72,7 @@
 :root {
   --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
-  --primary: 209 100% 41%; /* o mesmo --accent em HSL (Figma #0081F9 = 208 100% 49%, escurecido para o AA) */
+  --primary: 209 100% 48.8%; /* o mesmo --accent em HSL (#0081F9) */
   --primary-foreground: 0 0% 100%;
   --secondary: 210 20% 96%;
   --secondary-foreground: 222 47% 11%;
@@ -78,19 +80,19 @@
   --input: 214 32% 91%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --ring: 209 100% 41%;
+  --ring: 209 100% 48.8%;
 }
 
 :root.dark {
-  --card: 0 0% 10.6%;               /* #1B1B1B, o mesmo da --surface */
-  --card-foreground: 0 0% 87%;
-  --primary: 220 74% 53.5%;
+  --card: 0 0% 5.9%;                /* #0F0F0F, o mesmo da --surface */
+  --card-foreground: 0 0% 100%;
+  --primary: 209 100% 52.4%;        /* #0C8AFF, o mesmo --accent */
   --primary-foreground: 0 0% 100%;
   --ring: 212 100% 63%;             /* #409CFF */
-  --secondary: 240 2% 18%;          /* #2C2C2E */
-  --secondary-foreground: 0 0% 87%;
-  --muted-foreground: 0 0% 60%;
-  --input: 240 1% 28.6%;            /* #48484A */
+  --secondary: 0 0% 10.6%;          /* #1B1B1B */
+  --secondary-foreground: 0 0% 100%;
+  --muted-foreground: 0 0% 71%;     /* #B5B5B5 */
+  --input: 0 0% 14.9%;              /* #262626 */
   --destructive: 3 100% 61%;        /* #FF453A */
   --destructive-foreground: 0 0% 100%;
 }
@@ -102,8 +104,9 @@
   --table-body: var(--surface); /* corpo da tabela */
   --accent-tint: #e6f3ff; /* fundo azul claro do Figma: item ativo da sidebar, ilustração do login, dropzone */
   --body: #454442;        /* texto corrido das telas do Figma */
-  --subtle: #6d6d6d;      /* texto de apoio (Figma #7E7E7E/#777777, escurecido para o AA) */
+  --subtle: #7e7e7e;      /* texto de apoio (Figma #7E7E7E; 4,05:1 sobre o branco, abaixo do AA por decisão do protótipo) */
   --panel: #f3f5f7;       /* moldura das tabelas e painéis */
+  --elevado: #ffffff;     /* cartão sobre o cartão da página (card da Timeline) */
   --table-row-divider: #efeff0; /* divisórias entre linhas */
   --strong-foreground: #ffffff; /* texto e ícones sobre uma cor forte (círculo do status) */
   --chart-1: #5588f5;     /* série principal dos gráficos do overview */
@@ -113,13 +116,14 @@
 
 :root.dark {
   --page: var(--background);
-  --accent-tint: #0d2144;           /* item ativo da Sidebar no protótipo */
-  --edge: #2f2f2f;
-  --table-body: #161616;            /* corpo da tabela, abaixo da moldura */
-  --body: rgb(255 255 255 / 0.85);
-  --subtle: rgb(255 255 255 / 0.55);
-  --panel: #232325;                 /* moldura e cabeçalho da tabela */
-  --table-row-divider: #2c2c2e;
+  --accent-tint: #081d32;           /* item ativo da Sidebar no protótipo */
+  --edge: #1b1b1b;
+  --table-body: #0f0f0f;            /* corpo da tabela, abaixo da moldura */
+  --body: #ffffff;
+  --subtle: #b5b5b5;
+  --panel: #1b1b1b;                 /* moldura e cabeçalho da tabela */
+  --elevado: #1f1f1f;               /* card da Timeline sobre o cartão da página */
+  --table-row-divider: #1b1b1b;
   --chart-1: #0a84ff;
   --chart-2: #5e5ce6;
   --chart-3: #8e8e93;               /* systemGray: 5,1:1 sobre o cartão (gráfico com significado pede ≥ 3:1) */
@@ -338,6 +342,7 @@
   --color-body: var(--body);
   --color-subtle: var(--subtle);
   --color-panel: var(--panel);
+  --color-elevado: var(--elevado);
   --color-edge: var(--edge);
   --color-auth-titulo: var(--auth-titulo);
   --color-auth-subtitulo: var(--auth-subtitulo);
