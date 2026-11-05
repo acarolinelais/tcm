@@ -1,5 +1,5 @@
 import { Navigate, Outlet, useLocation } from "react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ApiError } from "@/shared/api/problem-details";
@@ -18,6 +18,16 @@ export function AppLayout() {
     typeof window.matchMedia === "function" && window.matchMedia("(max-width: 63.999rem)").matches,
   );
   const location = useLocation();
+  const conteudo = useRef<HTMLElement>(null);
+  // Troca de página: o conteúdo entra esmaecendo e subindo um pouco. Só opacidade e transform, que a GPU anima sem
+  // travar. Com movimento reduzido, só esmaece. O `animate` falta no jsdom dos testes.
+  useEffect(() => {
+    const parado = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    conteudo.current?.animate?.(
+      parado ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }],
+      { duration: 220, easing: "cubic-bezier(0.32, 0.72, 0, 1)" },
+    );
+  }, [location.pathname]);
   const [renovando, setRenovando] = useState(() => !getAccessToken());
   useEffect(() => {
     if (!renovando) return;
@@ -55,7 +65,7 @@ export function AppLayout() {
     <div className={`box-border grid h-dvh min-h-0 overflow-hidden transition-[grid-template-columns] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${sidebarRecolhida ? "grid-cols-[4.5rem_minmax(0,1fr)] max-sm:gap-x-3" : "grid-cols-[clamp(17.5rem,20vw,18.3125rem)_minmax(0,1fr)] max-sm:grid-cols-[minmax(9rem,35vw)_minmax(0,1fr)]"} grid-rows-[2rem_minmax(0,1fr)] gap-x-[clamp(1rem,5.5vw,2.75rem)] gap-y-4 bg-page p-[clamp(0.5rem,1.25vw,1rem)]`}>
       <Sidebar perfil={perfil.data} recolhida={sidebarRecolhida} onToggle={() => setSidebarRecolhida((recolhida) => !recolhida)} />
       <Navbar perfil={perfil.data} />
-      <main className="col-start-2 row-start-2 min-h-0 min-w-0">
+      <main ref={conteudo} className="col-start-2 row-start-2 min-h-0 min-w-0">
         <Outlet context={perfil.data} />
       </main>
     </div>

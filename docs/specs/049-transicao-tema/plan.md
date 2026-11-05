@@ -31,7 +31,7 @@ transições durante a troca.
 Menos movimento (RN-04): no `@media (prefers-reduced-motion: reduce)`, a animação do ícone vira só opacidade.
 A passagem das cores não muda, porque não tem movimento.
 
-### Por que não View Transitions
+### Primeira tentativa com View Transitions
 
 A primeira versão usou `document.startViewTransition()`, que fotografa a tela e esmaece entre as duas fotos.
 Ao testar, apareceram dois problemas:
@@ -42,6 +42,27 @@ Ao testar, apareceram dois problemas:
 
 A `code-review` da spec apontou o segundo problema, e o teste no Chromium confirmou. Com a decisão do usuário,
 a View Transition saiu e entrou a transição de cores uniforme.
+
+### Revisão de 2026-11-05: de volta à View Transition
+
+Com a duração em 800 ms, a pessoa notou bordas atrasadas e o cabeçalho das tabelas falhando no meio da troca.
+Medido no Chromium, na tela de Users (470 elementos): com a `trocando-tema`, o recálculo de estilo do clique foi
+de ~30 ms para ~300 ms, e tirar a classe no fim custava outros ~100 ms. Nos 900 ms depois do clique, a página
+desenhou 8 quadros, com uma lacuna de 522 ms. Cortar propriedades ou os `::before`/`::after` não ajudou (6 a 7
+quadros): o custo é animar a cor de cada elemento e repintar a tela inteira a cada quadro.
+
+Com a View Transition, a mesma troca desenhou 33 a 41 quadros, com a pior lacuna entre 40 e 90 ms. Os cliques
+continuam sem chegar à página enquanto ela roda, o que foi conferido de novo, inclusive com
+`::view-transition { pointer-events: none }`. A pessoa aceitou essa troca, com a duração em 300 ms. Como ficou:
+
+- o `alternar()` grava o tema, põe a `trocando-tema` no `<html>` e chama `document.startViewTransition()`, que
+  troca a classe `dark` dentro de um `flushSync` para o ícone novo entrar na foto nova. Só a última troca tira a
+  classe quando termina;
+- durante a `trocando-tema`, o `global.css` devolve `view-transition-name: root` à raiz, que o HeroUI zera, e
+  pausa as transições de todos os elementos, para nenhum mudar de cor em separado dentro da foto nova;
+- `::view-transition-old(root)` e `::view-transition-new(root)` duram 300 ms `ease-in-out`. Só opacidade, então
+  vale também com movimento reduzido (RN-04);
+- navegador sem `startViewTransition`: troca na hora, com o `aplicar()` (o mesmo da outra aba).
 
 ## Modelo de dados
 

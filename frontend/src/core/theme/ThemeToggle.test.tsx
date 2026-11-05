@@ -99,36 +99,49 @@ describe("ThemeToggle", () => {
   });
 });
 
-describe("ThemeToggle com transição de cores (spec 049)", () => {
-  beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); });
+describe("ThemeToggle com View Transition (spec 049)", () => {
+  /** Cada troca roda a atualização na hora e só termina quando o teste chama `terminar`. */
+  let trocas: { terminar: () => void }[];
+
+  beforeEach(() => {
+    trocas = [];
+    document.startViewTransition = vi.fn((atualizar: () => void) => {
+      atualizar();
+      let terminar = () => {};
+      const finished = new Promise<undefined>((resolve) => { terminar = () => resolve(undefined); });
+      trocas.push({ terminar });
+      return { finished, ready: Promise.resolve(undefined), updateCallbackDone: Promise.resolve(undefined), skipTransition: () => {}, types: new Set() };
+    }) as unknown as Document["startViewTransition"];
+  });
 
   afterEach(() => {
-    vi.runOnlyPendingTimers();
-    vi.useRealTimers();
+    delete (document as Partial<Document>).startViewTransition;
   });
 
-  it("troca o tema na hora e mantém a transição de cores só durante a troca", async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    render(<ThemeToggle />);
-    await user.click(screen.getByRole("button", { name: "Dark theme" }));
-    expect(document.documentElement).toHaveClass("dark", "trocando-tema");
-    expect(window.localStorage.getItem(THEME_KEY)).toBe("dark");
-    act(() => { vi.advanceTimersByTime(800); });
-    expect(document.documentElement).not.toHaveClass("trocando-tema");
-  });
-
-  it("um clique no meio da troca volta o tema e recomeça a contagem", async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+  it("troca o tema pela View Transition e mantém a classe trocando-tema só enquanto ela dura", async () => {
+    const user = userEvent.setup();
     render(<ThemeToggle />);
     const toggle = screen.getByRole("button", { name: "Dark theme" });
     await user.click(toggle);
-    act(() => { vi.advanceTimersByTime(300); });
-    await user.click(toggle);
+    expect(document.startViewTransition).toHaveBeenCalledTimes(1);
+    expect(document.documentElement).toHaveClass("dark", "trocando-tema");
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(window.localStorage.getItem(THEME_KEY)).toBe("dark");
+    await act(async () => { trocas[0].terminar(); });
+    expect(document.documentElement).not.toHaveClass("trocando-tema");
+  });
+
+  it("uma troca pelo teclado no meio da anterior volta o tema, e a classe só sai quando a última acaba", async () => {
+    const user = userEvent.setup();
+    render(<ThemeToggle />);
+    await user.tab();
+    await user.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
     expect(document.documentElement).not.toHaveClass("dark");
     expect(window.localStorage.getItem(THEME_KEY)).toBe("light");
-    act(() => { vi.advanceTimersByTime(300); });
+    await act(async () => { trocas[0].terminar(); });
     expect(document.documentElement).toHaveClass("trocando-tema");
-    act(() => { vi.advanceTimersByTime(500); });
+    await act(async () => { trocas[1].terminar(); });
     expect(document.documentElement).not.toHaveClass("trocando-tema");
   });
 
@@ -137,5 +150,6 @@ describe("ThemeToggle com transição de cores (spec 049)", () => {
     act(() => { window.dispatchEvent(new StorageEvent("storage", { key: THEME_KEY, newValue: "dark" })); });
     expect(document.documentElement).toHaveClass("dark");
     expect(document.documentElement).not.toHaveClass("trocando-tema");
+    expect(document.startViewTransition).not.toHaveBeenCalled();
   });
 });
