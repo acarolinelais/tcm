@@ -160,26 +160,12 @@ test("na troca de tema, as ilustrações e o fundo do login se dissolvem aos pou
   expect(await opacidade(escuro)).toBeCloseTo(0.01, 2);
   expect(await opacidade(camadaEscura)).toBeCloseTo(0.01, 2);
 
-  // Amostra a opacidade quadro a quadro dentro da página, que é a única medida confiável aqui.
-  const curva = await page.evaluate(() => new Promise<{ escuro: number[]; camada: number[] }>((resolver) => {
-    const ilustracao = document.querySelectorAll("aside img")[1];
-    const camada = document.querySelectorAll("aside > div[aria-hidden='true']")[1];
-    const escuro: number[] = [];
-    const camadaOpacidades: number[] = [];
-    const inicio = performance.now();
-    (document.querySelector("button[aria-label='Dark theme']") as HTMLButtonElement).click();
-    const passo = () => {
-      escuro.push(Number(getComputedStyle(ilustracao).opacity));
-      camadaOpacidades.push(Number(getComputedStyle(camada).opacity));
-      if (performance.now() - inicio < 1200) requestAnimationFrame(passo);
-      else resolver({ escuro, camada: camadaOpacidades });
-    };
-    requestAnimationFrame(passo);
-  }));
-  for (const [nome, valores] of [["ilustração escura", curva.escuro], ["fundo escuro", curva.camada]] as const) {
-    expect(valores.some((v) => v > 0.1 && v < 0.9), `${nome}: passou por valores intermediários`).toBe(true);
-    expect(valores.at(-1), nome).toBe(1);
-  }
+  // Quem dissolve é a View Transition (spec 049): a foto da tela clara esmaece na foto da escura, com as ilustrações
+  // e o fundo juntos. As camadas em si trocam de uma vez, com as transições pausadas.
+  await page.getByRole("button", { name: "Dark theme" }).click();
+  await expect.poll(() => page.evaluate(() => document.getAnimations().some((animacao) => (animacao.effect as KeyframeEffect | null)?.pseudoElement === "::view-transition-new(root)"))).toBe(true);
+  await expect(page.locator("html")).not.toHaveClass(/trocando-tema/);
+  expect(await opacidade(escuro)).toBe(1);
   expect(await opacidade(claro)).toBeCloseTo(0.01, 2);
   // No escuro, só uma camada de fundo fica opaca: com a clara também opaca por baixo, o branco dela vaza como uma
   // linha clara na borda curva do cartão (anti-aliasing duplo).

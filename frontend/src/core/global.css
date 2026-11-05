@@ -425,27 +425,30 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Pausa as transições enquanto o tema troca (core/theme/use-theme.ts). */
+/* Pausa as transições enquanto o tema troca (core/theme/use-theme.ts): na troca pelo toggle, quem anima é a View
+   Transition, e um elemento com transição própria mudaria de cor em separado dentro da foto nova. */
 .sem-transicao,
-.sem-transicao * {
-  transition: none !important;
-}
-
-/* Troca de tema pelo toggle (spec 049): todos os elementos ganham a mesma transição de cor, então a tela muda
-   junto e aos poucos. Só cor e opacidade (as camadas por tema do login e da Timeline se dissolvem), sem movimento:
-   vale também com movimento reduzido. A duração é a DURACAO_TROCA_MS
-   do core/theme/use-theme.ts. */
-:root.trocando-tema,
+.sem-transicao *,
 :root.trocando-tema *,
 :root.trocando-tema *::before,
 :root.trocando-tema *::after {
-  transition-property: background-color, border-color, color, fill, stroke, outline-color, text-decoration-color, box-shadow, opacity !important;
-  transition-duration: 800ms !important;
-  transition-timing-function: ease-in-out !important;
-  transition-delay: 0s !important;
+  transition: none !important;
 }
 
-/* Ícone do toggle de tema. É uma animação, e não uma transição, porque a .trocando-tema toma conta das transições durante a troca. */
+/* Troca de tema pelo toggle (spec 049): esmaece da foto da tela antiga para a nova. Só opacidade, sem movimento:
+   vale também com movimento reduzido. O base.css do HeroUI tira o nome da raiz (sem nome, não há foto), então ele
+   volta durante a troca. */
+:root.trocando-tema {
+  view-transition-name: root;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 300ms;
+  animation-timing-function: ease-in-out;
+}
+
+/* Ícone do toggle de tema. É uma animação, e não uma transição, porque a .trocando-tema pausa as transições durante a troca. */
 @keyframes tema-icone-entrar {
   from { opacity: 0; transform: rotate(-90deg) scale(0.6); }
 }

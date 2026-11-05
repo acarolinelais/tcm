@@ -140,18 +140,15 @@ test.describe("transição ao trocar o tema", () => {
     return iconeDoToggle(page).evaluate((el) => getComputedStyle(el).animationName);
   }
 
-  test("as cores mudam aos poucos do claro para o escuro e a escolha fica guardada", async ({ page }) => {
+  test("a tela esmaece do claro para o escuro numa View Transition e a escolha fica guardada", async ({ page }) => {
     await page.goto("/login");
     const claro = await fundoDaPagina(page);
     await toggleTema(page).click();
     await expect(html(page)).toHaveClass(/dark/);
-    // No meio da troca, o fundo ainda não chegou à cor final.
-    await page.waitForTimeout(150);
-    const meio = await fundoDaPagina(page);
+    // Quem anima é a foto da tela (::view-transition-new), não a cor de cada elemento.
+    await expect.poll(() => page.evaluate(() => document.getAnimations().some((animacao) => (animacao.effect as KeyframeEffect | null)?.pseudoElement === "::view-transition-new(root)"))).toBe(true);
     await expect(html(page)).not.toHaveClass(/trocando-tema/);
-    const escuro = await fundoDaPagina(page);
-    expect(meio).not.toBe(claro);
-    expect(meio).not.toBe(escuro);
+    expect(await fundoDaPagina(page)).not.toBe(claro);
     expect(await temaGuardado(page)).toBe("dark");
   });
 
@@ -161,15 +158,15 @@ test.describe("transição ao trocar o tema", () => {
     expect(await trocarEsperandoIconeNovo(page)).toBe("tema-icone-entrar");
   });
 
-  test("um clique no meio da troca chega ao toggle e termina no tema do último clique", async ({ page }) => {
+  // Durante a View Transition o navegador não entrega cliques à página; o teclado continua valendo.
+  test("um Enter no meio da troca chega ao toggle e termina no tema da última troca", async ({ page }) => {
     await page.goto("/login");
-    const caixa = (await toggleTema(page).boundingBox())!;
-    const [x, y] = [caixa.x + caixa.width / 2, caixa.y + caixa.height / 2];
-    await page.mouse.click(x, y);
-    await page.waitForTimeout(100);
+    await toggleTema(page).focus();
+    await page.keyboard.press("Enter");
     await expect(html(page)).toHaveClass(/trocando-tema/);
-    await page.mouse.click(x, y);
+    await page.keyboard.press("Enter");
     await expect(html(page)).not.toHaveClass(/dark/);
+    await expect(html(page)).not.toHaveClass(/trocando-tema/);
     await expect(toggleTema(page)).toHaveAttribute("aria-pressed", "false");
     expect(await temaGuardado(page)).toBe("light");
   });
