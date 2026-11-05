@@ -252,7 +252,7 @@ export function ProjetosPage() {
           </header>
           {/* Só o modo escolhido fica na tela: um campo Time por vez, sem nomes repetidos (spec 031, RN-08). */}
           <section id={modo === "planilha" ? "project-import-panel" : "project-manual-panel"} role="tabpanel" aria-labelledby={modo === "planilha" ? "project-import-tab" : "project-manual-tab"} className="flex min-w-0 flex-1 flex-col">
-            {modo === "planilha" ? <section aria-label={t("uploadSpreadsheet")} className="flex flex-1 flex-col">
+            {modo === "planilha" ? <section aria-label={t("uploadSpreadsheet")} className="flex flex-col">
               <h2 className="mb-3 text-lg font-medium leading-6 text-body">{t("uploadSpreadsheet")}</h2>
               <UploadPlanilha leitura={leitura} onBaixarModelo={downloadTemplate} />
             </section> : <section className="rounded-2xl border border-edge bg-surface p-5 sm:p-7">

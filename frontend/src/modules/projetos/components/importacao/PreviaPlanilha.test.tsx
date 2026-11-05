@@ -70,4 +70,47 @@ describe("PreviaPlanilha", () => {
     expect(molduraDaPrevia()).toHaveClass("max-h-[30rem]");
     expect(molduraDaPrevia()).not.toHaveClass("h-[30rem]");
   });
+
+  it("começa visível e esconde só a tabela, mantendo título, projeto e quantidade", async () => {
+    const user = userEvent.setup();
+    render(<PreviaPlanilha previa={previa(30)} />);
+
+    const botao = screen.getByRole("button", { name: "Hide preview" });
+    expect(botao).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("grid")).toBeInTheDocument();
+
+    await user.click(botao);
+    expect(screen.queryByRole("grid")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Next page" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Test Case preview" })).toBeInTheDocument();
+    expect(screen.getByText("Project: Clock 9.5")).toBeInTheDocument();
+    expect(screen.getByText("30 Test Cases")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show preview" })).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("mostra de novo na mesma página e com o mesmo tamanho de página", async () => {
+    const user = userEvent.setup();
+    render(<PreviaPlanilha previa={previa(1000)} />);
+    await user.click(screen.getByRole("button", { name: /Items per page/ }));
+    await user.click(await screen.findByRole("option", { name: "50" }));
+    await user.click(screen.getByRole("button", { name: "Page 3" }));
+
+    await user.click(screen.getByRole("button", { name: "Hide preview" }));
+    await user.click(screen.getByRole("button", { name: "Show preview" }));
+
+    expect(linhasDoCorpo()).toHaveLength(50);
+    expect(screen.getByText("Clock_0101")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Page 3" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("planilha nova começa visível e na primeira página, mesmo com a anterior escondida", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<PreviaPlanilha previa={previa(100)} />);
+    await user.click(screen.getByRole("button", { name: "Page 2" }));
+    await user.click(screen.getByRole("button", { name: "Hide preview" }));
+
+    rerender(<PreviaPlanilha previa={previa(100)} />);
+    expect(screen.getByRole("button", { name: "Hide preview" })).toBeInTheDocument();
+    expect(screen.getByText("Clock_0001")).toBeInTheDocument();
+  });
 });
