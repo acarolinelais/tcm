@@ -34,7 +34,7 @@ describe("useSair", () => {
     queryClient = new QueryClient();
     queryClient.setQueryData(["auth", "me"], { nome: "Ana" });
     vi.mocked(httpPost).mockReset();
-    saveTokens({ access_token: "a", refresh_token: "r", expires_in: 60, token_type: "bearer" });
+    saveTokens({ access_token: "a", expires_in: 60, token_type: "bearer" });
   });
 
   it("encerra a sessão, limpa os tokens e vai para o login", async () => {

@@ -31,7 +31,7 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0017](0017-filtros-em-endpoints-de-listagem.md) | Filtros explícitos em endpoints de listagem | Aceito |
 | [0018](0018-perfil-administrador-e-perfil-obrigatorio.md) | Perfil administrador da unidade e perfil obrigatório | Aceito |
 | [0019](0019-senha-inicial-e-troca-obrigatoria.md) | Senha inicial local com troca obrigatória | Substituído por 0023 |
-| [0020](0020-sessoes-jwt-e-refresh-rotativo.md) | Sessões JWT e refresh token rotativo | Aceito |
+| [0020](0020-sessoes-jwt-e-refresh-rotativo.md) | Sessões JWT e refresh token rotativo | Aceito; armazenamento dos tokens no frontend substituído por 0047; validade do refresh substituída por 0048 |
 | [0021](0021-escopo-gerente-por-setor.md) | Escopo de gestão de times definido pelo setor | Aceito; escopo em projetos ampliado por 0036 |
 | [0022](0022-padrao-universal-de-tabelas.md) | Padrão visual universal para tabelas | Aceito; tamanho padrão substituído por 0034; componentes substituídos por 0037 |
 | [0023](0023-senha-sem-minimo-de-caracteres.md) | Troca de senha sem mínimo de caracteres | Aceito |
@@ -58,3 +58,5 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0044](0044-auditoria-por-triggers-no-postgresql.md) | Auditoria de alterações por triggers no PostgreSQL | Aceito |
 | [0045](0045-tabelas-sem-total-de-itens-no-rodape.md) | Tabelas sem o total de itens no rodapé | Aceito |
 | [0046](0046-resultados-gerais-com-cinco-datas.md) | Resultados Gerais com no máximo 5 datas (substitui em parte o 0039) | Aceito |
+| [0047](0047-refresh-token-em-cookie-httponly.md) | Refresh token em cookie httpOnly (substitui em parte o 0020) | Aceito |
+| [0048](0048-sessao-de-dez-horas.md) | Sessão de 10 horas a partir do login (substitui em parte o 0020) | Aceito |

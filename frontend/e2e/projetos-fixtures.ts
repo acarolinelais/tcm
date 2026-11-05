@@ -39,6 +39,7 @@ export const caseItem = {
 /** Sessão autenticada; `perfil` sobrescreve campos do perfil padrão (administrador). */
 export async function setupProjectSession(page: Page, perfil: Record<string, unknown> = {}) {
   await page.addInitScript(() => sessionStorage.setItem("sdf.access", "e2e-project-token"));
+  await page.route("**/api/auth/refresh", (route) => route.fulfill({ json: { access_token: "e2e-project-token", expires_in: 900, token_type: "bearer" } }));
   await page.route("**/api/auth/me", (route) => route.fulfill({ json: {
     id: managerId,
     nome: "Gerente Ana",
