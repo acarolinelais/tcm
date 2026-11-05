@@ -93,7 +93,7 @@ export function TimelinePage() {
   if (!projetos.length) {
     return <PageCard>
       {cabecalho}
-      <EstadoVazio className="mx-auto mt-10" titulo={t("noAccessibleProjects")} dica={t("noAccessibleProjectsHint")} />
+      <EstadoVazio className="m-auto" titulo={t("noAccessibleProjects")} dica={t("noAccessibleProjectsHint")} />
     </PageCard>;
   }
 

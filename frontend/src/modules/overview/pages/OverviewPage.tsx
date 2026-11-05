@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { Skeleton } from "@heroui/react";
 import { ErroComRetry } from "@/shared/ui/erro-com-retry";
 import { EstadoVazio } from "@/shared/ui/estado-vazio";
+import { PageCard } from "@/shared/ui/page-card";
 
 export function OverviewPage() {
   const perfil = useOutletContext<PerfilAtual>();
@@ -39,9 +40,9 @@ export function OverviewPage() {
   // Sem casos no escopo: explica em vez de mostrar zeros soltos (spec 039, RN-05).
   if (data.total === 0) {
     return (
-      <div className="flex justify-center rounded-3xl border border-edge bg-card px-6 py-10">
-        <EstadoVazio tituloDaPagina titulo={t("overviewEmpty")} dica={t("overviewEmptyHint")} />
-      </div>
+      <PageCard>
+        <EstadoVazio tituloDaPagina className="m-auto" titulo={t("overviewEmpty")} dica={t("overviewEmptyHint")} />
+      </PageCard>
     );
   }
 

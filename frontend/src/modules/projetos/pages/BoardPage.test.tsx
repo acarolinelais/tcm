@@ -115,13 +115,13 @@ describe("BoardPage", () => {
   it("dev cujos times não têm projetos vê o aviso, sem cards", async () => {
     renderBoard(dev, { setores: [{ id: "s1", nome: "SVP", times: [{ id: "t1", nome: "SDF Automation", membros: 3, projetos: [] }] }] });
 
-    expect(await screen.findByText("Your teams don't have any projects yet.")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "No projects to show" })).toBeInTheDocument();
   });
 
   it("sem times no escopo mostra o aviso", async () => {
     renderBoard(gerente, { setores: [] });
 
-    expect(await screen.findByText("There are no teams available to you yet.")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "No teams to show" })).toBeInTheDocument();
     expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
   });
 

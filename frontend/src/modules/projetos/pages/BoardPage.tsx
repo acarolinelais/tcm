@@ -7,6 +7,7 @@ import type { PerfilAtual } from "@/core/auth/api";
 
 import { cn } from "@/shared/lib/utils";
 import { ErroComRetry } from "@/shared/ui/erro-com-retry";
+import { EstadoVazio } from "@/shared/ui/estado-vazio";
 import { PageCard, PageTitle } from "@/shared/ui/page-card";
 import { TagChip } from "@/shared/ui/tag-chip";
 import { statusProjetoTons } from "../components/status/status-projeto-estilos";
@@ -36,13 +37,13 @@ export function BoardPage() {
 
   const { setores } = navegacao.data;
   const times = setores.flatMap((setor) => setor.times);
-  if (!times.length) return <BoardCard><Aviso>{t("boardNoTeams")}</Aviso></BoardCard>;
+  if (!times.length) return <BoardCard><EstadoVazio className="m-auto" titulo={t("boardNoTeams")} dica={t("boardNoTeamsHint")} /></BoardCard>;
 
   if (perfil.perfil_codigo === "USUARIO_PADRAO" || times.length === 1) {
     const projetos = times.flatMap((time) => time.projetos);
     const ultimo = lerUltimoProjetoBoard(perfil.id);
     const destino = projetos.find((projeto) => projeto.id === ultimo) ?? projetos.find((projeto) => !encerrado(projeto.status)) ?? projetos[0];
-    return destino ? <Navigate to={linkDoKanban(destino.id)} replace /> : <BoardCard><Aviso>{t("boardNoProjects")}</Aviso></BoardCard>;
+    return destino ? <Navigate to={linkDoKanban(destino.id)} replace /> : <BoardCard><EstadoVazio className="m-auto" titulo={t("noAccessibleProjects")} dica={t("noAccessibleProjectsHint")} /></BoardCard>;
   }
 
   const termo = busca.trim().toLocaleLowerCase();
