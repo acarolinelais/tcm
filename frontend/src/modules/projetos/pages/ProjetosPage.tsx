@@ -240,7 +240,7 @@ export function ProjetosPage() {
         <HeroButton variant="ghost" className="h-auto gap-1 px-1 py-1 text-base font-normal text-foreground hover:bg-transparent" onPress={() => { setCriacaoAberta(false); limparFormulario(); }}><ChevronLeft aria-hidden="true" className="size-4" />{t("projectsNav")}</HeroButton>
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[42px] border border-edge bg-card px-7 py-8 sm:px-11 sm:py-10">
-      <div className="thin-scroll min-h-0 flex-1 overflow-auto">
+      <div className="thin-scroll -mx-1 min-h-0 flex-1 overflow-auto px-1">
         <div className="flex min-h-full w-full flex-col">
           <header className="mb-4 flex items-center justify-between gap-4">
             <h1 className="text-2xl font-medium text-accent-text">{t("newProject")}</h1>
