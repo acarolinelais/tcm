@@ -12,7 +12,7 @@ load_dotenv()
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_MINUTES = 15
-REFRESH_TOKEN_DAYS = 7
+REFRESH_TOKEN_HOURS = 10
 JWT_ISSUER = "sdf-manager"
 JWT_AUDIENCE = "sdf-manager-api"
 

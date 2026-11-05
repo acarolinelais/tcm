@@ -1,22 +1,23 @@
 import { ApiError, type ProblemDetails } from "@/shared/api/problem-details";
-import { clearTokens, getAccessToken, getRefreshToken, saveTokens, type TokenResponse } from "@/core/auth/session";
+import { clearTokens, getAccessToken, saveTokens, type TokenResponse } from "@/core/auth/session";
+import { useMock } from "@/core/config";
 
 let renovacaoEmAndamento: Promise<boolean> | null = null;
 
-function renovarSessao(): Promise<boolean> {
+async function trocarRefresh() {
+  const response = await fetch("/api/auth/refresh", { method: "POST" });
+  if (!response.ok) return false;
+  saveTokens((await response.json()) as TokenResponse);
+  return true;
+}
+
+export function renovarSessao(): Promise<boolean> {
+  if (useMock) return Promise.resolve(false);
   if (!renovacaoEmAndamento) {
-    renovacaoEmAndamento = (async () => {
-      const refreshToken = getRefreshToken();
-      if (!refreshToken) return false;
-      const response = await fetch("/api/auth/refresh", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      });
-      if (!response.ok) return false;
-      saveTokens((await response.json()) as TokenResponse);
-      return true;
-    })().finally(() => {
+    // O async achata o Promise<Promise<boolean>> com que o lib.dom tipa o locks.request.
+    renovacaoEmAndamento = (async () =>
+      navigator.locks ? await navigator.locks.request("sdf.refresh", trocarRefresh) : trocarRefresh()
+    )().finally(() => {
       renovacaoEmAndamento = null;
     });
   }
@@ -38,7 +39,7 @@ async function request<T>(path: string, init?: RequestInit, retry = true): Promi
   });
 
   if (!response.ok) {
-    if (response.status === 401 && retry && !path.includes("/api/auth/") && getRefreshToken()) {
+    if (response.status === 401 && retry && !path.includes("/api/auth/")) {
       if (await renovarSessao()) {
         return request<T>(path, init, false);
       }

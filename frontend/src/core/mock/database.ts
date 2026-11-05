@@ -408,7 +408,7 @@ export const mockAuth = {
     const db = readDb();
     const user = db.usuarios.find((item) => item.email.toLowerCase() === email.toLowerCase());
     if (!user || !user.ativo) throw new Error("Conta mock não encontrada ou inativa. Use admin@sdfmanager.com / admin@123.");
-    return { access_token: `mock.${user.id}`, refresh_token: `mock-refresh.${user.id}`, expires_in: 3600, token_type: "bearer" };
+    return { access_token: `mock.${user.id}`, expires_in: 3600, token_type: "bearer" };
   },
   currentUser(token: string | null): PerfilAtual {
     const userId = token?.startsWith("mock.") ? token.slice("mock.".length) : ADMIN_ID;
@@ -435,7 +435,7 @@ export const mockAuth = {
     const userId = currentMockUserId();
     updateDb((db) => { if (!db.senhasAlteradas.includes(userId)) db.senhasAlteradas.push(userId); });
     void password;
-    return { access_token: `mock.${userId}`, refresh_token: `mock-refresh.${userId}`, expires_in: 3600, token_type: "bearer" };
+    return { access_token: `mock.${userId}`, expires_in: 3600, token_type: "bearer" };
   },
 };
 

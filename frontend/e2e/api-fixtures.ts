@@ -30,7 +30,6 @@ export async function prepararTimeComDev(request: APIRequestContext, page: Page,
   dev = await post(request, "auth/trocar-senha", { nova_senha: senha }, dev.access_token);
   await page.addInitScript((tokens) => {
     sessionStorage.setItem("sdf.access", tokens.access_token);
-    sessionStorage.setItem("sdf.refresh", tokens.refresh_token);
   }, dev);
   return { admin, dev, usuarios, setor, time };
 }
@@ -40,6 +39,5 @@ export async function entrarComoAdmin(request: APIRequestContext, page: Page) {
   const admin = await post(request, "auth/login", { email: adminEmail, senha: adminSenha });
   await page.addInitScript((tokens) => {
     sessionStorage.setItem("sdf.access", tokens.access_token);
-    sessionStorage.setItem("sdf.refresh", tokens.refresh_token);
   }, admin);
 }

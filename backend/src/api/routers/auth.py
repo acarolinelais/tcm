@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Cookie, Depends, Response
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import (
+    bearer,
     get_auth_service,
     get_session,
     get_usuario_atual_para_troca_senha,
@@ -13,12 +15,12 @@ from src.application.schemas.auth import (
     LoginRequest,
     PerfilAtualResponse,
     PreferenciasResponse,
-    RefreshRequest,
+    SessaoEmitida,
     TokenResponse,
 )
 from src.application.services.interfaces.auth_service import AuthService
 from src.domain.common.cor_avatar import CorAvatar
-from src.domain.common.exceptions import ForbiddenException
+from src.domain.common.exceptions import CredenciaisInvalidasException, ForbiddenException
 from src.domain.common.idioma_preferido import IdiomaPreferido
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.infrastructure.data.models.setor_gerente_model import SetorGerenteModel
@@ -27,42 +29,64 @@ from src.infrastructure.data.models.time_membro_model import TimeMembroModel
 from src.infrastructure.data.models.time_model import TimeModel
 from src.infrastructure.data.models.unidade_model import UnidadeModel
 from src.infrastructure.data.models.usuario_model import UsuarioModel
+from src.infrastructure.security.jwt import REFRESH_TOKEN_HOURS, decodificar_token
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+COOKIE_REFRESH = "sdf_refresh"
+_COOKIE = {"path": "/api/auth", "secure": True, "httponly": True, "samesite": "strict"}
+
+
+def _responder(response: Response, sessao: SessaoEmitida) -> TokenResponse:
+    response.set_cookie(
+        COOKIE_REFRESH, sessao.refresh_token, max_age=REFRESH_TOKEN_HOURS * 3600, **_COOKIE
+    )
+    return TokenResponse(access_token=sessao.access_token, expires_in=sessao.expires_in)
 
 
 @router.post("/login", response_model=TokenResponse)
 async def login(
-    request: LoginRequest, service: AuthService = Depends(get_auth_service)
+    request: LoginRequest, response: Response, service: AuthService = Depends(get_auth_service)
 ) -> TokenResponse:
-    return await service.login(request)
+    return _responder(response, await service.login(request))
 
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh(
-    request: RefreshRequest, service: AuthService = Depends(get_auth_service)
+    response: Response,
+    refresh_token: str | None = Cookie(default=None, alias=COOKIE_REFRESH),
+    service: AuthService = Depends(get_auth_service),
 ) -> TokenResponse:
-    return await service.renovar(request)
+    if not refresh_token:
+        raise CredenciaisInvalidasException("Credenciais inválidas.")
+    return _responder(response, await service.renovar(refresh_token))
 
 
 @router.post("/logout", status_code=204)
 async def logout(
-    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual_para_troca_senha),
+    response: Response,
+    refresh_token: str | None = Cookie(default=None, alias=COOKIE_REFRESH),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
     service: AuthService = Depends(get_auth_service),
 ):
-    if usuario_atual.sessao_id is not None:
-        await service.logout(usuario_atual.sessao_id)
+    payload = decodificar_token(credentials.credentials) if credentials else None
+    sessao_id = payload.sessao_id if payload else None
+    if refresh_token or sessao_id:
+        await service.logout(refresh_token, sessao_id)
+    response.delete_cookie(COOKIE_REFRESH, **_COOKIE)
 
 
 @router.post("/trocar-senha", response_model=TokenResponse)
 async def trocar_senha(
     request: AlterarSenhaRequest,
+    response: Response,
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual_para_troca_senha),
     service: AuthService = Depends(get_auth_service),
 ) -> TokenResponse:
     if not usuario_atual.senha_alteracao_obrigatoria or usuario_atual.sessao_id is None:
         raise ForbiddenException("A troca inicial de senha não é necessária.")
-    return await service.alterar_senha_inicial(usuario_atual.id, usuario_atual.sessao_id, request)
+    sessao = await service.alterar_senha_inicial(usuario_atual.id, usuario_atual.sessao_id, request)
+    return _responder(response, sessao)
 
 
 @router.patch("/preferencias", response_model=PreferenciasResponse)

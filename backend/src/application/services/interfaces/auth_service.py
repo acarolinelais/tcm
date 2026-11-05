@@ -6,17 +6,16 @@ from src.application.schemas.auth import (
     AtualizarPreferenciasRequest,
     LoginRequest,
     PreferenciasResponse,
-    RefreshRequest,
-    TokenResponse,
+    SessaoEmitida,
 )
 
 
 class AuthService(Protocol):
-    async def login(self, request: LoginRequest) -> TokenResponse: ...
+    async def login(self, request: LoginRequest) -> SessaoEmitida: ...
 
-    async def renovar(self, request: RefreshRequest) -> TokenResponse: ...
+    async def renovar(self, refresh_token: str) -> SessaoEmitida: ...
 
-    async def logout(self, sessao_id: UUID) -> None: ...
+    async def logout(self, refresh_token: str | None, sessao_id: UUID | None) -> None: ...
 
     async def atualizar_preferencias(
         self, unidade_id: UUID, usuario_id: UUID, request: AtualizarPreferenciasRequest
@@ -24,4 +23,4 @@ class AuthService(Protocol):
 
     async def alterar_senha_inicial(
         self, usuario_id: UUID, sessao_id: UUID, request: AlterarSenhaRequest
-    ) -> TokenResponse: ...
+    ) -> SessaoEmitida: ...
