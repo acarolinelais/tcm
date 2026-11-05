@@ -220,9 +220,9 @@ test("importa a planilha no modelo atual e mostra o Automation Level de cada cas
   await expect(previa).toContainText("3 Test Cases");
   await expect(previa.getByRole("columnheader", { name: "Automation Level" })).toBeVisible();
   const linhas = previa.getByRole("row");
-  await expect(linhas.filter({ hasText: "Clock_001" })).toContainText("1 – Não automatizável");
+  await expect(linhas.filter({ hasText: "Clock_001" })).toContainText("1 - Não automatizável");
   await expect(linhas.filter({ hasText: "Clock_002" })).toContainText("—");
-  await expect(linhas.filter({ hasText: "Clock_003" })).toContainText("3 – 100% automatizável");
+  await expect(linhas.filter({ hasText: "Clock_003" })).toContainText("3 - Automatizável");
   await page.getByRole("button", { name: /Time$/ }).click();
   await page.getByRole("option", { name: "Plataforma" }).click();
   await page.getByRole("button", { name: "Criar projeto" }).click();

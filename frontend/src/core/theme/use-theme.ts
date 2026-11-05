@@ -8,7 +8,7 @@ export const THEME_KEY = "sdf.theme";
 const ouvintes = new Set<() => void>();
 
 /** Duração da troca pelo toggle. É a mesma do `.trocando-tema` no `global.css`. */
-const DURACAO_TROCA_MS = 450;
+const DURACAO_TROCA_MS = 800;
 let fimDaTroca: ReturnType<typeof setTimeout> | undefined;
 
 /** Tema em uso: a classe no `<html>`, que o script inline já aplicou antes do React. */

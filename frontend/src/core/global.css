@@ -440,7 +440,7 @@
 :root.trocando-tema *::before,
 :root.trocando-tema *::after {
   transition-property: background-color, border-color, color, fill, stroke, outline-color, text-decoration-color, box-shadow, opacity !important;
-  transition-duration: 450ms !important;
+  transition-duration: 800ms !important;
   transition-timing-function: ease-in-out !important;
   transition-delay: 0s !important;
 }

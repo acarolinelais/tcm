@@ -113,7 +113,7 @@ describe("ThemeToggle com transição de cores (spec 049)", () => {
     await user.click(screen.getByRole("button", { name: "Dark theme" }));
     expect(document.documentElement).toHaveClass("dark", "trocando-tema");
     expect(window.localStorage.getItem(THEME_KEY)).toBe("dark");
-    act(() => { vi.advanceTimersByTime(450); });
+    act(() => { vi.advanceTimersByTime(800); });
     expect(document.documentElement).not.toHaveClass("trocando-tema");
   });
 
@@ -128,7 +128,7 @@ describe("ThemeToggle com transição de cores (spec 049)", () => {
     expect(window.localStorage.getItem(THEME_KEY)).toBe("light");
     act(() => { vi.advanceTimersByTime(300); });
     expect(document.documentElement).toHaveClass("trocando-tema");
-    act(() => { vi.advanceTimersByTime(150); });
+    act(() => { vi.advanceTimersByTime(500); });
     expect(document.documentElement).not.toHaveClass("trocando-tema");
   });
 

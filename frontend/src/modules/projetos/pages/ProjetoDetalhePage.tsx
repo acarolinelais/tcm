@@ -275,7 +275,7 @@ function ProjetoDetalhe() {
       id: "automationLevel",
       header: <DataTableMultiFilter label={t("automationLevel")} values={filtrosCaso.automationLevel} onChange={(values) => alterarFiltroCaso("automationLevel", values)} options={opcoes.automacao} />,
       exportar: { titulo: t("automationLevel"), valor: rotuloAutomacao },
-      cell: (caso) => celulaEditavel(caso, "automation_level", t("automationLevel"), String(caso.automation_level ?? ""), opcoes.automacao, <span>{rotuloAutomacao(caso)}</span>, podeEditarProprio(caso)),
+      cell: (caso) => celulaEditavel(caso, "automation_level", t("automationLevel"), String(caso.automation_level ?? ""), opcoes.automacao, <span title={caso.automation_level ? rotuloAutomacao(caso) : undefined}>{caso.automation_level ?? "—"}</span>, podeEditarProprio(caso)),
     },
     {
       id: "endDate",

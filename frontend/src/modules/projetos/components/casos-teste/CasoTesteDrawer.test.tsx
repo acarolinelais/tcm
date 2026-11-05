@@ -76,8 +76,8 @@ describe("CasoTesteDrawer: Automation Level (spec 027)", () => {
     const drawer = await preencherNovoCaso(user);
 
     await user.click(within(drawer).getByLabelText("Automation Level"));
-    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["1 – Not automatable", "2 – Partially automatable", "3 – 100% automatable"]);
-    await user.click(screen.getByRole("option", { name: "3 – 100% automatable" }));
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["1 - Not automatable", "2 - Partially automatable", "3 - Automatable"]);
+    await user.click(screen.getByRole("option", { name: "3 - Automatable" }));
     await user.click(within(drawer).getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(casosTesteApi.criar).toHaveBeenCalledWith("project-1", expect.objectContaining({ tc_id: "Clock_003", automation_level: 3 })));
@@ -87,7 +87,7 @@ describe("CasoTesteDrawer: Automation Level (spec 027)", () => {
     const user = userEvent.setup();
     renderDrawer({ ...caso, automation_level: 1 });
     const drawer = screen.getByRole("dialog");
-    expect(within(drawer).getByLabelText("Automation Level")).toHaveTextContent("1 – Not automatable");
+    expect(within(drawer).getByLabelText("Automation Level")).toHaveTextContent("1 - Not automatable");
 
     await user.click(within(drawer).getByLabelText("Difficulty"));
     await user.click(await screen.findByRole("option", { name: "High" }));
@@ -95,7 +95,7 @@ describe("CasoTesteDrawer: Automation Level (spec 027)", () => {
     await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { difficulty: "High" }));
 
     await user.click(within(drawer).getByLabelText("Automation Level"));
-    await user.click(await screen.findByRole("option", { name: "2 – Partially automatable" }));
+    await user.click(await screen.findByRole("option", { name: "2 - Partially automatable" }));
     await user.click(within(drawer).getByRole("button", { name: "Save" }));
     await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenLastCalledWith("case-1", { difficulty: "High", automation_level: 2 }));
   });

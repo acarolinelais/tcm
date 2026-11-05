@@ -37,7 +37,7 @@ export function KanbanColuna({ coluna, arrastando, aceita, onSoltar, onMover, on
       ref={ref}
       aria-label={t("kanbanColumn", { status: rotulo, count: coluna.total })}
       className={cn(
-        "flex w-[234px] shrink-0 flex-col gap-2.5 rounded-3xl bg-panel p-2.5 transition-colors",
+        "flex w-[280px] shrink-0 flex-col gap-2.5 rounded-3xl bg-panel p-2.5 transition-colors",
         arrastando && (aceita ? "bg-accent-soft" : "opacity-50"),
         isDropTarget && "ring-2 ring-focus",
       )}

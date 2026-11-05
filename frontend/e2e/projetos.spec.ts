@@ -90,14 +90,15 @@ test("edita o Automation Level na tabela e mantém o nível depois de recarregar
   await expect(nivel).toContainText("—");
 
   await nivel.click();
-  await expect(page.getByRole("option")).toHaveText(["1 – Não automatizável", "2 – Automatizável até certo ponto", "3 – 100% automatizável"]);
-  await page.getByRole("option", { name: "2 – Automatizável até certo ponto" }).click();
+  await expect(page.getByRole("option")).toHaveText(["1 - Não automatizável", "2 - Parcialmente automatizável", "3 - Automatizável"]);
+  await page.getByRole("option", { name: "2 - Parcialmente automatizável" }).click();
 
-  await expect(nivel).toContainText("2 – Automatizável até certo ponto");
+  await expect(nivel).toHaveText("2");
+  await expect(nivel.getByTitle("2 - Parcialmente automatizável")).toBeVisible();
   expect(atualizacao).toEqual({ automation_level: 2 });
 
   await page.reload();
-  await expect(linha).toContainText("2 – Automatizável até certo ponto");
+  await expect(linha.getByTitle("2 - Parcialmente automatizável")).toBeVisible();
 });
 
 /** Spec 030: rotas da tela do projeto com a aba Form Factor e os links de PR guardados em memória, como a API. */

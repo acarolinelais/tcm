@@ -130,7 +130,7 @@ test("o login usa as cores do protótipo no tema claro e no escuro (ajuste de 20
   // Escuro
   await page.getByRole("button", { name: "Dark theme" }).click();
   await expect(page.locator("html")).toHaveClass(/dark/);
-  // As cores passam aos poucos por 450ms (spec 049); só se lê o valor final depois que a troca termina.
+  // As cores passam aos poucos por 800ms (spec 049); só se lê o valor final depois que a troca termina.
   await expect(page.locator("html")).not.toHaveClass(/trocando-tema/);
   expect(await cor(titulo, "color")).toBe("rgb(12, 138, 255)");
   expect(await cor(dica, "color")).toBe("rgb(181, 181, 181)");
@@ -171,7 +171,7 @@ test("na troca de tema, as ilustrações e o fundo do login se dissolvem aos pou
     const passo = () => {
       escuro.push(Number(getComputedStyle(ilustracao).opacity));
       camadaOpacidades.push(Number(getComputedStyle(camada).opacity));
-      if (performance.now() - inicio < 900) requestAnimationFrame(passo);
+      if (performance.now() - inicio < 1200) requestAnimationFrame(passo);
       else resolver({ escuro, camada: camadaOpacidades });
     };
     requestAnimationFrame(passo);

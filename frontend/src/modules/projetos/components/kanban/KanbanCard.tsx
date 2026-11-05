@@ -94,7 +94,7 @@ export function KanbanCard({ card, onMover, onArrastar }: {
       </article>
       <DragPreview ref={previa}>
         {() => (
-          <div className={cn(classeCard, "w-[264px] rotate-2 shadow-lg")}>
+          <div className={cn(classeCard, "w-[260px] rotate-2 shadow-lg")}>
             {cabecalho(null, <GripVertical aria-hidden="true" className="size-4 text-muted" />)}
             <CorpoCard card={card} />
           </div>
