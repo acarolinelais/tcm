@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { ApiError } from "@/shared/api/problem-details";
 import { clearTokens, getAccessToken } from "@/core/auth/session";
+import { renovarSessao } from "@/core/api/http-client";
 import { usePerfilAtual } from "@/core/auth/usePerfilAtual";
 import { Navbar } from "./Navbar";
 import { Sidebar } from "./Sidebar";
@@ -17,6 +18,13 @@ export function AppLayout() {
     typeof window.matchMedia === "function" && window.matchMedia("(max-width: 63.999rem)").matches,
   );
   const location = useLocation();
+  const [renovando, setRenovando] = useState(() => !getAccessToken());
+  useEffect(() => {
+    if (!renovando) return;
+    renovarSessao()
+      .catch(() => false)
+      .finally(() => setRenovando(false));
+  }, [renovando]);
   const token = getAccessToken();
   const perfil = usePerfilAtual(Boolean(token));
   const { i18n } = useTranslation();
@@ -28,6 +36,7 @@ export function AppLayout() {
     window.sessionStorage.removeItem(TEMP_LANGUAGE_KEY);
     if (i18n.resolvedLanguage !== idioma) void i18n.changeLanguage(idioma);
   }, [i18n, perfil.data]);
+  if (renovando) return <AppSkeleton label={i18n.t("loadingProfile")} />;
   if (!token) return <Navigate to="/login" replace />;
   if (perfil.isLoading || sincronizandoIdioma) return <AppSkeleton label={i18n.t("loadingProfile")} />;
   if (perfil.error instanceof ApiError && perfil.error.problem.status === 401) {

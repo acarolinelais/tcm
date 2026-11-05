@@ -61,7 +61,6 @@ test("duas rodadas: DEV principal/Backup registram, Status segue os resultados e
   // DEV principal registra FAIL pela linha do Resumo; o TC vai para In Fixes e sai da tabela.
   await page.addInitScript((sessao) => {
     sessionStorage.setItem("sdf.access", sessao.access_token);
-    sessionStorage.setItem("sdf.refresh", sessao.refresh_token);
   }, tokens[0]);
   await page.goto("/projetos");
   await page.getByRole("tab", { name: "Form Factor" }).click();
