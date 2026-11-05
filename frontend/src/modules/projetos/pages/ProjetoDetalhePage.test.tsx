@@ -330,7 +330,9 @@ describe("ProjetoDetalhePage", () => {
     expect(screen.queryByRole("button", { name: /New Test Case/i })).not.toBeInTheDocument();
     const proprioCaso = screen.getByRole("row", { name: /Clock_001/ });
     const casoAlheio = screen.getByRole("row", { name: /Clock_002/ });
-    expect(within(proprioCaso).getByRole("button", { name: /Category Clock_001/ })).toBeInTheDocument();
+    expect(within(proprioCaso).getByRole("button", { name: /Difficulty Clock_001/ })).toBeInTheDocument();
+    expect(within(proprioCaso).queryByRole("button", { name: /Category Clock_001/ })).not.toBeInTheDocument();
+    expect(within(proprioCaso).getByText("A")).toBeInTheDocument();
     expect(within(proprioCaso).getByText("daniel-id")).toBeInTheDocument();
     expect(within(proprioCaso).getByText("kaique-id")).toBeInTheDocument();
     expect(within(proprioCaso).getByRole("button", { name: "Transfer to backup Clock_001" })).toBeInTheDocument();
@@ -411,14 +413,20 @@ describe("ProjetoDetalhePage", () => {
     expect(screen.queryByRole("button", { name: "Clock 9.5" })).not.toBeInTheDocument();
   });
 
-  it("permite ao responsável atualizar categoria, dificuldade, status e TC Situation só do próprio caso", async () => {
+  it("permite à gestão atualizar a Category", async () => {
+    const user = userEvent.setup();
+    renderPage({ ...perfil, id: "admin", perfil_codigo: "ADMIN_UNIDADE", perfil: "Administrador" });
+    const caso = await screen.findByRole("row", { name: /Clock_001/ });
+
+    await user.click(within(caso).getByRole("button", { name: /Category Clock_001/ }));
+    await user.click(await screen.findByRole("option", { name: "C" }));
+    await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { category: "C" }));
+  });
+
+  it("permite ao responsável atualizar dificuldade, status e TC Situation só do próprio caso", async () => {
     const user = userEvent.setup();
     renderPage();
     const proprioCaso = await screen.findByRole("row", { name: /Clock_001/ });
-
-    await user.click(within(proprioCaso).getByRole("button", { name: /Category Clock_001/ }));
-    await user.click(await screen.findByRole("option", { name: "C" }));
-    await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { category: "C" }));
 
     await user.click(within(proprioCaso).getByRole("button", { name: /Difficulty Clock_001/ }));
     await user.click(await screen.findByRole("option", { name: "High" }));

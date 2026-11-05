@@ -333,14 +333,13 @@ async def test_atualizar_caso_proprio_permite_campos_do_responsavel(contexto):
         responsavel,
         caso.id,
         AtualizarCasoTesteRequest(
-            category=CategoriaCasoTeste.B,
             difficulty=DificuldadeCasoTeste.MEDIUM,
             status=StatusCasoTeste.IN_PROGRESS,
             situation=SituacaoCasoTeste.NEW_STEP,
         ),
     )
 
-    assert resposta.category is CategoriaCasoTeste.B
+    assert resposta.category is CategoriaCasoTeste.A
     assert resposta.difficulty is DificuldadeCasoTeste.MEDIUM
     assert resposta.status is StatusCasoTeste.IN_PROGRESS
     assert resposta.situation is SituacaoCasoTeste.NEW_STEP
@@ -1201,3 +1200,67 @@ async def test_falha_timeline_fora_do_escopo_sem_permissao_ou_periodo_invalido_n
     with pytest.raises(NotFoundException):
         await service.timeline(admin, uuid4(), inicio, fim, "UTC", (), ())
     historico.listar_por_projeto.assert_not_awaited()
+
+
+@pytest.mark.parametrize("perfil", ["ADMIN_UNIDADE", "GERENTE", "KP"])
+async def test_gestao_do_time_altera_category(contexto, perfil):
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    gestor = UsuarioAutenticado(
+        uuid4(),
+        admin.unidade_id,
+        perfil,
+        permissoes=frozenset({"test_cases.consultar", "test_cases.gerenciar"}),
+        setores_gerenciados=(time.setor_id,) if perfil == "GERENTE" else (),
+        time_ids=(time.id,) if perfil == "KP" else (),
+    )
+    caso = _caso_de(admin, projeto, uuid4())
+    casos.obter_por_id.return_value = caso
+
+    resposta = await service.atualizar(
+        gestor, caso.id, AtualizarCasoTesteRequest(category=CategoriaCasoTeste.C)
+    )
+
+    assert resposta.category is CategoriaCasoTeste.C
+    uow.commit.assert_awaited_once()
+
+
+async def test_responsavel_nao_altera_category_do_proprio_caso(contexto):
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    responsavel = _usuario_do_time(admin, time)
+    caso = _caso_de(admin, projeto, responsavel.id)
+    casos.obter_por_id.return_value = caso
+
+    with pytest.raises(ForbiddenException, match="responsável só pode editar"):
+        await service.atualizar(
+            responsavel,
+            caso.id,
+            AtualizarCasoTesteRequest(
+                category=CategoriaCasoTeste.C, difficulty=DificuldadeCasoTeste.HIGH
+            ),
+        )
+
+    assert caso.category is CategoriaCasoTeste.A
+    assert caso.difficulty is DificuldadeCasoTeste.LOW
+    casos.atualizar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+async def test_kp_de_outro_time_nao_altera_category(contexto):
+    service, casos, _, _, _, _, uow, admin, projeto, _ = contexto
+    kp = UsuarioAutenticado(
+        uuid4(),
+        admin.unidade_id,
+        "KP",
+        permissoes=frozenset({"test_cases.consultar", "test_cases.gerenciar"}),
+        time_ids=(uuid4(),),
+    )
+    caso = _caso_de(admin, projeto, uuid4())
+    casos.obter_por_id.return_value = caso
+
+    with pytest.raises(NotFoundException):
+        await service.atualizar(
+            kp, caso.id, AtualizarCasoTesteRequest(category=CategoriaCasoTeste.C)
+        )
+
+    assert caso.category is CategoriaCasoTeste.A
+    uow.commit.assert_not_awaited()
