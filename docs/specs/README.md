@@ -87,6 +87,7 @@ sem paginação, também pagina ([ADR 0039](../adr/0039-resultados-gerais-com-pa
 | 058 | Redesign de Projects (visual das abas, Origin "Spreadsheet" e histórico de execuções por linha, inclusive para o dev) | Concluída (e2e com API simulada; validação manual no navegador pendente) |
 | 059 | Redesign da General Results (dev no escopo do time, abas por app, botões de rodada e importação, linha que expande por device, 5 datas, ADR 0046) | Em andamento (integração do backend e conferência no navegador pendentes) |
 | 060 | Importação do relatório SDF no formato novo (SDF ID no nome do arquivo, device e data no cabeçalho, descrição no resultado) | Em andamento (integração do backend pendente) |
+| 061 | Sessão entre abas (refresh token em cookie httpOnly, sessão de 10 horas, ADRs 0047 e 0048) | Concluída |
 
 > As duas specs 012 foram criadas em paralelo. Os diretórios e históricos foram preservados nesta integração; a harmonização da numeração está registrada no backlog da spec de perfil Dev.
 
