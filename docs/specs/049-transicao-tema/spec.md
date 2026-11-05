@@ -23,31 +23,33 @@ durante a troca.
 
 ## Regras de negócio
 
-- RN-01: Ao usar o toggle, as cores da tela inteira passam do tema anterior para o novo em cerca de meio
-  segundo. Todas as áreas mudam juntas: nenhuma parte da tela termina antes das outras.
+- RN-01: Ao usar o toggle, a tela inteira esmaece do tema anterior para o novo em 300 ms. Todas as áreas
+  mudam juntas: nenhuma parte da tela termina antes das outras. (Revisada em 2026-11-05: antes, a cor de cada
+  elemento passava aos poucos, em 800 ms.)
 - RN-02: O ícone do toggle gira e cresce do ícone anterior para o novo, ao mesmo tempo que a tela.
-- RN-03: Clicar de novo durante a transição não espera a animação acabar: o tema troca na hora e as cores
-  voltam a partir de onde estão.
+- RN-03: Trocar de novo pelo teclado durante a transição não espera a animação acabar: a troca em andamento
+  pula para o fim e a nova começa. Cliques do mouse durante os 300 ms não chegam à página (revisada em
+  2026-11-05, ver o `plan.md`).
 - RN-04: Com a preferência do sistema por menos movimento, o ícone não gira. A tela mantém a passagem gradual
   das cores, que não tem movimento e evita o salto de brilho.
 - RN-05: Quando o tema muda por causa de outra aba (spec 034), a troca é imediata, sem animação.
-- RN-06: A página continua clicável durante a troca. O ícone fica parado quando a página carrega e só anima
-  depois de uma troca.
+- RN-06: A página fica sem receber cliques só durante os 300 ms da troca (revisada em 2026-11-05). O ícone fica
+  parado quando a página carrega e só anima depois de uma troca.
 - RN-07: Nada mais muda na spec 034: a escolha continua guardada, o toggle continua acessível pelo teclado
   e a página não pisca no carregamento.
 
 ## Critérios de aceite
 
-- **CA-01:** Dado o tema claro, quando a pessoa usa o toggle, então as cores passam aos poucos para o escuro e,
+- **CA-01:** Dado o tema claro, quando a pessoa usa o toggle, então a tela esmaece para o escuro e,
   ao fim, o tema escuro está ativo e guardado.
 - **CA-02:** Dado o tema escuro, quando a pessoa usa o toggle, então o ícone passa da lua para o sol, girando,
   junto com a tela.
-- **CA-03:** Dado uma transição em andamento, quando a pessoa clica de novo, então o tema volta na hora e o
-  estado final é o do último clique.
+- **CA-03:** Dado uma transição em andamento, quando a pessoa aperta Enter de novo no toggle, então o tema volta
+  e o estado final é o da última troca.
 - **CA-04:** Dado o sistema com menos movimento, quando a pessoa troca o tema, então o ícone troca sem girar.
 - **CA-05:** Dado duas abas abertas, quando a outra aba troca o tema, então esta aba muda sem animação.
-- **CA-06 (falha):** Dado uma troca em andamento, quando a pessoa clica no toggle ou em outro ponto da tela,
-  então o clique não se perde. Ao carregar a página, o ícone não anima.
+- **CA-06 (falha):** Dado uma troca em andamento, quando a pessoa clica em outro ponto da tela, então o clique é
+  ignorado só até a troca acabar, em 300 ms. Ao carregar a página, o ícone não anima.
 - **CA-07 (falha):** Dado o armazenamento do navegador bloqueado, quando a pessoa troca o tema com a
   transição, então o tema muda e vale até fechar a página (spec 034).
 

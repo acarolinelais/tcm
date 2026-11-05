@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { flushSync } from "react-dom";
 
 export type Tema = "light" | "dark";
 
@@ -7,9 +8,8 @@ export const THEME_KEY = "sdf.theme";
 
 const ouvintes = new Set<() => void>();
 
-/** Duração da troca pelo toggle. É a mesma do `.trocando-tema` no `global.css`. */
-const DURACAO_TROCA_MS = 800;
-let fimDaTroca: ReturnType<typeof setTimeout> | undefined;
+/** A troca em andamento: só a última tira a classe `trocando-tema` quando acaba. */
+let trocaAtual: ViewTransition | undefined;
 
 /** Tema em uso: a classe no `<html>`, que o script inline já aplicou antes do React. */
 function temaAtual(): Tema {
@@ -44,22 +44,30 @@ function assinar(ouvinte: () => void) {
 }
 
 /**
- * Troca pelo toggle (spec 049): durante a troca, a classe `trocando-tema` dá a todos os elementos a mesma
- * transição de cor, então a tela inteira muda junto e aos poucos. A página continua clicável, e um clique no
- * meio da troca faz as cores voltarem a partir de onde estão.
+ * Troca pelo toggle (spec 049): uma View Transition fotografa a tela e esmaece da foto antiga para a nova, de uma
+ * vez e na GPU. Animar a cor de cada elemento travava a página. Enquanto a troca dura (300 ms no `global.css`), o
+ * navegador não entrega cliques à página; o teclado continua valendo, e uma nova troca pula a anterior.
  */
 function alternar() {
   const tema: Tema = temaAtual() === "dark" ? "light" : "dark";
-  const raiz = document.documentElement;
-  raiz.classList.add("trocando-tema");
-  trocarClasse(tema);
-  clearTimeout(fimDaTroca);
-  fimDaTroca = setTimeout(() => raiz.classList.remove("trocando-tema"), DURACAO_TROCA_MS);
   try {
     window.localStorage.setItem(THEME_KEY, tema);
   } catch {
     // Armazenamento bloqueado (ex.: modo privado restrito): o tema vale só nesta sessão.
   }
+  // Navegador sem View Transitions: troca na hora, sem passagem.
+  if (typeof document.startViewTransition !== "function") {
+    aplicar(tema);
+    return;
+  }
+  const raiz = document.documentElement;
+  raiz.classList.add("trocando-tema");
+  // O flushSync põe o ícone novo do toggle na foto nova.
+  const troca = document.startViewTransition(() => flushSync(() => trocarClasse(tema)));
+  trocaAtual = troca;
+  void troca.finished.finally(() => {
+    if (trocaAtual === troca) raiz.classList.remove("trocando-tema");
+  });
 }
 
 /** Tema atual e a troca entre claro e escuro, compartilhados por todos os toggles da página. */
