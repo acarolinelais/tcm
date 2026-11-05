@@ -48,7 +48,7 @@ test("mostra a semana, filtra duas pessoas, troca para Mês e abre um card", asy
   // CA-01: a semana atual, de segunda a domingo, com os cards nos dias certos.
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Linha do tempo");
   // Com um projeto só, o seletor mostra só o nome, sem menu.
-  await expect(page.getByText(project.nome, { exact: true })).toBeVisible();
+  await expect(page.getByText(project.app, { exact: true })).toBeVisible();
   await expect(page.getByRole("list", { name: "terça-feira, 29 de dezembro" }).getByRole("button", { name: "Clock_00046, Ana, 2 mudanças" })).toBeVisible();
   await expect(page.getByRole("list", { name: "quinta-feira, 31 de dezembro" }).getByRole("button", { name: /^Clock_00001, Caio/ })).toBeVisible();
   expect(consultas.at(-1)?.get("inicio")).toBe("2026-12-28");

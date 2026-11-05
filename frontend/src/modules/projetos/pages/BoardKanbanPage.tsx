@@ -47,7 +47,7 @@ export function BoardKanbanPage() {
               projetoId={projetoId}
               perfil={perfil}
               podeGerenciar={perfilGerenciaCasos(perfil)}
-              faixa={<ProjetoSwitcher comoTitulo={false} projetoId={projetoId} nome={projeto.data.nome} projetos={projetosDoBoard} destino={(id) => `/board/${id}`} />}
+              faixa={<ProjetoSwitcher comoTitulo={false} projetoId={projetoId} nome={projeto.data.app} projetos={projetosDoBoard} destino={(id) => `/board/${id}`} />}
             />
           )}
     </PageCard>

@@ -12,8 +12,9 @@ import { Skeleton } from "@heroui/react";
 import { PageSkeleton } from "@/shared/ui/page-skeleton";
 
 export function AppLayout() {
+  // Abaixo de 1024px a Sidebar abre recolhida: aberta, deixava ~420px para o conteúdo num tablet. A pessoa ainda a abre.
   const [sidebarRecolhida, setSidebarRecolhida] = useState(() =>
-    typeof window.matchMedia === "function" && window.matchMedia("(max-width: 39.999rem)").matches,
+    typeof window.matchMedia === "function" && window.matchMedia("(max-width: 63.999rem)").matches,
   );
   const location = useLocation();
   const token = getAccessToken();
@@ -42,7 +43,7 @@ export function AppLayout() {
   if (location.pathname === "/trocar-senha") return <Navigate to="/overview" replace />;
 
   return (
-    <div className={`box-border grid h-dvh min-h-0 overflow-hidden transition-[grid-template-columns] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${sidebarRecolhida ? "grid-cols-[4.5rem_minmax(0,1fr)]" : "grid-cols-[clamp(17.5rem,20vw,18.3125rem)_minmax(0,1fr)] max-sm:grid-cols-[minmax(9rem,35vw)_minmax(0,1fr)]"} grid-rows-[2rem_minmax(0,1fr)] gap-x-[clamp(1rem,5.5vw,2.75rem)] gap-y-4 bg-page p-[clamp(0.5rem,1.25vw,1rem)]`}>
+    <div className={`box-border grid h-dvh min-h-0 overflow-hidden transition-[grid-template-columns] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${sidebarRecolhida ? "grid-cols-[4.5rem_minmax(0,1fr)] max-sm:gap-x-3" : "grid-cols-[clamp(17.5rem,20vw,18.3125rem)_minmax(0,1fr)] max-sm:grid-cols-[minmax(9rem,35vw)_minmax(0,1fr)]"} grid-rows-[2rem_minmax(0,1fr)] gap-x-[clamp(1rem,5.5vw,2.75rem)] gap-y-4 bg-page p-[clamp(0.5rem,1.25vw,1rem)]`}>
       <Sidebar perfil={perfil.data} recolhida={sidebarRecolhida} onToggle={() => setSidebarRecolhida((recolhida) => !recolhida)} />
       <Navbar perfil={perfil.data} />
       <main className="col-start-2 row-start-2 min-h-0 min-w-0">

@@ -492,18 +492,26 @@ describe("base mock de projetos", () => {
     const testCase = mockCasosTesteApi.criar(project.id, { category: "A", difficulty: "Low", situation: "New", tc_id: "TC-ROUNDS", responsavel_id: "mock-user-kp", backup_id: "mock-user-dev" });
     mockCasosTesteApi.atualizar(testCase.id, { status: "InProgress" });
     mockCasosTesteApi.atualizar(testCase.id, { status: "InValidation" });
-    const primeira = mockFormFactorApi.criarRodada(project.id, { sdf_id: "SDF-1" });
-    mockFormFactorApi.registrarResultadosRodada(project.id, primeira.id, testCase.id, { resultados: { "mock-model-s27-ultra": "FAIL" } });
-    mockCasosTesteApi.atualizar(testCase.id, { status: "InValidation" });
-    const segunda = mockFormFactorApi.criarRodada(project.id, { sdf_id: "SDF-2" });
-    mockFormFactorApi.registrarResultadosRodada(project.id, segunda.id, testCase.id, { resultados: { "mock-model-s27-ultra": "FAIL", "mock-model-s26-ultra": "PASS" } });
+    // Datas fixas: com o rel�gio real, as duas rodadas podem sair no mesmo milissegundo e a "mais recente" fica ao acaso.
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-10-20T12:00:00Z"));
+      const primeira = mockFormFactorApi.criarRodada(project.id, { sdf_id: "SDF-1" });
+      mockFormFactorApi.registrarResultadosRodada(project.id, primeira.id, testCase.id, { resultados: { "mock-model-s27-ultra": "FAIL" } });
+      mockCasosTesteApi.atualizar(testCase.id, { status: "InValidation" });
+      vi.setSystemTime(new Date("2026-10-26T12:00:00Z"));
+      const segunda = mockFormFactorApi.criarRodada(project.id, { sdf_id: "SDF-2" });
+      mockFormFactorApi.registrarResultadosRodada(project.id, segunda.id, testCase.id, { resultados: { "mock-model-s27-ultra": "FAIL", "mock-model-s26-ultra": "PASS" } });
 
-    const historico = mockFormFactorApi.listarResultados(project.id, { tcId: "TC-ROUNDS" });
-    expect(historico.items).toHaveLength(2);
-    expect(historico.items.map((item) => item.rodada_id)).toContain(primeira.id);
-    expect(historico.items.map((item) => item.rodada_id)).toContain(segunda.id);
-    expect(historico.items.every((item) => item.origem === "MANUAL")).toBe(true);
-    expect(mockFormFactorApi.listar(project.id, { tcId: "TC-ROUNDS" }).items).toHaveLength(0);
+      const historico = mockFormFactorApi.listarResultados(project.id, { tcId: "TC-ROUNDS" });
+      expect(historico.items).toHaveLength(2);
+      expect(historico.items.map((item) => item.rodada_id)).toContain(primeira.id);
+      expect(historico.items.map((item) => item.rodada_id)).toContain(segunda.id);
+      expect(historico.items.every((item) => item.origem === "MANUAL")).toBe(true);
+      expect(mockFormFactorApi.listar(project.id, { tcId: "TC-ROUNDS" }).items).toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("Resumo mostra só a rodada mais recente do TC e o histórico preserva as anteriores", () => {

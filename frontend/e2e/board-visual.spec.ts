@@ -43,7 +43,7 @@ for (const idioma of IDIOMAS) {
     await expect(page.getByRole("region")).toHaveCount(7);
     // Seis responsáveis: cinco avatares e o "+1".
     await expect(page.getByText("+1", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Clock 9\.5/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Clock$/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /^(Filter|Filtrar|필터)$/ })).toBeVisible();
     expect(await semTextoCortado(paginaDoBoard(page))).toEqual([]);
   });

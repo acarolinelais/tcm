@@ -214,3 +214,13 @@ tokens do `global.css` mudaram (ADR 0041), então todas as telas acompanham.
   botão azul mede 3,45:1. O teste do claro passou de 4,5:1 para um piso de 3,3:1.
 - Fora deste ajuste: Board, Projects, General Results e demais telas não têm frame escuro; só herdam os tokens. Os cards do
   Board e as cores de etiquetas e status ficaram como estavam.
+
+## Ajuste de 2026-11-04: tamanhos, nomes e responsividade
+
+- Botões da coluna Actions (e o ícone de notes dos excluídos) maiores em todas as tabelas.
+- Board e Timeline mostram só o nome do App (Clock, não Clock 9.5); os cards do Board ficaram mais largos (280 px).
+- Automation Level: a tabela mostra só 1, 2 ou 3; os rótulos "1 - Not automatable", "2 - Partially automatable" e
+  "3 - Automatable" aparecem no seletor.
+- Troca de tema mais suave: 800 ms (`DURACAO_TROCA_MS` no `use-theme.ts` e `transition-duration` no `global.css`).
+- Responsividade: a barra lateral abre recolhida abaixo de 1024 px e o cartão da página usa margem menor em tablets.
+  Em celulares a área de conteúdo ainda é estreita; um menu sobreposto seria o próximo passo.

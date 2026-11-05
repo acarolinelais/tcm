@@ -59,7 +59,7 @@ describe("PreviaPlanilha", () => {
     const colunas = screen.getAllByRole("columnheader").map((coluna) => coluna.textContent);
     expect(colunas.indexOf("Automation Level")).toBe(colunas.indexOf("Category") + 1);
     const niveis = linhasDoCorpo().map((linha) => celulas(linha)[colunas.indexOf("Automation Level")].textContent);
-    expect(niveis).toEqual(["1 – Not automatable", "—", "3 – 100% automatable"]);
+    expect(niveis).toEqual(["1 - Not automatable", "—", "3 - Automatable"]);
   });
 
   it("mantém a altura fixa só quando há mais de uma página", () => {

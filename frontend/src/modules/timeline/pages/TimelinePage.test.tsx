@@ -23,7 +23,7 @@ const perfil = {
   perfil_codigo: "KP", perfil: "Key Person", permissoes: ["test_cases.consultar"], times: [], setores_gerenciados: [],
   time_atual_id: null, tem_multiplos_times: false, senha_alteracao_obrigatoria: false, idioma_preferido: "en", cor_avatar: "azul",
 } as PerfilAtual;
-const projetos = [{ id: "clock", nome: "Clock 9.5" }, { id: "gallery", nome: "Gallery 9.5" }];
+const projetos = [{ id: "clock", nome: "Clock 9.5", app: "Clock" }, { id: "gallery", nome: "Gallery 9.5", app: "Gallery" }];
 const mudanca = { campo: "status", valor_anterior: "InProgress", valor_novo: "InReview", usuario_nome: "Ana", usuario_perfil: "Key Person", origem: "api", alterado_em: "2026-12-29T13:00:00Z" };
 const timeline: Timeline = {
   pessoas: [{ id: "ana", nome: "Ana", cor_avatar: "roxo" }, { id: "bia", nome: "Bia", cor_avatar: "verde" }],
@@ -68,7 +68,7 @@ describe("TimelinePage", () => {
     // Título azul da página; o projeto fica no seletor da barra, ao lado do botão Filter (spec 057).
     expect(screen.getByRole("heading", { level: 1, name: "Timeline" })).toHaveClass("text-accent-text");
     expect(screen.getByText("What changed in the project's Test Cases, day by day.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Clock 9.5" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Clock" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Filter" })).toBeInTheDocument();
     expect(ultimaConsulta()).toEqual(["clock", "2026-12-28", "2027-01-03", SEM_FILTROS]);
     expect(within(screen.getByRole("list", { name: "Tuesday, December 29" })).getByRole("button", { name: "Clock_00046, Ana, 1 change" })).toBeInTheDocument();
@@ -101,7 +101,7 @@ describe("TimelinePage", () => {
     await user.click(screen.getByRole("radio", { name: "Month" }));
     expect(ultimaConsulta()).toEqual(["clock", "2026-12-01", "2026-12-31", { responsavelIds: ["ana", "bia"], casoIds: [] }]);
 
-    await user.click(screen.getByRole("button", { name: "Clock 9.5" }));
+    await user.click(screen.getByRole("button", { name: "Clock" }));
     await user.click(await screen.findByRole("menuitemradio", { name: "Gallery 9.5" }));
     expect(ultimaConsulta()).toEqual(["gallery", "2026-12-01", "2026-12-31", SEM_FILTROS]);
   });

@@ -13,8 +13,8 @@ export interface RowAction {
 }
 
 /**
- * Botão redondo de ação por linha (Figma TCM 2070:1476): círculo de 19px `#E4E4E7` com ícone de traço 1,25px.
- * O alvo de toque tem 24px; o círculo fica dentro dele.
+ * Botão redondo de ação por linha (Figma TCM 2070:1476): círculo de 26px `#E4E4E7` com ícone de traço 1,25px
+ * (aumentado de 19px a pedido, em 2026-11-04). O alvo de toque tem 32px; o círculo fica dentro dele.
  */
 export function RowActionButton({ action, identificador }: { action: RowAction; identificador: string }) {
   return (
@@ -25,12 +25,12 @@ export function RowActionButton({ action, identificador }: { action: RowAction; 
         aria-label={`${action.label} ${identificador}`}
         isDisabled={action.disabled}
         onPress={action.onPress}
-        className="group/acao size-6 min-w-0 rounded-full bg-transparent p-0 text-foreground hover:bg-transparent data-[pressed]:scale-95 data-[focus-visible]:ring-2 data-[focus-visible]:ring-focus"
+        className="group/acao size-8 min-w-0 rounded-full bg-transparent p-0 text-foreground hover:bg-transparent data-[pressed]:scale-95 data-[focus-visible]:ring-2 data-[focus-visible]:ring-focus"
       >
         <span
           aria-hidden="true"
           className={cn(
-            "flex size-[19px] items-center justify-center rounded-full bg-default transition-colors group-hover/acao:bg-default-hover",
+            "flex size-[26px] items-center justify-center rounded-full bg-default transition-colors group-hover/acao:bg-default-hover",
             action.destructive && "bg-danger/10 text-danger group-hover/acao:bg-danger/20",
           )}
         >

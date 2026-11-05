@@ -48,7 +48,7 @@ describe("BoardKanbanPage", () => {
     // O título da página é o Board; o projeto fica no seletor da linha de baixo, ao lado do botão Filter.
     expect(await screen.findByRole("heading", { level: 1, name: "Board" })).toBeInTheDocument();
     expect(screen.getByText("Follow the project's Test Cases by status and move them as the work advances.")).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: "Weather 9.5" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Weather" })).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Filter" })).toBeInTheDocument();
     expect(await screen.findByText("This project has no Test Cases yet.")).toBeInTheDocument();
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
@@ -77,7 +77,7 @@ describe("BoardKanbanPage", () => {
     renderPagina();
 
     expect(await screen.findByRole("button", { name: "Try again" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Weather 9.5" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Weather" })).toBeInTheDocument();
     expect(screen.queryByRole("list", { name: "Assignees in this project" })).not.toBeInTheDocument();
   });
 
@@ -87,7 +87,7 @@ describe("BoardKanbanPage", () => {
     renderPagina();
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("button", { name: "Weather 9.5" }));
+    await user.click(await screen.findByRole("button", { name: "Weather" }));
     await user.click(await screen.findByRole("menuitemradio", { name: "Clock 9.5" }));
 
     expect(await screen.findByText("local /board/p2")).toBeInTheDocument();

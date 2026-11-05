@@ -51,11 +51,11 @@ describe("translation resources", () => {
     for (const language of ["en", "pt-BR", "ko"] as const) {
       const { translation } = resources[language];
       expect(translation.automationLevel).toBeTruthy();
-      expect(translation.automationLevel1.startsWith("1 – ")).toBe(true);
-      expect(translation.automationLevel2.startsWith("2 – ")).toBe(true);
-      expect(translation.automationLevel3.startsWith("3 – ")).toBe(true);
+      expect(translation.automationLevel1.startsWith("1 - ")).toBe(true);
+      expect(translation.automationLevel2.startsWith("2 - ")).toBe(true);
+      expect(translation.automationLevel3.startsWith("3 - ")).toBe(true);
     }
-    expect(resources["pt-BR"].translation.automationLevel2).toBe("2 – Automatizável até certo ponto");
+    expect(resources["pt-BR"].translation.automationLevel2).toBe("2 - Parcialmente automatizável");
   });
 
   it("formats numbers using the active language locale", async () => {

@@ -477,9 +477,9 @@ describe("ProjetoDetalhePage", () => {
 
   describe("Automation Level (spec 027)", () => {
     const comNivel = (caso: (typeof casos)[number], nivel: NivelAutomacaoCasoTeste | null) => ({ ...caso, automation_level: nivel });
-    const rotulos = ["1 – Not automatable", "2 – Partially automatable", "3 – 100% automatable"];
+    const rotulos = ["1 - Not automatable", "2 - Partially automatable", "3 - Automatable"];
 
-    it("mostra a coluna logo depois de Category, com o rótulo do nível ou um traço", async () => {
+    it("mostra a coluna logo depois de Category, com o número do nível (a explicação fica no title) ou um traço", async () => {
       vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [comNivel(casos[0], 3), casos[1]], page: 1, page_size: 20, total_count: 2 });
       renderPage();
 
@@ -487,7 +487,8 @@ describe("ProjetoDetalhePage", () => {
       const cabecalhos = screen.getAllByRole("columnheader").map((coluna) => coluna.textContent);
       const posicao = cabecalhos.findIndex((texto) => texto?.includes("Automation Level"));
       expect(posicao).toBe(cabecalhos.findIndex((texto) => texto?.includes("Category")) + 1);
-      expect(primeiro.querySelectorAll("th, td")[posicao]).toHaveTextContent("3 – 100% automatable");
+      expect(within(primeiro).getByRole("button", { name: /Automation Level Clock_001/ })).toHaveTextContent(/^3$/);
+      expect(within(primeiro).getByTitle("3 - Automatable")).toBeInTheDocument();
       expect(screen.getByRole("row", { name: /Clock_002/ }).querySelectorAll("th, td")[posicao]).toHaveTextContent("—");
     });
 
@@ -511,10 +512,10 @@ describe("ProjetoDetalhePage", () => {
 
       await user.click(within(proprioCaso).getByRole("button", { name: /Automation Level Clock_001/ }));
       expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(rotulos);
-      await user.click(screen.getByRole("option", { name: "2 – Partially automatable" }));
+      await user.click(screen.getByRole("option", { name: "2 - Partially automatable" }));
 
       await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { automation_level: 2 }));
-      await waitFor(() => expect(within(screen.getByRole("row", { name: /Clock_001/ })).getByRole("button", { name: /Automation Level Clock_001/ })).toHaveTextContent("2 – Partially automatable"));
+      await waitFor(() => expect(within(screen.getByRole("row", { name: /Clock_001/ })).getByRole("button", { name: /Automation Level Clock_001/ })).toHaveTextContent(/^2$/));
     });
 
     it("deixa o responsável editar só o próprio caso, e a gestão qualquer um", async () => {
@@ -536,7 +537,7 @@ describe("ProjetoDetalhePage", () => {
       const proprioCaso = await screen.findByRole("row", { name: /Clock_001/ });
 
       await user.click(within(proprioCaso).getByRole("button", { name: /Automation Level Clock_001/ }));
-      await user.click(await screen.findByRole("option", { name: "1 – Not automatable" }));
+      await user.click(await screen.findByRole("option", { name: "1 - Not automatable" }));
 
       await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Automation Level deve ser 1, 2 ou 3."));
       await waitFor(() => expect(within(screen.getByRole("row", { name: /Clock_001/ })).getByRole("button", { name: /Automation Level Clock_001/ })).toHaveTextContent("—"));
@@ -551,8 +552,8 @@ describe("ProjetoDetalhePage", () => {
 
       await user.click(screen.getByRole("button", { name: "Filter by Automation Level" }));
       expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(rotulos);
-      await user.click(screen.getByRole("option", { name: "1 – Not automatable" }));
-      await user.click(screen.getByRole("option", { name: "3 – 100% automatable" }));
+      await user.click(screen.getByRole("option", { name: "1 - Not automatable" }));
+      await user.click(screen.getByRole("option", { name: "3 - Automatable" }));
       await user.keyboard("{Escape}");
 
       expect(screen.getByRole("row", { name: /Clock_001/ })).toBeInTheDocument();

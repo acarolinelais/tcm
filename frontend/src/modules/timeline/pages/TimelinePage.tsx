@@ -98,7 +98,7 @@ export function TimelinePage() {
   }
 
   const barra = <div className="mb-5 flex shrink-0 flex-wrap items-center gap-3 border-b border-separator pb-5">
-    {projetoAberto && <div className="min-w-0"><ProjetoSwitcher comoTitulo={false} projetoId={projetoAberto.id} nome={projetoAberto.nome} projetos={projetos} buscavel onEscolher={trocarProjeto} /></div>}
+    {projetoAberto && <div className="min-w-0"><ProjetoSwitcher comoTitulo={false} projetoId={projetoAberto.id} nome={projetoAberto.app} projetos={projetos} buscavel onEscolher={trocarProjeto} /></div>}
     {/* Como no frame 2550:3921: o projeto à esquerda e, agrupados à direita, as visões, o intervalo, o Hoje e o Filter. */}
     <div className="ml-auto flex flex-wrap items-center gap-3">
       <ToggleButtonGroup
