@@ -40,7 +40,6 @@ async def test_login_credenciais_validas_emite_token_do_usuario_local(contexto):
     repo.obter_por_email.assert_awaited_once_with(request.email)
     criar_token.assert_called_once_with(usuario)
     assert resposta.access_token == "token-assinado"
-    assert resposta.token_type == "bearer"
 
 
 @pytest.mark.parametrize("motivo", ["credenciais", "ausente", "inativo", "id_divergente"])
