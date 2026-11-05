@@ -1047,8 +1047,8 @@ export const mockCasosTesteApi = {
         writeDb(db);
         return testCase;
       }
-      const camposPermitidos = ["category", "difficulty", "status", "situation", "automation_level", "justificativa_exclusao"];
-      if (Object.keys(input).some((field) => !camposPermitidos.includes(field))) throw new Error("Você só pode editar Status, TC Situation, Category, Difficulty e Automation Level.");
+      const camposPermitidos = ["difficulty", "status", "situation", "automation_level", "justificativa_exclusao"];
+      if (Object.keys(input).some((field) => !camposPermitidos.includes(field))) throw new Error("O responsável só pode editar Status, TC Situation, Difficulty e Automation Level.");
       aplicarAtualizacaoCaso(testCase, input);
     }
     testCase.updated_at = new Date().toISOString();

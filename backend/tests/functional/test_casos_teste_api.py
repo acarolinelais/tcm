@@ -157,6 +157,25 @@ async def test_responsavel_altera_situation_mas_nao_o_backup(api_client):
     assert caso.backup_id == backup_original
 
 
+async def test_responsavel_nao_altera_category_e_admin_altera(api_client):
+    from src.api.main import app
+
+    caso, uow = _usar_service_real_com_caso(caso_do_membro=True)
+
+    negado = await api_client.put(f"/api/test-cases/{caso.id}", json={"category": "C"})
+
+    assert negado.status_code == 403
+    assert caso.category is CategoriaCasoTeste.A
+    uow.commit.assert_not_awaited()
+
+    admin = UsuarioAutenticado(uuid4(), caso.unidade_id, "ADMIN_UNIDADE")
+    app.dependency_overrides[get_usuario_atual] = dependency_override(admin)
+    permitido = await api_client.put(f"/api/test-cases/{caso.id}", json={"category": "C"})
+
+    assert permitido.status_code == 200
+    assert permitido.json()["category"] == "C"
+
+
 async def test_responsavel_volta_o_status_para_to_do(api_client):
     caso, uow = _usar_service_real_com_caso(caso_do_membro=True)
     caso.atualizar_campos_do_responsavel(
