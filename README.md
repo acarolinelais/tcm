@@ -47,8 +47,9 @@ git clone <url-do-repo> tcm && cd tcm
 bash deploy.sh
 ```
 
-Na primeira vez o script cria o `deploy/.env` com senhas aleatórias, builda as imagens e mostra no fim o
-endereço e o login do admin (`admin@sdfmanager.com`). As senhas ficam guardadas nesse arquivo.
+Na primeira vez o script cria o `deploy/.env` (segredo do JWT e senha do Postgres aleatórios), builda as
+imagens e mostra o endereço no fim. O admin entra com `admin@sdfmanager.com` / `admin@123`, e o time com a
+senha inicial `tcm@123`, trocada no primeiro acesso.
 
 | Serviço | Endereço |
 |---|---|

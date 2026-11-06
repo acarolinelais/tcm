@@ -15,8 +15,9 @@ na 5432, então o deploy não pode ocupar essas portas.
 
 - O deploy fica em `deploy/`, separado do `docker-compose.yml` de desenvolvimento, que continua igual.
 - `bash deploy.sh`, na raiz, é o único comando de deploy e de atualização. Ele:
-  1. cria `deploy/.env` na primeira execução, com o segredo do JWT, a senha do Postgres e a senha do
-     admin geradas aleatoriamente (o arquivo não vai para o git);
+  1. cria `deploy/.env` na primeira execução, com o segredo do JWT e a senha do Postgres gerados
+     aleatoriamente e as senhas padrão do projeto: `admin@123` para o admin e `tcm@123` como senha
+     inicial do time (o arquivo não vai para o git);
   2. roda `docker compose -f deploy/docker-compose.yml up -d --build`, com o projeto `tcm-servidor` (outro nome que o do compose de desenvolvimento, para não reaproveitar o volume dele);
   3. espera a API responder e mostra o endereço e o login do admin.
 - São três serviços:
@@ -51,4 +52,6 @@ na 5432, então o deploy não pode ocupar essas portas.
 - ⚠️ O build roda no servidor e leva alguns minutos na primeira vez.
 - ⚠️ Não há HTTPS. O acesso é por HTTP na rede interna, com o cookie de sessão sem `Secure` (ADR 0050).
   Isso não serve para expor o sistema na internet.
+- ⚠️ A senha do admin é a padrão `admin@123` e não tem troca obrigatória: quem conhece o projeto e
+  alcança o servidor entra como admin.
 - ⚠️ Não há backup automático do volume do Postgres; fica a cargo de quem opera o servidor.

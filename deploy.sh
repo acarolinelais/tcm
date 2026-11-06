@@ -28,8 +28,8 @@ POSTGRES_USER=tcm
 POSTGRES_PASSWORD=$(aleatorio 24)
 
 JWT_SECRET_KEY=$(aleatorio 32)
-BOOTSTRAP_ADMIN_SENHA=$(aleatorio 6)
-SENHA_INICIAL_USUARIOS=$(aleatorio 6)
+BOOTSTRAP_ADMIN_SENHA=admin@123
+SENHA_INICIAL_USUARIOS=tcm@123
 
 # Acesso por HTTP sem certificado (ADR 0050). Mude para true se o sistema passar a usar HTTPS.
 COOKIE_SECURE=false
@@ -68,7 +68,6 @@ echo "  Sistema:  http://$ip:$WEB_PORT"
 echo "  API docs: http://$ip:$API_PORT/docs"
 if [ "$primeira_vez" = true ]; then
   echo
-  echo "Login do admin:       admin@sdfmanager.com / $BOOTSTRAP_ADMIN_SENHA"
-  echo "Senha inicial do time: $SENHA_INICIAL_USUARIOS (troca obrigatória no primeiro acesso)"
-  echo "As senhas ficam em $ENV_FILE."
+  echo "Admin: admin@sdfmanager.com, senha $BOOTSTRAP_ADMIN_SENHA"
+  echo "Time:  senha inicial $SENHA_INICIAL_USUARIOS, trocada no primeiro acesso"
 fi
