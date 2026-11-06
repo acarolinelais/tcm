@@ -1,6 +1,7 @@
 import { render } from "@testing-library/react";
 import { expect, it } from "vitest";
 
+import { BarrasEmpilhadas } from "./BarrasEmpilhadas";
 import { BarrasHorizontais } from "./BarrasHorizontais";
 import { BarrasVerticais } from "./BarrasVerticais";
 import { BurndownChart } from "./BurndownChart";
@@ -16,6 +17,8 @@ it.each([
   ["barras verticais", <BarrasVerticais key="v" titulo="Criação" dados={[{ nome: "Clock", valor: 0.5 }]} />],
   ["lollipop", <LollipopChart key="l" titulo="Semana" dados={[{ nome: "2026-11-02", valor: 2 }]} />],
   ["donut", <DonutDone key="d" titulo="Done" concluidos={3} total={4} />],
+  ["barras empilhadas", <BarrasEmpilhadas key="e" titulo="Andamento" dados={[{ id: "t1", nome: "QA", aFazer: 1, emAndamento: 2, concluidos: 3 }]} />],
+  ["barras com rótulo", <BarrasHorizontais key="r" titulo="Done" dados={[{ nome: "Clock", valor: 44, rotulo: "4 (44%)" }]} maximo={100} />],
 ])("o gráfico de %s monta sem erro", (_, grafico) => {
   expect(() => render(grafico)).not.toThrow();
 });

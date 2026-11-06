@@ -48,7 +48,8 @@ https://www.figma.com/design/Klnf2iLbJVqC3X09ammwyL/Test-Case-Manager?node-id=25
   resultados `PASS` de cada modelo de dispositivo.
 - RN-09: Média de criação por dia: para cada projeto do escopo, os Test Cases criados nos últimos 30 dias,
   divididos por 30.
-- RN-10: Finalizados por dev: para cada pessoa do time, quantos Test Cases em que ela é a responsável principal
+- RN-10: Finalizados por dev: para cada pessoa do time com o perfil Developer (ajuste de 2026-11-06: KP e
+  gerente ficam fora), quantos Test Cases em que ela é a responsável principal
   estão `Done`, desde sempre.
 - RN-11: Finalizados por semana: quantos Test Cases do escopo entraram em `Done` em cada uma das últimas 12 semanas.
 - RN-12: Done por projeto: uma barra para cada projeto do escopo, com a porcentagem dos seus Test Cases que está

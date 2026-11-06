@@ -49,6 +49,28 @@ class DoneProjetoResponse(BaseModel):
     projeto: str
     concluidos: int
     total: int
+    em_andamento: int  # Spec 064, RN-12: os cards do projeto escolhido pelo admin.
+
+
+class AndamentoResponse(BaseModel):
+    id: UUID  # Do time ou do setor.
+    nome: str
+    a_fazer: int
+    em_andamento: int
+    concluidos: int
+
+
+class EmCorrecaoProjetoResponse(BaseModel):
+    projeto_id: UUID
+    projeto: str
+    em_correcao: int
+
+
+class PassRateProjetoResponse(BaseModel):
+    projeto_id: UUID
+    projeto: str
+    aprovados: int  # Resultados PASS na rodada mais recente, somando os modelos.
+    total: int
 
 
 class OverviewTimeResponse(BaseModel):
@@ -57,6 +79,11 @@ class OverviewTimeResponse(BaseModel):
     concluidos_por_dev: list[ConcluidosDevResponse]
     concluidos_por_semana: list[ConcluidosSemanaResponse]
     done_por_projeto: list[DoneProjetoResponse]
+    # Spec 064: gerente e admin.
+    andamento_por_time: list[AndamentoResponse]
+    andamento_por_setor: list[AndamentoResponse]
+    em_correcao_por_projeto: list[EmCorrecaoProjetoResponse]  # Só projetos com 1 ou mais.
+    pass_rate_por_projeto: list[PassRateProjetoResponse]  # Só projetos com rodada.
 
 
 # Spec 063: projeto escolhido (burndown e Pass Rate) e visão pessoal.
@@ -90,9 +117,20 @@ class EntregasDiaResponse(BaseModel):
     concluidos: int
 
 
+class ProjetoPessoalResponse(BaseModel):
+    projeto_id: UUID
+    projeto: str
+    app: str
+    concluidos: int
+    em_andamento: int
+    atribuidos: int
+
+
 class OverviewPessoalResponse(BaseModel):
     concluidos: int
     atribuidos: int
     por_dificuldade: dict[str, int]  # Low, Medium e High, sempre os três.
     entregas_por_dia: list[EntregasDiaResponse]
     entregas_por_semana: list[ConcluidosSemanaResponse]
+    # Spec 064, RN-12: os cards do dev, por projeto em que é o responsável principal.
+    projetos: list[ProjetoPessoalResponse]

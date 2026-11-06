@@ -4,20 +4,24 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from src.application.schemas.overview import (
+    AndamentoResponse,
     ConcluidosDevResponse,
     ConcluidosSemanaResponse,
     CriacaoProjetoResponse,
     DoneProjetoResponse,
+    EmCorrecaoProjetoResponse,
     EntregasDiaResponse,
     OverviewPessoalResponse,
     OverviewProjetoResponse,
     OverviewResponse,
     OverviewTimeResponse,
     PassRateModeloResponse,
+    PassRateProjetoResponse,
     PassRateResponse,
     PontoBurndownResponse,
     PontoDesempenhoResponse,
     ProjetoOverviewResponse,
+    ProjetoPessoalResponse,
 )
 from src.application.validators.semana import fuso_horario_valido
 from src.domain.common.exceptions import NotFoundException
@@ -26,7 +30,12 @@ from src.domain.entities.caso_teste import DificuldadeCasoTeste
 from src.domain.entities.interfaces.overview_repository import OverviewRepository
 from src.domain.entities.interfaces.projeto_repository import ProjetoRepository
 from src.domain.entities.interfaces.time_repository import TimeRepository
-from src.domain.queries.resumo_overview import EscopoOverview, ResumoOverview, ResumoTime
+from src.domain.queries.resumo_overview import (
+    Andamento,
+    EscopoOverview,
+    ResumoOverview,
+    ResumoTime,
+)
 
 MESES_DE_DESEMPENHO = 6
 # Spec 063, RN-03: os gráficos por dia mostram 30 dias, e os por semana, 12 semanas.
@@ -57,6 +66,16 @@ def linha_planejada(dias: list[date], inicio: int) -> list[int]:
             restante = max(restante - META_DIARIA, 0)
         linha.append(restante)
     return linha
+
+
+def _andamento(andamento: Andamento) -> AndamentoResponse:
+    return AndamentoResponse(
+        id=andamento.id,
+        nome=andamento.nome,
+        a_fazer=andamento.a_fazer,
+        em_andamento=andamento.em_andamento,
+        concluidos=andamento.concluidos,
+    )
 
 
 class OverviewServiceImpl:
@@ -153,10 +172,33 @@ class OverviewServiceImpl:
             ],
             done_por_projeto=[
                 DoneProjetoResponse(
-                    projeto_id=p.id, projeto=p.nome, concluidos=concluidos, total=total
+                    projeto_id=p.id,
+                    projeto=p.nome,
+                    concluidos=concluidos,
+                    total=total,
+                    em_andamento=resumo.em_andamento_por_projeto.get(p.id, 0),
                 )
                 for p in projetos
                 for concluidos, total in [resumo.done_por_projeto.get(p.id, (0, 0))]
+            ],
+            andamento_por_time=[_andamento(a) for a in resumo.andamento_por_time],
+            andamento_por_setor=[_andamento(a) for a in resumo.andamento_por_setor],
+            em_correcao_por_projeto=[
+                EmCorrecaoProjetoResponse(
+                    projeto_id=p.id,
+                    projeto=p.nome,
+                    em_correcao=resumo.em_correcao_por_projeto[p.id],
+                )
+                for p in projetos
+                if p.id in resumo.em_correcao_por_projeto
+            ],
+            pass_rate_por_projeto=[
+                PassRateProjetoResponse(
+                    projeto_id=p.id, projeto=p.nome, aprovados=aprovados, total=total
+                )
+                for p in projetos
+                if (aprovados_total := resumo.pass_rate_por_projeto.get(p.id))
+                for aprovados, total in [aprovados_total]
             ],
         )
 
@@ -234,6 +276,17 @@ class OverviewServiceImpl:
                     semana=segunda.isoformat(), concluidos=por_semana.get(segunda, 0)
                 )
                 for segunda in semanas
+            ],
+            projetos=[
+                ProjetoPessoalResponse(
+                    projeto_id=p.projeto_id,
+                    projeto=p.projeto,
+                    app=p.app,
+                    concluidos=p.concluidos,
+                    em_andamento=p.em_andamento,
+                    atribuidos=p.atribuidos,
+                )
+                for p in resumo.por_projeto
             ],
         )
 
