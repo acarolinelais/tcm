@@ -89,6 +89,8 @@ sem paginação, também pagina ([ADR 0039](../adr/0039-resultados-gerais-com-pa
 | 060 | Importação do relatório SDF no formato novo (SDF ID no nome do arquivo, device e data no cabeçalho, descrição no resultado) | Em andamento (integração do backend pendente) |
 | 061 | Sessão entre abas (refresh token em cookie httpOnly, sessão de 10 horas, ADRs 0047 e 0048) | Concluída |
 | 062 | Esconder a prévia da planilha na importação (botão Hide preview / Show preview) | Concluída (validação manual no navegador pendente) |
+| 063 | Overview com gráficos para KP e dev (burndown, Pass Rate, entregas por dia e semana; Recharts, ADR 0051) | Em andamento (integração do backend e ajuste visual pelo protótipo pendentes) |
+| 064 | Overview com gráficos para gerente e admin (andamento por time e por setor, retrabalho, finalizados por semana) | Rascunho (spec.md) |
 
 > As duas specs 012 foram criadas em paralelo. Os diretórios e históricos foram preservados nesta integração; a harmonização da numeração está registrada no backlog da spec de perfil Dev.
 

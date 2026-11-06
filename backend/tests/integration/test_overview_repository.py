@@ -1,14 +1,18 @@
 import json
 import os
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
 import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from src.domain.queries.resumo_overview import EscopoOverview
+from src.domain.entities.execucao_sdf import ExecucaoSdf
+from src.domain.queries.resumo_overview import EscopoOverview, ResumoPessoal, ResumoTime
 from src.infrastructure.data.auditoria import usuario_auditoria
+from src.infrastructure.data.models.projeto_model import ProjetoModel
+from src.infrastructure.data.models.time_membro_model import TimeMembroModel
+from src.infrastructure.repositories.execucao_sdf_repository import ExecucaoSdfRepositoryImpl
 from src.infrastructure.repositories.overview_repository import OverviewRepositoryImpl
 from tests.integration.test_resultado_form_factor_repository import _Cenario
 
@@ -153,3 +157,272 @@ async def test_resumir_nao_conta_outra_unidade(cenario):
     resumo = await _resumir(cenario, EscopoOverview(), unidade_id=uuid4())
 
     assert (resumo.total, resumo.concluidos_por_mes) == (0, {})
+
+
+# Spec 063: gráficos do escopo de times.
+
+
+async def _resumir_time(cenario, escopo=None, desde=DESDE):
+    escopo = escopo or EscopoOverview(time_ids=(cenario.time_id,))
+    return await OverviewRepositoryImpl(cenario.session).resumir_time(
+        cenario.unidade_id, escopo, desde, desde, "UTC"
+    )
+
+
+async def _membros(cenario, *usuarios):
+    for usuario_id in usuarios:
+        cenario.session.add(
+            TimeMembroModel(
+                id=uuid4(),
+                unidade_id=cenario.unidade_id,
+                time_id=cenario.time_id,
+                usuario_id=usuario_id,
+            )
+        )
+    await cenario.session.flush()
+
+
+@pytest.mark.asyncio
+async def test_resumir_time_lista_os_projetos_ativos_em_ordem_alfabetica(cenario):
+    for nome, ativo in (("Alarm 2.0", True), ("Zeta 1.0", False)):
+        cenario.session.add(
+            ProjetoModel(
+                id=uuid4(),
+                unidade_id=cenario.unidade_id,
+                time_id=cenario.time_id,
+                nome=nome,
+                app=nome.split()[0],
+                one_ui="9.5",
+                ativo=ativo,
+            )
+        )
+    await cenario.session.flush()
+
+    resumo = await _resumir_time(cenario)
+
+    assert [projeto.nome for projeto in resumo.projetos] == ["Alarm 2.0", "Clock 9.5"]
+
+
+@pytest.mark.asyncio
+async def test_resumir_time_criacao_conta_so_os_criados_desde_o_dia(cenario):
+    antigo = await cenario.caso("Clock_001")
+    await cenario.caso("Clock_002")
+    await cenario.caso("Clock_003")
+    await cenario.session.execute(
+        text("UPDATE casos_teste SET created_at = :quando WHERE id = :id"),
+        {"quando": datetime(2025, 4, 1, tzinfo=UTC), "id": antigo},
+    )
+
+    resumo = await _resumir_time(cenario)
+
+    assert resumo.criados_por_projeto == {cenario.projeto_id: 2}
+
+
+@pytest.mark.asyncio
+async def test_resumir_time_concluidos_por_dev_ignora_backup_e_mostra_quem_tem_zero(cenario):
+    await _membros(cenario, cenario.ana, cenario.bia)
+    for i in range(3):
+        await cenario.caso(f"Clock_{i:03}", status="Done", backup_id=cenario.bia)
+    await cenario.caso("Clock_010", status="InProgress", responsavel_id=cenario.bia)
+
+    resumo = await _resumir_time(cenario)
+
+    por_dev = [(dev.nome, dev.concluidos) for dev in resumo.concluidos_por_dev]
+    assert por_dev == [("Ana", 3), ("Bia", 0)]
+
+
+@pytest.mark.asyncio
+async def test_resumir_time_concluidos_por_semana_usa_a_ultima_entrada_em_done(cenario):
+    primeiro = await cenario.caso("Clock_001")
+    segundo = await cenario.caso("Clock_002")
+    # Quarta 3/9 e, de novo, quarta 10/9: vale só a semana de 8/9.
+    await _entrou_em_done(cenario, primeiro, datetime(2025, 9, 3, 12, tzinfo=UTC))
+    await _entrou_em_done(cenario, primeiro, datetime(2025, 9, 10, 12, tzinfo=UTC))
+    await _entrou_em_done(cenario, segundo, datetime(2025, 9, 14, 12, tzinfo=UTC))
+    # Antes de `desde` não entra.
+    terceiro = await cenario.caso("Clock_003")
+    await _entrou_em_done(cenario, terceiro, datetime(2025, 4, 30, 12, tzinfo=UTC))
+
+    resumo = await _resumir_time(cenario)
+
+    assert resumo.concluidos_por_semana == {"2025-09-08": 2}
+
+
+@pytest.mark.asyncio
+async def test_resumir_time_done_por_projeto_ignora_excluded(cenario):
+    statuses = ["Done"] * 4 + ["To-Do"] * 3 + ["InFixes", "InReview", "Cancelled"]
+    for i, status in enumerate(statuses):
+        await cenario.caso(f"Clock_{i:03}", status=status)
+
+    resumo = await _resumir_time(cenario)
+
+    assert resumo.done_por_projeto == {cenario.projeto_id: (4, 9)}
+
+
+@pytest.mark.asyncio
+async def test_falha_resumir_time_fora_do_escopo_nao_mostra_nada(cenario):
+    await _membros(cenario, cenario.ana)
+    caso_id = await cenario.caso("Clock_001", status="Done")
+    await _entrou_em_done(cenario, caso_id, datetime(2025, 9, 3, tzinfo=UTC))
+
+    resumo = await _resumir_time(cenario, EscopoOverview(time_ids=(uuid4(),)))
+
+    assert resumo == ResumoTime()
+
+
+# Spec 063: burndown, Pass Rate e visão pessoal.
+
+
+@pytest.mark.asyncio
+async def test_burndown_executado_conta_o_que_nao_estava_em_done_no_fim_de_cada_dia(cenario):
+    agora = datetime.now(UTC)
+    await cenario.caso("Clock_001", status="Done")
+    depois = await cenario.caso("Clock_002", status="InValidation")
+    await cenario.caso("Clock_003", status="To-Do")
+    await cenario.caso("Clock_004", status="Cancelled")
+    # Clock_002 entra em Done daqui a 2 dias: até lá, ainda conta como não Done.
+    await _entrou_em_done(cenario, depois, agora + timedelta(days=2))
+    # Antes de qualquer caso existir, nada conta.
+    fins = [datetime(2025, 1, 1, tzinfo=UTC), agora + timedelta(days=1), agora + timedelta(days=3)]
+
+    executado = await OverviewRepositoryImpl(cenario.session).burndown_executado(
+        cenario.unidade_id, cenario.projeto_id, fins
+    )
+
+    assert executado == [0, 2, 1]
+
+
+@pytest.mark.asyncio
+async def test_burndown_caso_anterior_a_auditoria_usa_o_status_que_a_mudanca_substituiu(cenario):
+    # Simula um caso criado antes da auditoria (ADR 0044): a primeira mudança registrada é a
+    # ida para Done em 01/07/2025, e o caso já existia em 01/06.
+    caso_id = await cenario.caso("Clock_001", status="InValidation")
+    await cenario.session.execute(
+        text("UPDATE casos_teste SET created_at = :quando WHERE id = :id"),
+        {"quando": datetime(2025, 1, 1), "id": caso_id},
+    )
+    await cenario.session.execute(
+        text(
+            "INSERT INTO auditoria_alteracoes (unidade_id, table_name, operation, row_id, "
+            "old_values, new_values, changed_fields, origem, created_at) "
+            "VALUES (:u, 'casos_teste', 'UPDATE', :id, CAST(:velho AS JSONB), "
+            "CAST(:novo AS JSONB), ARRAY['status'], 'api', :quando)"
+        ),
+        {
+            "u": cenario.unidade_id,
+            "id": caso_id,
+            "velho": json.dumps({"status": "InValidation"}),
+            "novo": json.dumps({"status": "Done"}),
+            "quando": datetime(2025, 7, 1, tzinfo=UTC),
+        },
+    )
+    # O INSERT gravado agora pelo trigger fica depois dos dois dias consultados.
+    await cenario.session.execute(
+        text("UPDATE casos_teste SET status = 'Done' WHERE id = :id"), {"id": caso_id}
+    )
+    fins = [datetime(2025, 6, 1, tzinfo=UTC), datetime(2025, 8, 1, tzinfo=UTC)]
+
+    executado = await OverviewRepositoryImpl(cenario.session).burndown_executado(
+        cenario.unidade_id, cenario.projeto_id, fins
+    )
+
+    assert executado == [1, 0]
+
+
+@pytest.mark.asyncio
+async def test_falha_burndown_de_outro_projeto_fica_zerado(cenario):
+    await cenario.caso("Clock_001", status="To-Do")
+    fim = datetime.now(UTC) + timedelta(days=1)
+
+    executado = await OverviewRepositoryImpl(cenario.session).burndown_executado(
+        cenario.unidade_id, uuid4(), [fim]
+    )
+
+    assert executado == [0]
+
+
+async def _execucao_na_rodada(cenario, rodada, caso_id, resultados):
+    execucao = ExecucaoSdf(
+        cenario.unidade_id,
+        None,
+        caso_id,
+        "SDF-1",
+        rodada.created_at,
+        "9.5",
+        origem="MANUAL",
+        rodada_id=rodada.id,
+    )
+    await ExecucaoSdfRepositoryImpl(cenario.session).adicionar(execucao)
+    await cenario.session.flush()
+    await cenario.registrar(execucao, resultados)
+
+
+@pytest.mark.asyncio
+async def test_pass_rate_usa_so_a_rodada_mais_recente(cenario):
+    _, execucao = await cenario.rodada(
+        await cenario.caso("Clock_001"), "SDF-0", datetime(2025, 9, 1, tzinfo=UTC)
+    )
+    await cenario.registrar(execucao, {cenario.s26: "FAIL", cenario.s25: "FAIL"})
+    recente, execucao = await cenario.rodada(
+        await cenario.caso("Clock_002"), "SDF-1", datetime(2025, 10, 1, tzinfo=UTC)
+    )
+    await cenario.registrar(execucao, {cenario.s26: "PASS", cenario.s25: "FAIL"})
+    for i, resultado in enumerate(("PASS", "PASS", "FAIL")):
+        await _execucao_na_rodada(
+            cenario, recente, await cenario.caso(f"Clock_1{i:02}"), {cenario.s26: resultado}
+        )
+
+    pass_rate = await OverviewRepositoryImpl(cenario.session).pass_rate_ultima_rodada(
+        cenario.unidade_id, cenario.projeto_id
+    )
+
+    # Com a rodada antiga junto, o S26 daria 3 de 5.
+    assert [(m.modelo, m.aprovados, m.total) for m in pass_rate.modelos] == [
+        ("SAMSUNG S25", 0, 1),
+        ("SAMSUNG S26", 3, 4),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_falha_pass_rate_sem_rodada_e_nulo(cenario):
+    await cenario.caso("Clock_001")
+
+    pass_rate = await OverviewRepositoryImpl(cenario.session).pass_rate_ultima_rodada(
+        cenario.unidade_id, cenario.projeto_id
+    )
+
+    assert pass_rate is None
+
+
+@pytest.mark.asyncio
+async def test_resumir_pessoal_conta_so_os_casos_em_que_e_principal(cenario):
+    for i, (dificuldade, status) in enumerate(
+        (("Low", "Done"), ("Low", "To-Do"), ("High", "Done"), ("Medium", "Cancelled"))
+    ):
+        caso_id = await cenario.caso(f"Clock_{i:03}", status=status, responsavel_id=cenario.bia)
+        await cenario.session.execute(
+            text("UPDATE casos_teste SET difficulty = :d WHERE id = :id"),
+            {"d": dificuldade, "id": caso_id},
+        )
+    # Ser Backup não conta.
+    await cenario.caso("Clock_010", status="Done", backup_id=cenario.bia)
+
+    resumo = await OverviewRepositoryImpl(cenario.session).resumir_pessoal(
+        cenario.unidade_id, cenario.bia, DESDE, "UTC"
+    )
+
+    assert (resumo.concluidos, resumo.atribuidos) == (2, 3)
+    assert resumo.por_dificuldade == {"Low": 2, "High": 1}
+    # Os dois criados já em Done entram hoje, pelo INSERT do trigger.
+    assert resumo.concluidos_por_dia == {datetime.now(UTC).strftime("%Y-%m-%d"): 2}
+
+
+@pytest.mark.asyncio
+async def test_falha_resumir_pessoal_de_outra_unidade_fica_vazio(cenario):
+    await cenario.caso("Clock_001", status="Done", responsavel_id=cenario.bia)
+
+    resumo = await OverviewRepositoryImpl(cenario.session).resumir_pessoal(
+        uuid4(), cenario.bia, DESDE, "UTC"
+    )
+
+    assert resumo == ResumoPessoal()

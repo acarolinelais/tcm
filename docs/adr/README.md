@@ -62,3 +62,4 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0048](0048-sessao-de-dez-horas.md) | Sessão de 10 horas a partir do login (substitui em parte o 0020) | Aceito |
 | [0049](0049-deploy-com-docker-compose.md) | Deploy em servidor com Docker Compose e deploy.sh | Aceito |
 | [0050](0050-cookie-de-refresh-sem-secure-por-configuracao.md) | Cookie de refresh sem `Secure` por configuração (substitui em parte o 0047) | Aceito |
+| [0051](0051-recharts-para-graficos.md) | Recharts para os gráficos do frontend | Aceito |

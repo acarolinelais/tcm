@@ -112,6 +112,8 @@
   --chart-1: #5588f5;     /* série principal dos gráficos do overview */
   --chart-2: #c9daff;
   --chart-3: #b9c4e8;
+  --chart-4: #d97706;     /* segunda série com significado (ADR 0051): 3,2:1 sobre o branco */
+  --chart-5: #15803d;     /* terceira série com significado: 5,0:1 sobre o branco */
 }
 
 :root.dark {
@@ -127,6 +129,8 @@
   --chart-1: #0a84ff;
   --chart-2: #5e5ce6;
   --chart-3: #8e8e93;               /* systemGray: 5,1:1 sobre o cartão (gráfico com significado pede ≥ 3:1) */
+  --chart-4: #ff9f0a;               /* systemOrange */
+  --chart-5: #30d158;               /* systemGreen */
 }
 
 /* Login e troca de senha (ajuste de 2026-11-03, Figma login claro e escuro): só a moldura de entrada lê estes tokens;
@@ -371,6 +375,8 @@
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
   --color-status-todo: var(--status-todo);
   --color-status-todo-bg: var(--status-todo-bg);
   --color-status-todo-fg: var(--status-todo-fg);

@@ -283,7 +283,9 @@ async def get_auditoria_service(
 async def get_overview_service(
     session: AsyncSession = Depends(get_session),
 ) -> OverviewServiceImpl:
-    return OverviewServiceImpl(OverviewRepositoryImpl(session))
+    return OverviewServiceImpl(
+        OverviewRepositoryImpl(session), ProjetoRepositoryImpl(session), TimeRepositoryImpl(session)
+    )
 
 
 async def get_modelo_dispositivo_service(
