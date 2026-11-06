@@ -53,7 +53,7 @@ endereço e o login do admin (`admin@sdfmanager.com`). As senhas ficam guardadas
 | Serviço | Endereço |
 |---|---|
 | Sistema | `http://<servidor>:5173` |
-| API (Scalar) | `http://<servidor>:8080/scalar` |
+| API (Swagger) | `http://<servidor>:8080/docs` |
 | Postgres | `127.0.0.1:5544`, só no próprio servidor |
 
 - **Atualizar:** `git pull && bash deploy.sh`. Os dados ficam no volume `tcm-servidor_postgres-data`.

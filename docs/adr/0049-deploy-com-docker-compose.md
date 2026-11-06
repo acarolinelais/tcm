@@ -24,7 +24,7 @@ na 5432, então o deploy não pode ocupar essas portas.
 | Serviço | Imagem | Porta no servidor |
 |---|---|---|
 | `web` | nginx com o build do frontend; encaminha `/api` para a API | `5173` |
-| `api` | Python 3.13 com `uv sync --frozen --no-dev` | `8080` (Scalar em `/scalar`) |
+| `api` | Python 3.13 com `uv sync --frozen --no-dev` | `8080` (Swagger em `/docs`) |
 | `postgres` | `postgres:18-alpine` com volume nomeado | `127.0.0.1:5544`, só no próprio servidor |
 
 - As portas são configuráveis em `deploy/.env` (`WEB_PORT`, `API_PORT`, `POSTGRES_HOST_PORT`).

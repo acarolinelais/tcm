@@ -65,7 +65,7 @@ ip=${ip:-localhost}
 echo
 echo "TCM no ar:"
 echo "  Sistema:  http://$ip:$WEB_PORT"
-echo "  API docs: http://$ip:$API_PORT/scalar"
+echo "  API docs: http://$ip:$API_PORT/docs"
 if [ "$primeira_vez" = true ]; then
   echo
   echo "Login do admin:       admin@sdfmanager.com / $BOOTSTRAP_ADMIN_SENHA"
