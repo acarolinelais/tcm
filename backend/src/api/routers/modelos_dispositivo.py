@@ -6,7 +6,6 @@ from src.api.dependencies import get_modelo_dispositivo_service, get_usuario_atu
 from src.application.schemas.modelo_dispositivo import (
     AtualizarModeloDispositivoRequest,
     CriarModeloDispositivoRequest,
-    ModeloDispositivoOpcaoResponse,
     ModeloDispositivoResponse,
 )
 from src.application.services.interfaces.modelo_dispositivo_service import ModeloDispositivoService
@@ -26,17 +25,6 @@ async def listar(
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
     return await service.listar(usuario_atual, page, page_size, ativo, busca)
-
-
-@router.get("/opcoes", response_model=PagedResult[ModeloDispositivoOpcaoResponse])
-async def listar_opcoes(
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
-    busca: str | None = Query(None, max_length=120),
-    service: ModeloDispositivoService = Depends(get_modelo_dispositivo_service),
-    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
-):
-    return await service.listar_opcoes(usuario_atual, page, page_size, busca)
 
 
 @router.post("", response_model=ModeloDispositivoResponse, status_code=201)

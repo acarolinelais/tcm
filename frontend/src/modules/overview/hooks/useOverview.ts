@@ -1,7 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { overviewApi } from "../api/overview.api";
+import { fetchOverviewMock } from "../api/overview.mock";
 
 export function useOverview() {
-  return useQuery({ queryKey: ["overview"], queryFn: overviewApi.obter });
+  return useQuery({
+    queryKey: ["overview", "mock"],
+    queryFn: fetchOverviewMock,
+  });
 }

@@ -1,6 +1,6 @@
 # 0020. Sessões JWT e refresh token rotativo
 
-- **Status:** Aceito; armazenamento dos tokens no frontend substituído por [0047](0047-refresh-token-em-cookie-httponly.md); validade do refresh token substituída por [0048](0048-sessao-de-dez-horas.md)
+- **Status:** Aceito
 - **Data:** 2026-10-23
 - **ADRs relacionados:** 0013, 0014, 0018, 0019
 

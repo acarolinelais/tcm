@@ -1,1 +1,0 @@
-export { modelosDispositivoRoutes } from "./routes";

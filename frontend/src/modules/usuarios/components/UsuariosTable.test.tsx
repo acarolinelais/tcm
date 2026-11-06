@@ -1,22 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { baixarPlanilha, montarPlanilha } from "@/shared/lib/exportar-planilha";
-import { usuarioApi } from "../api/usuario.api";
 import { UsuariosTable } from "./UsuariosTable";
 
-const apiMocks = vi.hoisted(() => ({ useUsuariosList: vi.fn(), listarPerfis: vi.fn(), ativar: vi.fn(), inativar: vi.fn(), redefinir: vi.fn() }));
-vi.mock("../hooks/useUsuarios", () => ({
-  useUsuariosList: apiMocks.useUsuariosList,
-  useAtivarUsuario: () => ({ mutate: apiMocks.ativar, isPending: false }),
-  useInativarUsuario: () => ({ mutate: apiMocks.inativar, isPending: false }),
-  useAtribuirResponsavel: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  useRedefinirSenha: () => ({ mutate: apiMocks.redefinir, isPending: false }),
-}));
+const apiMocks = vi.hoisted(() => ({ useUsuariosList: vi.fn(), listarPerfis: vi.fn() }));
+vi.mock("../hooks/useUsuarios", () => ({ useUsuariosList: apiMocks.useUsuariosList }));
 vi.mock("@/modules/perfis/api/perfis.api", () => ({ listarPerfis: apiMocks.listarPerfis }));
-vi.mock("@/shared/lib/exportar-planilha");
 
 function renderTable(props: Partial<React.ComponentProps<typeof UsuariosTable>> = {}) {
   const client = new QueryClient();
@@ -82,7 +73,7 @@ describe("UsuariosTable", () => {
 
     await screen.findByText("Usuário 0");
     await user.click(screen.getByRole("button", { name: "Filter by Status" }));
-    await user.click(await screen.findByRole("option", { name: "Inactive" }));
+    await user.click(screen.getByRole("menuitemradio", { name: "Inactive" }));
 
     expect(onFiltroChange).toHaveBeenCalledWith("ativo", "false");
   });
@@ -120,7 +111,7 @@ describe("UsuariosTable", () => {
     });
     renderTable({ podeAtribuirPerfilKP: true, podeConsultarPerfil: true });
 
-    expect(await screen.findByRole("row", { name: /Ana/ })).toHaveTextContent(/Ana.*ana@example.com.*Active.*Auditoria/);
+    expect(await screen.findByRole("row", { name: /Ana ana@example.com Active Auditoria/ })).toBeInTheDocument();
   });
 
   it("não exibe o perfil atribuído sem a permissão de consulta", async () => {
@@ -147,75 +138,5 @@ describe("UsuariosTable", () => {
     expect(await screen.findByText("Ana")).toBeInTheDocument();
     expect(screen.queryByText("Auditoria")).not.toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "Profile" })).not.toBeInTheDocument();
-  });
-
-  it("mostra as ações como botões da linha e pede confirmação antes de inativar", async () => {
-    const user = userEvent.setup();
-    renderTable({ podeGerenciar: true, podeAtribuirPerfil: true });
-
-    await screen.findByText("Usuário 0");
-    expect(screen.getByRole("button", { name: "Edit Usuário 0" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Change responsible manager Usuário 0" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Deactivate Usuário 0" }));
-    expect(apiMocks.inativar).not.toHaveBeenCalled();
-    await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: /Deactivate/ }));
-
-    expect(apiMocks.inativar).toHaveBeenCalledWith("0", expect.anything());
-  });
-
-  it("admin redefine a senha de outra pessoa e vê a senha padrão, mas não na própria linha", async () => {
-    const user = userEvent.setup();
-    apiMocks.redefinir.mockImplementation((_id, { onSuccess, onSettled }) => { onSuccess({ senha_padrao: "tcm@123" }); onSettled(); });
-    renderTable({ podeGerenciar: true, podeAtribuirPerfil: true, podeRedefinirSenha: true, usuarioAtualId: "0" });
-
-    await screen.findByText("Usuário 0");
-    expect(screen.queryByRole("button", { name: "Reset password Usuário 0" })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Reset password Usuário 1" }));
-    expect(apiMocks.redefinir).not.toHaveBeenCalled();
-    await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Reset password" }));
-
-    expect(apiMocks.redefinir).toHaveBeenCalledWith("1", expect.anything());
-    const aviso = await screen.findByRole("alertdialog");
-    expect(within(aviso).getByText(/tcm@123/)).toBeInTheDocument();
-    expect(within(aviso).queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
-  });
-
-  it("sem ser admin, a ação Redefinir senha não aparece", async () => {
-    renderTable({ podeGerenciar: true, usuarioAtualId: "x" });
-
-    await screen.findByText("Usuário 0");
-    expect(screen.queryByRole("button", { name: /Reset password/ })).not.toBeInTheDocument();
-  });
-
-  it("mostra o estado de erro quando a listagem falha", async () => {
-    apiMocks.useUsuariosList.mockReturnValue({ data: undefined, isLoading: false, isError: true });
-    renderTable();
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("Could not load users. Try again.");
-  });
-
-  it("exportar todos busca as páginas com os filtros aplicados e leva as colunas sem a de ações", async () => {
-    const todos = Array.from({ length: 3 }, (_, i) => ({ id: `t${i}`, nome: `Todos ${i}`, email: `t${i}@example.com`, ativo: false, perfil_id: "custom", created_at: "2026-01-01T00:00:00Z" }));
-    const listar = vi.spyOn(usuarioApi, "listar").mockResolvedValue({ items: todos, page: 1, page_size: 100, total_count: 3 });
-    renderTable({ filtros: { ativo: false }, podeGerenciar: true });
-    const user = userEvent.setup();
-
-    await screen.findByText("Usuário 0");
-    await user.click(screen.getByRole("button", { name: "Export" }));
-    await user.click(await screen.findByRole("menuitem", { name: "All items" }));
-
-    await vi.waitFor(() => expect(baixarPlanilha).toHaveBeenCalledWith(expect.any(ArrayBuffer), expect.stringMatching(/^usuarios_/)));
-    expect(listar).toHaveBeenCalledWith(1, 100, { ativo: false });
-    const [colunas, itens] = vi.mocked(montarPlanilha).mock.calls[0];
-    expect(colunas.map((coluna) => coluna.titulo)).toEqual(["User", "Email", "Status"]);
-    expect(itens).toEqual(todos);
-    expect(colunas[2].valor(todos[0])).toBe("Inactive");
-  });
-
-  it("sem usuários, o botão Exportar fica desabilitado", async () => {
-    apiMocks.useUsuariosList.mockReturnValue({ data: { items: [], page: 1, page_size: 20, total_count: 0 }, isLoading: false });
-    renderTable();
-
-    expect(await screen.findByRole("button", { name: "Export" })).toBeDisabled();
   });
 });

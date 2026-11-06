@@ -1,6 +1,6 @@
 # 0027. Fluxo de branches (`main` + `dev`) e convenção de commits
 
-- **Status:** Aceito; proibição de commit direto na `dev` substituída por [0035](0035-commits-diretos-na-dev.md)
+- **Status:** Aceito
 - **Data:** 2026-10-23
 
 ## Contexto

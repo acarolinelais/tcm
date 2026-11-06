@@ -1,6 +1,6 @@
 # 0009. Frontend React com arquitetura Modular e shadcn/ui
 
-- **Status:** Aceito; regra de base de UI (shadcn/ui) substituída por [0037](0037-heroui-como-base-de-ui.md)
+- **Status:** Aceito
 - **Data:** 2026-10-22
 
 ## Contexto

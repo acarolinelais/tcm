@@ -101,7 +101,7 @@ class TimeServiceImpl:
                 usuario_atual.unidade_id,
                 page,
                 page_size,
-                usuario_atual.times_no_escopo,
+                usuario_atual.times_gerenciados,
                 setor_id,
                 ativo,
                 busca,
@@ -192,17 +192,20 @@ class TimeServiceImpl:
         self, usuario_atual: UsuarioAutenticado, id: UUID
     ) -> list[TimeMembroResponse]:
         time = await self._obter_time(usuario_atual.unidade_id, id)
-        # Gerente: setor ou participação (ADR 0036). KP e Developer: participação, com a permissão.
-        gerente_no_escopo = (
-            usuario_atual.perfil_codigo == "GERENTE"
-            and usuario_atual.time_no_escopo(time.id, time.setor_id)
-        )
-        membro_que_consulta = (
-            usuario_atual.perfil_codigo in {"KP", "USUARIO_PADRAO"}
-            and usuario_atual.pode("times.consultar")
-            and time.id in usuario_atual.time_ids
-        )
-        if not (usuario_atual.eh_administrador or gerente_no_escopo or membro_que_consulta):
+        if (
+            not usuario_atual.eh_administrador
+            and time.setor_id not in usuario_atual.setores_gerenciados
+            and not (
+                usuario_atual.perfil_codigo == "KP"
+                and usuario_atual.pode("times.consultar")
+                and id in usuario_atual.time_ids
+            )
+            and not (
+                usuario_atual.perfil_codigo == "USUARIO_PADRAO"
+                and usuario_atual.pode("times.consultar")
+                and id in usuario_atual.time_ids
+            )
+        ):
             raise NotFoundException("Time não encontrado.")
         membros = await self._membro_repo.listar_por_time(usuario_atual.unidade_id, id)
         dados_usuario = await self._usuario_repo.dados_por_usuarios(

@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, ForeignKey, SmallInteger, String, UniqueConstraint, func
+from sqlalchemy import CheckConstraint, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.domain.entities.caso_teste import CasoTeste
@@ -17,21 +17,10 @@ class CasoTesteModel(Base):
     tc_id: Mapped[str] = mapped_column(String(CasoTeste.TC_ID_MAX_LENGTH), nullable=False)
     category: Mapped[str] = mapped_column(String(1), nullable=False)
     difficulty: Mapped[str] = mapped_column(String(10), nullable=False)
-    automation_level: Mapped[int | None] = mapped_column(SmallInteger)
     situation: Mapped[str] = mapped_column(String(20), nullable=False)
-    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    status: Mapped[str] = mapped_column(String(10), nullable=False)
     responsavel_id: Mapped[UUID] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
     backup_id: Mapped[UUID | None] = mapped_column(ForeignKey("usuarios.id"))
-    justificativa_exclusao: Mapped[str | None] = mapped_column(
-        String(CasoTeste.JUSTIFICATIVA_EXCLUSAO_MAX_LENGTH)
-    )
-    title: Mapped[str | None] = mapped_column(String(CasoTeste.TITLE_MAX_LENGTH))
-    precondition: Mapped[str | None] = mapped_column(String(CasoTeste.TEXTO_MAX_LENGTH))
-    procedure: Mapped[str | None] = mapped_column(String(CasoTeste.TEXTO_MAX_LENGTH))
-    expected_result: Mapped[str | None] = mapped_column(String(CasoTeste.TEXTO_MAX_LENGTH))
-    # Spec 065: gravadas pelo sistema, em UTC sem fuso.
-    code_done_em: Mapped[datetime | None] = mapped_column()
-    all_passed_em: Mapped[datetime | None] = mapped_column()
     ativo: Mapped[bool] = mapped_column(default=True, server_default="true", nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime | None] = mapped_column(onupdate=func.now())
@@ -43,16 +32,11 @@ class CasoTesteModel(Base):
             "difficulty IN ('Low', 'Medium', 'High')", name="ck_casos_teste_difficulty"
         ),
         CheckConstraint(
-            "automation_level IS NULL OR automation_level IN (1, 2, 3)",
-            name="ck_casos_teste_automation_level",
-        ),
-        CheckConstraint(
             "situation IN ('New', 'New Step', 'Without Changes')",
             name="ck_casos_teste_situation",
         ),
         CheckConstraint(
-            "status IN ('To-Do', 'InProgress', 'InReview', 'InValidation', 'Done', 'InFixes', "
-            "'Cancelled')",
+            "status IN ('To-Do', 'InProgress', 'InReview', 'Pass', 'Fail')",
             name="ck_casos_teste_status",
         ),
         CheckConstraint(

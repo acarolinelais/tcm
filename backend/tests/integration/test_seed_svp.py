@@ -1,15 +1,18 @@
 import importlib
 import os
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
 import sqlalchemy as sa
 from alembic import command
+from alembic.config import Config
 from alembic.operations import Operations
 from alembic.runtime.migration import MigrationContext
 from argon2 import PasswordHasher
 from dotenv import load_dotenv
 from sqlalchemy import select, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from src.infrastructure.data.models.perfil_model import PerfilModel
 from src.infrastructure.data.models.permissao_model import PerfilPermissaoModel
@@ -91,13 +94,6 @@ async def test_seed_svp_cria_usuarios_e_hierarquia_com_senha_inicial():
                 assert usuario.senha_hash is not None
                 assert hasher.verify(usuario.senha_hash, os.environ["SENHA_INICIAL_USUARIOS"])
 
-            ivan = por_email["ivan.moreira@sidia.com"][0]
-            assert all(
-                usuario.responsavel_id == ivan.id
-                for usuario, perfil in por_email.values()
-                if perfil.codigo in {"KP", "USUARIO_PADRAO"}
-            )
-
             setor = await session.scalar(
                 select(SetorModel).where(
                     SetorModel.unidade_id == unidade.id, SetorModel.nome.ilike("svp")
@@ -110,6 +106,7 @@ async def test_seed_svp_cria_usuarios_e_hierarquia_com_senha_inicial():
                 )
             )
             assert time is not None and time.setor_id == setor.id and time.ativo
+            ivan = por_email["ivan.moreira@sidia.com"][0]
             assert (
                 await session.scalar(
                     select(SetorGerenteModel.id).where(
@@ -392,122 +389,141 @@ async def test_seed_falha_se_faltar_configuracao_ou_perfil(precondicao, monkeypa
         await engine.dispose()
 
 
-def test_aplica_todas_as_migrations_e_semeia_a_organizacao_em_schema_vazio(schema_alembic):
+def test_aplica_todas_as_migrations_e_semeia_a_organizacao_em_schema_vazio(monkeypatch):
     assert os.environ.get("SENHA_INICIAL_USUARIOS")
-    config, schema_engine = schema_alembic.config, schema_alembic.engine
-    command.upgrade(config, "0ef76e2d9713")
+    base_url = make_url(os.environ["SDF_TEST_DATABASE_URL"])
+    schema = f"test_seed_from_zero_{uuid4().hex}"
+    admin_engine = sa.create_engine(base_url)
+    schema_engine = None
+    config = Config(str(Path(__file__).resolve().parents[2] / "alembic.ini"))
 
-    with schema_engine.connect() as connection:
-        admin_before = connection.execute(
-            sa.text(
-                "SELECT id::text, nome, email, perfil_id::text, auth_version "
-                "FROM usuarios WHERE email='admin@sdfmanager.com'"
-            )
-        ).one()
-        permissoes_antes = set(
-            connection.execute(
+    try:
+        with admin_engine.begin() as connection:
+            connection.execute(sa.text(f'CREATE SCHEMA "{schema}"'))
+
+        monkeypatch.setenv("DATABASE_URL", os.environ["SDF_TEST_DATABASE_URL"])
+        pgoptions = f"{os.environ.get('PGOPTIONS', '')} -c search_path={schema}".strip()
+        monkeypatch.setenv("PGOPTIONS", pgoptions)
+        schema_engine = sa.create_engine(base_url)
+        command.upgrade(config, "0ef76e2d9713")
+
+        with schema_engine.connect() as connection:
+            admin_before = connection.execute(
                 sa.text(
-                    "SELECT perfil_id::text, permissao_id FROM perfil_permissoes "
-                    "ORDER BY perfil_id, permissao_id"
+                    "SELECT id::text, nome, email, perfil_id::text, auth_version "
+                    "FROM usuarios WHERE email='admin@sdfmanager.com'"
                 )
-            ).all()
-        )
-
-    command.upgrade(config, "f1a2b3c4d5e6")
-
-    with schema_engine.connect() as connection:
-        assert (
-            connection.execute(sa.text("SELECT version_num FROM alembic_version")).scalar_one()
-            == "f1a2b3c4d5e6"
-        )
-        unidade_id = connection.execute(
-            sa.text("SELECT id FROM unidades WHERE nome='Manaus'")
-        ).scalar_one()
-        rows = (
-            connection.execute(
-                sa.text(
-                    "SELECT u.nome, u.email, u.user_id, p.codigo, u.senha_hash, "
-                    "u.senha_alteracao_obrigatoria, u.ativo FROM usuarios u "
-                    "JOIN perfis p ON p.id=u.perfil_id WHERE u.unidade_id=:unidade_id "
-                    "AND lower(u.email)=ANY(:emails)"
-                ),
-                {"unidade_id": unidade_id, "emails": [email.lower() for email in USUARIOS]},
+            ).one()
+            permissoes_antes = set(
+                connection.execute(
+                    sa.text(
+                        "SELECT perfil_id::text, permissao_id FROM perfil_permissoes "
+                        "ORDER BY perfil_id, permissao_id"
+                    )
+                ).all()
             )
-            .mappings()
-            .all()
-        )
-        assert len(rows) == len(USUARIOS)
-        by_email = {row["email"]: row for row in rows}
-        hasher = PasswordHasher()
-        for email, (nome, user_id, perfil_codigo) in USUARIOS.items():
-            user = by_email[email]
-            assert (user["nome"], user["user_id"], user["codigo"]) == (
-                nome,
-                user_id,
-                perfil_codigo,
-            )
-            assert user["ativo"] is True
-            assert user["senha_alteracao_obrigatoria"] is True
-            assert hasher.verify(user["senha_hash"], os.environ["SENHA_INICIAL_USUARIOS"])
 
-        setor_id = connection.execute(
-            sa.text("SELECT id FROM setores WHERE unidade_id=:unidade_id AND nome='SVP'"),
-            {"unidade_id": unidade_id},
-        ).scalar_one()
-        time_id = connection.execute(
-            sa.text(
-                "SELECT id FROM times WHERE unidade_id=:unidade_id "
-                "AND lower(nome)='sdf automation' AND setor_id=:setor_id"
-            ),
-            {"unidade_id": unidade_id, "setor_id": setor_id},
-        ).scalar_one()
-        assert (
-            connection.execute(
+        command.upgrade(config, "head")
+
+        with schema_engine.connect() as connection:
+            assert (
+                connection.execute(sa.text("SELECT version_num FROM alembic_version")).scalar_one()
+                == "f1a2b3c4d5e6"
+            )
+            unidade_id = connection.execute(
+                sa.text("SELECT id FROM unidades WHERE nome='Manaus'")
+            ).scalar_one()
+            rows = (
+                connection.execute(
+                    sa.text(
+                        "SELECT u.nome, u.email, u.user_id, p.codigo, u.senha_hash, "
+                        "u.senha_alteracao_obrigatoria, u.ativo FROM usuarios u "
+                        "JOIN perfis p ON p.id=u.perfil_id WHERE u.unidade_id=:unidade_id "
+                        "AND lower(u.email)=ANY(:emails)"
+                    ),
+                    {"unidade_id": unidade_id, "emails": [email.lower() for email in USUARIOS]},
+                )
+                .mappings()
+                .all()
+            )
+            assert len(rows) == len(USUARIOS)
+            by_email = {row["email"]: row for row in rows}
+            hasher = PasswordHasher()
+            for email, (nome, user_id, perfil_codigo) in USUARIOS.items():
+                user = by_email[email]
+                assert (user["nome"], user["user_id"], user["codigo"]) == (
+                    nome,
+                    user_id,
+                    perfil_codigo,
+                )
+                assert user["ativo"] is True
+                assert user["senha_alteracao_obrigatoria"] is True
+                assert hasher.verify(user["senha_hash"], os.environ["SENHA_INICIAL_USUARIOS"])
+
+            setor_id = connection.execute(
+                sa.text("SELECT id FROM setores WHERE unidade_id=:unidade_id AND nome='SVP'"),
+                {"unidade_id": unidade_id},
+            ).scalar_one()
+            time_id = connection.execute(
                 sa.text(
-                    "SELECT count(*) FROM setor_gerentes sg "
-                    "JOIN usuarios u ON u.id=sg.usuario_id "
-                    "WHERE sg.unidade_id=:unidade_id AND sg.setor_id=:setor_id "
-                    "AND u.user_id='ivan.moreira' AND sg.ativo"
+                    "SELECT id FROM times WHERE unidade_id=:unidade_id "
+                    "AND lower(nome)='sdf automation' AND setor_id=:setor_id"
                 ),
                 {"unidade_id": unidade_id, "setor_id": setor_id},
             ).scalar_one()
-            == 1
-        )
-        membros = set(
-            connection.execute(
-                sa.text(
-                    "SELECT u.user_id FROM time_membros tm "
-                    "JOIN usuarios u ON u.id=tm.usuario_id "
-                    "WHERE tm.time_id=:time_id AND tm.ativo"
-                ),
-                {"time_id": time_id},
-            ).scalars()
-        )
-        assert membros == MEMBROS
-        assert (
-            connection.execute(
-                sa.text(
-                    "SELECT count(*) FROM time_membros tm "
-                    "JOIN usuarios u ON u.id=tm.usuario_id "
-                    "WHERE tm.time_id=:time_id AND u.user_id='ivan.moreira' AND tm.ativo"
-                ),
-                {"time_id": time_id},
-            ).scalar_one()
-            == 0
-        )
-        admin_after = connection.execute(
-            sa.text(
-                "SELECT id::text, nome, email, perfil_id::text, auth_version "
-                "FROM usuarios WHERE email='admin@sdfmanager.com'"
+            assert (
+                connection.execute(
+                    sa.text(
+                        "SELECT count(*) FROM setor_gerentes sg "
+                        "JOIN usuarios u ON u.id=sg.usuario_id "
+                        "WHERE sg.unidade_id=:unidade_id AND sg.setor_id=:setor_id "
+                        "AND u.user_id='ivan.moreira' AND sg.ativo"
+                    ),
+                    {"unidade_id": unidade_id, "setor_id": setor_id},
+                ).scalar_one()
+                == 1
             )
-        ).one()
-        permissoes_depois = set(
-            connection.execute(
+            membros = set(
+                connection.execute(
+                    sa.text(
+                        "SELECT u.user_id FROM time_membros tm "
+                        "JOIN usuarios u ON u.id=tm.usuario_id "
+                        "WHERE tm.time_id=:time_id AND tm.ativo"
+                    ),
+                    {"time_id": time_id},
+                ).scalars()
+            )
+            assert membros == MEMBROS
+            assert (
+                connection.execute(
+                    sa.text(
+                        "SELECT count(*) FROM time_membros tm "
+                        "JOIN usuarios u ON u.id=tm.usuario_id "
+                        "WHERE tm.time_id=:time_id AND u.user_id='ivan.moreira' AND tm.ativo"
+                    ),
+                    {"time_id": time_id},
+                ).scalar_one()
+                == 0
+            )
+            admin_after = connection.execute(
                 sa.text(
-                    "SELECT perfil_id::text, permissao_id FROM perfil_permissoes "
-                    "ORDER BY perfil_id, permissao_id"
+                    "SELECT id::text, nome, email, perfil_id::text, auth_version "
+                    "FROM usuarios WHERE email='admin@sdfmanager.com'"
                 )
-            ).all()
-        )
-        assert admin_after == admin_before
-        assert permissoes_depois == permissoes_antes
+            ).one()
+            permissoes_depois = set(
+                connection.execute(
+                    sa.text(
+                        "SELECT perfil_id::text, permissao_id FROM perfil_permissoes "
+                        "ORDER BY perfil_id, permissao_id"
+                    )
+                ).all()
+            )
+            assert admin_after == admin_before
+            assert permissoes_depois == permissoes_antes
+    finally:
+        if schema_engine is not None:
+            schema_engine.dispose()
+        with admin_engine.begin() as connection:
+            connection.execute(sa.text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
+        admin_engine.dispose()

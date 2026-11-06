@@ -68,7 +68,7 @@ export function TableRowActions({ label, actions }: { label: string; actions: Ta
       <MoreHorizontal aria-hidden="true" className="size-5" />
     </button>
     {montado && createPortal(
-      <div ref={menuRef} role="menu" data-saindo={saindo} aria-hidden={saindo || undefined} inert={saindo} aria-label={t("rowActionsFor", { label })} style={{ position: "fixed", top: position.top, right: position.right }} className="popover-enter z-50 min-w-48 rounded-xl border border-border bg-overlay p-1 shadow-overlay">
+      <div ref={menuRef} role="menu" data-saindo={saindo} aria-hidden={saindo || undefined} inert={saindo} aria-label={t("rowActionsFor", { label })} style={{ position: "fixed", top: position.top, right: position.right }} className="popover-enter z-50 min-w-48 rounded-xl border border-border bg-card p-1 shadow-lg">
         {actions.map(({ label: actionLabel, icon: Icon, onSelect, destructive, disabled }) => <button
           key={actionLabel}
           type="button"

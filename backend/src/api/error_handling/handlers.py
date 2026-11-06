@@ -44,10 +44,7 @@ async def handle_not_found(request: Request, exc: NotFoundException) -> JSONResp
 
 
 async def handle_conflict(request: Request, exc: ConflictException) -> JSONResponse:
-    errors = [ProblemDetailsError(campo=exc.campo, mensagem=str(exc))] if exc.campo else None
-    problem = ProblemDetails(
-        title="Conflito.", status=status.HTTP_409_CONFLICT, detail=str(exc), errors=errors
-    )
+    problem = ProblemDetails(title="Conflito.", status=status.HTTP_409_CONFLICT, detail=str(exc))
     return _response(problem)
 
 

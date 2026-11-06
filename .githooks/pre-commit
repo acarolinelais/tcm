@@ -1,5 +1,5 @@
 #!/bin/sh
-# Recusa commit na main e em branch fora do padrão (ADRs 0027, 0029 e 0035).
+# Recusa commit em main/dev e em branch fora do padrão (ADR 0027 e 0029).
 # HEAD destacado (rebase, bisect) não tem nome de branch para validar.
 branch=$(git symbolic-ref --short -q HEAD) || exit 0
 exec sh "$(dirname "$0")/../scripts/git/convencao.sh" branch "$branch"

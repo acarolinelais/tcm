@@ -2,7 +2,7 @@ import type { SVGProps } from "react";
 
 // Ícones da sidebar exportados do Figma (TCM, frames "Sidebar - Admin/Manager/KP/Dev", nodes 2216:614…).
 // Use no tamanho nativo do viewBox (SIDEBAR_ICON_SIZE): o traço de 1px do Figma engrossa se o ícone for ampliado.
-// A cor vem de `currentColor`, para o item ativo herdar `text-accent-text`.
+// A cor vem de `currentColor`, para o item ativo herdar `text-primary`.
 type IconProps = SVGProps<SVGSVGElement>;
 
 export function OverviewIcon(props: IconProps) {
@@ -36,30 +36,11 @@ export function TimelineIcon(props: IconProps) {
   );
 }
 
-// Spec 059: janela com lupa (docs/specs/059-redesign-general-results/figma/general-results-icon.svg).
-export function GeneralResultsIcon(props: IconProps) {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-      <path d="M2.91667 8.16667C3.23867 8.16667 3.5 8.428 3.5 8.75V9.91667C3.5 10.2387 3.23867 10.5 2.91667 10.5C2.59467 10.5 2.33333 10.2387 2.33333 9.91667V8.75C2.33333 8.428 2.59467 8.16667 2.91667 8.16667ZM4.66667 7V9.91667C4.66667 10.2387 4.928 10.5 5.25 10.5C5.572 10.5 5.83333 10.2387 5.83333 9.91667V7C5.83333 6.678 5.572 6.41667 5.25 6.41667C4.928 6.41667 4.66667 6.678 4.66667 7ZM2.625 1.75C2.142 1.75 1.75 2.142 1.75 2.625C1.75 3.108 2.142 3.5 2.625 3.5C3.108 3.5 3.5 3.108 3.5 2.625C3.5 2.142 3.108 1.75 2.625 1.75ZM4.95833 1.75C4.47533 1.75 4.08333 2.142 4.08333 2.625C4.08333 3.108 4.47533 3.5 4.95833 3.5C5.44133 3.5 5.83333 3.108 5.83333 2.625C5.83333 2.142 5.44133 1.75 4.95833 1.75ZM14 2.91667V6.41667C14 6.73867 13.7392 7 13.4167 7C13.0941 7 12.8333 6.73867 12.8333 6.41667V5.25H1.16667V9.91667C1.16667 10.8815 1.95183 11.6667 2.91667 11.6667H5.83333C6.15533 11.6667 6.41667 11.928 6.41667 12.25C6.41667 12.572 6.15533 12.8333 5.83333 12.8333H2.91667C1.30842 12.8333 0 11.5249 0 9.91667V2.91667C0 1.30842 1.30842 0 2.91667 0H11.0833C12.6916 0 14 1.30842 14 2.91667ZM12.8333 4.08333V2.91667C12.8333 1.95183 12.0482 1.16667 11.0833 1.16667H2.91667C1.95183 1.16667 1.16667 1.95183 1.16667 2.91667V4.08333H12.8333ZM13.8291 13.0042C14.0572 13.2323 14.0572 13.601 13.8291 13.8291C13.601 14.0572 13.2323 14.0572 13.0042 13.8291L11.5226 12.3474C11.0612 12.6531 10.5099 12.8333 9.91667 12.8333C8.30842 12.8333 7 11.5249 7 9.91667C7 8.30842 8.30842 7 9.91667 7C11.5249 7 12.8333 8.30842 12.8333 9.91667C12.8333 10.5099 12.6531 11.0612 12.3474 11.5226L13.8291 13.0042ZM9.91667 11.6667C10.8815 11.6667 11.6667 10.8815 11.6667 9.91667C11.6667 8.95183 10.8815 8.16667 9.91667 8.16667C8.95183 8.16667 8.16667 8.95183 8.16667 9.91667C8.16667 10.8815 8.95183 11.6667 9.91667 11.6667Z" fill="currentColor"/>
-    </svg>
-  );
-}
-
 export function ProjectsIcon(props: IconProps) {
   return (
     <svg width="14" height="16" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
       <path d="M9.18493 1.94739H10.6324C11.0163 1.94739 11.3845 2.09989 11.6559 2.37135C11.9274 2.6428 12.0799 3.01098 12.0799 3.39488V4.84236M3.39498 14.9748H1.94749C1.56359 14.9748 1.19542 14.8223 0.923959 14.5508C0.652503 14.2794 0.5 13.9112 0.5 13.5273V3.39488C0.5 3.01098 0.652503 2.6428 0.923959 2.37135C1.19542 2.09989 1.56359 1.94739 1.94749 1.94739H3.39498M13.0497 10.3891C13.1925 10.2464 13.3057 10.0769 13.383 9.89039C13.4602 9.70387 13.5 9.50396 13.5 9.30208C13.5 9.10019 13.4602 8.90028 13.383 8.71376C13.3057 8.52724 13.1925 8.35777 13.0497 8.21501C12.907 8.07226 12.7375 7.95902 12.551 7.88176C12.3645 7.8045 12.1645 7.76474 11.9627 7.76474C11.7608 7.76474 11.5609 7.8045 11.3743 7.88176C11.1878 7.95902 11.0184 8.07226 10.8756 8.21501L7.24964 11.8424C7.07757 12.0144 6.95161 12.227 6.88342 12.4605L6.27765 14.5376C6.25949 14.5999 6.2584 14.6659 6.2745 14.7288C6.2906 14.7916 6.32329 14.849 6.36916 14.8948C6.41504 14.9407 6.47239 14.9734 6.53524 14.9895C6.59808 15.0056 6.66409 15.0045 6.72637 14.9864L8.80352 14.3806C9.03704 14.3124 9.24962 14.1864 9.42159 14.0144L13.0497 10.3891Z" strokeLinecap="round" strokeLinejoin="round" stroke="currentColor"/>
       <path d="M4.11876 0.5H8.46123C8.86094 0.5 9.18497 0.824031 9.18497 1.22374V2.67123C9.18497 3.07095 8.86094 3.39498 8.46123 3.39498H4.11876C3.71905 3.39498 3.39502 3.07095 3.39502 2.67123V1.22374C3.39502 0.824031 3.71905 0.5 4.11876 0.5Z" strokeLinecap="round" strokeLinejoin="round" stroke="currentColor"/>
-    </svg>
-  );
-}
-
-// Sem frame no Figma: desenhado no mesmo traço de 1px dos demais (contorno de smartphone).
-export function DeviceIcon(props: IconProps) {
-  return (
-    <svg width="12" height="15" viewBox="0 0 12 15" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-      <rect x="0.5" y="0.5" width="11" height="14" rx="2.5" stroke="currentColor"/>
-      <path d="M4.75 11.75H7.25" strokeLinecap="round" stroke="currentColor"/>
     </svg>
   );
 }
@@ -154,18 +135,6 @@ export function ChevronIcon(props: IconProps) {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
       <path d="M7.99984 8.78092L11.2997 5.48111L12.2425 6.42392L7.99984 10.6666L3.7572 6.42392L4.70002 5.48111L7.99984 8.78092Z" fill="currentColor"/>
-    </svg>
-  );
-}
-
-// Auditoria (spec 052): o Figma não tem este item; segue o traço de 1px e o tamanho dos demais.
-export function AuditIcon(props: IconProps) {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-      <path d="M6 13.5H3C1.61929 13.5 0.5 12.3807 0.5 11V3C0.5 1.61929 1.61929 0.5 3 0.5H8C9.38071 0.5 10.5 1.61929 10.5 3V6" strokeLinecap="round" stroke="currentColor"/>
-      <path d="M3.5 4H7.5M3.5 6.75H6" strokeLinecap="round" stroke="currentColor"/>
-      <circle cx="9.75" cy="9.75" r="2.25" stroke="currentColor"/>
-      <path d="M11.4 11.4L13.5 13.5" strokeLinecap="round" stroke="currentColor"/>
     </svg>
   );
 }

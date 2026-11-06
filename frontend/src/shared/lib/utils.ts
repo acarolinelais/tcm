@@ -23,14 +23,3 @@ export function semanaIso(data: Date) {
   const semana = Math.ceil(((quinta.getTime() - Date.UTC(ano, 0, 1)) / 86_400_000 + 1) / 7);
   return `${ano}-W${String(semana).padStart(2, "0")}`;
 }
-
-/** Segunda e domingo de uma semana ISO `AAAA-Www`, com o ano e o número dela. */
-export function diasDaSemana(valor: string) {
-  const [ano, semana] = valor.split("-W").map(Number);
-  // 4 de janeiro sempre cai na semana 1 ISO.
-  const quatroDeJaneiro = new Date(ano, 0, 4);
-  const segunda = new Date(ano, 0, 4 - ((quatroDeJaneiro.getDay() || 7) - 1) + (semana - 1) * 7);
-  const domingo = new Date(segunda);
-  domingo.setDate(segunda.getDate() + 6);
-  return { segunda, domingo, ano, semana };
-}

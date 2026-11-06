@@ -1,5 +1,5 @@
 #!/bin/sh
-# Recusa push para a main, exclusão da dev e branch fora do padrão (ADRs 0027, 0029 e 0035).
+# Recusa push para main/dev e de branch fora do padrão (ADR 0027 e 0029).
 # O git passa uma linha por ref: <ref local> <sha local> <ref remota> <sha remoto>.
 script="$(dirname "$0")/../scripts/git/convencao.sh"
 while read -r local_ref _ remote_ref _; do

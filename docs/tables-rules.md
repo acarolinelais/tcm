@@ -1,173 +1,112 @@
 # Regras de tabelas
 
-Regras obrigatórias para qualquer tabela do frontend. O padrão é o do Figma (TCM, spec 022), montado sobre
-o `Table` do HeroUI (ADR 0037) pelas composições de `frontend/src/shared/ui`:
-
-| Arquivo | Papel |
-|---|---|
-| `data-table.tsx` | Moldura, cabeçalho, linhas, seleção e área de estado (`DataTable`) |
-| `data-table-filter.tsx` | Filtro no cabeçalho da coluna (`DataTableFilter`; seleção múltipla em `DataTableMultiFilter`) |
-| `data-table-pagination.tsx` | Total, itens por página e páginas (`DataTablePagination`) |
-| `data-table-state.tsx` | Carregando, erro, vazio e vazio com filtro (`estadoDaTabela`) |
-| `row-action-button.tsx` · `row-action-icon.ts` | Ações da linha em botões redondos (`RowActions`) |
-| `tag-chip.tsx` | Etiquetas de status (`TagChip`, `TONS_ETIQUETA`) |
-| `inline-select.tsx` | Edição na linha (`InlineSelect`) |
-
-**Use essas composições; não crie um `<table>` cru, um `Table` do HeroUI montado direto na tela nem um
-paginador próprio.** Se uma regra daqui precisar mudar, mude a composição compartilhada (e este documento),
-não a tela isolada.
-Exceção: a grade do **Resumo de execuções** (spec 032), uma tabela de leitura devices × datas dentro de um
-painel, sem filtros, ações nem paginação, usa `<table>` semântico (`caption`, `th scope`).
-
-> **Telas ainda em shadcn** (ADR 0037, migração gradual): até migrarem, elas continuam com
-> `shared/ui/table.tsx`, `table-row-actions.tsx` e `table-column-filter.tsx` e seguem
-> [tables-rules-legado.md](tables-rules-legado.md). Não misture os dois padrões numa mesma página.
+Regras obrigatórias para qualquer tabela do frontend. Os componentes base ficam em
+`frontend/src/shared/ui/table.tsx`, `table-row-actions.tsx` e `table-column-filter.tsx`. **Use esses
+componentes; não crie um `<table>` cru nem um paginador próprio.** Se uma regra daqui precisar mudar,
+mude o componente compartilhado (e este documento), não a tela isolada.
 
 ## 1. Estrutura
 
 ```tsx
-<DataTable
-  aria-label={t("teams")}
-  columns={colunas}            // { id, header, cell, isRowHeader?, className? }[]
-  items={itens}
-  getKey={(item) => item.id}   // opcional: padrão é item.id
-  state={estadoDaTabela({ … })}
-  pagination={<DataTablePagination … />}
-  rowDependencies={[…]}        // estado de fora da linha de que as células dependem
-/>
+<TableLayout>
+  <Table containerClassName={temItens ? "min-h-0 flex-1 overflow-auto" : "shrink-0 overflow-visible"}>
+    <TableHeader><TableRow>…<TableHead>…</TableHead></TableRow></TableHeader>
+    {temItens ? <TableBody>…</TableBody> : null}
+  </Table>
+  {!temItens && <TableEmptyState>…</TableEmptyState>}
+  <TablePagination … />
+</TableLayout>
 ```
 
-- A moldura cinza (raio 30px) envolve o corpo branco (raio 25px, 5px de recuo). O cabeçalho e a paginação
-  ficam sobre a moldura. O corpo branco vai até o fim dela, mesmo com poucas linhas. As cores da moldura e das
-  divisórias ficam em `tokensMoldura` (`data-table.tsx`).
-- O `DataTable` ocupa a altura disponível. O cabeçalho é fixo e só o corpo rola, nunca a página inteira.
-- Cabeçalho: Inter 500 14px `text-muted`, **sem caixa alta**, com divisórias entre as colunas. A última coluna
-  não tem divisória.
-- Linhas de 40px (Figma), texto Inter 400 14px, inclusive na coluna identificadora (`isRowHeader`). O texto fica a cerca de 10px da divisória da coluna.
-- Uma coluna é o identificador da linha (`isRowHeader`: nome, TC ID). Ela dá o nome acessível da linha.
+- `TableLayout` ocupa a altura disponível. O cabeçalho é `sticky`, e só o corpo da tabela rola, nunca a página inteira.
+- Contêineres com rolagem (tabela, prévia, formulário longo) usam a classe `thin-scroll` (`core/global.css`): barra fina, sem setas.
+- Com itens, o container recebe `min-h-0 flex-1 overflow-auto`. Sem itens, recebe `shrink-0 overflow-visible`, para o estado vazio não ficar espremido.
+- Não sobrescreva o visual do cabeçalho (fundo `#EAF0FF`, cantos arredondados, `uppercase`, `font-semibold`, `tracking-wide`) nem o padding das células (`px-5 py-5`) em telas isoladas.
+- Primeira coluna é o identificador da linha (nome, TC ID), em `font-medium`, e pode ser um link para o detalhe. As colunas secundárias usam `text-muted-foreground`.
 - Valor ausente aparece como `—`, nunca como célula vazia, `null` ou `undefined`.
-- Datas com `formatDate`. Números e contagens alinhados à direita, com `tabular-nums`.
-- **Cache de linhas:** o React Aria guarda as linhas pela identidade dos itens. Se uma célula depende de algo
-  de fora da linha (permissões, membros, mutation em andamento), declare em `rowDependencies`. Sem a prop,
-  as linhas redesenham a cada render da tela. Não copie os itens só para ganhar um `id`: use `getKey`.
+- Datas com `toLocaleDateString()`. Números e contagens alinhados à direita, com `tabular-nums`.
 
 ## 2. Paginação
 
-- **Padrão: 20 itens por página** (`DEFAULT_TABLE_PAGE_SIZE`, ADR 0034). Opções: `TABLE_PAGE_SIZE_OPTIONS`
-  (10, 20, 50, 100), ambos em `shared/lib/paginacao.ts`. Sempre inicialize o estado com a constante:
+- **Padrão: 20 itens por página** (`DEFAULT_TABLE_PAGE_SIZE`). Opções: `TABLE_PAGE_SIZE_OPTIONS` (10, 20, 50, 100).
+  Sempre inicialize o estado com a constante, nunca com um número literal:
   ```tsx
   const [pagina, setPagina] = useState(1);
   const [tamanho, setTamanho] = useState(DEFAULT_TABLE_PAGE_SIZE);
   ```
-- A `DataTablePagination` mostra o seletor de itens por página à esquerda, sem o total (ADR 0045), e
-  "Anterior", os números das páginas (com reticências acima de 7) e "Próxima" à direita. A página atual fica
-  destacada num círculo.
+- O `TablePagination` tem primeira, anterior, próxima e última página e mostra "Página X de Y".
 - Trocar o tamanho da página volta para a página 1: `onPageSizeChange={(n) => { setTamanho(n); setPagina(1); }}`.
 - Trocar qualquer filtro também volta para a página 1.
 - A paginação é feita pelo servidor quando o endpoint devolve `PagedResult` (ADR 0004). Página e tamanho entram na `queryKey` do TanStack Query.
 - Paginação no cliente só para listas pequenas que já chegam inteiras (ex.: membros de um time).
 - Testes não fixam `10`/`20` à mão: importam `DEFAULT_TABLE_PAGE_SIZE`.
-- Não há exceção: toda tabela é paginada. A tela Resultados Gerais, que era a única exceção (ADR 0038), também
-  pagina os Test Cases, mantendo as até 5 colunas de data estáveis entre as páginas
-  ([ADR 0039](adr/0039-resultados-gerais-com-paginacao.md) e [ADR 0046](adr/0046-resultados-gerais-com-cinco-datas.md)).
-  Uma tela sem paginação precisa de ADR próprio.
 
 ## 3. Filtros
 
-- Filtro de coluna fica **no cabeçalho**, com `DataTableFilter`: `options` para um conjunto fechado (status,
-  pessoa), `type="date"` para data e, sem `options`, texto livre. `searchable` acrescenta busca nas opções.
-- O rótulo da coluna é o próprio gatilho do filtro, com a seta de 14px do Figma à direita. Filtro ativo troca
-  a seta pelo funil e a cor para `text-accent`. Não crie outro indicador.
-- Toda lista de opções começa com "Todos": `comOpcaoTodos(t("all"), opcoes)` (`shared/lib/opcoes.ts`).
-- Para escolher mais de um valor (ex.: Assignee), use `DataTableMultiFilter`: sem "Todos" (nada marcado desliga o
-  filtro), cada opção marcada se aplica na hora e o menu segue aberto. O cabeçalho do menu tem "‹ Rótulo", que fecha,
-  e "Limpar", que desmarca tudo. Esc só fecha, sem perder a escolha. A busca esconde opções sem desmarcar as escolhidas.
-  No servidor, a lista vai como o mesmo parâmetro repetido (`?responsavel_id=a&responsavel_id=b`).
-- Coluna de data filtra pelo calendário do HeroUI. O valor é o dia em `AAAA-MM-DD`, comparado com a data da
-  linha no fuso do navegador, nunca por texto na data formatada.
-- Filtro por semana usa o `WeekPickerHero` (`shared/ui/week-picker-hero.tsx`): botão do Figma e calendário com
-  o número da semana ISO clicável. O valor é `AAAA-Www` (`semanaIso`). Não use `<input type="week">` nativo.
-- Busca global (quando existir) fica acima da tabela, alinhada à esquerda. Ações da tela (ex.: "Novo") ficam
-  à direita, no cabeçalho da página ou na barra de abas (`PageTabs`).
+- Filtro de coluna fica **no cabeçalho**, com `TableColumnFilter`: `options` para um conjunto fechado (status, categoria, pessoa) ou texto livre (sem `options`).
+- Coluna de data filtra com `type="date"`, que abre o `Calendar` do shadcn (`shared/ui/calendar.tsx`, react-day-picker) no popover do cabeçalho. Escolher o dia aplica o filtro. O valor é o dia em `AAAA-MM-DD` (`formatarDiaIso`/`lerDiaIso` de `shared/lib/utils`), comparado com a data da linha no fuso do navegador, nunca por texto na data formatada. Não use `<input type="date">` nativo.
+- Filtro por semana usa o `WeekPicker` (`shared/ui/week-picker.tsx`): Calendar com número da semana ISO clicável, a semana inteira destacada e os botões "Limpar filtros" e "Esta semana". O valor é `AAAA-Www` (`semanaIso`). Não use `<input type="week">` nativo.
+- Popovers usam `bg-card`: o token `bg-popover` não existe no tema.
+- Toda lista de opções começa com `{ value: "", label: t("all") }`.
+- Filtro ativo muda o ícone do cabeçalho para `Filter` e a cor para `text-primary`. Não crie outro indicador.
+- Busca global (quando existir) fica acima da tabela, alinhada à esquerda. Ações primárias (ex.: "Novo") ficam à direita.
 
 ## 4. Estados
 
-Toda tabela trata os quatro estados com `estadoDaTabela`, passado na prop `state`. Ele aparece no corpo branco,
-no lugar das linhas:
+Toda tabela trata os quatro estados, e cada um tem a sua mensagem:
 
 | Estado | Como |
 |---|---|
-| Carregando | `<p role="status">` com o texto do domínio (ex.: `t("loadingTeams")`) |
-| Erro | `<p role="alert">` em `text-danger`, com texto acionável (ex.: "Não foi possível carregar os times. Tente de novo.") |
-| Vazio sem filtro | Ícone do domínio num círculo `bg-accent/10 text-accent`, título curto e uma dica do que fazer |
-| Vazio com filtro | Ícone `SearchX`, título do domínio (ou `t("noResults")`) e botão "Limpar filtros", que zera os filtros e volta para a página 1 |
+| Carregando | `<p role="status">` dentro do `TableEmptyState` (ex.: `t("loadingSectors")`) |
+| Erro | `<p role="alert" className="text-destructive">` com texto acionável (ex.: "Não foi possível carregar os setores.") |
+| Vazio sem filtro | Ícone do domínio num círculo `bg-primary/10 text-primary`, título curto e uma dica do que fazer |
+| Vazio com filtro | Ícone `SearchX`, título `t("noResults")` e botão `outline` "Limpar filtros", que zera os filtros e volta para a página 1 |
 
-- O estado vazio nunca é uma linha `<tr>` com `colSpan`.
+- O estado vazio usa `TableEmptyState` (ou `TableEmptyStatePanel`), nunca uma linha `<tr>` com `colSpan`.
 - Não mostre "Nenhum item" enquanto a requisição ainda carrega.
-- Listas que repetem os mesmos textos (ex.: as listagens de Test Cases) criam um helper no módulo sobre
-  `estadoDaTabela` (ex.: `estadoCasosTeste`), em vez de copiar a configuração.
 
 ## 5. Ações por linha
 
-- Ficam na última coluna, cujo cabeçalho usa `t("actions")`. São **botões redondos de ícone, lado a lado e
-  sempre visíveis** (`RowActions`), para todos os perfis. Não use menu "…".
-- Cada botão é um círculo cinza (`#E4E4E7`) de 19px com ícone de traço 1,25px (`figma-icons.tsx` ou lucide com
-  `rowActionIconProps`), dentro de um alvo de 24px. O tooltip mostra o rótulo.
-- O nome acessível é "<ação> <identificador>" (ex.: "Transferir ao backup Clock_000001"). O rótulo é um verbo.
-- Ações destrutivas ou de inativação usam `destructive: true`, ficam por último e aparecem em `danger`.
+- Ficam na última coluna (`text-right`), dentro do menu `TableRowActions` (botão `…`). O cabeçalho dessa coluna usa `t("actions")`.
+- Cada ação tem ícone lucide e rótulo com verbo ("Editar", "Inativar"). Ações destrutivas ou de inativação usam `destructive: true` e ficam por último.
+- O `label` do `TableRowActions` é o identificador da linha, que vira o nome acessível do botão (`rowActionsFor`).
 - Ações sem permissão não aparecem: monte o array conforme o papel (ADR 0015) em vez de mostrar a ação desabilitada.
 - Se nenhuma linha tem ação para o usuário atual, a coluna inteira some (ex.: `mostrarAcoes`).
-- Inativar ou excluir pede confirmação (`AlertConfirm`). Ativar não precisa.
+- Inativar ou excluir pede confirmação em diálogo. Ativar não precisa.
 - Sem DELETE físico: a ação é "Inativar"/"Ativar" (exclusão lógica, ADR 0008).
 
-## 6. Status e etiquetas
+## 6. Status e badges
 
-- Status de domínio aparece como etiqueta (`TagChip`), nunca como texto solto: 17px de altura, raio pleno,
-  Inter 500 12px, fundo claro e texto na cor forte. O rótulo sempre aparece junto da cor.
-- As cores ficam no código, não aqui: `TONS_STATUS_CASO_TESTE` (`shared/lib/tom-etiqueta.ts`, reexportado como
-  `statusChipTons` no módulo de projetos) para o status do Test Case, que a Auditoria também mostra, e
-  `TONS_ETIQUETA` (`shared/ui/tag-chip.tsx`) para ativo (`ativo`), inativo e atributos neutros como a TC
-  Situation (`neutro`). Um status novo ganha a cor no mapa do módulo dono; se outro módulo também mostrar esse
-  status, o mapa sobe para `shared`.
-- Atributos de texto (Difficulty, Category, pessoas) aparecem como texto, não como etiqueta.
+- Status de domínio aparece como badge, nunca como texto solto. Para status de progresso (status de TC, status de projeto), use o padrão "pill com ícone":
+  - Container `h-7 w-fit gap-1.5 rounded-md px-2 text-sm font-medium` com fundo claro da cor (`bg-green-50 text-green-800`).
+  - À esquerda, um círculo cheio `size-4 rounded-full` na cor forte (`bg-green-800`), com ícone lucide branco `size-2.5 stroke-[3]` e `aria-hidden`.
+  - Mapa de cores: To-Do/neutro = slate · em andamento = blue · em revisão = amber · sucesso = green · falha = red.
+  - Referência: `statusBadges` em `modules/projetos/ProjetoDetalhePage.tsx`.
+- Ativo/inativo: `Badge variant="secondary"`, com `bg-emerald-50 text-emerald-700` quando ativo.
+- A cor nunca é a única pista: o rótulo em texto sempre aparece junto.
+- Quando o usuário pode alterar o status, o badge vira o próprio `SelectTrigger` (mesmas classes, `border-0 shadow-none`), com `aria-label` do tipo `"<campo> <identificador>"`. Quem não pode alterar vê o mesmo badge, só para leitura.
 
 ## 7. Edição inline
 
-- Só para campos de baixo risco que o usuário edita com frequência (status, categoria, dificuldade). Todo o resto vai para o painel de edição.
-- O próprio valor é o gatilho do `InlineSelect`, com a seta cinza no fim da célula. Quem não pode
-  editar vê só o valor, sem a seta.
+- Só para campos de baixo risco que o usuário edita com frequência (status, categoria, dificuldade). Todo o resto vai para o drawer de edição.
 - Grava ao mudar o valor (mutation do TanStack Query), sem botão "salvar". Em caso de erro, mostra um toast e o valor volta ao anterior.
 - Sempre com `aria-label` que identifica a linha: `` `${t("difficulty")} ${testCase.tc_id}` ``.
 
-## 8. Seleção e ações em lote
+## 8. Densidade e responsividade
 
-- Use `selection` no `DataTable` só quando existir uma ação em lote. A caixa de 14px fica na primeira coluna;
-  a do cabeçalho marca só as linhas selecionáveis da página.
-- Linha que não pode ser selecionada passa um motivo em `disabledReason`: a caixa fica desabilitada e o motivo
-  vira tooltip e descrição acessível. Sem nenhuma linha selecionável, a coluna some.
-- A ação em lote aparece com a contagem ("Transferir ao backup (2)"), pede confirmação e, no fim, informa
-  quantos deram certo e quais falharam.
-- A seleção pertence à tela e vale para a página, os filtros e a aba em que foi feita: mudou um deles, ela zera.
-
-## 9. Densidade e responsividade
-
-- Texto das células em 14px. Ícones de ação no tamanho nativo do Figma. Controles inline com 28px de altura.
-- Em telas estreitas a tabela rola na horizontal dentro da moldura. A página nunca rola na horizontal.
+- Texto das células em `text-sm`. Ícones da tabela entre `size-4` e `size-5`. Controles inline com `h-8`.
+- Em telas estreitas a tabela rola na horizontal dentro do container. A página nunca rola na horizontal.
 - Não esconda colunas essenciais (identificador, status, ações) em breakpoints menores.
 - Para revisar proporções depois de portar do Figma, use a skill `ui-density`.
 
-## 10. Acessibilidade e textos
+## 9. Acessibilidade e textos
 
-- Todos os textos passam por `t(...)` (i18n), nos três idiomas. Cabeçalhos são substantivos curtos e as ações são verbos (`better-writing`).
+- Todos os textos passam por `t(...)` (i18n). Cabeçalhos são substantivos curtos e as ações são verbos (`better-writing`).
 - Botões só de ícone sempre têm `aria-label`. Ícones decorativos têm `aria-hidden="true"`.
-- Filtros, seletores e popovers fecham com `Esc` e devolvem o foco ao gatilho (React Aria).
+- Menus e filtros fecham com `Esc` e devolvem o foco ao gatilho (já implementado nos componentes base).
 
-## 11. Testes
+## 10. Testes
 
 - Cenário de sucesso: renderiza as linhas e pagina/filtra chamando a API com os parâmetros esperados.
 - Cenário de falha: o estado de erro aparece com `role="alert"` (ADR 0010).
 - Estado vazio com filtro: o botão "Limpar filtros" restaura a lista.
-- No React Aria, a tabela é um `grid`: a célula do identificador é `rowheader` e as demais são `gridcell`; o
-  nome da linha é o texto do identificador. Gatilhos de `Select` são `button`, as opções são `option` e a
-  confirmação é um `alertdialog`.
-- O `test-setup.ts` simula `ResizeObserver` e `getAnimations`, que o jsdom não tem e o HeroUI usa.

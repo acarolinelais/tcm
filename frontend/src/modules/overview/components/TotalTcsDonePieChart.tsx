@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import type { OverviewData } from "../model/overview";
+import type { StatusBreakdown } from "../model/overview";
 import { useTranslation } from "react-i18next";
 
 const SIZE = 140;
@@ -15,18 +15,14 @@ interface Segment {
   color: string;
 }
 
-export function TotalTcsDonePieChart({ dados }: { dados: OverviewData }) {
+export function TotalTcsDonePieChart({ breakdown }: { breakdown: StatusBreakdown }) {
   const [hover, setHover] = useState<string | null>(null);
   const { t } = useTranslation();
-  // A tela só desenha o gráfico com casos. O restante fecha 100% sem buraco de arredondamento, mas
-  // não fica negativo quando as duas primeiras fatias arredondam para cima (ex.: 3 e 5 de 8).
-  const completedPct = Math.round((dados.concluidos / dados.total) * 100);
-  const todoPct = Math.round((dados.aFazer / dados.total) * 100);
 
   const segments: Segment[] = [
-    { key: "completed", label: t("completed"), pct: completedPct, color: "var(--chart-1)" },
-    { key: "todo", label: t("toDo"), pct: todoPct, color: "var(--chart-2)" },
-    { key: "inProgress", label: t("inProgress"), pct: Math.max(0, 100 - completedPct - todoPct), color: "var(--chart-3)" },
+    { key: "completed", label: t("completed"), pct: breakdown.completedPct, color: "#5588F5" },
+    { key: "todo", label: t("toDo"), pct: breakdown.todoPct, color: "#C9DAFF" },
+    { key: "inProgress", label: t("inProgress"), pct: breakdown.inProgressPct, color: "#B9C4E8" },
   ];
 
   let acc = 0;
@@ -37,10 +33,10 @@ export function TotalTcsDonePieChart({ dados }: { dados: OverviewData }) {
     return { ...s, strokeDasharray: `${length} ${CIRCUMFERENCE}`, strokeDashoffset: offset };
   });
 
-  const centerPct = hover ? segments.find((s) => s.key === hover)?.pct : completedPct;
+  const centerPct = hover ? segments.find((s) => s.key === hover)?.pct : breakdown.completedPct;
 
   return (
-    <div className="flex flex-col items-center gap-4 rounded-3xl border border-edge bg-card p-5">
+    <div className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card p-5">
       <h2 className="self-start text-sm font-semibold text-foreground">{t("totalTcsDone")}</h2>
       <div className="relative h-[140px] w-[140px]">
         <svg
@@ -51,7 +47,7 @@ export function TotalTcsDonePieChart({ dados }: { dados: OverviewData }) {
           role="img"
           aria-label={t("doughnutChartLabel")}
         >
-          <circle cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} fill="none" className="stroke-separator" strokeWidth={STROKE} />
+          <circle cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} fill="none" stroke="#F2F2F2" strokeWidth={STROKE} />
           {arcs.map((s) => (
             <circle
               key={s.key}
@@ -59,7 +55,7 @@ export function TotalTcsDonePieChart({ dados }: { dados: OverviewData }) {
               cy={SIZE / 2}
               r={RADIUS}
               fill="none"
-              style={{ stroke: s.color }}
+              stroke={s.color}
               strokeWidth={STROKE}
               strokeLinecap="round"
               strokeDasharray={s.strokeDasharray}

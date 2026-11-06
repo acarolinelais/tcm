@@ -39,41 +39,14 @@ desenvolvedor e usuário padrão para explorar permissões diferentes. Criaçõe
 `localStorage` do navegador. Para restaurar a base inicial, apague a chave `sdf.mock.database.v1` no
 armazenamento local do site. Para conectar ao backend, defina `VITE_USE_MOCK=false` e inicie API e Postgres.
 
-## Deploy no servidor
-Precisa só de Docker com o plugin Compose ([ADR 0049](docs/adr/0049-deploy-com-docker-compose.md)).
-
-```bash
-git clone <url-do-repo> tcm && cd tcm
-bash deploy.sh
-```
-
-Na primeira vez o script cria o `deploy/.env` (segredo do JWT e senha do Postgres aleatórios), builda as
-imagens e mostra o endereço no fim. O admin entra com `admin@sdfmanager.com` / `admin@123`, e o time com a
-senha inicial `tcm@123`, trocada no primeiro acesso.
-
-| Serviço | Endereço |
-|---|---|
-| Sistema | `http://<servidor>:5173` |
-| API (Swagger) | `http://<servidor>:8080/docs` |
-| Postgres | `127.0.0.1:5544`, só no próprio servidor |
-
-- **Atualizar:** `git pull && bash deploy.sh`. Os dados ficam no volume `tcm-servidor_postgres-data`.
-- **Logs:** `docker compose -f deploy/docker-compose.yml logs -f api`.
-- **Parar:** `docker compose -f deploy/docker-compose.yml down` (sem `-v`, que apagaria o banco).
-- **Trocar portas:** edite `WEB_PORT`, `API_PORT` ou `POSTGRES_HOST_PORT` no `deploy/.env` e rode o script de novo.
-
-O acesso é por HTTP, sem certificado, com o cookie de sessão sem `Secure`
-([ADR 0050](docs/adr/0050-cookie-de-refresh-sem-secure-por-configuracao.md)). Use só na rede interna.
-
 ## Fluxo de desenvolvimento
 Regras nos ADRs [0027](docs/adr/0027-fluxo-de-branches-e-pull-requests.md) (branches e commits),
-[0028](docs/adr/0028-ci-com-github-actions.md) (CI), [0029](docs/adr/0029-git-hooks-versionados.md) (hooks) e
-[0035](docs/adr/0035-commits-diretos-na-dev.md) (commits diretos na `dev`).
+[0028](docs/adr/0028-ci-com-github-actions.md) (CI) e [0029](docs/adr/0029-git-hooks-versionados.md) (hooks).
 
 ```
 main  ●───────────────────────●───   estável: só recebe PR da dev ou de hotfix/*
        \                     /
-dev     ●────●──────────●───●──●──   integração: PR de branches de trabalho (e da main) ou commit direto
+dev     ●────●──────────●───●─────   integração: só recebe PR de branches de trabalho (e da main)
               \        /
 feat/009-x     ●──●──●              uma branch e um PR por spec
 ```
@@ -96,13 +69,6 @@ gh pr create --base dev                         # preencha o template; os checks
 ```
 Com `backend`, `frontend` e `convencao` verdes, integre com **merge commit**. Para promover o que está
 estável, abra um PR `dev → main`.
-
-### Ajuste pequeno, direto na dev
-```bash
-git switch dev && git pull
-git commit -m "fix(projetos): corrige rótulo do filtro"   # mensagem no padrão, sem spec
-git push                                        # o CI roda depois do push; se quebrar, corrija logo
-```
 
 ### Hotfix
 ```bash

@@ -29,8 +29,9 @@ test("perfis: grupos e checkboxes continuam acessíveis em viewport estreito e p
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/perfis");
 
-  await expect(page.getByRole("grid")).toBeVisible();
-  await page.getByRole("button", { name: "Editar permissões Operação" }).click();
+  await expect(page.getByRole("table")).toBeVisible();
+  await page.getByRole("button", { name: "Ações para Operação" }).click();
+  await page.getByRole("menuitem", { name: "Editar permissões" }).click();
   const group = page.getByRole("region", { name: "Permissões de Usuários" });
   await page.getByRole("button", { name: /Usuários/ }).click();
   const checkbox = page.getByLabel("Consultar usuários");
