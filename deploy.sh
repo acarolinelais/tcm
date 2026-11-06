@@ -59,6 +59,9 @@ if [ "$estado" != "healthy" ]; then
   falhar "A API não ficou pronta. Veja os logs acima ou rode: docker compose -f deploy/docker-compose.yml logs api"
 fi
 
+# Cada rebuild deixa a imagem anterior sem nome; remove só essas.
+docker image prune -f >/dev/null
+
 ip=$(hostname -I 2>/dev/null | awk '{print $1}')
 ip=${ip:-localhost}
 
