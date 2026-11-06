@@ -968,7 +968,8 @@ export const mockCasosTesteApi = {
     const casosDoProjeto = db.casosTeste.filter((item) => item.projeto_id === projectId && item.ativo
       && item.unidade_id === db.unidade.id
       && (!filtros.associadosAMim || item.responsavel_id === user.id || item.backup_id === user.id)
-      && (!filtros.semana || (item.status === "Done" && Boolean(item.updated_at ?? item.created_at) && semanaIso((item.updated_at ?? item.created_at)!) === filtros.semana))
+      // Semana da End date (spec 065, RN-10): a finalização de tudo, sem depender do Status.
+      && (!filtros.semana || (Boolean(item.all_passed_em) && semanaIso(item.all_passed_em!) === filtros.semana))
       && (!filtros.responsavelIds?.length || filtros.responsavelIds.includes(item.responsavel_id)));
     // Igual à API: os casos em que o usuário é o responsável principal vêm primeiro.
     const prioridade = (item: (typeof casosDoProjeto)[number]) => (item.responsavel_id === user.id ? 0 : 1);
@@ -1100,6 +1101,8 @@ function validarJustificativaExclusao(input: AtualizarCasoTesteInput) {
 /** Entrar em Cancelled grava a justificativa; sair a apaga; continuar mantém a atual (como a entidade da API). */
 function aplicarAtualizacaoCaso(testCase: CasoTeste, { justificativa_exclusao, ...campos }: AtualizarCasoTesteInput) {
   const estavaExcluido = testCase.status === "Cancelled";
+  // Spec 065, como a entidade da API: só a primeira entrada em In Review grava o Code done.
+  if (campos.status === "InReview" && testCase.status !== "InReview" && !testCase.code_done_em) testCase.code_done_em = new Date().toISOString();
   Object.assign(testCase, campos);
   if (testCase.status !== "Cancelled") testCase.justificativa_exclusao = null;
   else if (!estavaExcluido) testCase.justificativa_exclusao = justificativa_exclusao?.trim() ?? null;

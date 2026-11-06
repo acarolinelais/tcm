@@ -167,6 +167,10 @@ class ImportacaoSdfServiceImpl:
                     unidade_id, execucao.id, modelo.id, linha.resultado, linha.descricao
                 )
             )
+        # Spec 065: o relatório pode fechar o caso em todos os devices.
+        await self._caso_repo.marcar_todos_aprovados(
+            unidade_id, projeto.id, [caso.id for caso in casos.values()]
+        )
         await self._uow.commit()
         return ImportarRelatorioSdfResponse(
             importacao_id=importacao.id,

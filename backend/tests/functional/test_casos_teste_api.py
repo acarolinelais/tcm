@@ -39,6 +39,8 @@ def _caso(usuario, projeto_id, automation_level=None):
         responsavel_id=uuid4(),
         backup_id=uuid4(),
         justificativa_exclusao=None,
+        code_done_em=None,
+        all_passed_em=None,
         ativo=True,
         created_at=None,
         updated_at=None,
@@ -298,6 +300,43 @@ async def test_obter_test_case_retorna_200(api_client):
 
     assert response.status_code == 200
     assert response.json()["tc_id"] == "Clock_001"
+
+
+@pytest.mark.parametrize("campo", ["code_done_em", "all_passed_em"])
+async def test_atualizar_datas_de_finalizacao_retorna_422(api_client, campo):
+    # Spec 065, CA-14: as duas datas são do sistema, nenhum perfil as envia.
+    from src.api.main import app
+
+    usuario = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
+    service = AsyncMock()
+    app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
+    app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
+
+    response = await api_client.put(
+        f"/api/test-cases/{uuid4()}", json={"status": "InReview", campo: "2026-11-01T10:00:00Z"}
+    )
+
+    assert response.status_code == 422
+    service.atualizar.assert_not_awaited()
+
+
+async def test_atualizar_test_case_devolve_as_datas_de_finalizacao(api_client):
+    from src.api.main import app
+
+    usuario = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
+    caso = _caso(usuario, uuid4()).model_copy(
+        update={"code_done_em": datetime(2026, 11, 1, 10, tzinfo=UTC)}
+    )
+    service = AsyncMock()
+    service.atualizar.return_value = caso
+    app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
+    app.dependency_overrides[get_caso_teste_service] = dependency_override(service)
+
+    response = await api_client.put(f"/api/test-cases/{caso.id}", json={"status": "InReview"})
+
+    assert response.status_code == 200
+    assert response.json()["code_done_em"] == "2026-11-01T10:00:00Z"
+    assert response.json()["all_passed_em"] is None
 
 
 async def test_atualizar_test_case_usa_put_e_repassa_payload(api_client):

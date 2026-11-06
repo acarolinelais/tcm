@@ -283,6 +283,10 @@ class FormFactorServiceImpl:
                 await self._resultado_repo.adicionar(
                     ResultadoFormFactor(usuario_atual.unidade_id, execucao.id, modelo_id, valor)
                 )
+            # Spec 065: o resultado pode fechar o caso em todos os devices.
+            await self._caso_repo.marcar_todos_aprovados(
+                usuario_atual.unidade_id, projeto.id, (caso.id,)
+            )
             await self._uow.commit()
         except Exception:
             await self._uow.rollback()
@@ -434,6 +438,10 @@ class FormFactorServiceImpl:
                 await self._resultado_repo.adicionar(
                     ResultadoFormFactor(usuario_atual.unidade_id, execucao.id, modelo_id, valor)
                 )
+            # Spec 065: o resultado pode fechar o caso em todos os devices.
+            await self._caso_repo.marcar_todos_aprovados(
+                usuario_atual.unidade_id, projeto.id, (caso.id,)
+            )
             await self._uow.commit()
         except Exception:
             await self._uow.rollback()

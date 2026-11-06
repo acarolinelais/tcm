@@ -51,12 +51,17 @@ type Aba = "cases" | "form-factor";
 const ROTULO_ABA: Record<Aba, string> = { cases: "testCasesTab", "form-factor": "formFactor" };
 // Valor do filtro de Backup para os casos sem backup.
 const SEM_BACKUP = "__sem_backup__";
-/** End Date do caso: a última atualização de um caso Done; os outros ainda não terminaram. */
-const dataFinalDoCaso = (caso: CasoTeste) => caso.status === "Done" ? caso.updated_at ?? caso.created_at : null;
+/** End Date do caso (spec 065, RN-10): quando passou em todos os devices, sem depender do Status. */
+const dataFinalDoCaso = (caso: CasoTeste) => caso.all_passed_em ?? null;
 // Figma: data por extenso curta ("Mar 23, 2026").
 function rotuloDataFinal(caso: CasoTeste) {
   const endDate = dataFinalDoCaso(caso);
   return endDate ? formatDate(endDate, { dateStyle: "medium" }) : "—";
+}
+/** Spec 065: só o dia na célula; dia e hora no `title`. */
+function DataDoSistema({ valor }: { valor?: string | null }) {
+  if (!valor) return <span className="block text-center">—</span>;
+  return <time className="block text-center" dateTime={valor} title={formatDate(valor, { dateStyle: "medium", timeStyle: "short" })}>{formatDate(valor, { dateStyle: "medium" })}</time>;
 }
 // Colunas de valores fechados filtram por vários valores ao mesmo tempo; TC ID (texto) e End date (dia) filtram por um.
 const FILTROS_CASO_VAZIOS = { tcId: "", status: [] as string[], situation: [] as string[], assignee: [] as string[], difficulty: [] as string[], category: [] as string[], automationLevel: [] as string[], endDate: "", backup: [] as string[] };
@@ -277,11 +282,12 @@ function ProjetoDetalhe() {
       exportar: { titulo: t("automationLevel"), valor: rotuloAutomacao },
       cell: (caso) => celulaEditavel(caso, "automation_level", t("automationLevel"), String(caso.automation_level ?? ""), opcoes.automacao, <span title={caso.automation_level ? rotuloAutomacao(caso) : undefined}>{caso.automation_level ?? "—"}</span>, podeEditarProprio(caso)),
     },
+    { id: "codeDone", header: t("codeDone"), cell: (caso) => <DataDoSistema valor={caso.code_done_em} /> },
     {
       id: "endDate",
       header: <DataTableFilter label={t("endDate")} value={filtrosCaso.endDate} onChange={(value) => alterarFiltroCaso("endDate", value)} type="date" />,
       exportar: { titulo: t("endDate"), valor: rotuloDataFinal },
-      cell: (caso) => <span className="block text-center">{rotuloDataFinal(caso)}</span>,
+      cell: (caso) => <DataDoSistema valor={dataFinalDoCaso(caso)} />,
     },
     {
       id: "backup",

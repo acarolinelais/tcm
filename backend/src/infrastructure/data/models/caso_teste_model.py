@@ -29,6 +29,9 @@ class CasoTesteModel(Base):
     precondition: Mapped[str | None] = mapped_column(String(CasoTeste.TEXTO_MAX_LENGTH))
     procedure: Mapped[str | None] = mapped_column(String(CasoTeste.TEXTO_MAX_LENGTH))
     expected_result: Mapped[str | None] = mapped_column(String(CasoTeste.TEXTO_MAX_LENGTH))
+    # Spec 065: gravadas pelo sistema, em UTC sem fuso.
+    code_done_em: Mapped[datetime | None] = mapped_column()
+    all_passed_em: Mapped[datetime | None] = mapped_column()
     ativo: Mapped[bool] = mapped_column(default=True, server_default="true", nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime | None] = mapped_column(onupdate=func.now())
