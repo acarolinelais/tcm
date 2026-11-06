@@ -34,5 +34,6 @@ export const usuarioApi = {
   atualizar: (id: string, body: UsuarioFormValues) => useMock ? Promise.resolve(mockUsuarioApi.atualizar(id, body)) : httpPut<Usuario>(`${url}/${id}`, body),
   ativar: (id: string) => useMock ? Promise.resolve(mockUsuarioApi.setActive(id, true)) : httpPatch<void>(`${url}/${id}/ativar`),
   inativar: (id: string) => useMock ? Promise.resolve(mockUsuarioApi.setActive(id, false)) : httpPatch<void>(`${url}/${id}/inativar`),
+  redefinirSenha: (id: string) => useMock ? Promise.resolve(mockUsuarioApi.resetPassword(id)) : httpPatch<{ senha_padrao: string }>(`${url}/${id}/redefinir-senha`),
   atribuirResponsavel: (id: string, responsavelId: string | null) => useMock ? Promise.resolve(mockUsuarioApi.setManager(id, responsavelId)) : httpPatchBody<Usuario>(`${url}/${id}/responsavel`, { responsavel_id: responsavelId }),
 };

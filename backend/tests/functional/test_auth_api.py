@@ -2,9 +2,13 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
-from src.api.dependencies import get_auth_service, get_usuario_atual_para_troca_senha
+from src.api.dependencies import (
+    get_auth_service,
+    get_usuario_atual,
+    get_usuario_atual_para_troca_senha,
+)
 from src.application.schemas.auth import PreferenciasResponse, SessaoEmitida
-from src.domain.common.exceptions import CredenciaisInvalidasException
+from src.domain.common.exceptions import CredenciaisInvalidasException, InvalidInputException
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from tests.functional.conftest import dependency_override
 
@@ -287,3 +291,59 @@ async def test_logout_com_access_token_invalido_ignora_o_token(api_client):
     )
     assert response.status_code == 204
     service.logout.assert_not_awaited()
+
+
+def _admin_logado():
+    return UsuarioAutenticado(uuid4(), uuid4(), perfil_codigo="ADMIN_UNIDADE", sessao_id=uuid4())
+
+
+@pytest.mark.asyncio
+async def test_alterar_senha_admin_logado_retorna_200(api_client):
+    from src.api.main import app
+
+    atual = _admin_logado()
+    service = AsyncMock()
+    service.alterar_propria_senha.return_value = SessaoEmitida(
+        access_token="jwt-novo", refresh_token="a" * 64
+    )
+    app.dependency_overrides[get_usuario_atual] = dependency_override(atual)
+    app.dependency_overrides[get_auth_service] = dependency_override(service)
+
+    response = await api_client.post(
+        "/api/auth/alterar-senha", json={"senha_atual": "admin@123", "nova_senha": "nova"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["access_token"] == "jwt-novo"
+    assert _cookie_refresh(response).startswith("sdf_refresh=" + "a" * 64)
+    args = service.alterar_propria_senha.await_args.args
+    assert args[0] == atual.id and args[1] == atual.sessao_id
+    assert args[2].senha_atual == "admin@123" and args[2].nova_senha == "nova"
+
+
+@pytest.mark.asyncio
+async def test_alterar_senha_atual_incorreta_retorna_422(api_client):
+    from src.api.main import app
+
+    service = AsyncMock()
+    service.alterar_propria_senha.side_effect = InvalidInputException(
+        "A senha atual está incorreta."
+    )
+    app.dependency_overrides[get_usuario_atual] = dependency_override(_admin_logado())
+    app.dependency_overrides[get_auth_service] = dependency_override(service)
+
+    response = await api_client.post(
+        "/api/auth/alterar-senha", json={"senha_atual": "errada", "nova_senha": "nova"}
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "A senha atual está incorreta."
+
+
+@pytest.mark.asyncio
+async def test_alterar_senha_sem_sessao_retorna_401(api_client):
+    response = await api_client.post(
+        "/api/auth/alterar-senha", json={"senha_atual": "x", "nova_senha": "y"}
+    )
+
+    assert response.status_code == 401

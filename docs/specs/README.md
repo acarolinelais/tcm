@@ -68,7 +68,7 @@ sem paginação, também pagina ([ADR 0039](../adr/0039-resultados-gerais-com-pa
 | 039 | Overview com dados reais no escopo do perfil (desempenho mensal pela auditoria da 038) | Concluída |
 | 040 | Página do Test Case com endereço próprio e edição dos textos | Rascunho |
 | 041 | Busca global na barra superior (Test Cases, projetos e pessoas) | Rascunho |
-| 042 | Minha conta e redefinição de senha pelo administrador | Rascunho |
+| 042 | Troca da própria senha e redefinição pelo administrador (volta à senha padrão) | Concluída (code-review e security-review pendentes) |
 | 043 | Ações em lote na lista de Test Cases (Status, responsável e Backup) | Rascunho |
 | 044 | Comentários no Test Case | Rascunho |
 | 045 | Evidências anexadas ao Test Case (exige ADR de armazenamento) | Rascunho |

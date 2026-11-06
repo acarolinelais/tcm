@@ -962,3 +962,31 @@ describe("auditoria mock (spec 052)", () => {
     expect(() => mockAuditoriaApi.listar(1, 20)).toThrow(ApiError);
   });
 });
+
+describe("mock de senha", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    resetMockDatabase();
+  });
+
+  it("admin redefine a senha de outra pessoa e recebe a senha padrão", () => {
+    entrar("admin@sdfmanager.com");
+
+    expect(mockUsuarioApi.resetPassword("mock-user-dev")).toEqual({ senha_padrao: "tcm@123" });
+  });
+
+  it("recusa redefinir a própria senha ou sem ser admin", () => {
+    entrar("admin@sdfmanager.com");
+    expect(() => mockUsuarioApi.resetPassword("mock-user-admin")).toThrow(ApiError);
+
+    entrar("ivan.moreira@sidia.com");
+    expect(() => mockUsuarioApi.resetPassword("mock-user-dev")).toThrow(ApiError);
+  });
+
+  it("troca da própria senha mantém a sessão de quem está logado", () => {
+    entrar("daniel.oliveira@example.com");
+
+    expect(mockAuth.changeOwnPassword().access_token).toBe("mock.mock-user-dev");
+  });
+});

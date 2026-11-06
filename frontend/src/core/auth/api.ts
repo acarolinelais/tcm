@@ -48,6 +48,13 @@ export async function alterarSenhaInicial(novaSenha: string) {
   saveTokens(tokens);
 }
 
+export async function alterarPropriaSenha(senhaAtual: string, novaSenha: string) {
+  const tokens = useMock
+    ? mockAuth.changeOwnPassword()
+    : await httpPost<TokenResponse>("/api/auth/alterar-senha", { senha_atual: senhaAtual, nova_senha: novaSenha });
+  saveTokens(tokens);
+}
+
 export async function atualizarIdiomaPreferido(idioma_preferido: PerfilAtual["idioma_preferido"]) {
   return useMock
     ? Promise.resolve(mockAuth.updateLanguage(idioma_preferido))

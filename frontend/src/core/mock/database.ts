@@ -437,6 +437,10 @@ export const mockAuth = {
     void password;
     return { access_token: `mock.${userId}`, expires_in: 3600, token_type: "bearer" };
   },
+  // O mock não guarda senhas: a troca só renova a sessão, como a API faz.
+  changeOwnPassword(): TokenResponse {
+    return { access_token: `mock.${currentMockUserId()}`, expires_in: 3600, token_type: "bearer" };
+  },
 };
 
 function currentMockUserId() {
@@ -516,6 +520,17 @@ export const mockUsuarioApi = {
   },
   setActive(userId: string, active: boolean) {
     updateDb((db) => { const user = db.usuarios.find((item) => item.id === userId); if (user) user.ativo = active; });
+  },
+  resetPassword(userId: string) {
+    const db = readDb();
+    const current = db.usuarios.find((user) => user.id === currentMockUserId());
+    if (!current || profileFor(db, current)?.codigo !== "ADMIN_UNIDADE" || userId === current.id) {
+      throw new ApiError({ type: "about:blank", title: "Acesso negado.", status: 403 });
+    }
+    if (!db.usuarios.some((user) => user.id === userId)) {
+      throw new ApiError({ type: "about:blank", title: "Recurso não encontrado.", status: 404 });
+    }
+    return { senha_padrao: "tcm@123" };
   },
   setManager(userId: string, managerId: string | null) {
     return updateDb((db) => { const user = db.usuarios.find((item) => item.id === userId); if (!user) throw new Error("Usuário não encontrado."); user.responsavel_id = managerId; return user; });
