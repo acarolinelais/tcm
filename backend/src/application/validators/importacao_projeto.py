@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from io import BytesIO
 from zipfile import BadZipFile
@@ -5,8 +6,10 @@ from zipfile import BadZipFile
 from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
 from src.domain.entities.caso_teste import (
+    CasoTeste,
     CategoriaCasoTeste,
     DificuldadeCasoTeste,
+    NivelAutomacaoCasoTeste,
     SituacaoCasoTeste,
 )
 
@@ -21,6 +24,37 @@ CABECALHOS_OBRIGATORIOS = {
     "assignees": "Assignees",
     "backup": "Backup",
 }
+
+# Textos do caso (spec 028), opcionais: cabeçalho normalizado → (exibido, campo, limite).
+TEXTOS_CASO_TESTE = {
+    "title(english)": ("Title(English)", "title", CasoTeste.TITLE_MAX_LENGTH),
+    "test precondition(english)": (
+        "Test Precondition(English)",
+        "precondition",
+        CasoTeste.TEXTO_MAX_LENGTH,
+    ),
+    "test procedure(english)": ("Test Procedure(English)", "procedure", CasoTeste.TEXTO_MAX_LENGTH),
+    "expected result(english)": (
+        "Expected Result(English)",
+        "expected_result",
+        CasoTeste.TEXTO_MAX_LENGTH,
+    ),
+}
+
+# Colunas que podem faltar na planilha: ausente equivale a célula vazia, sem erro.
+CABECALHOS_OPCIONAIS = {
+    "automation level": "Automation Level",
+    **{nome: exibido for nome, (exibido, _, _) in TEXTOS_CASO_TESTE.items()},
+}
+
+# Quanto do texto longo volta no `valor` do erro: o bastante para achar a célula sem repetir 10 mil
+# caracteres no 422. A prévia (planilha-projeto.ts) trunca igual.
+TRECHO_TEXTO_LONGO = 40
+
+# Inteiro puro ou com casa decimal zerada ("2", "2.0"), como o Excel entrega o número. É a mesma
+# regra do navegador (planilha-projeto.ts): a prévia e a importação não podem divergir. [0-9] e não
+# \d porque, em str, \d casa dígitos de outros alfabetos ("２") que o JavaScript recusa.
+_NIVEL_AUTOMACAO = re.compile(r"[0-9]+(\.0+)?")
 
 # Valor normalizado → opção, montado uma vez para não refazer a cada linha.
 _OPCOES = {
@@ -74,6 +108,11 @@ class LinhaCasoTesteImportada:
     situation: SituacaoCasoTeste
     responsavel: str
     backup: str
+    automation_level: NivelAutomacaoCasoTeste | None = None
+    title: str | None = None
+    precondition: str | None = None
+    procedure: str | None = None
+    expected_result: str | None = None
 
 
 @dataclass(frozen=True)
@@ -112,7 +151,7 @@ def validar_planilha_projeto(conteudo: bytes) -> PlanilhaProjetoValidada:
         raise PlanilhaProjetoInvalida((_erro_geral("planilha_vazia", "A planilha está vazia."),))
 
     mapa_cabecalhos: dict[str, int] = {}
-    colunas: dict[str, str] = dict(CABECALHOS_OBRIGATORIOS)
+    colunas: dict[str, str] = {**CABECALHOS_OBRIGATORIOS, **CABECALHOS_OPCIONAIS}
     erros: list[ErroImportacaoPlanilha] = []
     for indice, valor in enumerate(cabecalho):
         if valor is None:
@@ -166,6 +205,44 @@ def validar_planilha_projeto(conteudo: bytes) -> PlanilhaProjetoValidada:
             )
         return encontrada
 
+    def nivel_automacao(numero, valor):
+        if not valor:
+            return None
+        if _NIVEL_AUTOMACAO.fullmatch(valor):
+            try:
+                return NivelAutomacaoCasoTeste(int(valor.split(".")[0]))
+            except ValueError:
+                pass
+        esperados = [str(nivel.value) for nivel in NivelAutomacaoCasoTeste]
+        erros.append(
+            erro_linha(
+                numero,
+                "automation level",
+                "valor_invalido",
+                f"Use {', '.join(esperados)}.",
+                valor,
+                esperados=esperados,
+            )
+        )
+        return None
+
+    def texto(numero, nome, maximo):
+        valor = campos.get(nome, "")
+        # Conta code points, como o banco; o navegador conta igual com [...texto].length.
+        if len(valor) > maximo:
+            erros.append(
+                erro_linha(
+                    numero,
+                    nome,
+                    "texto_muito_longo",
+                    f"{colunas[nome]} deve ter no máximo {maximo} caracteres.",
+                    valor[:TRECHO_TEXTO_LONGO] + "…",
+                    maximo=maximo,
+                )
+            )
+            return None
+        return valor or None
+
     valores_app: list[str] = []
     valores_one_ui: list[str] = []
     casos: list[LinhaCasoTesteImportada] = []
@@ -206,6 +283,11 @@ def validar_planilha_projeto(conteudo: bytes) -> PlanilhaProjetoValidada:
         category = opcao(numero_linha, "category", campos["category"], CategoriaCasoTeste)
         difficulty = opcao(numero_linha, "difficulty", campos["difficulty"], DificuldadeCasoTeste)
         situation = opcao(numero_linha, "tc situation", campos["tc situation"], SituacaoCasoTeste)
+        automation_level = nivel_automacao(numero_linha, campos.get("automation level", ""))
+        textos = {
+            campo: texto(numero_linha, nome, maximo)
+            for nome, (_, campo, maximo) in TEXTOS_CASO_TESTE.items()
+        }
         responsavel = campos["assignees"]
         backup = campos["backup"]
         pessoas.append(PessoasDaLinha(numero_linha, responsavel, backup))
@@ -222,7 +304,15 @@ def validar_planilha_projeto(conteudo: bytes) -> PlanilhaProjetoValidada:
         if tc_id and category and difficulty and situation and responsavel and backup:
             casos.append(
                 LinhaCasoTesteImportada(
-                    numero_linha, tc_id, category, difficulty, situation, responsavel, backup
+                    numero_linha,
+                    tc_id,
+                    category,
+                    difficulty,
+                    situation,
+                    responsavel,
+                    backup,
+                    automation_level,
+                    **textos,
                 )
             )
 
@@ -253,7 +343,9 @@ def validar_planilha_projeto(conteudo: bytes) -> PlanilhaProjetoValidada:
 
 
 def _normalizar_cabecalho(valor: object) -> str:
-    return " ".join(str(valor).strip().casefold().replace("_", " ").split())
+    normalizado = " ".join(str(valor).strip().casefold().replace("_", " ").split())
+    # "Title (English)" e "Title(English)" são a mesma coluna: espaço junto de parêntese não conta.
+    return re.sub(r"\s*([()])\s*", r"\1", normalizado)
 
 
 def _texto(valor: object) -> str:

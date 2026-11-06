@@ -14,6 +14,13 @@ describe("APIs de projetos", () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
+  it("consulta o Kanban do projeto e a navegação do Board", async () => {
+    await casosTesteApi.kanban("project-1");
+    expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/kanban", expect.any(Object));
+    await projetosApi.navegacao();
+    expect(fetch).toHaveBeenLastCalledWith("/api/projetos/navegacao", expect.any(Object));
+  });
+
   it("lista projetos com paginação", async () => {
     await projetosApi.listar(2, 10);
     expect(fetch).toHaveBeenCalledWith("/api/projetos?page=2&page_size=10", expect.any(Object));
@@ -55,31 +62,64 @@ describe("APIs de projetos", () => {
   it("consulta Test Cases e transfere o responsável para o backup", async () => {
     await casosTesteApi.listar("project-1", 3, 5);
     expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/test-cases?page=3&page_size=5", expect.any(Object));
-    await casosTesteApi.listar("project-1", 1, 10, { responsavelId: "user-2" });
+    await casosTesteApi.listar("project-1", 1, 10, { responsavelIds: ["user-2"] });
     expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/test-cases?page=1&page_size=10&responsavel_id=user-2", expect.any(Object));
+    // Vários responsáveis repetem o parâmetro, como o FastAPI lê uma lista.
+    await casosTesteApi.listar("project-1", 1, 10, { responsavelIds: ["user-2", "user-3"] });
+    expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/test-cases?page=1&page_size=10&responsavel_id=user-2&responsavel_id=user-3", expect.any(Object));
     await casosTesteApi.obter("case-1");
     expect(fetch).toHaveBeenLastCalledWith("/api/test-cases/case-1", expect.any(Object));
     await casosTesteApi.transferirParaBackup("case-1");
     expect(fetch).toHaveBeenLastCalledWith("/api/test-cases/case-1/transferir-para-backup", expect.objectContaining({ method: "PATCH", body: "{}" }));
   });
 
-  it("cria, edita e altera o estado de modelos de dispositivo", async () => {
-    await modelosDispositivoApi.criar("S27 Ultra");
-    expect(fetch).toHaveBeenLastCalledWith("/api/modelos-dispositivo", expect.objectContaining({ method: "POST", body: JSON.stringify({ nome: "S27 Ultra" }) }));
-    await modelosDispositivoApi.atualizar("model-1", { nome: "S27 Ultra Rev B" });
-    expect(fetch).toHaveBeenLastCalledWith("/api/modelos-dispositivo/model-1", expect.objectContaining({ method: "PUT", body: JSON.stringify({ nome: "S27 Ultra Rev B" }) }));
-    await modelosDispositivoApi.definirAtivo("model-1", false);
-    expect(fetch).toHaveBeenLastCalledWith("/api/modelos-dispositivo/model-1/inativar", expect.objectContaining({ method: "PATCH", body: "{}" }));
+  it("lista as opções de modelos ativos para o seletor do projeto", async () => {
+    await modelosDispositivoApi.listarOpcoes();
+    expect(fetch).toHaveBeenLastCalledWith("/api/modelos-dispositivo/opcoes?page=1&page_size=100", expect.any(Object));
   });
 
-  it("envia filtros de modelo e Form Factor e o relatório SDF", async () => {
-    await modelosDispositivoApi.listar(1, 50, true, "S27");
-    expect(fetch).toHaveBeenLastCalledWith("/api/modelos-dispositivo?page=1&page_size=50&ativo=true&busca=S27", expect.any(Object));
-    await formFactorApi.listar("project-1", { page: 2, pageSize: 10, semana: "2026-W13", oneUi: "9.5" });
-    expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/form-factor?page=2&page_size=10&semana=2026-W13&one_ui=9.5", expect.any(Object));
+  it("envia filtros do Form Factor, consulta Results e opera rodadas", async () => {
+    const fuso = encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    await formFactorApi.historicoProjeto("project-1", { tcId: "TC-001", responsavel: "ana", sdfId: "SDF-1", modeloDispositivoId: "model-1", periodo: "2026-W13" });
+    expect(fetch).toHaveBeenLastCalledWith(
+      `/api/form-factor/general/projetos/project-1/historico?fuso_horario=${fuso}&page=1&page_size=20&tc_id=TC-001&responsavel=ana&sdf_id=SDF-1&modelo_dispositivo_id=model-1&semana=2026-W13`,
+      expect.any(Object),
+    );
+    await formFactorApi.historicoProjeto("project-1", { periodo: "2026-03-25", page: 3, pageSize: 50 });
+    expect(fetch).toHaveBeenLastCalledWith(`/api/form-factor/general/projetos/project-1/historico?fuso_horario=${fuso}&page=3&page_size=50&dia=2026-03-25`, expect.any(Object));
+    await formFactorApi.resumoExecucoes("case-1");
+    expect(fetch).toHaveBeenLastCalledWith(`/api/form-factor/general/casos/case-1/execucoes?fuso_horario=${fuso}`, expect.any(Object));
+    await formFactorApi.listar("project-1", {
+      page: 2,
+      pageSize: 10,
+      semana: "2026-W13",
+      responsavelIds: ["user-1"],
+      tcId: "TC-001",
+      sdfId: "SDF-1",
+      modeloDispositivoId: "model-1",
+      resultado: "PASS",
+    });
+    expect(fetch).toHaveBeenLastCalledWith(
+      "/api/projetos/project-1/form-factor?page=2&page_size=10&semana=2026-W13&responsavel_id=user-1&tc_id=TC-001&sdf_id=SDF-1&modelo_dispositivo_id=model-1&resultado=PASS",
+      expect.any(Object),
+    );
+    await formFactorApi.listarResultados("project-1", { page: 1, tcId: "TC-001" });
+    expect(fetch).toHaveBeenLastCalledWith(
+      "/api/projetos/project-1/form-factor/results?page=1&page_size=20&tc_id=TC-001",
+      expect.any(Object),
+    );
+    const roundInput = { sdf_id: "SDF-1" };
+    await formFactorApi.criarRodada("project-1", roundInput);
+    expect(fetch).toHaveBeenLastCalledWith(
+      "/api/projetos/project-1/form-factor/rodadas",
+      expect.objectContaining({ method: "POST", body: JSON.stringify(roundInput) }),
+    );
+    const resultInput = { resultados: { "model-1": "PASS" as const } };
+    await formFactorApi.registrarResultadosRodada("project-1", "round-1", "case-1", resultInput);
+    expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/form-factor/rodadas/round-1/test-cases/case-1/resultados", expect.objectContaining({ method: "POST", body: JSON.stringify(resultInput) }));
     const report = new File(["resultado"], "sdf.xlsx");
     await formFactorApi.importar("project-1", report);
-    const [url, init] = vi.mocked(fetch).mock.calls[2];
+    const [url, init] = vi.mocked(fetch).mock.calls.at(-1)!;
     expect(url).toBe("/api/projetos/project-1/relatorios-sdf");
     expect((init?.body as FormData).get("arquivo")).toBe(report);
   });
@@ -100,7 +140,7 @@ describe("consultas pessoais", () => {
     expect(fetch).toHaveBeenCalledWith("/api/projetos?page=2&page_size=1&associados_a_mim=true", expect.any(Object));
   });
   it("combina associação com responsável sem substituir o filtro pessoal", async () => {
-    await casosTesteApi.listar("p", 1, 20, { associadosAMim: true, responsavelId: "colega" });
+    await casosTesteApi.listar("p", 1, 20, { associadosAMim: true, responsavelIds: ["colega"] });
     expect(fetch).toHaveBeenCalledWith("/api/projetos/p/test-cases?page=1&page_size=20&responsavel_id=colega&associados_a_mim=true", expect.any(Object));
   });
   it("propaga erro de consulta", async () => {

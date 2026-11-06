@@ -1,12 +1,11 @@
-import { ClipboardList } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { TableEmptyState } from "@/shared/ui/table";
 
+import { EstadoVazio } from "@/shared/ui/estado-vazio";
+
+/** Projects vazio do dev (Figma TCM 2310-157): a moldura cinza ocupa o cartão, com o estado vazio no centro. */
 export function ProjetosDevEmptyState() {
   const { t } = useTranslation();
-  return <TableEmptyState><div role="status" className="max-w-md text-center">
-    <ClipboardList aria-hidden="true" className="mx-auto mb-4 size-6 text-primary" />
-    <h1 className="text-base font-semibold">{t("devProjectsEmpty")}</h1>
-    <p className="mt-2 text-sm text-muted-foreground">{t("devProjectsEmptyHint")}</p>
-  </div></TableEmptyState>;
+  return <div className="flex min-h-0 flex-1 items-center justify-center rounded-[30px] bg-panel p-6">
+    <EstadoVazio tituloDaPagina className="max-w-[34rem]" titulo={t("devProjectsEmpty")} dica={t("devProjectsEmptyHint")} />
+  </div>;
 }

@@ -10,6 +10,7 @@ export const project = {
   unidade_id: "unit-1",
   time_id: teamId,
   nome: "Clock 9.5",
+  modelos_dispositivo: ["S27 Ultra"],
   app: "Clock",
   one_ui: "9.5",
   status: "Created",
@@ -25,6 +26,7 @@ export const caseItem = {
   tc_id: "Clock_001",
   category: "A",
   difficulty: "Low",
+  automation_level: null as 1 | 2 | 3 | null,
   situation: "New",
   status: "To-Do",
   responsavel_id: managerId,
@@ -34,8 +36,10 @@ export const caseItem = {
   updated_at: "2026-03-23T10:00:00Z",
 };
 
-export async function setupProjectSession(page: Page) {
+/** Sessão autenticada; `perfil` sobrescreve campos do perfil padrão (administrador). */
+export async function setupProjectSession(page: Page, perfil: Record<string, unknown> = {}) {
   await page.addInitScript(() => sessionStorage.setItem("sdf.access", "e2e-project-token"));
+  await page.route("**/api/auth/refresh", (route) => route.fulfill({ json: { access_token: "e2e-project-token", expires_in: 900, token_type: "bearer" } }));
   await page.route("**/api/auth/me", (route) => route.fulfill({ json: {
     id: managerId,
     nome: "Gerente Ana",
@@ -51,14 +55,27 @@ export async function setupProjectSession(page: Page) {
     tem_multiplos_times: false,
     senha_alteracao_obrigatoria: false,
     idioma_preferido: "pt-BR",
+    ...perfil,
   } }));
 }
 
-export async function setupTeamsAndModels(page: Page) {
+export async function setupTeams(page: Page) {
   await page.route("**/api/times?*", (route) => route.fulfill({ json: {
     items: [{ id: teamId, setor_id: "sector-1", nome: "Plataforma", ativo: true }], page: 1, page_size: 100, total_count: 1,
   } }));
-  await page.route("**/api/modelos-dispositivo?*", (route) => route.fulfill({ json: {
-    items: [{ id: modelId, unidade_id: "unit-1", nome: "S27 Ultra", ativo: true }], page: 1, page_size: 100, total_count: 1,
+}
+
+/** Membros do time: a gerente Ana (responsável do caso) e o KP Kaique (backup). */
+export async function setupMembrosDoTime(page: Page) {
+  await page.route(`**/api/times/${teamId}/membros`, (route) => route.fulfill({ json: [
+    { id: "member-1", time_id: teamId, usuario_id: managerId, usuario_nome: "Gerente Ana", usuario_user_id: "GER-001", usuario_perfil: "Gerente", usuario_perfil_codigo: "GERENTE", ativo: true },
+    { id: "member-2", time_id: teamId, usuario_id: "backup-1", usuario_nome: "Kaique Pereira", usuario_user_id: "KP-002", usuario_perfil: "KP", usuario_perfil_codigo: "KP", ativo: true },
+  ] }));
+}
+
+export async function setupTeamsAndModels(page: Page) {
+  await setupTeams(page);
+  await page.route("**/api/modelos-dispositivo/opcoes?*", (route) => route.fulfill({ json: {
+    items: [{ id: modelId, nome: "S27 Ultra", descricao: null }], page: 1, page_size: 100, total_count: 1,
   } }));
 }

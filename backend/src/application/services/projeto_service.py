@@ -1,5 +1,9 @@
 from uuid import UUID
 
+from src.application.schemas.navegacao_board import (
+    NavegacaoBoardResponse,
+    to_navegacao_response,
+)
 from src.application.schemas.projeto import (
     AtualizarProjetoRequest,
     AtualizarStatusProjetoRequest,
@@ -54,7 +58,9 @@ class ProjetoServiceImpl:
         if len(modelos) != len(modelo_ids):
             raise ConflictException("Todos os modelos devem existir e estar ativos nesta unidade.")
 
-        projeto = Projeto(usuario_atual.unidade_id, time.id, request.app, request.one_ui)
+        projeto = Projeto(
+            usuario_atual.unidade_id, time.id, request.app, request.one_ui, request.nome
+        )
         await self._projeto_repo.adicionar(projeto)
         for modelo in modelos:
             await self._projeto_modelo_repo.adicionar(
@@ -62,7 +68,7 @@ class ProjetoServiceImpl:
             )
         await self._uow.commit()
         projeto_criado = await self._projeto_repo.obter_por_id(projeto.unidade_id, projeto.id)
-        return to_response(projeto_criado or projeto)
+        return await self._to_response_com_modelos(projeto_criado or projeto)
 
     async def listar(
         self,
@@ -75,7 +81,7 @@ class ProjetoServiceImpl:
             self._exigir_consulta(usuario_atual)
             projetos = await self._projeto_repo.listar_associados_por_times(
                 usuario_atual.unidade_id,
-                None if usuario_atual.eh_administrador else self._times_no_escopo(usuario_atual),
+                None if usuario_atual.eh_administrador else usuario_atual.times_no_escopo,
                 usuario_atual.id,
                 page,
                 page_size,
@@ -86,11 +92,33 @@ class ProjetoServiceImpl:
             )
         else:
             self._exigir_consulta(usuario_atual)
-            time_ids = self._times_no_escopo(usuario_atual)
+            time_ids = usuario_atual.times_no_escopo
             projetos = await self._projeto_repo.listar_por_times(
                 usuario_atual.unidade_id, time_ids, page, page_size
             )
-        return projetos.map(to_response)
+        nomes_modelos = await self._projeto_modelo_repo.listar_nomes_por_projetos(
+            usuario_atual.unidade_id, tuple(projeto.id for projeto in projetos.items)
+        )
+        ids_modelos = await self._projeto_modelo_repo.listar_ids_por_projetos(
+            usuario_atual.unidade_id, tuple(projeto.id for projeto in projetos.items)
+        )
+        return projetos.map(
+            lambda projeto: to_response(
+                projeto,
+                list(nomes_modelos.get(projeto.id, ())),
+                list(ids_modelos.get(projeto.id, ())),
+            )
+        )
+
+    async def listar_navegacao(self, usuario_atual: UsuarioAutenticado) -> NavegacaoBoardResponse:
+        # Sem permissão ou sem times, a árvore vem vazia: o Board mostra o aviso em vez de um erro.
+        if not self._pode_consultar(usuario_atual):
+            return NavegacaoBoardResponse(setores=[])
+        linhas = await self._projeto_repo.listar_navegacao(
+            usuario_atual.unidade_id,
+            None if usuario_atual.eh_administrador else usuario_atual.times_no_escopo,
+        )
+        return to_navegacao_response(linhas)
 
     async def obter(self, usuario_atual: UsuarioAutenticado, projeto_id: UUID) -> ProjetoResponse:
         if not usuario_atual.eh_administrador:
@@ -99,9 +127,9 @@ class ProjetoServiceImpl:
         if projeto is None or not projeto.ativo:
             raise NotFoundException("Projeto não encontrado.")
         time = await self._time_repo.obter_por_id(usuario_atual.unidade_id, projeto.time_id)
-        if time is None or not self._time_esta_no_escopo(usuario_atual, time.id, time.setor_id):
+        if time is None or not usuario_atual.time_no_escopo(time.id, time.setor_id):
             raise NotFoundException("Projeto não encontrado.")
-        return to_response(projeto)
+        return await self._to_response_com_modelos(projeto)
 
     async def atualizar(
         self, usuario_atual: UsuarioAutenticado, projeto_id: UUID, request: AtualizarProjetoRequest
@@ -114,10 +142,50 @@ class ProjetoServiceImpl:
         if time_atual is None:
             raise NotFoundException("Time do projeto não encontrado.")
         self._validar_escopo_time(usuario_atual, time_atual.id, time_atual.setor_id)
-        projeto.atualizar_dados(request.app, request.one_ui)
+
+        time_id = request.time_id or projeto.time_id
+        time_novo = (
+            time_atual
+            if time_id == time_atual.id
+            else await self._time_repo.obter_por_id(usuario_atual.unidade_id, time_id)
+        )
+        if time_novo is None:
+            raise NotFoundException("Time não encontrado.")
+        if not time_novo.ativo:
+            raise ConflictException("Não é possível associar o projeto a um time inativo.")
+        self._validar_escopo_time(usuario_atual, time_novo.id, time_novo.setor_id)
+        if (
+            time_novo.id != projeto.time_id
+            and await self._projeto_repo.tem_atribuicoes_fora_do_time(
+                usuario_atual.unidade_id, projeto.id, time_novo.id
+            )
+        ):
+            raise ConflictException(
+                "Não é possível trocar o time enquanto houver responsáveis ou backups "
+                "fora do time de destino."
+            )
+
+        modelos_ids = request.modelos_ids
+        if modelos_ids is not None:
+            ids_unicos = tuple(dict.fromkeys(modelos_ids))
+            if len(ids_unicos) != len(modelos_ids):
+                raise ConflictException("A lista contém modelos de dispositivo duplicados.")
+            modelos = await self._modelo_repo.listar_por_ids(usuario_atual.unidade_id, ids_unicos)
+            if len(modelos) != len(ids_unicos):
+                raise ConflictException(
+                    "Todos os modelos devem existir e estar ativos nesta unidade."
+                )
+
+        projeto.atualizar_dados(
+            request.nome or projeto.nome, request.app, request.one_ui, time_novo.id
+        )
+        if modelos_ids is not None:
+            await self._projeto_modelo_repo.substituir_modelos(
+                usuario_atual.unidade_id, projeto.id, tuple(modelos_ids)
+            )
         await self._projeto_repo.atualizar(projeto)
         await self._uow.commit()
-        return to_response(projeto)
+        return await self._to_response_com_modelos(projeto)
 
     async def excluir(self, usuario_atual: UsuarioAutenticado, projeto_id: UUID) -> None:
         self._exigir_permissao(usuario_atual, "projetos.gerenciar")
@@ -151,7 +219,20 @@ class ProjetoServiceImpl:
         projeto_atualizado = await self._projeto_repo.obter_por_id(
             usuario_atual.unidade_id, projeto_id
         )
-        return to_response(projeto_atualizado or projeto)
+        return await self._to_response_com_modelos(projeto_atualizado or projeto)
+
+    async def _to_response_com_modelos(self, projeto: Projeto) -> ProjetoResponse:
+        nomes_modelos = await self._projeto_modelo_repo.listar_nomes_por_projetos(
+            projeto.unidade_id, (projeto.id,)
+        )
+        ids_modelos = await self._projeto_modelo_repo.listar_ids_por_projetos(
+            projeto.unidade_id, (projeto.id,)
+        )
+        return to_response(
+            projeto,
+            list(nomes_modelos.get(projeto.id, ())),
+            list(ids_modelos.get(projeto.id, ())),
+        )
 
     @staticmethod
     def _exigir_permissao(usuario_atual: UsuarioAutenticado, permissao: str) -> None:
@@ -159,10 +240,14 @@ class ProjetoServiceImpl:
             raise ForbiddenException("Você não tem permissão para gerenciar projetos.")
 
     @staticmethod
-    def _exigir_consulta(usuario_atual: UsuarioAutenticado) -> None:
-        if not usuario_atual.pode("projetos.consultar") and not usuario_atual.pode(
+    def _pode_consultar(usuario_atual: UsuarioAutenticado) -> bool:
+        return usuario_atual.pode("projetos.consultar") or usuario_atual.pode(
             "test_cases.consultar"
-        ):
+        )
+
+    @classmethod
+    def _exigir_consulta(cls, usuario_atual: UsuarioAutenticado) -> None:
+        if not cls._pode_consultar(usuario_atual):
             raise ForbiddenException("Você não tem permissão para consultar projetos.")
 
     @staticmethod
@@ -171,28 +256,6 @@ class ProjetoServiceImpl:
     ) -> None:
         if usuario_atual.eh_administrador:
             return
-        dentro_do_escopo = (
-            usuario_atual.perfil_codigo == "GERENTE"
-            and setor_id in usuario_atual.setores_gerenciados
-        ) or (usuario_atual.perfil_codigo == "KP" and time_id in usuario_atual.time_ids)
-        if not dentro_do_escopo:
+        gerencia_projetos = usuario_atual.perfil_codigo in {"GERENTE", "KP"}
+        if not (gerencia_projetos and usuario_atual.time_no_escopo(time_id, setor_id)):
             raise ForbiddenException("O time está fora do seu escopo de projetos.")
-
-    @staticmethod
-    def _times_no_escopo(usuario_atual: UsuarioAutenticado) -> tuple[UUID, ...]:
-        if usuario_atual.perfil_codigo == "GERENTE":
-            return usuario_atual.times_gerenciados
-        if usuario_atual.perfil_codigo == "KP":
-            return usuario_atual.time_ids
-        return usuario_atual.time_ids
-
-    @staticmethod
-    def _time_esta_no_escopo(
-        usuario_atual: UsuarioAutenticado, time_id: UUID, setor_id: UUID
-    ) -> bool:
-        if usuario_atual.eh_administrador:
-            return True
-        return (
-            usuario_atual.perfil_codigo == "GERENTE"
-            and setor_id in usuario_atual.setores_gerenciados
-        ) or time_id in usuario_atual.time_ids

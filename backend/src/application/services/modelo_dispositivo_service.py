@@ -1,9 +1,12 @@
+from datetime import UTC, datetime
 from uuid import UUID
 
 from src.application.schemas.modelo_dispositivo import (
     AtualizarModeloDispositivoRequest,
     CriarModeloDispositivoRequest,
+    ModeloDispositivoOpcaoResponse,
     ModeloDispositivoResponse,
+    to_opcao_response,
     to_response,
 )
 from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
@@ -14,6 +17,8 @@ from src.domain.entities.interfaces.modelo_dispositivo_repository import (
 )
 from src.domain.entities.interfaces.unit_of_work import UnitOfWork
 from src.domain.entities.modelo_dispositivo import ModeloDispositivo
+
+PERMISSAO_GERENCIAR = "modelos_dispositivo.gerenciar"
 
 
 class ModeloDispositivoServiceImpl:
@@ -29,19 +34,39 @@ class ModeloDispositivoServiceImpl:
         ativo: bool | None = None,
         busca: str | None = None,
     ) -> PagedResult[ModeloDispositivoResponse]:
-        self._exigir_permissao(usuario_atual, "projetos.consultar")
+        self._exigir_permissao(usuario_atual, PERMISSAO_GERENCIAR)
         modelos = await self._repo.listar_paginado(
             usuario_atual.unidade_id, page, page_size, ativo, busca
         )
         return modelos.map(to_response)
 
+    async def listar_opcoes(
+        self,
+        usuario_atual: UsuarioAutenticado,
+        page: int,
+        page_size: int,
+        busca: str | None = None,
+    ) -> PagedResult[ModeloDispositivoOpcaoResponse]:
+        """Modelos ativos para o seletor de projetos, sem exigir a gestão do catálogo."""
+        if PERMISSAO_GERENCIAR not in usuario_atual.permissoes and not usuario_atual.pode(
+            "projetos.gerenciar"
+        ):
+            raise ForbiddenException(
+                "Você não tem permissão para consultar modelos de dispositivo."
+            )
+        modelos = await self._repo.listar_paginado(
+            usuario_atual.unidade_id, page, page_size, True, busca
+        )
+        return modelos.map(to_opcao_response)
+
     async def criar(
         self, usuario_atual: UsuarioAutenticado, request: CriarModeloDispositivoRequest
     ) -> ModeloDispositivoResponse:
-        self._exigir_permissao(usuario_atual, "projetos.gerenciar")
+        self._exigir_permissao(usuario_atual, PERMISSAO_GERENCIAR)
         if await self._repo.existe_nome(usuario_atual.unidade_id, request.nome, None):
             raise ConflictException("Já existe um modelo de dispositivo com este nome.")
-        modelo = ModeloDispositivo(usuario_atual.unidade_id, request.nome)
+        modelo = ModeloDispositivo(usuario_atual.unidade_id, request.nome, request.descricao)
+        modelo.created_at = modelo.updated_at = _agora()
         await self._repo.adicionar(modelo)
         await self._uow.commit()
         return to_response(modelo)
@@ -52,7 +77,7 @@ class ModeloDispositivoServiceImpl:
         modelo_id: UUID,
         request: AtualizarModeloDispositivoRequest,
     ) -> ModeloDispositivoResponse:
-        self._exigir_permissao(usuario_atual, "projetos.gerenciar")
+        self._exigir_permissao(usuario_atual, PERMISSAO_GERENCIAR)
         modelo = await self._repo.obter_por_id(usuario_atual.unidade_id, modelo_id)
         if modelo is None:
             raise NotFoundException("Modelo de dispositivo não encontrado.")
@@ -60,17 +85,29 @@ class ModeloDispositivoServiceImpl:
             if await self._repo.existe_nome(usuario_atual.unidade_id, request.nome, modelo_id):
                 raise ConflictException("Já existe um modelo de dispositivo com este nome.")
             modelo.atualizar_nome(request.nome)
+        if "descricao" in request.model_fields_set:
+            modelo.atualizar_descricao(request.descricao)
         if request.ativo is True:
             modelo.ativar()
         elif request.ativo is False:
             modelo.inativar()
+        modelo.updated_at = _agora()
         await self._repo.atualizar(modelo)
         await self._uow.commit()
         return to_response(modelo)
 
     @staticmethod
-    def _exigir_permissao(usuario_atual: UsuarioAutenticado, permissao: str) -> None:
-        if not usuario_atual.pode(permissao):
+    def _exigir_permissao(usuario_atual: UsuarioAutenticado, *permissoes: str) -> None:
+        if PERMISSAO_GERENCIAR in permissoes:
+            permitido = PERMISSAO_GERENCIAR in usuario_atual.permissoes
+        else:
+            permitido = any(usuario_atual.pode(permissao) for permissao in permissoes)
+        if not permitido:
             raise ForbiddenException(
                 "Você não tem permissão para gerenciar modelos de dispositivo."
             )
+
+
+def _agora() -> datetime:
+    # Sem fuso, em UTC: o mesmo valor que o now() do Postgres grava nas colunas `timestamp`.
+    return datetime.now(UTC).replace(tzinfo=None)

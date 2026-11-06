@@ -14,6 +14,7 @@ class ProjetoModel(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True)
     unidade_id: Mapped[UUID] = mapped_column(ForeignKey("unidades.id"), nullable=False)
     time_id: Mapped[UUID] = mapped_column(ForeignKey("times.id"), nullable=False)
+    nome: Mapped[str] = mapped_column(String(Projeto.NOME_MAX_LENGTH), nullable=False)
     app: Mapped[str] = mapped_column(String(Projeto.APP_MAX_LENGTH), nullable=False)
     one_ui: Mapped[str] = mapped_column(String(Projeto.ONE_UI_MAX_LENGTH), nullable=False)
     status: Mapped[str] = mapped_column(

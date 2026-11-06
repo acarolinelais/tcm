@@ -76,14 +76,13 @@ test("admin transfere a responsabilidade pela conta na tabela de usuários", asy
 
   await page.goto("/admin/usuarios");
   await expect(page.getByRole("row", { name: /Carol/ })).toBeVisible();
-  await page.getByRole("button", { name: "Ações para Carol" }).click();
-  await page.getByRole("menuitem", { name: "Alterar responsável" }).click();
-  await page.getByRole("combobox", { name: "Gerente responsável" }).click();
+  await page.getByRole("button", { name: "Alterar responsável Carol" }).click();
+  await page.getByRole("button", { name: /Gerente responsável/ }).click();
   await page.getByRole("option", { name: /Gerente Ana/ }).click();
   await page.getByRole("button", { name: "Salvar" }).click();
 
   await expect(page.getByText("Responsável atualizado.")).toBeVisible();
-  await expect(page.getByText("Gerente Ana")).toBeVisible();
+  await expect(page.getByRole("row", { name: /Carol/ })).toContainText("Gerente Ana");
 });
 
 test("gerente só recebe ações de gestão nas contas sob sua responsabilidade", async ({ page }) => {
@@ -95,7 +94,7 @@ test("gerente só recebe ações de gestão nas contas sob sua responsabilidade"
 
   await page.goto("/usuarios");
   await expect(page.getByRole("row", { name: /Carol/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Ações para Carol" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Editar Carol" })).toBeVisible();
   await expect(page.getByRole("row", { name: /Bruno/ }).getByRole("button")).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Administração/ })).toHaveCount(0);
 });

@@ -1,19 +1,22 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { PerfilAtual } from "@/core/auth/api";
+import { ApiError } from "@/shared/api/problem-details";
 
 import {
   casosTesteApi,
   formFactorApi,
-  modelosDispositivoApi,
   projetosApi,
   type AtualizarCasoTesteInput,
   type CriarCasoTesteInput,
   type CriarProjetoInput,
+  type FiltrosFormFactor,
+  type FiltrosHistoricoProjeto,
+  type CriarRodadaFormFactorInput,
+  type EnviarResultadosRodadaInput,
   type StatusProjeto,
 } from "../api/projetos.api";
 
 export const projetosQueryKey = ["projetos"] as const;
-export const modelosQueryKey = ["modelos-dispositivo"] as const;
 
 export function useProjetosPessoais(perfil: PerfilAtual, enabled = true) {
   return useQuery({
@@ -24,13 +27,31 @@ export function useProjetosPessoais(perfil: PerfilAtual, enabled = true) {
   });
 }
 
-export function useProjetosSeletor(perfil: PerfilAtual) {
+/** Um projeto do escopo; a tela do projeto e a do Kanban pelo Board compartilham este cache. */
+export function useProjeto(projetoId: string, perfil: PerfilAtual, enabled = true) {
+  return useQuery({
+    queryKey: ["projetos", "detalhe", projetoId, perfil.unidade_id, perfil.id],
+    queryFn: () => projetosApi.obter(projetoId),
+    enabled: Boolean(projetoId) && enabled,
+  });
+}
+
+/** Árvore setor → time → projeto do escopo, para a escolha em cascata do Board (spec 037). */
+export function useNavegacaoBoard(perfil: PerfilAtual) {
+  return useQuery({
+    queryKey: ["projetos", "navegacao", perfil.unidade_id, perfil.id],
+    queryFn: () => projetosApi.navegacao(),
+  });
+}
+
+export function useProjetosSeletor(perfil: PerfilAtual, enabled = true) {
   const pessoal = perfil.perfil_codigo === "USUARIO_PADRAO";
   return useInfiniteQuery({
     queryKey: ["projetos", "seletor", perfil.unidade_id, perfil.id, pessoal],
     initialPageParam: 1,
     queryFn: ({ pageParam }) => pessoal ? projetosApi.listar(pageParam, 100, true) : projetosApi.listar(pageParam, 100),
     getNextPageParam: (last) => last.page * last.page_size < last.total_count ? last.page + 1 : undefined,
+    enabled,
   });
 }
 
@@ -66,7 +87,7 @@ export function useAtualizarStatusProjeto() {
 }
 
 export function useCasosTeste(projetoId: string, page: number, pageSize: number,
-  filtros?: { responsavelId?: string; associadosAMim?: boolean; semana?: string }, perfil?: PerfilAtual, enabled = true) {
+  filtros?: { responsavelIds?: string[]; associadosAMim?: boolean; semana?: string }, perfil?: PerfilAtual, enabled = true) {
   return useQuery({
     queryKey: ["projetos", projetoId, "test-cases", page, pageSize, filtros, perfil?.unidade_id, perfil?.id],
     queryFn: () => filtros ? casosTesteApi.listar(projetoId, page, pageSize, filtros) : casosTesteApi.listar(projetoId, page, pageSize),
@@ -74,11 +95,57 @@ export function useCasosTeste(projetoId: string, page: number, pageSize: number,
   });
 }
 
+export const ehNaoEncontrado = (erro: unknown) => erro instanceof ApiError && erro.problem.status === 404;
+
+/** 4xx (ex.: caso fora do escopo) não melhora tentando de novo. */
+const semRetryEm4xx = (falhas: number, erro: Error) => !(erro instanceof ApiError && erro.problem.status < 500) && falhas < 3;
+
+/** Detalhe de um Test Case com os textos da planilha (spec 028). */
+export function useCasoTeste(id: string, perfil?: PerfilAtual) {
+  return useQuery({
+    queryKey: ["projetos", "test-cases", "detalhe", id, perfil?.unidade_id, perfil?.id],
+    queryFn: () => casosTesteApi.obter(id),
+    enabled: Boolean(id),
+    retry: semRetryEm4xx,
+  });
+}
+
+const pullRequestsQueryKey = (casoId: string) => ["projetos", "test-cases", "pull-requests", casoId] as const;
+
+/** Links de PR do caso (spec 030). As mutações só invalidam esta lista: os links não aparecem nas tabelas. */
+export function usePullRequestsCasoTeste(casoId: string, perfil?: PerfilAtual) {
+  return useQuery({
+    queryKey: [...pullRequestsQueryKey(casoId), perfil?.unidade_id, perfil?.id],
+    queryFn: () => casosTesteApi.listarPullRequests(casoId),
+    enabled: Boolean(casoId),
+    retry: semRetryEm4xx,
+  });
+}
+
+export function useAdicionarPullRequest(casoId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (url: string) => casosTesteApi.adicionarPullRequest(casoId, url),
+    // Também no erro: um 409 significa que outra pessoa já adicionou o link, e a lista precisa mostrá-lo.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: pullRequestsQueryKey(casoId) }),
+  });
+}
+
+export function useRemoverPullRequest(casoId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (linkId: string) => casosTesteApi.removerPullRequest(casoId, linkId),
+    // Também no erro: um 404 significa que outra pessoa já removeu, e a lista precisa refletir isso.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: pullRequestsQueryKey(casoId) }),
+  });
+}
+
 export function useCriarCasoTeste(projetoId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CriarCasoTesteInput) => casosTesteApi.criar(projetoId, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "test-cases"] }),
+    // Toda a árvore de projetos: a lista e os contadores também mudam com um caso novo.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projetos"] }),
   });
 }
 
@@ -100,42 +167,70 @@ export function useTransferirCasoTeste(projetoId: string) {
   });
 }
 
-export function useModelosDispositivo(ativo?: boolean) {
+export function useFormFactor(projetoId: string, filtros: FiltrosFormFactor, perfil?: PerfilAtual, enabled = true) {
   return useQuery({
-    queryKey: [...modelosQueryKey, ativo],
-    queryFn: () => modelosDispositivoApi.listar(1, 100, ativo),
-  });
-}
-
-export function useCriarModeloDispositivo() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (nome: string) => modelosDispositivoApi.criar(nome),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: modelosQueryKey }),
-  });
-}
-
-export function useAtualizarModeloDispositivo() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: { nome?: string; ativo?: boolean } }) => modelosDispositivoApi.atualizar(id, body),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: modelosQueryKey }),
-  });
-}
-
-export function useDefinirAtivoModeloDispositivo() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, ativo }: { id: string; ativo: boolean }) => modelosDispositivoApi.definirAtivo(id, ativo),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: modelosQueryKey }),
-  });
-}
-
-export function useFormFactor(projetoId: string, filtros: { page?: number; pageSize?: number; semana?: string; oneUi?: string }) {
-  return useQuery({
-    queryKey: ["projetos", projetoId, "form-factor", filtros],
+    queryKey: ["projetos", projetoId, "form-factor", filtros, perfil?.unidade_id, perfil?.id],
     queryFn: () => formFactorApi.listar(projetoId, filtros),
+    enabled: Boolean(projetoId) && enabled,
+  });
+}
+
+export function useHistoricoProjeto(projetoId: string, filtros: FiltrosHistoricoProjeto, perfil?: PerfilAtual) {
+  return useQuery({
+    queryKey: ["form-factor", "historico", projetoId, filtros, perfil?.unidade_id, perfil?.id],
+    queryFn: () => formFactorApi.historicoProjeto(projetoId, filtros),
     enabled: Boolean(projetoId),
+    // Troca de página ou filtro mantém a tabela até a resposta chegar; outro projeto ou outro perfil não herda os dados.
+    placeholderData: (anterior, consultaAnterior) => {
+      const [, , projeto, , unidadeId, usuarioId] = consultaAnterior?.queryKey ?? [];
+      return projeto === projetoId && unidadeId === perfil?.unidade_id && usuarioId === perfil?.id ? anterior : undefined;
+    },
+  });
+}
+
+export function useResumoExecucoes(casoTesteId: string | null, perfil?: PerfilAtual) {
+  return useQuery({
+    queryKey: ["form-factor", "resumo-execucoes", casoTesteId, perfil?.unidade_id, perfil?.id],
+    queryFn: () => formFactorApi.resumoExecucoes(casoTesteId!),
+    enabled: Boolean(casoTesteId),
+  });
+}
+
+export function useFormFactorResultados(projetoId: string, filtros: FiltrosFormFactor, perfil?: PerfilAtual, enabled = true) {
+  return useQuery({
+    queryKey: ["projetos", projetoId, "form-factor-results", filtros, perfil?.unidade_id, perfil?.id],
+    queryFn: () => formFactorApi.listarResultados(projetoId, filtros),
+    enabled: Boolean(projetoId) && enabled,
+  });
+}
+
+export function useCriarRodadaFormFactor(projetoId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["projetos", projetoId, "form-factor-manual"],
+    mutationFn: (input: CriarRodadaFormFactorInput) => formFactorApi.criarRodada(projetoId, input),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "form-factor"] }),
+        queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "form-factor-results"] }),
+      ]);
+    },
+  });
+}
+
+export function useRegistrarResultadosRodadaFormFactor(projetoId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["projetos", projetoId, "form-factor-rodada-results"],
+    mutationFn: ({ rodadaId, casoTesteId, input }: { rodadaId: string; casoTesteId: string; input: EnviarResultadosRodadaInput }) =>
+      formFactorApi.registrarResultadosRodada(projetoId, rodadaId, casoTesteId, input),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "form-factor"] }),
+        queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "form-factor-results"] }),
+        queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "test-cases"] }),
+      ]);
+    },
   });
 }
 
@@ -143,6 +238,10 @@ export function useImportarRelatorioSdf(projetoId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (arquivo: File) => formFactorApi.importar(projetoId, arquivo),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "form-factor"] }),
+    // A aba Form Factor do projeto e a tabela da General Results mostram os resultados novos (spec 059, CA-09).
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "form-factor"] }),
+      queryClient.invalidateQueries({ queryKey: ["form-factor", "historico", projetoId] }),
+    ]),
   });
 }

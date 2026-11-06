@@ -1,5 +1,5 @@
 #!/bin/sh
-# Regras de branches e commits do ADR 0027. Chamado pelos hooks em .githooks/ (ADR 0029)
+# Regras de branches e commits dos ADRs 0027 e 0035. Chamado pelos hooks em .githooks/ (ADR 0029)
 # e pelo job `convencao` do CI (ADR 0028). Sai com código 1 e explica o erro quando algo
 # está fora do padrão.
 #
@@ -8,6 +8,7 @@
 #   convencao.sh branch <nome>                          # branch de trabalho onde se commita
 #   convencao.sh push <ref-local> <ref-remota>          # uma linha do stdin do pre-push
 #   convencao.sh pr <base> <head> <base-sha> <head-sha> # origem do PR e commits do range
+#   convencao.sh commits <base-sha> <head-sha>          # commits que chegaram por push direto
 #   convencao.sh pr-titulo <titulo>
 #   convencao.sh spec <head>                            # feat/NNN-... exige docs/specs/NNN-*
 set -eu
@@ -33,7 +34,8 @@ mensagem_valida() {
 
 valida_branch() {
   case "$1" in
-    main | dev) falha "Não commite direto na '$1'. Crie uma branch de trabalho a partir da dev." ;;
+    main) falha "Não commite direto na main. Use a dev ou uma branch de trabalho a partir dela." ;;
+    dev) return 0 ;; # ADR 0035
     feat/[0-9][0-9][0-9]-*) ;;
     feat/*) falha "Branch '$1': feat/ precisa começar com o número da spec." "$FORMATO_BRANCH" ;;
   esac
@@ -43,7 +45,8 @@ valida_branch() {
 
 valida_push() {
   case "$2" in
-    refs/heads/main | refs/heads/dev) falha "Push direto para '${2#refs/heads/}' não é permitido. Abra um PR." ;;
+    refs/heads/main) falha "Push direto para 'main' não é permitido. Abra um PR." ;;
+    refs/heads/dev) [ "$1" != "(delete)" ] || falha "A dev não pode ser apagada." ;;
     refs/heads/*) [ "$1" = "(delete)" ] || valida_branch "${2#refs/heads/}" ;;
   esac
 }
@@ -98,8 +101,9 @@ case "$comando" in
   pr)
     valida_origem_pr "$1" "$2"
     valida_commits "$3" "$4" ;;
+  commits) valida_commits "$1" "$2" ;;
   pr-titulo)
     mensagem_valida "$1" || falha "Título do PR fora do padrão: '$1'" "$FORMATO_MENSAGEM" ;;
   spec) valida_spec "$1" ;;
-  *) falha "Uso: $0 {mensagem|branch|push|pr|pr-titulo|spec} ..." ;;
+  *) falha "Uso: $0 {mensagem|branch|push|pr|commits|pr-titulo|spec} ..." ;;
 esac

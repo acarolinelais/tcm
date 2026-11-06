@@ -15,3 +15,25 @@ def test_criar_modelo_normaliza_nome_e_inicia_ativo():
 def test_criar_modelo_com_nome_invalido_levanta_erro(nome: str):
     with pytest.raises(ValueError):
         ModeloDispositivo(uuid4(), nome)
+
+
+def test_criar_modelo_com_descricao_normaliza_texto():
+    modelo = ModeloDispositivo(uuid4(), "S27 Ultra", " Flagship 2027 ")
+
+    assert modelo.descricao == "Flagship 2027"
+
+
+@pytest.mark.parametrize("descricao", [None, "", "   "])
+def test_criar_modelo_sem_descricao_fica_nula(descricao: str | None):
+    modelo = ModeloDispositivo(uuid4(), "S27 Ultra", descricao)
+
+    assert modelo.descricao is None
+
+
+def test_descricao_acima_do_limite_levanta_erro():
+    modelo = ModeloDispositivo(uuid4(), "S27 Ultra", "Flagship")
+
+    with pytest.raises(ValueError):
+        modelo.atualizar_descricao("x" * (ModeloDispositivo.DESCRICAO_MAX_LENGTH + 1))
+
+    assert modelo.descricao == "Flagship"

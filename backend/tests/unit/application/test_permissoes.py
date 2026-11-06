@@ -11,6 +11,8 @@ from src.application.catalogos.permissoes import metadados_permissao
         ("test_cases.gerenciar", "test_cases", 2),
         ("form_factor.consultar", "form_factor", 1),
         ("form_factor.importar", "form_factor", 2),
+        ("form_factor.registrar", "form_factor", 3),
+        ("modelos_dispositivo.gerenciar", "modelos_dispositivo", 1),
     ],
 )
 def test_metadados_permissoes_dos_projetos(codigo, modulo_codigo, ordem):

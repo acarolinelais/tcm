@@ -5,10 +5,26 @@ from uuid import UUID
 
 @dataclass(frozen=True)
 class FormFactorLinha:
+    caso_teste_id: UUID
     tc_id: str
-    sdf_id: str
-    modelo_dispositivo_id: UUID
-    modelo_nome: str
-    resultado: str
+    responsavel_id: UUID
+    sdf_id: str | None
+    data_reportada: datetime | None
+    resultados: dict[UUID, str]
+    backup_id: UUID | None = None
+    # Rodada mais recente em que o TC ainda aguarda resultados (spec 023, RN-09).
+    rodada_pendente_id: UUID | None = None
+
+
+@dataclass(frozen=True)
+class FormFactorExecucaoLinha:
+    execucao_id: UUID
+    caso_teste_id: UUID
+    tc_id: str
+    responsavel_id: UUID
+    sdf_id: str | None
     data_reportada: datetime
-    one_ui: str
+    origem: str
+    resultados: dict[UUID, str]
+    rodada_id: UUID | None = None
+    resultados_registrados: bool = True

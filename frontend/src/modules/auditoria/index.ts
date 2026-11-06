@@ -1,0 +1,1 @@
+export { auditoriaRoutes } from "./routes";

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { languages, resources } from "./resources";
 import i18n from "./index";
 import { formatNumber } from "./format";
+import { NOME_COR_AVATAR } from "@/shared/lib/cor-avatar";
 
 describe("translation resources", () => {
   it("supports the account locale codes and has matching keys for every language", () => {
@@ -11,6 +12,50 @@ describe("translation resources", () => {
     for (const language of ["pt-BR", "ko"] as const) {
       expect(Object.keys(resources[language].translation).sort()).toEqual(englishKeys);
     }
+  });
+
+  it("names the Test Case detail sections in every language", () => {
+    for (const language of ["en", "pt-BR", "ko"] as const) {
+      const { translation } = resources[language];
+      for (const key of ["caseTitle", "casePrecondition", "caseProcedure", "caseExpectedResult", "caseNotFound", "caseDetailsLoadError", "done"] as const) expect(translation[key], `${language} ${key}`).toBeTruthy();
+    }
+    expect(resources.en.translation.caseProcedure).toBe("Test Procedure(English)");
+  });
+
+  it("names the Board header and the Filter button in every language (spec 056)", () => {
+    for (const language of ["en", "pt-BR", "ko"] as const) {
+      const { translation } = resources[language];
+      for (const key of ["boardKanbanHint", "boardPeople", "filterButton", "kanbanNoMatchesHint", "activeFilters_one", "activeFilters_other", "timelineFilters", "timelineEmptyHint", "originSpreadsheet", "viewExecutionHistory", "rowDevices", "resultDescription"] as const) expect(translation[key], `${language} ${key}`).toBeTruthy();
+    }
+  });
+
+  it("has the PR link section texts in every language", () => {
+    const chaves = ["pullRequests", "pullRequestUrl", "noPullRequests", "pullRequestsLoadError", "pullRequestAddedBy", "removePullRequest", "removePullRequestTitle", "removePullRequestDescription", "pullRequestAdded", "pullRequestRemoved", "pullRequestAddError", "pullRequestRemoveError", "pullRequestNotFound", "pullRequestDuplicate", "pullRequestUrlRequired", "pullRequestUrlInvalid", "pullRequestUrlDomain", "pullRequestUrlMax"] as const;
+    for (const language of ["en", "pt-BR", "ko"] as const) {
+      for (const key of chaves) expect(resources[language].translation[key], `${language} ${key}`).toBeTruthy();
+      expect(resources[language].translation.pullRequestUrlDomain).toContain("github.sec.samsung.net");
+    }
+    expect(resources["pt-BR"].translation.noPullRequests).toBe("Nenhum PR registrado");
+  });
+
+  it("names the avatar color section and every palette color in every language", () => {
+    const chaves = ["settingsAvatarTitle", "settingsAvatarHint", "avatarColorSaveError", ...Object.values(NOME_COR_AVATAR)] as const;
+    for (const language of ["en", "pt-BR", "ko"] as const) {
+      for (const key of chaves) expect(resources[language].translation[key], `${language} ${key}`).toBeTruthy();
+      expect(new Set(Object.values(NOME_COR_AVATAR).map((key) => resources[language].translation[key])).size, language).toBe(8);
+    }
+    expect(resources["pt-BR"].translation.settingsAvatarTitle).toBe("Cor do avatar");
+  });
+
+  it("labels each Automation Level with its number in every language", () => {
+    for (const language of ["en", "pt-BR", "ko"] as const) {
+      const { translation } = resources[language];
+      expect(translation.automationLevel).toBeTruthy();
+      expect(translation.automationLevel1.startsWith("1 - ")).toBe(true);
+      expect(translation.automationLevel2.startsWith("2 - ")).toBe(true);
+      expect(translation.automationLevel3.startsWith("3 - ")).toBe(true);
+    }
+    expect(resources["pt-BR"].translation.automationLevel2).toBe("2 - Parcialmente automatizável");
   });
 
   it("formats numbers using the active language locale", async () => {
@@ -43,8 +88,6 @@ describe("translation resources", () => {
     expect(resources["pt-BR"].translation.difficulty).toBe("Dificuldade");
     expect(resources["pt-BR"].translation.tcSituation).toBe("Situação do TC");
     expect(resources["pt-BR"].translation.assignee).toBe("Responsável");
-    expect(resources["pt-BR"].translation.deviceModel).toBe("Modelo");
-    expect(resources["pt-BR"].translation.result).toBe("Resultado");
     expect(resources["pt-BR"].translation.date).toBe("Data");
     expect(resources["pt-BR"].translation.status).toBe("Status");
   });
@@ -57,7 +100,48 @@ describe("translation resources", () => {
     expect(resources["pt-BR"].translation.difficultyMedium).toBe("Média");
     expect(resources["pt-BR"].translation.difficultyHigh).toBe("Alta");
     expect(resources["pt-BR"].translation.statusInProgress).toBe("Em andamento");
+    expect(resources.en.translation.statusInValidation).toBe("In Validation");
+    expect(resources["pt-BR"].translation.statusInValidation).toBe("Em validação");
+    expect(resources.ko.translation.statusInValidation).toBe("검증 중");
     expect(resources["pt-BR"].translation.addDeviceModel).toBe("Novo modelo de dispositivo");
     expect(resources["pt-BR"].translation.deviceModelName).toBe("Nome do modelo");
   });
+
+  it("translates round and final Status labels in all languages", () => {
+    for (const language of ["en", "pt-BR", "ko"] as const) {
+      const translation = resources[language].translation;
+      expect(translation.createTestRound).toBeTruthy();
+      expect(translation.sdfIdOptionalHint).toBeTruthy();
+      expect(translation.statusDone).toBeTruthy();
+      expect(translation.statusCancelled).toBeTruthy();
+      expect(translation.roundCreateError).toBeTruthy();
+    }
+  });
+
+  it("names the fixes and excluded Status in all languages", () => {
+    expect([resources.en.translation.statusInFixes, resources.en.translation.statusCancelled]).toEqual(["In Fixes", "Excluded"]);
+    expect([resources["pt-BR"].translation.statusInFixes, resources["pt-BR"].translation.statusCancelled]).toEqual(["Em correção", "Excluído"]);
+    expect([resources.ko.translation.statusInFixes, resources.ko.translation.statusCancelled]).toEqual(["수정 중", "제외됨"]);
+  });
+
+  it("has the General Results texts (spec 032) in every language", () => {
+    const chaves = ["sdfResult", "resultOriginImported", "resultOriginManual", "executionSummary", "testerId", "device", "resultChipLabel", "noRunLabel", "noAccessibleProjects", "noProjectCases", "noCaseRuns", "dayOrWeek"] as const;
+    for (const language of ["en", "pt-BR", "ko"] as const) {
+      for (const key of chaves) expect(resources[language].translation[key], `${language} ${key}`).toBeTruthy();
+      expect(resources[language].translation.sdfResult).toBe("SDF Result");
+    }
+    expect(resources["pt-BR"].translation.resultOriginImported).toBe("Importado da planilha");
+    expect(resources["pt-BR"].translation.resultOriginManual).toBe("Adicionado manualmente");
+  });
+
+  it("has the sector deactivation texts (spec 050) with the name in every language", () => {
+    for (const language of ["en", "pt-BR", "ko"] as const) {
+      for (const key of ["deactivateSectorTitle", "deactivateSectorDescription", "deactivateSectorConfirm"] as const) {
+        expect(resources[language].translation[key], `${language} ${key}`).toBeTruthy();
+      }
+      expect(resources[language].translation.deactivateSectorTitle).toContain("{{name}}");
+      expect(resources[language].translation.deactivateSectorDescription).toContain("{{name}}");
+    }
+  });
 });
+

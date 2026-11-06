@@ -12,8 +12,13 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    // Sem isto o Vitest esvazia o CSS, inclusive com `?raw`; o teste de contraste do avatar lê os tokens do global.css.
+    css: { include: [/global\.css/] },
     globals: true,
     setupFiles: ["./src/test-setup.ts"],
     exclude: ["node_modules", "e2e"],
+    // Do Node 25 em diante (o `lts/*` do CI passou ao 26) há um localStorage global do próprio Node que, sem
+    // --localstorage-file, fica indefinido e esconde o do jsdom. Desligado, os testes usam o do jsdom, como no 24.
+    poolOptions: { forks: { execArgv: ["--no-experimental-webstorage"] } },
   },
 });

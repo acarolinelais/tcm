@@ -22,6 +22,12 @@ Se o usuário pedir uma task específica, o bloco é só essa task.
 4. **Para cada task do bloco, em ordem:**
    - Implemente só essa task. Siga `python-crud` e `react-crud` quando se aplicarem, e as diretrizes da
      skill `andrej-karpathy-skills:karpathy-guidelines` (mudanças cirúrgicas, nada além do pedido).
+   - Aplique a skill `ponytail` (nível full): a menor mudança que resolve a task inteira, reaproveitando o
+     que o código já tem, sem abstração, opção ou dependência que a task não pede. Ela não corta o que os
+     ADRs exigem (camadas, validação, ProblemDetails, testes de sucesso e falha). Um atalho consciente leva
+     o comentário `shortcut: <limite>, <quando evoluir>`.
+   - Todo texto em prosa que a task escrever (comentários, docstrings, textos de interface, docs) passa
+     pela skill `humanizer` no modo embutido.
      Os testes da task fazem parte da task, com o cenário de **sucesso** e o de **falha** (ADR 0010).
    - Rode a verificação **filtrada** da task (ex.: `uv run pytest tests/unit/test_usuario_service.py`,
      `npm test -- usuario-form`). Se falhar, corrija e rode de novo. Nunca marque como concluída uma task
@@ -41,6 +47,7 @@ Se o usuário pedir uma task específica, o bloco é só essa task.
    - as tasks feitas e os arquivos principais;
    - a saída resumida da verificação;
    - o resultado da `simplify` (aplicado e o que foi para o backlog);
+   - o que ficou de fora ou não foi conferido, e os atalhos `shortcut:` criados (fechamento da `ponytail`);
    - **o que dá para aprender aqui**: o conceito central do bloco em 1 ou 2 frases;
    - qual é o próximo bloco.
 8. **Pare** no fim do bloco. Não emende o próximo bloco sem o usuário pedir.
@@ -48,6 +55,8 @@ Se o usuário pedir uma task específica, o bloco é só essa task.
 ## Ao concluir a última task da spec
 - Rode a skill `code-review` sobre o diff da spec inteira.
 - Confira se cada `CA-xx` do `spec.md` é coberto por um teste que passa.
+- Rode a skill `ponytail-debt` e leve cada atalho `shortcut:` sem gatilho de evolução para o `## Backlog`.
 - Mostre o `## Backlog` ao usuário: cada item vira uma task, uma spec nova ou é descartado, conforme ele decidir.
+- A descrição do PR e as mensagens de commit passam pela `humanizer` no modo embutido.
 - Mude o status da spec para `Concluída` e atualize o roadmap.
 - Sugira registrar o aprendizado com a skill `study-log`.
