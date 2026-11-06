@@ -60,3 +60,4 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0046](0046-resultados-gerais-com-cinco-datas.md) | Resultados Gerais com no máximo 5 datas (substitui em parte o 0039) | Aceito |
 | [0047](0047-refresh-token-em-cookie-httponly.md) | Refresh token em cookie httpOnly (substitui em parte o 0020) | Aceito |
 | [0048](0048-sessao-de-dez-horas.md) | Sessão de 10 horas a partir do login (substitui em parte o 0020) | Aceito |
+| [0049](0049-recharts-para-graficos.md) | Recharts para os gráficos do frontend | Aceito |
