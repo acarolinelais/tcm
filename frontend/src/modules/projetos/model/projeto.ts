@@ -73,6 +73,9 @@ export interface CasoTeste {
   backup_id: string | null;
   /** Motivo da exclusão (spec 026); só existe com o Status `Cancelled`. Ausente nos TCs antigos. */
   justificativa_exclusao?: string | null;
+  /** Spec 065: primeira entrada em In Review e fechamento com PASS em todos os devices. Só o sistema grava. */
+  code_done_em?: string | null;
+  all_passed_em?: string | null;
   ativo: boolean;
   created_at: string | null;
   updated_at: string | null;

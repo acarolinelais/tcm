@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import case, func, or_, select
+from sqlalchemy import case, func, or_, select, update
 
 from src.domain.common.cor_avatar import CorAvatar
 from src.domain.common.paged_result import PagedResult
@@ -16,7 +16,14 @@ from src.domain.entities.caso_teste import (
 )
 from src.domain.queries.caso_teste_com_responsavel import CasoTesteComResponsavel
 from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
+from src.infrastructure.data.models.execucao_sdf_model import ExecucaoSdfModel
+from src.infrastructure.data.models.projeto_modelo_model import ProjetoModeloModel
+from src.infrastructure.data.models.resultado_form_factor_model import ResultadoFormFactorModel
 from src.infrastructure.data.models.usuario_model import UsuarioModel
+from src.infrastructure.repositories.historico_form_factor_repository import (
+    _ordem_de_gravacao,
+    _resultados_validos,
+)
 from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
 
 
@@ -42,13 +49,12 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
         if responsavel_ids:
             filtros.append(CasoTesteModel.responsavel_id.in_(responsavel_ids))
         if data_final_inicio is not None and data_final_fim is not None:
-            data_final = func.coalesce(CasoTesteModel.updated_at, CasoTesteModel.created_at)
+            # Semana da End date (spec 065, RN-10): a finalização de tudo, sem depender do Status.
             filtros.extend(
                 (
                     CasoTesteModel.ativo.is_(True),
-                    CasoTesteModel.status.in_((StatusCasoTeste.DONE.value, "Pass")),
-                    data_final >= data_final_inicio,
-                    data_final < data_final_fim,
+                    CasoTesteModel.all_passed_em >= data_final_inicio,
+                    CasoTesteModel.all_passed_em < data_final_fim,
                 )
             )
         if associado_usuario_id is not None:
@@ -155,6 +161,82 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             for modelo, nome, cor in linhas
         )
 
+    async def marcar_todos_aprovados(
+        self, unidade_id: UUID, projeto_id: UUID, caso_ids: Sequence[UUID]
+    ) -> None:
+        """Grava a finalização de tudo (spec 065) nos casos que fecharam e ainda não a têm.
+
+        Fecha quando cada device ativo do projeto tem resultado e o mais recente de cada um é PASS,
+        com a ordem de "mais recente" da General Results. A data é a mais recente entre esses
+        resultados (RN-03 a RN-08). A migration g065 repete esta regra em SQL para o retroativo.
+        """
+        if not caso_ids:
+            return
+        # Os resultados recém-adicionados na sessão precisam estar no banco para o UPDATE.
+        await self.session.flush()
+        posicao = (
+            func.row_number()
+            .over(
+                partition_by=(
+                    ExecucaoSdfModel.caso_teste_id,
+                    ResultadoFormFactorModel.modelo_dispositivo_id,
+                ),
+                order_by=(
+                    ExecucaoSdfModel.data_reportada.desc(),
+                    _ordem_de_gravacao().desc(),
+                    ExecucaoSdfModel.id.desc(),
+                ),
+            )
+            .label("posicao")
+        )
+        ultimos = (
+            _resultados_validos(
+                unidade_id,
+                projeto_id,
+                ExecucaoSdfModel.caso_teste_id.label("caso_teste_id"),
+                ResultadoFormFactorModel.resultado.label("resultado"),
+                ExecucaoSdfModel.data_reportada.label("data_reportada"),
+                posicao,
+            )
+            .where(ExecucaoSdfModel.caso_teste_id.in_(caso_ids))
+            .subquery()
+        )
+        devices_do_projeto = (
+            select(func.count())
+            .select_from(ProjetoModeloModel)
+            .where(
+                ProjetoModeloModel.unidade_id == unidade_id,
+                ProjetoModeloModel.projeto_id == projeto_id,
+                ProjetoModeloModel.ativo.is_(True),
+            )
+            .scalar_subquery()
+        )
+        aprovados = (
+            select(
+                ultimos.c.caso_teste_id,
+                func.max(ultimos.c.data_reportada).label("data"),
+            )
+            .where(ultimos.c.posicao == 1)
+            .group_by(ultimos.c.caso_teste_id)
+            .having(
+                func.bool_and(func.upper(func.trim(ultimos.c.resultado)) == "PASS"),
+                func.count() == devices_do_projeto,
+            )
+            .subquery()
+        )
+        await self.session.execute(
+            update(CasoTesteModel)
+            .where(
+                CasoTesteModel.id == aprovados.c.caso_teste_id,
+                CasoTesteModel.unidade_id == unidade_id,
+                CasoTesteModel.all_passed_em.is_(None),
+            )
+            # Mantém o updated_at: sem isso o onupdate do model muda a End date de um caso Done.
+            .values(all_passed_em=aprovados.c.data, updated_at=CasoTesteModel.updated_at)
+            # Nenhum caminho lê o caso da sessão depois deste UPDATE (plan, Riscos).
+            .execution_options(synchronize_session=False)
+        )
+
     def _to_entity(self, model: CasoTesteModel) -> CasoTeste:
         caso = CasoTeste(
             model.unidade_id,
@@ -179,6 +261,8 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             expected_result=model.expected_result,
         )
         caso.id = model.id
+        caso.code_done_em = model.code_done_em
+        caso.all_passed_em = model.all_passed_em
         caso.ativo = model.ativo
         caso.created_at = model.created_at
         caso.updated_at = model.updated_at
@@ -204,6 +288,8 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             precondition=entity.precondition,
             procedure=entity.procedure,
             expected_result=entity.expected_result,
+            code_done_em=entity.code_done_em,
+            all_passed_em=entity.all_passed_em,
             ativo=entity.ativo,
             created_at=entity.created_at,
             updated_at=entity.updated_at,

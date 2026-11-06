@@ -11,6 +11,7 @@ from src.application.services.form_factor_service import FormFactorServiceImpl
 from src.application.services.importacao_sdf_service import ImportacaoSdfServiceImpl
 from src.application.validators.relatorio_sdf import RelatorioSdfInvalido
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
+from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
 from src.infrastructure.data.models.execucao_sdf_model import ExecucaoSdfModel
 from src.infrastructure.data.models.modelo_dispositivo_model import ModeloDispositivoModel
 from src.infrastructure.data.unit_of_work import UnitOfWorkImpl
@@ -142,6 +143,27 @@ async def test_relatorio_mais_antigo_entra_no_historico_sem_mudar_o_ultimo_sdf(c
     caso = next(item for item in historico.items if item.tc_id == "Keyboard_000001")
     assert caso.ultimo_sdf_por_modelo == {cenario.s26: "SDF-2510"}
     assert set(caso.resultados) == {date(2026, 10, 25), DIA}
+
+
+@pytest.mark.asyncio
+async def test_importacao_que_completa_os_devices_grava_a_finalizacao_de_tudo(cenario):
+    # Spec 065, CA-04: o S25 já tinha PASS; o relatório do S26 (SM-S948B) fecha o caso na F4.
+    importacao, _ = _servicos(cenario.session)
+    fechado, aberto = cenario.casos[0], cenario.casos[1]
+    await cenario.importar(fechado, "SDF-2010", datetime(2026, 10, 20, 9), {cenario.s25: "PASS"})
+
+    await _importar(cenario, importacao)
+
+    datas = dict(
+        (
+            await cenario.session.execute(
+                select(CasoTesteModel.id, CasoTesteModel.all_passed_em).where(
+                    CasoTesteModel.id.in_((fechado, aberto))
+                )
+            )
+        ).all()
+    )
+    assert datas == {fechado: datetime(2026, 10, 21, 18, 43, 35), aberto: None}
 
 
 @pytest.mark.asyncio

@@ -77,9 +77,9 @@ describe("base mock de projetos", () => {
     }
     const db = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
     for (const item of db.casosTeste) {
-      item.created_at = "2026-03-24T12:00:00Z";
-      item.updated_at = item.tc_id === "Anterior" ? "2026-03-16T12:00:00Z" : null;
-      item.status = item.tc_id === "Pendente" ? "To-Do" : "Done";
+      // Spec 065: a semana é a da finalização de tudo, com qualquer Status.
+      item.all_passed_em = item.tc_id === "Pendente" ? null : item.tc_id === "Anterior" ? "2026-03-16T12:00:00Z" : "2026-03-24T12:00:00Z";
+      item.status = item.tc_id === "Principal" ? "InValidation" : "Done";
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
     entrar("daniel.oliveira@example.com");
@@ -245,6 +245,24 @@ describe("base mock de projetos", () => {
     expect(mockCasosTesteApi.atualizar(testCase.id, { situation: "New Step" })).toMatchObject({ situation: "New Step" });
     expect(() => mockCasosTesteApi.atualizar(testCase.id, { responsavel_id: "mock-user-kp" })).toThrow(/sÃ³ pode editar/);
     expect(mockCasosTesteApi.transferirParaBackup(testCase.id)).toMatchObject({ responsavel_id: "mock-user-kp", backup_id: "mock-user-dev" });
+  });
+
+  it("grava o Code done só na primeira entrada em In Review (spec 065)", () => {
+    const project = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: [] });
+    const testCase = mockCasosTesteApi.criar(project.id, {
+      tc_id: "Clock_065", category: "A", difficulty: "Low", situation: "New", responsavel_id: "mock-user-dev", backup_id: "mock-user-kp",
+    });
+    expect(mockCasosTesteApi.atualizar(testCase.id, { status: "InProgress" }).code_done_em).toBeFalsy();
+
+    const primeira = mockCasosTesteApi.atualizar(testCase.id, { status: "InReview" }).code_done_em;
+    expect(primeira).toEqual(expect.any(String));
+    mockCasosTesteApi.atualizar(testCase.id, { status: "InProgress" });
+    vi.setSystemTime(new Date("2030-01-01T00:00:00Z"));
+    try {
+      expect(mockCasosTesteApi.atualizar(testCase.id, { status: "InReview" }).code_done_em).toBe(primeira);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("importa o Automation Level de cada caso e deixa vazio quando a coluna ou a cÃ©lula faltam", async () => {

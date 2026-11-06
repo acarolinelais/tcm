@@ -91,6 +91,7 @@ sem paginação, também pagina ([ADR 0039](../adr/0039-resultados-gerais-com-pa
 | 062 | Esconder a prévia da planilha na importação (botão Hide preview / Show preview) | Concluída (validação manual no navegador pendente) |
 | 063 | Overview com gráficos para KP e dev (burndown, Pass Rate, entregas por dia e semana; Recharts, ADR 0051) | Em andamento (integração do backend e ajuste visual pelo protótipo pendentes) |
 | 064 | Overview com gráficos para gerente e admin (andamento por time e por setor, retrabalho, finalizados por semana) | Rascunho (spec.md) |
+| 065 | Datas de finalização do Test Case (Code done na primeira entrada em In Review; End date passa a ser a data em que todos os devices passam no SDF) | Concluída (caso Cancelled e End date no modo mock em aberto no backlog) |
 
 > As duas specs 012 foram criadas em paralelo. Os diretórios e históricos foram preservados nesta integração; a harmonização da numeração está registrada no backlog da spec de perfil Dev.
 
