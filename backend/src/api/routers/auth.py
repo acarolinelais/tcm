@@ -1,15 +1,10 @@
-import os
-
-from fastapi import APIRouter, Cookie, Depends, Response
-from fastapi.security import HTTPAuthorizationCredentials
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import (
-    bearer,
     get_auth_service,
     get_session,
-    get_usuario_atual,
     get_usuario_atual_para_troca_senha,
 )
 from src.application.schemas.auth import (
@@ -18,14 +13,11 @@ from src.application.schemas.auth import (
     LoginRequest,
     PerfilAtualResponse,
     PreferenciasResponse,
-    SessaoEmitida,
+    RefreshRequest,
     TokenResponse,
-    TrocarPropriaSenhaRequest,
 )
 from src.application.services.interfaces.auth_service import AuthService
-from src.domain.common.cor_avatar import CorAvatar
-from src.domain.common.exceptions import CredenciaisInvalidasException, ForbiddenException
-from src.domain.common.idioma_preferido import IdiomaPreferido
+from src.domain.common.exceptions import ForbiddenException
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.infrastructure.data.models.setor_gerente_model import SetorGerenteModel
 from src.infrastructure.data.models.setor_model import SetorModel
@@ -33,82 +25,42 @@ from src.infrastructure.data.models.time_membro_model import TimeMembroModel
 from src.infrastructure.data.models.time_model import TimeModel
 from src.infrastructure.data.models.unidade_model import UnidadeModel
 from src.infrastructure.data.models.usuario_model import UsuarioModel
-from src.infrastructure.security.jwt import REFRESH_TOKEN_HOURS, decodificar_token
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
-
-COOKIE_REFRESH = "sdf_refresh"
-
-
-def _cookie() -> dict:
-    # Em HTTP sem certificado o navegador descarta cookie Secure.
-    secure = os.environ.get("COOKIE_SECURE", "true").lower() != "false"
-    return {"path": "/api/auth", "secure": secure, "httponly": True, "samesite": "strict"}
-
-
-def _responder(response: Response, sessao: SessaoEmitida) -> TokenResponse:
-    response.set_cookie(
-        COOKIE_REFRESH, sessao.refresh_token, max_age=REFRESH_TOKEN_HOURS * 3600, **_cookie()
-    )
-    return TokenResponse(access_token=sessao.access_token, expires_in=sessao.expires_in)
 
 
 @router.post("/login", response_model=TokenResponse)
 async def login(
-    request: LoginRequest, response: Response, service: AuthService = Depends(get_auth_service)
+    request: LoginRequest, service: AuthService = Depends(get_auth_service)
 ) -> TokenResponse:
-    return _responder(response, await service.login(request))
+    return await service.login(request)
 
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh(
-    response: Response,
-    refresh_token: str | None = Cookie(default=None, alias=COOKIE_REFRESH),
-    service: AuthService = Depends(get_auth_service),
+    request: RefreshRequest, service: AuthService = Depends(get_auth_service)
 ) -> TokenResponse:
-    if not refresh_token:
-        raise CredenciaisInvalidasException("Credenciais inválidas.")
-    return _responder(response, await service.renovar(refresh_token))
+    return await service.renovar(request)
 
 
 @router.post("/logout", status_code=204)
 async def logout(
-    response: Response,
-    refresh_token: str | None = Cookie(default=None, alias=COOKIE_REFRESH),
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual_para_troca_senha),
     service: AuthService = Depends(get_auth_service),
 ):
-    payload = decodificar_token(credentials.credentials) if credentials else None
-    sessao_id = payload.sessao_id if payload else None
-    if refresh_token or sessao_id:
-        await service.logout(refresh_token, sessao_id)
-    response.delete_cookie(COOKIE_REFRESH, **_cookie())
+    if usuario_atual.sessao_id is not None:
+        await service.logout(usuario_atual.sessao_id)
 
 
 @router.post("/trocar-senha", response_model=TokenResponse)
 async def trocar_senha(
     request: AlterarSenhaRequest,
-    response: Response,
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual_para_troca_senha),
     service: AuthService = Depends(get_auth_service),
 ) -> TokenResponse:
     if not usuario_atual.senha_alteracao_obrigatoria or usuario_atual.sessao_id is None:
         raise ForbiddenException("A troca inicial de senha não é necessária.")
-    sessao = await service.alterar_senha_inicial(usuario_atual.id, usuario_atual.sessao_id, request)
-    return _responder(response, sessao)
-
-
-@router.post("/alterar-senha", response_model=TokenResponse)
-async def alterar_senha(
-    request: TrocarPropriaSenhaRequest,
-    response: Response,
-    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
-    service: AuthService = Depends(get_auth_service),
-) -> TokenResponse:
-    if usuario_atual.sessao_id is None:
-        raise CredenciaisInvalidasException("Credenciais inválidas.")
-    sessao = await service.alterar_propria_senha(usuario_atual.id, usuario_atual.sessao_id, request)
-    return _responder(response, sessao)
+    return await service.alterar_senha_inicial(usuario_atual.id, usuario_atual.sessao_id, request)
 
 
 @router.patch("/preferencias", response_model=PreferenciasResponse)
@@ -117,7 +69,8 @@ async def atualizar_preferencias(
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual_para_troca_senha),
     service: AuthService = Depends(get_auth_service),
 ) -> PreferenciasResponse:
-    return await service.atualizar_preferencias(usuario_atual.unidade_id, usuario_atual.id, request)
+    await service.atualizar_preferencias(usuario_atual.unidade_id, usuario_atual.id, request)
+    return PreferenciasResponse(idioma_preferido=request.idioma_preferido)
 
 
 @router.get("/me", response_model=PerfilAtualResponse)
@@ -162,14 +115,12 @@ async def perfil_atual(
     unidade_nome = await session.scalar(
         select(UnidadeModel.nome).where(UnidadeModel.id == usuario_atual.unidade_id)
     )
-    preferencias = (
-        await session.execute(
-            select(UsuarioModel.idioma_preferido, UsuarioModel.cor_avatar).where(
-                UsuarioModel.id == usuario_atual.id,
-                UsuarioModel.unidade_id == usuario_atual.unidade_id,
-            )
+    idioma_preferido = await session.scalar(
+        select(UsuarioModel.idioma_preferido).where(
+            UsuarioModel.id == usuario_atual.id,
+            UsuarioModel.unidade_id == usuario_atual.unidade_id,
         )
-    ).one_or_none()
+    )
     existentes = {time["id"] for time in times}
     times.extend(
         {"id": str(row.id), "nome": row.nome}
@@ -190,6 +141,5 @@ async def perfil_atual(
         time_atual_id=usuario_atual.time_atual_id,
         tem_multiplos_times=len(times) > 1,
         senha_alteracao_obrigatoria=usuario_atual.senha_alteracao_obrigatoria,
-        idioma_preferido=preferencias.idioma_preferido if preferencias else IdiomaPreferido.INGLES,
-        cor_avatar=preferencias.cor_avatar if preferencias else CorAvatar.AZUL,
+        idioma_preferido=idioma_preferido or "en",
     )

@@ -781,7 +781,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "python-multipart", specifier = ">=0.0.32" },
     { name = "scalar-fastapi", specifier = ">=1.0" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32" },
 ]
 

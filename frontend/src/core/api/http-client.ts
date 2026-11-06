@@ -1,23 +1,22 @@
 import { ApiError, type ProblemDetails } from "@/shared/api/problem-details";
-import { clearTokens, getAccessToken, saveTokens, type TokenResponse } from "@/core/auth/session";
-import { useMock } from "@/core/config";
+import { clearTokens, getAccessToken, getRefreshToken, saveTokens, type TokenResponse } from "@/core/auth/session";
 
 let renovacaoEmAndamento: Promise<boolean> | null = null;
 
-async function trocarRefresh() {
-  const response = await fetch("/api/auth/refresh", { method: "POST" });
-  if (!response.ok) return false;
-  saveTokens((await response.json()) as TokenResponse);
-  return true;
-}
-
-export function renovarSessao(): Promise<boolean> {
-  if (useMock) return Promise.resolve(false);
+function renovarSessao(): Promise<boolean> {
   if (!renovacaoEmAndamento) {
-    // O async achata o Promise<Promise<boolean>> com que o lib.dom tipa o locks.request.
-    renovacaoEmAndamento = (async () =>
-      navigator.locks ? await navigator.locks.request("sdf.refresh", trocarRefresh) : trocarRefresh()
-    )().finally(() => {
+    renovacaoEmAndamento = (async () => {
+      const refreshToken = getRefreshToken();
+      if (!refreshToken) return false;
+      const response = await fetch("/api/auth/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      if (!response.ok) return false;
+      saveTokens((await response.json()) as TokenResponse);
+      return true;
+    })().finally(() => {
       renovacaoEmAndamento = null;
     });
   }
@@ -32,14 +31,12 @@ async function request<T>(path: string, init?: RequestInit, retry = true): Promi
     headers: {
       ...(!isFormData ? { "Content-Type": "application/json" } : {}),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      // Tela de onde a operação saiu, para o histórico de auditoria (spec 038, ADR 0044).
-      "X-Tela": window.location.pathname,
       ...init?.headers,
     },
   });
 
   if (!response.ok) {
-    if (response.status === 401 && retry && !path.includes("/api/auth/")) {
+    if (response.status === 401 && retry && !path.includes("/api/auth/") && getRefreshToken()) {
       if (await renovarSessao()) {
         return request<T>(path, init, false);
       }
@@ -60,20 +57,15 @@ async function request<T>(path: string, init?: RequestInit, retry = true): Promi
   return (await response.json()) as T;
 }
 
-type QueryParams = Record<string, string | number | readonly string[]>;
-
-/** Uma lista vira o mesmo parâmetro repetido (`?a=1&a=2`), como o FastAPI lê `list[...]`. */
-function withQuery(url: string, params?: QueryParams) {
+function withQuery(url: string, params?: Record<string, string | number>) {
   if (!params) return url;
-  const query = new URLSearchParams();
-  for (const [chave, valor] of Object.entries(params)) {
-    if (Array.isArray(valor)) valor.forEach((item) => query.append(chave, item));
-    else query.append(chave, String(valor));
-  }
+  const query = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)])),
+  );
   return `${url}?${query.toString()}`;
 }
 
-export const httpGet = <T>(url: string, params?: QueryParams) =>
+export const httpGet = <T>(url: string, params?: Record<string, string | number>) =>
   request<T>(withQuery(url, params));
 
 export const httpPost = <T>(url: string, body: unknown) =>

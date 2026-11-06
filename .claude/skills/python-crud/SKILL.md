@@ -102,11 +102,6 @@ Revise o arquivo gerado em `infrastructure/data/migrations/versions/`: tabela, c
 índice único e tamanhos. **Não** rode `alembic upgrade head` à mão: a migration é aplicada automaticamente
 na próxima inicialização da API (ADR 0012). Por isso, revise com atenção qualquer migration que remova colunas/tabelas.
 
-Se a spec pedir histórico de alterações da entidade, ligue a auditoria na própria migration com
-`op.execute("SELECT auditoria_ativar('usuarios')")` (ADR 0044). A tabela precisa ter `id` e `unidade_id`.
-O usuário chega ao trigger sozinho pelo `_obter_usuario_atual`. Um service que escreve em nome de outro
-processo chama `ContextoAuditoria.definir_origem(...)` antes da escrita.
-
 ### 7. application: schemas e validação (`application/schemas/usuario.py`)
 ```python
 class CriarUsuarioRequest(BaseModel):

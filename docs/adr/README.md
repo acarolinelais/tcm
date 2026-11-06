@@ -20,7 +20,7 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0006](0006-validacao-pydantic-problemdetails.md) | Validação com Pydantic e erros como ProblemDetails | Aceito |
 | [0007](0007-schemas-com-mapeamento-manual.md) | Schemas com mapeamento manual | Aceito |
 | [0008](0008-api-rest-com-fastapi.md) | API REST com FastAPI | Aceito |
-| [0009](0009-frontend-react-modular-shadcn.md) | Frontend React com arquitetura Modular e shadcn/ui | Aceito; base de UI substituída por 0037 |
+| [0009](0009-frontend-react-modular-shadcn.md) | Frontend React com arquitetura Modular e shadcn/ui | Aceito |
 | [0010](0010-estrategia-de-testes.md) | Estratégia de testes | Aceito |
 | [0011](0011-monorepo.md) | Monorepo backend + frontend | Aceito |
 | [0012](0012-migrations-automaticas-na-inicializacao.md) | Migrations aplicadas automaticamente na inicialização | Aceito |
@@ -31,35 +31,18 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0017](0017-filtros-em-endpoints-de-listagem.md) | Filtros explícitos em endpoints de listagem | Aceito |
 | [0018](0018-perfil-administrador-e-perfil-obrigatorio.md) | Perfil administrador da unidade e perfil obrigatório | Aceito |
 | [0019](0019-senha-inicial-e-troca-obrigatoria.md) | Senha inicial local com troca obrigatória | Substituído por 0023 |
-| [0020](0020-sessoes-jwt-e-refresh-rotativo.md) | Sessões JWT e refresh token rotativo | Aceito; armazenamento dos tokens no frontend substituído por 0047; validade do refresh substituída por 0048 |
-| [0021](0021-escopo-gerente-por-setor.md) | Escopo de gestão de times definido pelo setor | Aceito; escopo em projetos ampliado por 0036 |
-| [0022](0022-padrao-universal-de-tabelas.md) | Padrão visual universal para tabelas | Aceito; tamanho padrão substituído por 0034; componentes substituídos por 0037 |
+| [0020](0020-sessoes-jwt-e-refresh-rotativo.md) | Sessões JWT e refresh token rotativo | Aceito |
+| [0021](0021-escopo-gerente-por-setor.md) | Escopo de gestão de times definido pelo setor | Aceito |
+| [0022](0022-padrao-universal-de-tabelas.md) | Padrão visual universal para tabelas | Aceito; tamanho padrão substituído por 0034 |
 | [0023](0023-senha-sem-minimo-de-caracteres.md) | Troca de senha sem mínimo de caracteres | Aceito |
 | [0024](0024-responsavel-por-usuario.md) | Responsável direto por usuários criados por gerente | Aceito |
 | [0025](0025-idioma-preferido-por-conta.md) | Idioma preferido por conta | Aceito |
 | [0026](0026-perfil-kp-com-escopo-por-associacao.md) | Perfil KP com escopo por participação em times | Aceito |
-| [0027](0027-fluxo-de-branches-e-pull-requests.md) | Fluxo de branches (`main` + `dev`) e convenção de commits | Aceito; commit direto na `dev` substituído por 0035 |
-| [0028](0028-ci-com-github-actions.md) | Verificação contínua e proteção de branches no GitHub | Aceito; regras da `dev` substituídas por 0035 |
+| [0027](0027-fluxo-de-branches-e-pull-requests.md) | Fluxo de branches (`main` + `dev`) e convenção de commits | Aceito |
+| [0028](0028-ci-com-github-actions.md) | Verificação contínua e proteção de branches no GitHub | Aceito |
 | [0029](0029-git-hooks-versionados.md) | Git hooks versionados no repositório | Aceito |
 | [0030](0030-modo-mock-frontend.md) | Modo mock persistido no frontend | Aceito |
 | [0031](0031-administrador-edita-permissoes-de-perfis-seedados.md) | Administrador edita permissões de perfis seedados | Aceito |
 | [0032](0032-permissao-para-consultar-perfis-de-usuarios-no-escopo.md) | Permissão para consultar perfis de usuários no escopo | Aceito |
 | [0033](0033-erros-de-planilha-com-codigo-estruturado.md) | Erros de planilha com código estruturado e texto montado no frontend | Aceito |
 | [0034](0034-paginacao-padrao-vinte-itens.md) | Paginação padrão de 20 itens | Aceito |
-| [0035](0035-commits-diretos-na-dev.md) | Commits diretos na `dev` | Aceito |
-| [0036](0036-escopo-gerente-inclui-times-em-que-participa.md) | Escopo do gerente inclui os times em que ele participa | Aceito |
-| [0037](0037-heroui-como-base-de-ui.md) | HeroUI como base de UI, com migração gradual a partir do shadcn/ui | Aceito |
-| [0038](0038-resultados-gerais-sem-paginacao.md) | Resultados Gerais sem paginação de Test Cases (exceção aos ADRs 0022 e 0034) | Substituído por 0039 |
-| [0039](0039-resultados-gerais-com-paginacao.md) | Resultados Gerais com paginação de Test Cases (substitui 0038) | Aceito; limite de 7 datas substituído por 0046 |
-| [0040](0040-tema-claro-escuro-no-navegador.md) | Tema claro e escuro por classe no `<html>`, guardado no navegador | Aceito |
-| [0041](0041-cores-somente-por-tokens-semanticos.md) | Cores somente por tokens semânticos | Aceito |
-| [0042](0042-exportacao-de-tabelas-para-excel-no-navegador.md) | Exportação de tabelas para Excel gerada no navegador | Aceito |
-| [0043](0043-cor-do-avatar-por-conta.md) | Cor do avatar por conta | Aceito |
-| [0044](0044-auditoria-por-triggers-no-postgresql.md) | Auditoria de alterações por triggers no PostgreSQL | Aceito |
-| [0045](0045-tabelas-sem-total-de-itens-no-rodape.md) | Tabelas sem o total de itens no rodapé | Aceito |
-| [0046](0046-resultados-gerais-com-cinco-datas.md) | Resultados Gerais com no máximo 5 datas (substitui em parte o 0039) | Aceito |
-| [0047](0047-refresh-token-em-cookie-httponly.md) | Refresh token em cookie httpOnly (substitui em parte o 0020) | Aceito |
-| [0048](0048-sessao-de-dez-horas.md) | Sessão de 10 horas a partir do login (substitui em parte o 0020) | Aceito |
-| [0049](0049-deploy-com-docker-compose.md) | Deploy em servidor com Docker Compose e deploy.sh | Aceito |
-| [0050](0050-cookie-de-refresh-sem-secure-por-configuracao.md) | Cookie de refresh sem `Secure` por configuração (substitui em parte o 0047) | Aceito |
-| [0051](0051-recharts-para-graficos.md) | Recharts para os gráficos do frontend | Aceito |

@@ -5,11 +5,11 @@ interface StatCardProps {
   iconBg?: string;
 }
 
-export function StatCard({ icon, label, value, iconBg = "bg-accent-tint" }: StatCardProps) {
+export function StatCard({ icon, label, value, iconBg = "bg-[#EAF1FF]" }: StatCardProps) {
   return (
     <div className="flex items-center gap-3">
       <span
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-accent/20 ${iconBg}`}
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#D2D6F3] ${iconBg}`}
       >
         <img src={icon} alt="" className="h-4 w-4" />
       </span>

@@ -51,7 +51,3 @@ export function useAtribuirResponsavel() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["usuarios"] }),
   });
 }
-
-export function useRedefinirSenha() {
-  return useMutation({ mutationFn: usuarioApi.redefinirSenha });
-}

@@ -14,12 +14,9 @@ class ModeloDispositivoModel(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True)
     unidade_id: Mapped[UUID] = mapped_column(ForeignKey("unidades.id"), nullable=False)
     nome: Mapped[str] = mapped_column(String(ModeloDispositivo.NOME_MAX_LENGTH), nullable=False)
-    descricao: Mapped[str | None] = mapped_column(String(ModeloDispositivo.DESCRICAO_MAX_LENGTH))
     ativo: Mapped[bool] = mapped_column(default=True, server_default="true", nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime | None] = mapped_column(
-        server_default=func.now(), onupdate=func.now()
-    )
+    updated_at: Mapped[datetime | None] = mapped_column(onupdate=func.now())
 
     __table_args__ = (
         UniqueConstraint("unidade_id", "nome", name="uq_modelos_dispositivo_unidade_nome"),

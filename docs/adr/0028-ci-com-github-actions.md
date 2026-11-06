@@ -1,6 +1,6 @@
 # 0028. Verificação contínua e proteção de branches no GitHub
 
-- **Status:** Aceito; exigência de PR na `dev` e gatilho do job `convencao` substituídos por [0035](0035-commits-diretos-na-dev.md)
+- **Status:** Aceito
 - **Data:** 2026-10-23
 
 ## Contexto

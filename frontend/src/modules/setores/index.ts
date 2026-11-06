@@ -1,1 +1,0 @@
-export { setoresRoutes } from "./routes";

@@ -99,35 +99,7 @@ async def test_migration_seed_gerente_e_responsavel_usuario():
                 "times.criar",
                 "times.gerenciar",
             } <= permissoes
-            ivan = await session.scalar(
-                select(UsuarioModel).where(UsuarioModel.user_id == "ivan.moreira")
-            )
-            assert ivan is not None
-            responsaveis_seed = (
-                await session.execute(
-                    select(UsuarioModel.responsavel_id).where(
-                        UsuarioModel.unidade_id == ivan.unidade_id,
-                        UsuarioModel.user_id.in_(
-                            (
-                                "a.fagundes",
-                                "maria.pernalete",
-                                "caroline.silva",
-                                "raquel.batista",
-                                "isabel.gama",
-                                "nivea.pereira",
-                                "victoria.andrade",
-                                "janderson.brandao",
-                                "gilmar.silva",
-                                "marcio.marques",
-                                "guilherme.rabaioli",
-                            )
-                        ),
-                    )
-                )
-            ).scalars()
-            responsaveis_seed = list(responsaveis_seed)
-            assert len(responsaveis_seed) == 11
-            assert all(responsavel_id == ivan.id for responsavel_id in responsaveis_seed)
+            assert await session.scalar(select(UsuarioModel.responsavel_id).limit(1)) is None
     finally:
         await engine.dispose()
 
@@ -161,14 +133,11 @@ async def test_migration_seed_permissoes_de_projetos_por_perfil():
             assert PERMISSOES_PROJETOS <= permissoes_por_codigo["ADMIN_UNIDADE"]
             assert PERMISSOES_PROJETOS <= permissoes_por_codigo["GERENTE"]
             assert PERMISSOES_PROJETOS <= permissoes_por_codigo["KP"]
-            for codigo in ("ADMIN_UNIDADE", "GERENTE", "KP"):
-                assert "form_factor.registrar" in permissoes_por_codigo[codigo]
             assert nomes_por_codigo["USUARIO_PADRAO"] == "Developer"
             assert permissoes_por_codigo["USUARIO_PADRAO"] == {
                 "projetos.consultar",
                 "test_cases.consultar",
                 "form_factor.consultar",
-                "form_factor.registrar",
                 "times.consultar",
                 "usuarios.perfil.consultar",
             }
@@ -371,40 +340,3 @@ async def test_admin_bootstrap_real_consegue_fazer_login():
         )
     assert perfil.status_code == 200
     assert perfil.json()["idioma_preferido"] == "en"
-
-
-@pytest.mark.asyncio
-async def test_cor_do_avatar_salva_volta_no_proximo_login_e_pode_voltar_para_azul():
-    app.dependency_overrides.clear()
-    credenciais = {"email": "admin@sdfmanager.com", "senha": os.environ["BOOTSTRAP_ADMIN_SENHA"]}
-    async with AsyncClient(
-        transport=ASGITransport(app=app, raise_app_exceptions=False), base_url="http://test"
-    ) as client:
-
-        async def entrar() -> dict[str, str]:
-            token = (await client.post("/api/auth/login", json=credenciais)).json()
-            return {"Authorization": f"Bearer {token['access_token']}"}
-
-        headers = await entrar()
-        assert (await client.get("/api/auth/me", headers=headers)).json()["cor_avatar"] == "azul"
-        try:
-            salvo = await client.patch(
-                "/api/auth/preferencias", json={"cor_avatar": "verde"}, headers=headers
-            )
-            assert salvo.status_code == 200
-            assert salvo.json() == {"idioma_preferido": "en", "cor_avatar": "verde"}
-
-            perfil = await client.get("/api/auth/me", headers=await entrar())
-            assert perfil.json()["cor_avatar"] == "verde"
-
-            headers = await entrar()
-            de_volta = await client.patch(
-                "/api/auth/preferencias", json={"cor_avatar": "azul"}, headers=headers
-            )
-            assert de_volta.status_code == 200
-            perfil = await client.get("/api/auth/me", headers=await entrar())
-            assert perfil.json()["cor_avatar"] == "azul"
-        finally:
-            await client.patch(
-                "/api/auth/preferencias", json={"cor_avatar": "azul"}, headers=headers
-            )

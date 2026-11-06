@@ -5,12 +5,7 @@ from uuid import uuid4
 import pytest
 from src.application.schemas.usuario import AtualizarUsuarioRequest, CriarUsuarioRequest
 from src.application.services.usuario_service import UsuarioServiceImpl
-from src.domain.common.exceptions import (
-    ConflictException,
-    ForbiddenException,
-    NotFoundException,
-    ServiceUnavailableException,
-)
+from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.usuario import Usuario
@@ -356,70 +351,3 @@ async def test_gerente_sem_permissao_de_consultar_perfil_nao_recebe_metadados(
     assert resposta.items[0].perfil_nome is None
     assert resposta.items[0].perfil_codigo is None
     repo.dados_por_usuarios.assert_not_awaited()
-
-
-def _usuario_persistido(unidade_id):
-    usuario = Usuario(unidade_id, "Ana", "ana@example.com")
-    usuario.definir_senha_hash("hash:antiga")
-    usuario.created_at = datetime.now()
-    return usuario
-
-
-async def test_redefinir_senha_volta_para_a_padrao_com_troca_obrigatoria(
-    service, repo, uow, usuario_atual
-):
-    usuario = _usuario_persistido(usuario_atual.unidade_id)
-    repo.obter_por_id.return_value = usuario
-
-    resposta = await service.redefinir_senha(usuario_atual, usuario.id)
-
-    assert resposta.senha_padrao == "senha-inicial"
-    assert usuario.senha_hash == "hash:senha-inicial"
-    assert usuario.senha_alteracao_obrigatoria is True
-    repo.obter_por_id.assert_awaited_once_with(usuario_atual.unidade_id, usuario.id)
-    repo.atualizar.assert_awaited_once_with(usuario)
-    uow.commit.assert_awaited_once()
-
-
-async def test_redefinir_senha_sobe_auth_version(service, repo, usuario_atual):
-    usuario = _usuario_persistido(usuario_atual.unidade_id)
-    repo.obter_por_id.return_value = usuario
-
-    await service.redefinir_senha(usuario_atual, usuario.id)
-
-    assert usuario.auth_version == 1
-
-
-async def test_redefinir_senha_gerente_recebe_forbidden(service, repo, uow, gerente_atual):
-    with pytest.raises(ForbiddenException):
-        await service.redefinir_senha(gerente_atual, uuid4())
-
-    repo.atualizar.assert_not_called()
-    uow.commit.assert_not_called()
-
-
-async def test_redefinir_senha_propria_conta_recebe_forbidden(service, repo, uow, usuario_atual):
-    with pytest.raises(ForbiddenException):
-        await service.redefinir_senha(usuario_atual, usuario_atual.id)
-
-    repo.atualizar.assert_not_called()
-    uow.commit.assert_not_called()
-
-
-async def test_redefinir_senha_outra_unidade_retorna_not_found(service, repo, uow, usuario_atual):
-    repo.obter_por_id.return_value = None
-
-    with pytest.raises(NotFoundException):
-        await service.redefinir_senha(usuario_atual, uuid4())
-
-    uow.commit.assert_not_called()
-
-
-async def test_redefinir_senha_sem_senha_padrao_configurada_falha(repo, uow, usuario_atual):
-    service = UsuarioServiceImpl(repo, uow, None, lambda senha: f"hash:{senha}")
-    repo.obter_por_id.return_value = _usuario_persistido(usuario_atual.unidade_id)
-
-    with pytest.raises(ServiceUnavailableException):
-        await service.redefinir_senha(usuario_atual, uuid4())
-
-    uow.commit.assert_not_called()

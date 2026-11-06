@@ -7,50 +7,28 @@ from src.infrastructure.repositories.resultado_form_factor_repository import (
 )
 
 
-def _result(scalar=None, rows=()):
-    result = Mock()
-    result.scalar_one.return_value = scalar
-    result.all.return_value = list(rows)
-    return result
-
-
-async def test_query_form_factor_monta_uma_linha_por_caso_com_resultado_por_modelo():
-    caso_id, responsavel_id, backup_id, rodada_id, s25, s26 = (uuid4() for _ in range(6))
-    importado_em = datetime(2026, 3, 24)
+async def test_query_form_factor_cruza_resultados_com_tc_execucao_e_modelo():
     session = AsyncMock()
-    session.execute.side_effect = [
-        _result(scalar=1),
-        _result(rows=[(caso_id, "Clock_001", responsavel_id, backup_id)]),
-        _result(rows=[(caso_id, rodada_id, None, False)]),
-        _result(
-            rows=[
-                (caso_id, s25, "Pass", "SDF-1", datetime(2026, 3, 20), importado_em),
-                (caso_id, s26, "Fail", "SDF-2", datetime(2026, 3, 23), importado_em),
-            ]
-        ),
+    count_result = Mock()
+    count_result.scalar_one.return_value = 1
+    rows_result = Mock()
+    rows_result.all.return_value = [
+        ("Clock_001", "SDF-123", uuid4(), "S27 Ultra", "PASS", datetime(2026, 3, 23), "9.5")
     ]
+    session.execute.side_effect = [count_result, rows_result]
     repo = ResultadoFormFactorRepositoryImpl(session)
 
     result = await repo.listar_form_factor_por_projeto(
-        uuid4(), uuid4(), 2, 10, datetime(2026, 3, 16), datetime(2026, 3, 23), [responsavel_id]
+        uuid4(), uuid4(), 2, 10, datetime(2026, 3, 16), datetime(2026, 3, 23), "9.5"
     )
 
     assert result.total_count == 1
     assert result.page == 2
-    linha = result.items[0]
-    assert (linha.tc_id, linha.responsavel_id) == ("Clock_001", responsavel_id)
-    assert linha.resultados == {s25: "Pass", s26: "Fail"}
-    assert (linha.sdf_id, linha.data_reportada) == ("SDF-2", datetime(2026, 3, 23))
-    assert (linha.backup_id, linha.rodada_pendente_id) == (backup_id, rodada_id)
-
-
-async def test_query_form_factor_sem_casos_nao_consulta_resultados():
-    session = AsyncMock()
-    session.execute.side_effect = [_result(scalar=0), _result(rows=[])]
-    repo = ResultadoFormFactorRepositoryImpl(session)
-
-    result = await repo.listar_form_factor_por_projeto(uuid4(), uuid4(), 1, 20)
-
-    assert result.items == []
-    assert result.total_count == 0
-    assert session.execute.await_count == 2
+    assert result.items[0].tc_id == "Clock_001"
+    assert result.items[0].modelo_nome == "S27 Ultra"
+    assert result.items[0].resultado == "PASS"
+    for statement in (call.args[0] for call in session.execute.await_args_list):
+        sql = str(statement.compile(compile_kwargs={"literal_binds": True}))
+        assert "resultados_form_factor" in sql
+        assert "execucoes_sdf" in sql
+        assert "importacoes_sdf" in sql

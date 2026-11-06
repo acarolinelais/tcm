@@ -63,7 +63,6 @@ async def contexto():
                     id=uuid4(),
                     unidade_id=unidade_id,
                     time_id=time,
-                    nome="Clock 9.5",
                     app="Clock",
                     one_ui="9.5",
                     ativo=ativo,
@@ -185,7 +184,7 @@ async def test_casos_combinam_associacao_e_filtro_responsavel_por_and(contexto):
         projeto.id,
         1,
         20,
-        responsavel_ids=[c.colega_id],
+        responsavel_id=c.colega_id,
         associado_usuario_id=c.dev_id,
     )
     vazia = await c.casos.listar_por_projeto(
@@ -193,7 +192,7 @@ async def test_casos_combinam_associacao_e_filtro_responsavel_por_and(contexto):
         projeto.id,
         1,
         20,
-        responsavel_ids=[c.terceiro_id],
+        responsavel_id=c.terceiro_id,
         associado_usuario_id=c.dev_id,
     )
 
@@ -309,14 +308,13 @@ async def test_casos_filtram_semana_antes_da_paginacao_e_respeitam_limites(conte
     projeto = await c.projeto()
     inicio, fim = datetime(2026, 3, 23, 4), datetime(2026, 3, 30, 4)
     dentro = []
-    # A semana é a da End date (spec 065): a finalização de tudo, com qualquer Status.
     for indice, (status, data) in enumerate(
         [
-            ("Done", inicio),
-            ("InValidation", fim - timedelta(seconds=1)),
-            ("Done", inicio - timedelta(seconds=1)),
-            ("Done", fim),
-            ("Done", None),
+            ("Pass", inicio),
+            ("Pass", fim - timedelta(seconds=1)),
+            ("Pass", inicio - timedelta(seconds=1)),
+            ("Pass", fim),
+            ("To-Do", inicio),
         ]
     ):
         caso = await c.caso(projeto)
@@ -326,8 +324,8 @@ async def test_casos_filtram_semana_antes_da_paginacao_e_respeitam_limites(conte
             .values(
                 tc_id=f"Clock_{indice}",
                 status=status,
-                all_passed_em=data,
-                updated_at=inicio,
+                created_at=data,
+                updated_at=None,
             )
         )
         if indice < 2:
@@ -338,8 +336,8 @@ async def test_casos_filtram_semana_antes_da_paginacao_e_respeitam_limites(conte
         update(CasoTesteModel)
         .where(CasoTesteModel.id == colega.id)
         .values(
-            status="Done",
-            all_passed_em=inicio,
+            status="Pass",
+            updated_at=inicio,
         )
     )
     paginas = [

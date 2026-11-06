@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Button } from "@heroui/react";
-import { AlertConfirm } from "@/shared/ui/alert-confirm";
+import { Button } from "@/shared/ui/button";
+import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
 
 import { useAtivarUsuario, useInativarUsuario } from "../hooks/useUsuarios";
 import type { Usuario } from "../model/usuario";
@@ -18,12 +18,12 @@ export function UsuarioToggleAtivo({ usuario }: { usuario: Usuario }) {
         <Button
           variant="outline"
           size="sm"
-          isDisabled={inativar.isPending}
-          onPress={() => setConfirmacaoAberta(true)}
+          disabled={inativar.isPending}
+          onClick={() => setConfirmacaoAberta(true)}
         >
           {t("inactivate")}
         </Button>
-        <AlertConfirm
+        <ConfirmDialog
           open={confirmacaoAberta}
           onOpenChange={setConfirmacaoAberta}
           title={t("deactivateUserQuestion")}
@@ -44,8 +44,8 @@ export function UsuarioToggleAtivo({ usuario }: { usuario: Usuario }) {
     <Button
       variant="outline"
       size="sm"
-      isDisabled={ativar.isPending}
-      onPress={() => ativar.mutate(usuario.id)}
+      disabled={ativar.isPending}
+      onClick={() => ativar.mutate(usuario.id)}
     >
       {t("activate")}
     </Button>

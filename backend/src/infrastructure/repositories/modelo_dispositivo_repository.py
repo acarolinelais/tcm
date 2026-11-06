@@ -76,7 +76,7 @@ class ModeloDispositivoRepositoryImpl(
         return (await self.session.execute(stmt)).first() is not None
 
     def _to_entity(self, model: ModeloDispositivoModel) -> ModeloDispositivo:
-        modelo = ModeloDispositivo(model.unidade_id, model.nome, model.descricao)
+        modelo = ModeloDispositivo(model.unidade_id, model.nome)
         modelo.id = model.id
         modelo.ativo = model.ativo
         modelo.created_at = model.created_at
@@ -88,7 +88,6 @@ class ModeloDispositivoRepositoryImpl(
             id=entity.id,
             unidade_id=entity.unidade_id,
             nome=entity.nome,
-            descricao=entity.descricao,
             ativo=entity.ativo,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
