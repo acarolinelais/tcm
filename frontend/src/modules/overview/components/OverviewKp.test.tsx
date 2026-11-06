@@ -17,7 +17,11 @@ const time: OverviewTime = {
   criacaoPorDia: [{ projetoId: "p1", projeto: "Alarm 2.0", media: 0.5 }, { projetoId: "p2", projeto: "Clock 9.5", media: 0 }],
   concluidosPorDev: [{ usuarioId: "u1", nome: "Ana", concluidos: 3 }, { usuarioId: "u2", nome: "Bia", concluidos: 0 }],
   concluidosPorSemana: [{ semana: "2026-10-26", concluidos: 1 }, { semana: "2026-11-02", concluidos: 2 }],
-  donePorProjeto: [{ projetoId: "p1", projeto: "Alarm 2.0", concluidos: 4, total: 9 }, { projetoId: "p2", projeto: "Clock 9.5", concluidos: 0, total: 3 }],
+  donePorProjeto: [{ projetoId: "p1", projeto: "Alarm 2.0", concluidos: 4, total: 9, emAndamento: 0 }, { projetoId: "p2", projeto: "Clock 9.5", concluidos: 0, total: 3, emAndamento: 0 }],
+  andamentoPorTime: [],
+  andamentoPorSetor: [],
+  emCorrecaoPorProjeto: [],
+  passRatePorProjeto: [],
 };
 const projeto = (passRate: OverviewProjeto["passRate"]): OverviewProjeto => ({
   burndown: [{ dia: "2026-11-04", planejado: 20, executado: 20 }, { dia: "2026-11-05", planejado: 18, executado: 19 }],

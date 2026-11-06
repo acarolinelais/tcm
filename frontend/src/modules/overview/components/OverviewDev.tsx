@@ -1,10 +1,13 @@
+import { useState } from "react";
+import { ClipboardCheck, ClipboardPen, UserRoundCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { formatNumber } from "@/core/i18n/format";
-import { useOverviewPessoal } from "../hooks/useOverviewGraficos";
+import { estadoDe, useOverviewPessoal } from "../hooks/useOverviewGraficos";
+import { CabecalhoDaOverview } from "./CabecalhoDaOverview";
 import { BarrasVerticais } from "./graficos/BarrasVerticais";
 import { DonutDone } from "./graficos/DonutDone";
-import { diaCurto, estadoDe, resumoDeBarras, totaisDasSemanas } from "./graficos/estilo";
+import { diaCurto, resumoDeBarras, totaisDasSemanas } from "./graficos/estilo";
 import { GraficoCard } from "./graficos/GraficoCard";
 import { LollipopChart } from "./graficos/LollipopChart";
 
@@ -21,8 +24,25 @@ export function OverviewDev() {
   const semAtribuidos = !dados?.atribuidos;
   const tentarDeNovo = () => void pessoal.refetch();
 
+  // Spec 064, RN-12: os cards são do dev no projeto escolhido; o seletor aparece quando ele é o responsável em
+  // dois ou mais projetos (com um só, o ProjetoSwitcher mostra só o nome).
+  const [escolhido, setEscolhido] = useState<string>();
+  const meusProjetos = dados?.projetos ?? [];
+  const projetos = meusProjetos.map((p) => ({ id: p.projetoId, nome: p.projeto, app: p.app }));
+  const projetoAberto = projetos.find((p) => p.id === escolhido) ?? projetos[0];
+  const contagem = meusProjetos.find((p) => p.projetoId === projetoAberto?.id);
+
   return (
     <div className="space-y-4">
+      <CabecalhoDaOverview
+        selecao={{ projetos, projetoAberto, escolher: setEscolhido }}
+        rotuloDosCards={t("overviewMyCards")}
+        cards={[
+          { icone: ClipboardCheck, rotulo: t("completed"), valor: contagem?.concluidos ?? 0 },
+          { icone: ClipboardPen, rotulo: t("inProgress"), valor: contagem?.emAndamento ?? 0 },
+          { icone: UserRoundCheck, rotulo: t("assigned"), valor: contagem?.atribuidos ?? 0 },
+        ]}
+      />
       <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
         <GraficoCard
           titulo={t("totalTcsDone")}

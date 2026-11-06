@@ -6,6 +6,8 @@ export const ALTURA = 220;
 export interface Barra {
   nome: string;
   valor: number;
+  /** Texto na ponta da barra no lugar do valor formatado, como "4 (44%)". */
+  rotulo?: string;
 }
 
 export const eixo = {
@@ -30,6 +32,11 @@ export const tooltip = {
   itemStyle: { color: "var(--foreground)" },
 } as const;
 
+export const porcentagem = (valor: number) => formatNumber(valor / 100, { style: "percent" });
+
+/** Parte de um total em porcentagem inteira; total zero dá 0. */
+export const parte = (feitos: number, total: number) => (total ? Math.round((feitos / total) * 100) : 0);
+
 /** "2026-11-05" vira "05/11" (ou "11/05") no idioma da tela, sem o fuso mudar o dia. */
 export function diaCurto(dia: string) {
   const [ano, mes, d] = dia.split("-").map(Number);
@@ -38,7 +45,7 @@ export function diaCurto(dia: string) {
 
 /** Resumo em texto das barras para o leitor de tela: "Ana 3 e Bia 0". */
 export function resumoDeBarras(barras: Barra[], formatar: (valor: number) => string = (valor) => formatNumber(valor)) {
-  return formatList(barras.map((barra) => `${barra.nome} ${formatar(barra.valor)}`));
+  return formatList(barras.map((barra) => `${barra.nome} ${barra.rotulo ?? formatar(barra.valor)}`));
 }
 
 /** Total das 12 semanas e o da semana atual, já formatados, para o resumo dos gráficos por semana. */
@@ -47,17 +54,4 @@ export function totaisDasSemanas(semanas: { concluidos: number }[]) {
     total: formatNumber(semanas.reduce((soma, semana) => soma + semana.concluidos, 0)),
     last: formatNumber(semanas.at(-1)?.concluidos ?? 0),
   };
-}
-
-export type EstadoGrafico = "carregando" | "erro" | "vazio" | "pronto";
-
-/**
- * Estado do cartão a partir da consulta; `vazio` diz se os dados que chegaram não têm o que desenhar. Usa o
- * `isPending`, e não o `isLoading`: uma consulta ainda desligada (o projeto antes da lista chegar) carrega, e não
- * pisca o vazio.
- */
-export function estadoDe(consulta: { isPending: boolean; isError: boolean }, vazio: boolean): EstadoGrafico {
-  if (consulta.isError) return "erro";
-  if (consulta.isPending) return "carregando";
-  return vazio ? "vazio" : "pronto";
 }

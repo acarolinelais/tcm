@@ -37,12 +37,33 @@ export interface PontoSemana {
   concluidos: number;
 }
 
+/** Test Cases de um time ou setor por etapa (spec 064). */
+export interface Andamento {
+  id: string;
+  nome: string;
+  aFazer: number;
+  emAndamento: number;
+  concluidos: number;
+}
+
+export interface AndamentoResponse {
+  id: string;
+  nome: string;
+  a_fazer: number;
+  em_andamento: number;
+  concluidos: number;
+}
+
 export interface OverviewTimeResponse {
   projetos: ProjetoOverview[];
   criacao_por_dia: { projeto_id: string; projeto: string; media: number }[];
   concluidos_por_dev: { usuario_id: string; nome: string; concluidos: number }[];
   concluidos_por_semana: PontoSemana[];
-  done_por_projeto: { projeto_id: string; projeto: string; concluidos: number; total: number }[];
+  done_por_projeto: { projeto_id: string; projeto: string; concluidos: number; total: number; em_andamento: number }[];
+  andamento_por_time: AndamentoResponse[];
+  andamento_por_setor: AndamentoResponse[];
+  em_correcao_por_projeto: { projeto_id: string; projeto: string; em_correcao: number }[];
+  pass_rate_por_projeto: { projeto_id: string; projeto: string; aprovados: number; total: number }[];
 }
 
 export interface OverviewTime {
@@ -51,7 +72,14 @@ export interface OverviewTime {
   criacaoPorDia: { projetoId: string; projeto: string; media: number }[];
   concluidosPorDev: { usuarioId: string; nome: string; concluidos: number }[];
   concluidosPorSemana: PontoSemana[];
-  donePorProjeto: { projetoId: string; projeto: string; concluidos: number; total: number }[];
+  /** `emAndamento`: os cards do projeto escolhido pelo admin (spec 064, RN-12). */
+  donePorProjeto: { projetoId: string; projeto: string; concluidos: number; total: number; emAndamento: number }[];
+  andamentoPorTime: Andamento[];
+  andamentoPorSetor: Andamento[];
+  /** Só projetos com algum Test Case em In Fixes. */
+  emCorrecaoPorProjeto: { projetoId: string; projeto: string; emCorrecao: number }[];
+  /** Só projetos com rodada de Form Factor; a rodada mais recente de cada um. */
+  passRatePorProjeto: { projetoId: string; projeto: string; aprovados: number; total: number }[];
 }
 
 export interface PassRateModelo {
@@ -79,6 +107,17 @@ export interface OverviewPessoalResponse {
   por_dificuldade: Record<string, number>;
   entregas_por_dia: { dia: string; concluidos: number }[];
   entregas_por_semana: PontoSemana[];
+  projetos: { projeto_id: string; projeto: string; app: string; concluidos: number; em_andamento: number; atribuidos: number }[];
+}
+
+/** Os Test Cases do dev num projeto em que ele é o responsável principal (spec 064, RN-12). */
+export interface ProjetoPessoal {
+  projetoId: string;
+  projeto: string;
+  app: string;
+  concluidos: number;
+  emAndamento: number;
+  atribuidos: number;
 }
 
 export interface OverviewPessoal {
@@ -87,4 +126,6 @@ export interface OverviewPessoal {
   porDificuldade: Record<string, number>;
   entregasPorDia: { dia: string; concluidos: number }[];
   entregasPorSemana: PontoSemana[];
+  /** Em ordem alfabética; o seletor do cabeçalho aparece com dois ou mais. */
+  projetos: ProjetoPessoal[];
 }
