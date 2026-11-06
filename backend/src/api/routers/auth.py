@@ -1,3 +1,5 @@
+import os
+
 from fastapi import APIRouter, Cookie, Depends, Response
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import select
@@ -34,12 +36,17 @@ from src.infrastructure.security.jwt import REFRESH_TOKEN_HOURS, decodificar_tok
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 COOKIE_REFRESH = "sdf_refresh"
-_COOKIE = {"path": "/api/auth", "secure": True, "httponly": True, "samesite": "strict"}
+
+
+def _cookie() -> dict:
+    # Em HTTP sem certificado o navegador descarta cookie Secure.
+    secure = os.environ.get("COOKIE_SECURE", "true").lower() != "false"
+    return {"path": "/api/auth", "secure": secure, "httponly": True, "samesite": "strict"}
 
 
 def _responder(response: Response, sessao: SessaoEmitida) -> TokenResponse:
     response.set_cookie(
-        COOKIE_REFRESH, sessao.refresh_token, max_age=REFRESH_TOKEN_HOURS * 3600, **_COOKIE
+        COOKIE_REFRESH, sessao.refresh_token, max_age=REFRESH_TOKEN_HOURS * 3600, **_cookie()
     )
     return TokenResponse(access_token=sessao.access_token, expires_in=sessao.expires_in)
 
@@ -73,7 +80,7 @@ async def logout(
     sessao_id = payload.sessao_id if payload else None
     if refresh_token or sessao_id:
         await service.logout(refresh_token, sessao_id)
-    response.delete_cookie(COOKIE_REFRESH, **_COOKIE)
+    response.delete_cookie(COOKIE_REFRESH, **_cookie())
 
 
 @router.post("/trocar-senha", response_model=TokenResponse)

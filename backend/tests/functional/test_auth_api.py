@@ -156,6 +156,22 @@ async def test_login_grava_cookie_de_refresh(api_client):
 
 
 @pytest.mark.asyncio
+async def test_login_sem_secure_quando_cookie_secure_false(api_client, monkeypatch):
+    monkeypatch.setenv("COOKIE_SECURE", "false")
+    service = AsyncMock()
+    service.login.return_value = SessaoEmitida(access_token="jwt", refresh_token="r" * 64)
+    from src.api.main import app
+
+    app.dependency_overrides[get_auth_service] = dependency_override(service)
+    response = await api_client.post(
+        "/api/auth/login", json={"email": "admin@sdfmanager.com", "senha": "senha"}
+    )
+    cookie = _cookie_refresh(response).lower()
+    assert "secure" not in cookie
+    assert "httponly" in cookie and "samesite=strict" in cookie
+
+
+@pytest.mark.asyncio
 async def test_refresh_sem_cookie_retorna_401(api_client):
     service = AsyncMock()
     from src.api.main import app
