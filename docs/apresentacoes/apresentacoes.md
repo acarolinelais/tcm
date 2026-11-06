@@ -2,10 +2,10 @@
 
 Duas apresentações do TCM, feitas como Artifacts de slides no claude.ai. O texto de fala de cada slide fica nas notas do apresentador.
 
-| Público | Link | Duração |
-|---|---|---|
-| Time que vai usar a ferramenta | [Guia do time](https://claude.ai/artifact/DXRWZnRaqewzBfkBMRdsvX) | ~15 min |
-| Gerência do setor | [Proposta para a gestão](https://claude.ai/artifact/W21q3QZ7YmMmBUxQMHJjpr) | ~10–12 min |
+| Público | Link | Arquivo | Duração |
+|---|---|---|---|
+| Time que vai usar a ferramenta | [Guia do time](https://claude.ai/artifact/DXRWZnRaqewzBfkBMRdsvX) | [tcm-guia-do-time.pptx](tcm-guia-do-time.pptx) | ~15 min |
+| Gerência do setor | [Proposta para a gestão](https://claude.ai/artifact/W21q3QZ7YmMmBUxQMHJjpr) | [tcm-proposta-gestao.pptx](tcm-proposta-gestao.pptx) | ~10–12 min |
 
 - **Guia do time:** o que muda na rotina, os conceitos básicos, o caminho de um Test Case, o passo a passo com as telas reais, quem faz o quê e as dúvidas comuns.
 - **Proposta para a gestão:** resumo executivo, contexto, solução, governança, roadmap e riscos. Fecha com o pedido de um piloto com um time do setor.
