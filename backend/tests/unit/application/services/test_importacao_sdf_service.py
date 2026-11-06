@@ -120,6 +120,32 @@ async def test_importa_o_exemplo_real_no_device_do_c4_com_sdf_data_e_descricao(c
     ctx.uow.commit.assert_awaited_once()
 
 
+async def test_importacao_confere_a_finalizacao_de_tudo_dos_casos_do_relatorio(ctx):
+    # Spec 065, RN-06: na mesma transação, antes do commit.
+    ordem = []
+    ctx.caso_repo.marcar_todos_aprovados.side_effect = lambda *_: ordem.append("marcar")
+    ctx.uow.commit.side_effect = lambda: ordem.append("commit")
+
+    await ctx.importar()
+
+    unidade_id, projeto_id, caso_ids = ctx.caso_repo.marcar_todos_aprovados.await_args.args
+    execucoes = [chamada.args[0] for chamada in ctx.execucoes.adicionar.await_args_list]
+    assert (unidade_id, projeto_id) == (ctx.usuario.unidade_id, ctx.projeto.id)
+    assert set(caso_ids) == {execucao.caso_teste_id for execucao in execucoes}
+    assert ordem == ["marcar", "commit"]
+
+
+async def test_relatorio_recusado_nao_confere_a_finalizacao_de_tudo(ctx):
+    # Spec 065, CA-13: nenhum resultado entrou, nenhuma data é gravada.
+    conteudo = relatorio(
+        [("Keyboard_000001.py", "PASS", "", "Keyboard_A_OneUI95.ts")], device="SM-X"
+    )
+
+    await recusado(ctx, conteudo=conteudo)
+
+    ctx.caso_repo.marcar_todos_aprovados.assert_not_awaited()
+
+
 async def test_device_do_c4_ignora_maiusculas_e_espacos(ctx):
     conteudo = relatorio(
         [("Keyboard_000001.py", "PASS", "", "Keyboard_A_OneUI95.ts")], device=" sm-s948b "

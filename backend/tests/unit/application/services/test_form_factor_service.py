@@ -243,6 +243,8 @@ async def test_registrar_resultado_fail_atualiza_status_e_salva_atomicamente():
     assert execucao_repo.atualizar.await_count == 1
     assert caso_repo.atualizar.await_args.args[0] is caso
     resultado_repo.adicionar.assert_awaited_once()
+    # Spec 065, CA-09: o registro na rodada confere a finalização de tudo do caso.
+    caso_repo.marcar_todos_aprovados.assert_awaited_once_with(unidade_id, projeto.id, (caso.id,))
     uow.commit.assert_awaited_once()
     # A mudança de Status entra no histórico com a origem Form Factor (spec 038, RN-04).
     contexto.definir_origem.assert_awaited_once_with("form_factor")
@@ -309,6 +311,7 @@ async def test_registrar_em_rodada_anterior_e_recusado_sem_gravar():
     assert caso.status is StatusCasoTeste.IN_VALIDATION
     resultado_repo.adicionar.assert_not_awaited()
     execucao_repo.atualizar.assert_not_awaited()
+    caso_repo.marcar_todos_aprovados.assert_not_awaited()
     uow.commit.assert_not_awaited()
 
 
@@ -651,6 +654,7 @@ async def test_cria_rodada_manual_com_resultados_parciais_e_confirma_transacao()
     assert response.resultados == {modelo_id: "PASS"}
     assert execucao.importacao_sdf_id is None and execucao.origem == "MANUAL"
     resultado_repo.adicionar.assert_awaited_once()
+    caso_repo.marcar_todos_aprovados.assert_awaited_once_with(unidade_id, projeto.id, (caso_id,))
     uow.commit.assert_awaited_once()
     uow.rollback.assert_not_awaited()
 

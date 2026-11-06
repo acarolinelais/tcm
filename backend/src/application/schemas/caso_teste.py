@@ -96,6 +96,9 @@ class CasoTesteResponse(BaseModel):
     responsavel_id: UUID
     backup_id: UUID | None
     justificativa_exclusao: str | None
+    # Spec 065: só leitura; os requests recusam os dois campos (extra="forbid").
+    code_done_em: datetime | None
+    all_passed_em: datetime | None
     ativo: bool
     created_at: datetime | None
     updated_at: datetime | None
@@ -124,6 +127,8 @@ def to_response(caso: CasoTeste) -> CasoTesteResponse:
         responsavel_id=caso.responsavel_id,
         backup_id=caso.backup_id,
         justificativa_exclusao=caso.justificativa_exclusao,
+        code_done_em=timestamp_utc(caso.code_done_em),
+        all_passed_em=timestamp_utc(caso.all_passed_em),
         ativo=caso.ativo,
         created_at=timestamp_utc(caso.created_at),
         updated_at=timestamp_utc(caso.updated_at),

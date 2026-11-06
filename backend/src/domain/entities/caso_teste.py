@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from enum import IntEnum, StrEnum
 from uuid import UUID
 
@@ -93,6 +94,9 @@ class CasoTeste(EntidadeTenant):
         self.expected_result = self._validar_texto(
             expected_result, "Expected Result", self.TEXTO_MAX_LENGTH
         )
+        # Spec 065: datas gravadas pelo sistema, em UTC sem fuso; a reidratação as preenche.
+        self.code_done_em: datetime | None = None
+        self.all_passed_em: datetime | None = None
         # Na reidratação o backup pode faltar: transferir_para_backup() o deixa vazio.
         self._validar_responsaveis(responsavel_id, backup_id, exigir_backup=exigir_backup)
 
@@ -149,6 +153,13 @@ class CasoTeste(EntidadeTenant):
             self.justificativa_exclusao = justificativa
         elif status is not StatusCasoTeste.CANCELLED:
             self.justificativa_exclusao = None
+        # Spec 065, RN-01 e RN-02: só a primeira entrada em In Review marca o fim do código.
+        if (
+            status is StatusCasoTeste.IN_REVIEW
+            and self.status is not StatusCasoTeste.IN_REVIEW
+            and self.code_done_em is None
+        ):
+            self.code_done_em = datetime.now(UTC).replace(tzinfo=None)
         self.status = status
 
     def atualizar_gerenciamento(
