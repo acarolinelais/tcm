@@ -29,6 +29,11 @@ class AlterarSenhaRequest(BaseModel):
     nova_senha: str = Field(min_length=1, max_length=128)
 
 
+class TrocarPropriaSenhaRequest(BaseModel):
+    senha_atual: str = Field(min_length=1, max_length=128)
+    nova_senha: str = Field(min_length=1, max_length=128)
+
+
 class AtualizarPreferenciasRequest(BaseModel):
     # Atualização parcial (ADR 0043): campo ausente fica como está; null explícito é recusado.
     idioma_preferido: IdiomaPreferido | None = None

@@ -5,6 +5,7 @@ from uuid import UUID
 from src.application.schemas.usuario import (
     AtualizarUsuarioRequest,
     CriarUsuarioRequest,
+    RedefinirSenhaResponse,
     UsuarioResponse,
     to_response,
 )
@@ -194,12 +195,7 @@ class UsuarioServiceImpl:
             if not await self._repo.perfil_atribuivel(usuario_atual.unidade_id, request.perfil_id):
                 raise NotFoundException("Perfil não encontrado ou reservado ao administrador.")
             usuario.perfil_id = request.perfil_id
-        if not self._senha_inicial or self._hash_senha is None:
-            raise ServiceUnavailableException(
-                "Configure SENHA_INICIAL_USUARIOS antes de cadastrar usuários."
-            )
-        usuario.definir_senha_hash(self._hash_senha(self._senha_inicial))
-        usuario.senha_alteracao_obrigatoria = True
+        self._aplicar_senha_padrao(usuario)
         usuario.created_at = datetime.now()
         await self._repo.adicionar(usuario)
         await self._uow.commit()
@@ -240,6 +236,20 @@ class UsuarioServiceImpl:
         await self._repo.atualizar(usuario)
         await self._uow.commit()
 
+    async def redefinir_senha(
+        self, usuario_atual: UsuarioAutenticado, id: UUID
+    ) -> RedefinirSenhaResponse:
+        if not usuario_atual.eh_administrador:
+            raise ForbiddenException("Apenas o administrador pode redefinir senhas.")
+        if id == usuario_atual.id:
+            raise ForbiddenException("Use Trocar senha para alterar a sua própria senha.")
+        usuario = await self._obter_entidade(usuario_atual.unidade_id, id)
+        senha_padrao = self._aplicar_senha_padrao(usuario)
+        usuario.auth_version += 1
+        await self._repo.atualizar(usuario)
+        await self._uow.commit()
+        return RedefinirSenhaResponse(senha_padrao=senha_padrao)
+
     async def atribuir_responsavel(
         self, usuario_atual: UsuarioAutenticado, id: UUID, responsavel_id: UUID | None
     ) -> UsuarioResponse:
@@ -257,6 +267,13 @@ class UsuarioServiceImpl:
         await self._repo.atualizar(usuario)
         await self._uow.commit()
         return to_response(usuario)
+
+    def _aplicar_senha_padrao(self, usuario: Usuario) -> str:
+        if not self._senha_inicial or self._hash_senha is None:
+            raise ServiceUnavailableException("Configure SENHA_INICIAL_USUARIOS.")
+        usuario.definir_senha_hash(self._hash_senha(self._senha_inicial))
+        usuario.senha_alteracao_obrigatoria = True
+        return self._senha_inicial
 
     async def _exigir_responsavel_ou_admin(
         self, usuario_atual: UsuarioAutenticado, usuario_id: UUID

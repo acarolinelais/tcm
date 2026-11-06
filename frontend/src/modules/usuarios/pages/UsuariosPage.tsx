@@ -109,6 +109,7 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
         podeAtribuirPerfilKP={podeAtribuirPerfilKP}
         podeConsultarPerfil={podeConsultarPerfilUsuario}
         podeConsultarSetores={ehAdmin || ((ehGerente || perfil.perfil_codigo === "KP") && perfil.permissoes.includes("setores.consultar"))}
+        podeRedefinirSenha={ehAdmin}
         usuarioAtualId={perfil.id}
       />
 

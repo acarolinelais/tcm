@@ -9,6 +9,7 @@ from src.api.dependencies import (
     bearer,
     get_auth_service,
     get_session,
+    get_usuario_atual,
     get_usuario_atual_para_troca_senha,
 )
 from src.application.schemas.auth import (
@@ -19,6 +20,7 @@ from src.application.schemas.auth import (
     PreferenciasResponse,
     SessaoEmitida,
     TokenResponse,
+    TrocarPropriaSenhaRequest,
 )
 from src.application.services.interfaces.auth_service import AuthService
 from src.domain.common.cor_avatar import CorAvatar
@@ -93,6 +95,19 @@ async def trocar_senha(
     if not usuario_atual.senha_alteracao_obrigatoria or usuario_atual.sessao_id is None:
         raise ForbiddenException("A troca inicial de senha não é necessária.")
     sessao = await service.alterar_senha_inicial(usuario_atual.id, usuario_atual.sessao_id, request)
+    return _responder(response, sessao)
+
+
+@router.post("/alterar-senha", response_model=TokenResponse)
+async def alterar_senha(
+    request: TrocarPropriaSenhaRequest,
+    response: Response,
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+    service: AuthService = Depends(get_auth_service),
+) -> TokenResponse:
+    if usuario_atual.sessao_id is None:
+        raise CredenciaisInvalidasException("Credenciais inválidas.")
+    sessao = await service.alterar_propria_senha(usuario_atual.id, usuario_atual.sessao_id, request)
     return _responder(response, sessao)
 
 

@@ -16,10 +16,12 @@ export interface AlertConfirmProps {
   /** Campos extras sob a descrição, como a justificativa da exclusão (spec 026). */
   children?: ReactNode;
   isConfirmDisabled?: boolean;
+  /** Aviso sem escolha (ex.: a senha redefinida): só o botão de confirmar. */
+  hideCancel?: boolean;
 }
 
 /** Confirmação com o AlertDialog do HeroUI; mesma API do `ConfirmDialog` do shadcn (spec 022). */
-export function AlertConfirm({ open, onOpenChange, title, description, confirmLabel, cancelLabel, variant = "default", onConfirm, isPending = false, children, isConfirmDisabled = false }: AlertConfirmProps) {
+export function AlertConfirm({ open, onOpenChange, title, description, confirmLabel, cancelLabel, variant = "default", onConfirm, isPending = false, children, isConfirmDisabled = false, hideCancel = false }: AlertConfirmProps) {
   const { t } = useTranslation();
   const idDescricao = useId();
   return (
@@ -36,7 +38,7 @@ export function AlertConfirm({ open, onOpenChange, title, description, confirmLa
               {children ? <div className="mt-4">{children}</div> : null}
             </AlertDialog.Body>
             <AlertDialog.Footer>
-              <Button variant="tertiary" isDisabled={isPending} onPress={() => onOpenChange(false)}>{cancelLabel ?? t("cancel")}</Button>
+              {hideCancel ? null : <Button variant="tertiary" isDisabled={isPending} onPress={() => onOpenChange(false)}>{cancelLabel ?? t("cancel")}</Button>}
               <Button variant={variant === "destructive" ? "danger" : "primary"} isDisabled={isPending || isConfirmDisabled} onPress={onConfirm}>
                 {isPending ? t("pleaseWait") : confirmLabel ?? t("confirm")}
               </Button>

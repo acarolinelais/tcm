@@ -7,6 +7,7 @@ from src.application.schemas.usuario import (
     AtribuirResponsavelRequest,
     AtualizarUsuarioRequest,
     CriarUsuarioRequest,
+    RedefinirSenhaResponse,
     UsuarioResponse,
 )
 from src.application.services.interfaces.usuario_service import UsuarioService
@@ -91,6 +92,15 @@ async def inativar(
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
     await service.inativar(usuario_atual, id)
+
+
+@router.patch("/{id}/redefinir-senha", response_model=RedefinirSenhaResponse)
+async def redefinir_senha(
+    id: UUID,
+    service: UsuarioService = Depends(get_usuario_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+) -> RedefinirSenhaResponse:
+    return await service.redefinir_senha(usuario_atual, id)
 
 
 @router.patch("/{id}/responsavel", response_model=UsuarioResponse)

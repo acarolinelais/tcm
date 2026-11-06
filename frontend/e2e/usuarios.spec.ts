@@ -77,6 +77,29 @@ test("cadastra e edita usuário preservando o identificador informado", async ({
   await expect(page.getByText("Usuário Ana atualizado.")).toBeVisible();
 });
 
+test("admin redefine a senha pela lista e vê a senha padrão para repassar", async ({ page }) => {
+  await prepararPagina(page);
+  await page.route("**/api/usuarios?*", (route) => route.fulfill({
+    json: { items: [usuario], page: 1, page_size: 10, total_count: 1 },
+  }));
+  let redefinido = false;
+  await page.route("**/api/usuarios/usuario-ana/redefinir-senha", async (route) => {
+    expect(route.request().method()).toBe("PATCH");
+    redefinido = true;
+    await route.fulfill({ json: { senha_padrao: "tcm@123" } });
+  });
+
+  await page.goto("/admin/usuarios");
+  await page.getByRole("button", { name: "Redefinir senha Ana" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Redefinir senha" }).click();
+
+  const aviso = page.getByRole("alertdialog");
+  await expect(aviso.getByText(/tcm@123/)).toBeVisible();
+  expect(redefinido).toBe(true);
+  await aviso.getByRole("button", { name: "Fechar" }).click();
+  await expect(page.getByRole("alertdialog")).toBeHidden();
+});
+
 test("exibe duplicidade do identificador no campo do formulário", async ({ page }) => {
   await prepararPagina(page);
   await page.route("**/api/usuarios?*", (route) => route.fulfill({
