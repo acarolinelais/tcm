@@ -1,6 +1,6 @@
 import { formatDate, formatList, formatNumber } from "@/core/i18n/format";
 
-// Visual comum dos gráficos da Overview (ADR 0049): cores só por token (ADR 0041).
+// Visual comum dos gráficos da Overview (ADR 0051): cores só por token (ADR 0041).
 export const ALTURA = 220;
 
 export interface Barra {

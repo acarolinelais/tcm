@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { adminEmail, adminSenha, post, senha } from "./api-fixtures";
+import { adminEmail, adminSenha, api, post, senha } from "./api-fixtures";
 
 test.setTimeout(60_000);
 
@@ -72,5 +72,68 @@ test("senhas diferentes são recusadas e a tela continua", async ({ page }) => {
   await page.getByRole("button", { name: "Save password" }).click();
 
   await expect(page.getByText("Enter the same password in both fields.")).toBeVisible();
+  await expect(page).toHaveURL(/\/trocar-senha$/);
+});
+
+async function entrarComSenhaPropria(page: Page, senhaPropria: string) {
+  const usuario = await entrarComSenhaInicial(page);
+  await page.getByLabel("New password", { exact: true }).fill(senhaPropria);
+  await page.getByLabel("Confirm new password").fill(senhaPropria);
+  await page.getByRole("button", { name: "Save password" }).click();
+  await expect(page).toHaveURL(/\/overview$/);
+  return usuario;
+}
+
+async function abrirMenuDaConta(page: Page) {
+  // O botão do menu tem o primeiro nome da pessoa como nome acessível (os usuários de teste se chamam "Novo ...").
+  await page.getByRole("button", { name: "Novo", exact: true }).click();
+}
+
+test("troca a própria senha pelo menu e a senha antiga deixa de entrar", async ({ page }) => {
+  const usuario = await entrarComSenhaPropria(page, "senha-um");
+
+  await abrirMenuDaConta(page);
+  await page.getByRole("menuitem", { name: "Change password" }).click();
+  await page.getByLabel("Current password").fill("senha-um");
+  await page.getByLabel("New password", { exact: true }).fill("senha-dois");
+  await page.getByLabel("Confirm new password").fill("senha-dois");
+  await page.getByRole("button", { name: "Save password" }).click();
+  await expect(page.getByText("Password changed.")).toBeVisible();
+
+  await abrirMenuDaConta(page);
+  await page.getByRole("menuitem", { name: "Log out" }).click();
+  await page.getByLabel("Email").fill(usuario.email);
+  await page.getByLabel("Password", { exact: true }).fill("senha-um");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByText("Invalid email or password.")).toBeVisible();
+
+  await page.getByLabel("Password", { exact: true }).fill("senha-dois");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/overview$/);
+});
+
+test("senha atual errada no menu é recusada e o painel continua aberto", async ({ page }) => {
+  await entrarComSenhaPropria(page, "senha-um");
+
+  await abrirMenuDaConta(page);
+  await page.getByRole("menuitem", { name: "Change password" }).click();
+  await page.getByLabel("Current password").fill("errada");
+  await page.getByLabel("New password", { exact: true }).fill("senha-dois");
+  await page.getByLabel("Confirm new password").fill("senha-dois");
+  await page.getByRole("button", { name: "Save password" }).click();
+
+  await expect(page.getByText("The current password is incorrect.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Change password" })).toBeVisible();
+});
+
+test("depois que o admin redefine, a pessoa entra com a senha padrão e cai na troca obrigatória", async ({ page }) => {
+  const usuario = await entrarComSenhaPropria(page, "senha-um");
+  const admin = await post(page.request, "auth/login", { email: adminEmail, senha: adminSenha });
+  const resposta = await page.request.patch(`${api}/api/usuarios/${usuario.id}/redefinir-senha`, { headers: { Authorization: `Bearer ${admin.access_token}` } });
+  expect(await resposta.json()).toEqual({ senha_padrao: senha });
+
+  await page.goto("/login");
+  await entrarPelaTela(page, usuario.email);
+
   await expect(page).toHaveURL(/\/trocar-senha$/);
 });

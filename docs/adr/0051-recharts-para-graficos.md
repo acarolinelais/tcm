@@ -1,4 +1,4 @@
-# 0049. Recharts para os gráficos do frontend
+# 0051. Recharts para os gráficos do frontend
 
 - **Status:** Aceito
 - **Data:** 2026-11-05

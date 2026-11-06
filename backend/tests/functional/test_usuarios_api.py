@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import pytest
 from src.api.dependencies import get_usuario_atual, get_usuario_service
-from src.application.schemas.usuario import UsuarioResponse
+from src.application.schemas.usuario import RedefinirSenhaResponse, UsuarioResponse
 from src.domain.common.exceptions import ConflictException, ForbiddenException
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
@@ -163,3 +163,38 @@ async def test_gerente_consulta_perfil_atual_dos_usuarios_listados(api_client):
     assert response.json()["items"][0]["perfil_nome"] == "Auditoria"
     assert response.json()["items"][0]["perfil_codigo"] == "AUDITORIA"
     service.listar.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_redefinir_senha_admin_retorna_senha_padrao(api_client):
+    from src.api.main import app
+
+    atual = UsuarioAutenticado(uuid4(), uuid4(), perfil_codigo="ADMIN_UNIDADE")
+    usuario_id = uuid4()
+    service = AsyncMock()
+    service.redefinir_senha.return_value = RedefinirSenhaResponse(senha_padrao="tcm@123")
+    app.dependency_overrides[get_usuario_atual] = dependency_override(atual)
+    app.dependency_overrides[get_usuario_service] = dependency_override(service)
+
+    response = await api_client.patch(f"/api/usuarios/{usuario_id}/redefinir-senha")
+
+    assert response.status_code == 200
+    assert response.json() == {"senha_padrao": "tcm@123"}
+    service.redefinir_senha.assert_awaited_once_with(atual, usuario_id)
+
+
+@pytest.mark.asyncio
+async def test_redefinir_senha_gerente_recebe_403(api_client):
+    from src.api.main import app
+
+    atual = UsuarioAutenticado(
+        uuid4(), uuid4(), perfil_codigo="GERENTE", permissoes=frozenset({"usuarios.gerenciar"})
+    )
+    service = AsyncMock()
+    service.redefinir_senha.side_effect = ForbiddenException("Apenas o administrador.")
+    app.dependency_overrides[get_usuario_atual] = dependency_override(atual)
+    app.dependency_overrides[get_usuario_service] = dependency_override(service)
+
+    response = await api_client.patch(f"/api/usuarios/{uuid4()}/redefinir-senha")
+
+    assert response.status_code == 403

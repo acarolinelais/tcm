@@ -1,8 +1,8 @@
 # 063. Overview com gráficos para KP e dev: Plan
 
 - **Spec:** [spec.md](spec.md)
-- **ADRs aplicados:** 0003, 0004, 0006, 0007, 0008, 0009, 0010, 0013, 0015, 0036, 0037, 0041, 0044, 0049
-- **ADRs novos propostos:** nenhum (o 0049, Recharts, foi aceito antes desta spec)
+- **ADRs aplicados:** 0003, 0004, 0006, 0007, 0008, 0009, 0010, 0013, 0015, 0036, 0037, 0041, 0044, 0051
+- **ADRs novos propostos:** nenhum (o 0051, Recharts, foi aceito antes desta spec)
 
 ## Abordagem
 
@@ -18,7 +18,7 @@ semanas são agrupados no fuso de quem consulta.
 
 No frontend, a `OverviewPage` escolhe a visão pelo perfil (`KP`, `USUARIO_PADRAO`; os outros perfis ficam como
 hoje até a spec 064). As visões do KP e do dev entram por `React.lazy`, então o Recharts só é baixado na Overview
-(ADR 0049).
+(ADR 0051).
 
 ## Modelo de dados
 
@@ -86,7 +86,7 @@ Seguindo a skill `python-crud` (só leitura):
 ## Frontend: arquivos
 
 Seguindo a skill `react-crud`:
-- `package.json`: `recharts` (ADR 0049).
+- `package.json`: `recharts` (ADR 0051).
 - `core/global.css`: `--chart-4` e `--chart-5` nos dois temas e no `@theme inline` (ADR 0041). O teste de
   contraste do tema escuro passa a cobrir os tokens novos.
 - `modules/overview/model/overview.ts`: os tipos novos (response e modelo da tela).
@@ -136,7 +136,7 @@ Figma bateu o limite do plano). Uma imagem exportada do protótipo resolve isso 
 - **Custo da consulta do burndown:** são 30 dias × os Test Cases do projeto, com a última linha de auditoria de
   cada um. Se a integração mostrar lentidão, entra um índice em `auditoria_alteracoes (row_id, created_at)` numa
   migration própria, citada aqui antes.
-- **Recharts no jsdom:** o gráfico desenha vazio nos testes de unidade (ADR 0049). Os testes de unidade verificam
+- **Recharts no jsdom:** o gráfico desenha vazio nos testes de unidade (ADR 0051). Os testes de unidade verificam
   os dados e o resumo em texto, e o desenho fica para o e2e.
 - **Rota `/time` para outros perfis:** nesta spec, só a visão do KP usa essa rota. A spec 064 a reaproveita para o
   gerente e o admin.

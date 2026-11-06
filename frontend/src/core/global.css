@@ -112,7 +112,7 @@
   --chart-1: #5588f5;     /* série principal dos gráficos do overview */
   --chart-2: #c9daff;
   --chart-3: #b9c4e8;
-  --chart-4: #d97706;     /* segunda série com significado (ADR 0049): 3,2:1 sobre o branco */
+  --chart-4: #d97706;     /* segunda série com significado (ADR 0051): 3,2:1 sobre o branco */
   --chart-5: #15803d;     /* terceira série com significado: 5,0:1 sobre o branco */
 }
 

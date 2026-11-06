@@ -151,13 +151,13 @@ describe("tema claro do redesign (spec 055)", () => {
 
   it("os tokens do tema escuro não mudaram", () => {
     // Lê as declarações, e não o texto: editar um comentário ou o espaçamento não quebra o teste. Os `--auth-*` do
-    // login (ajuste de 2026-11-03) e o `--chart-4`/`--chart-5` (ADR 0049) têm teste próprio e ficam fora deste hash.
+    // login (ajuste de 2026-11-03) e o `--chart-4`/`--chart-5` (ADR 0051) têm teste próprio e ficam fora deste hash.
     const escuroSemLogin = Object.fromEntries(Object.entries(tokens(":root.dark")).filter(([nome]) => !nome.startsWith("auth-") && !["chart-4", "chart-5"].includes(nome)));
     expect(hash(JSON.stringify([escuroSemLogin, blocoDoContraste(":root.dark")]))).toBe(HASH_DO_ESCURO);
   });
 });
 
-describe("séries novas dos gráficos (ADR 0049)", () => {
+describe("séries novas dos gráficos (ADR 0051)", () => {
   it.each([["claro", "#ffffff", tokens(":root")], ["escuro", "#0f0f0f", { ...tokens(":root"), ...tokens(":root.dark") }]] as [string, string, Tokens][])(
     "o --chart-4 e o --chart-5 passam de 3:1 sobre o cartão no tema %s",
     (_, cartao, mapa) => {

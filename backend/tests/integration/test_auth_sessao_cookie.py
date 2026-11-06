@@ -8,8 +8,8 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from src.application.schemas.auth import LoginRequest
-from src.domain.common.exceptions import CredenciaisInvalidasException
+from src.application.schemas.auth import LoginRequest, TrocarPropriaSenhaRequest
+from src.domain.common.exceptions import CredenciaisInvalidasException, InvalidInputException
 from src.infrastructure.data.models.auth_sessao_model import AuthSessaoModel
 from src.infrastructure.data.models.perfil_model import PerfilModel
 from src.infrastructure.data.models.unidade_model import UnidadeModel
@@ -143,3 +143,52 @@ async def test_logout_revoga_a_sessao_do_access_mesmo_com_cookie_de_outra(cenari
     for emitida in (da_aba, outra):
         with pytest.raises(CredenciaisInvalidasException):
             await _renovar(cenario, emitida.refresh_token)
+
+
+async def _alterar_propria_senha(cenario, emitida, senha_atual, nova_senha):
+    fabrica, service, usuario, _ = cenario
+    sessao_id = decodificar_token(emitida.access_token).sessao_id
+    async with fabrica() as session:
+        return await service(session).alterar_propria_senha(
+            usuario.id,
+            sessao_id,
+            TrocarPropriaSenhaRequest(senha_atual=senha_atual, nova_senha=nova_senha),
+        )
+
+
+async def test_alterar_propria_senha_troca_o_hash_e_o_login_antigo_falha(cenario):
+    fabrica, service, _, request = cenario
+    emitida = await _login(cenario)
+
+    await _alterar_propria_senha(cenario, emitida, SENHA, "senha-nova")
+
+    async with fabrica() as session:
+        with pytest.raises(CredenciaisInvalidasException):
+            await service(session).login(request)
+    async with fabrica() as session:
+        nova = await service(session).login(LoginRequest(email=request.email, senha="senha-nova"))
+    assert nova.access_token
+
+
+async def test_alterar_propria_senha_revoga_outras_sessoes_e_mantem_a_atual(cenario):
+    atual = await _login(cenario)
+    outra = await _login(cenario)
+
+    trocada = await _alterar_propria_senha(cenario, atual, SENHA, "senha-nova")
+
+    with pytest.raises(CredenciaisInvalidasException):
+        await _renovar(cenario, outra.refresh_token)
+    renovada = await _renovar(cenario, trocada.refresh_token)
+    assert renovada.access_token
+
+
+async def test_alterar_propria_senha_com_senha_atual_errada_nao_muda_o_hash(cenario):
+    fabrica, _, usuario, _ = cenario
+    emitida = await _login(cenario)
+
+    with pytest.raises(InvalidInputException):
+        await _alterar_propria_senha(cenario, emitida, "errada", "senha-nova")
+
+    async with fabrica() as session:
+        model = await session.get(UsuarioModel, usuario.id)
+    assert model.senha_hash == usuario.senha_hash

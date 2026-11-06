@@ -154,3 +154,27 @@ No frontend, o drawer de edição passa a expor nome, App, One UI, time e modelo
 ## Ajuste: edição rápida de responsável e backup — 2026-10-25
 
 Reutilizar a permissão `test_cases.gerenciar` e o `PUT /api/test-cases/{id}` existente. Nas colunas Assignee e Backup, renderizar dropdowns somente para administrador, gerente ou KP autorizado no escopo (mesma regra de gestão de TC); popular com membros ativos distintos do outro campo. O service já valida escopo, participação ativa, distinção e commit. Form Factor é histórico de resultados e permanece somente leitura para atribuições.
+
+## Ajuste: Category editada só pela gestão — 2026-11-05
+
+ADRs aplicados: 0003 (regra no service da camada `application`), 0006 (recusa sai como ProblemDetails 403), 0010 (sucesso e falha por critério) e 0015 (papéis e escopo do KP no próprio time). Nenhuma decisão nova.
+
+A regra de gestão já existe: `CasoTesteServiceImpl._pode_gerenciar` aceita o admin da unidade e o gerente ou KP com `test_cases.gerenciar` e escopo sobre o time do projeto. O caminho da gestão (`_atualizar_como_gestor`) já grava a Category. A mudança é tirar a Category do caminho do responsável, sem contrato novo:
+
+- **Backend:** `"category"` sai de `CAMPOS_RESPONSAVEL` e entra explicitamente em `CAMPOS_GESTAO`. O responsável que envia `category` cai na recusa que já existe (403), e a mensagem passa a listar só Status, TC Situation, Difficulty e Automation Level. Na chamada `atualizar_campos_do_responsavel`, o responsável passa `caso.category` em vez de `request.category`. A assinatura do método de domínio não muda. O `PUT /api/test-cases/{id}` continua com o mesmo request e o mesmo response.
+- **Frontend:** na `ProjetoDetalhePage.tsx`, a célula Category usa `podeGerenciarCasos` no lugar de `podeEditarProprio(caso)`. Quem não é gestão vê o valor sem o dropdown. Nenhuma outra tela edita a Category hoje: o Board e a Timeline só exibem o valor, e a página do Test Case (spec 040) ainda é rascunho. A spec 040 terá de seguir esta regra quando for implementada.
+- **Modo mock:** em `frontend/src/core/mock/database.ts`, `"category"` sai dos `camposPermitidos` do responsável, e a mensagem acompanha a do backend.
+
+Arquivos: `backend/src/application/services/caso_teste_service.py`, `backend/tests/unit/application/services/test_caso_teste_service.py`, `backend/tests/functional/test_casos_teste_api.py`, `frontend/src/modules/projetos/pages/ProjetoDetalhePage.tsx`, `frontend/src/modules/projetos/pages/ProjetoDetalhePage.test.tsx` e `frontend/src/core/mock/database.ts`.
+
+Testes existentes que mudam: o teste de unidade em que o responsável altera Category, Difficulty, Status e TC Situation passa a não enviar a Category, e o teste de tela que abre o dropdown de Category no caso próprio (`ProjetoDetalhePage.test.tsx`, por volta da linha 419) passa a usar um perfil de gestão.
+
+| Critério | Teste |
+|---|---|
+| CA-09 (atualizado) | unidade: o responsável altera a Difficulty e o valor é salvo |
+| CA-16 (atualizado) | unidade: o responsável que envia `category` recebe 403, sem `atualizar` nem `commit` |
+| CA-38 | unidade: admin, gerente e KP do time alteram a Category; funcional: `PUT` da gestão com `category` devolve 200 |
+| CA-39 | unidade: o responsável é recusado e a Category salva não muda; funcional: `PUT` do responsável com `category` devolve 403; tela: no caso próprio, o perfil dev vê a Category sem botão e continua com o botão de Difficulty |
+| CA-40 | unidade: o KP com escopo em outro time recebe 403 ao enviar `category` |
+
+Riscos: os casos em que o responsável já trocou a Category continuam com o valor que ele gravou, porque a mudança não corrige dados antigos. Se o time quiser auditar essas trocas, o histórico da spec 038 já registra quem alterou a Category e quando.

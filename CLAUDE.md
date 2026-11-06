@@ -66,8 +66,10 @@ Documentação em PT-BR. Termos de domínio no código em português; termos té
 - **Multi-tenancy:** `Unidade` é a fronteira do tenant; hierarquia `Unidade → Setor → Time → TimeMembro`,
   isolamento por `unidade_id` filtrado no `RepositoryBaseImpl` (ADR 0013).
 - **Autenticação:** e-mail + senha com JWT emitido pelo backend, atrás de uma interface `Autenticador`
-  trocável no futuro por uma API corporativa (ADR 0014). **Ainda não implementada** — enquanto isso, a
-  API não deve ser exposta fora do ambiente local.
+  trocável no futuro por uma API corporativa (ADR 0014). Refresh em cookie httpOnly (ADR 0047); o `Secure`
+  sai por `COOKIE_SECURE=false` só no deploy por HTTP (ADR 0050).
+- **Deploy:** `bash deploy.sh` sobe `deploy/docker-compose.yml` (projeto `tcm-servidor`; web 5173, API 8080,
+  Postgres só em `127.0.0.1:5544`) e gera o `deploy/.env` (ADR 0049). Sem HTTPS: só para rede interna.
 - **Autorização:** quatro papéis fixos — `admin_unidade`, `gerente`, `kp` (Key Person, gerencia tasks só
   do próprio time) e `dev` — com regras de posse sobre as tasks (ADR 0015).
 
@@ -121,4 +123,5 @@ uv run pytest                                   # testes do backend
 cd frontend && npm run dev                      # sobe o frontend (Vite)
 cd frontend && npm test && npm run lint && npm run e2e
 sh scripts/git/convencao.test.sh                # testes das regras de branch/commit/PR
+bash deploy.sh                                  # deploy no servidor (ADR 0049)
 ```

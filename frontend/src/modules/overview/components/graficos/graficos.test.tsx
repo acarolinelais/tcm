@@ -8,7 +8,7 @@ import { DonutDone } from "./DonutDone";
 import { diaCurto } from "./estilo";
 import { LollipopChart } from "./LollipopChart";
 
-// No jsdom o Recharts não mede o contêiner e desenha vazio (ADR 0049): aqui só se confere que cada gráfico monta.
+// No jsdom o Recharts não mede o contêiner e desenha vazio (ADR 0051): aqui só se confere que cada gráfico monta.
 // O desenho, o tooltip e o teclado ficam para o e2e.
 it.each([
   ["burndown", <BurndownChart key="b" titulo="Burndown" pontos={[{ dia: "2026-11-05", planejado: 4, executado: 3 }]} />],

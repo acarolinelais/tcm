@@ -79,6 +79,7 @@ export function LoginPage() {
         <Button type="submit" isDisabled={carregando} className="mt-[37px] h-[46px] w-full rounded-full bg-auth-botao text-[15px] font-medium leading-[21px] text-auth-botao-texto hover:bg-auth-botao-hover">
           {carregando ? t("signingIn") : t("signIn")}
         </Button>
+        <p className="mt-4 text-center text-[13px] leading-[18px] text-auth-texto">{t("forgotPassword")}</p>
       </form>
     </AuthLayout>
   );

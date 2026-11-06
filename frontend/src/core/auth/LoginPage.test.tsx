@@ -32,6 +32,12 @@ describe("tema na tela de login", () => {
     document.documentElement.classList.remove("dark");
   });
 
+  it("orienta quem esqueceu a senha a falar com o administrador", () => {
+    renderLogin();
+
+    expect(screen.getByText("Forgot your password? Contact your unit administrator.")).toBeInTheDocument();
+  });
+
   it("alterna o tema antes do login, sem perder o e-mail digitado", async () => {
     await i18n.changeLanguage("en");
     const user = userEvent.setup();

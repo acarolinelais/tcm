@@ -19,7 +19,7 @@ export function TextInputField({ label, error, description, isRequired, isDisabl
   maxLength?: number;
   isReadOnly?: boolean;
   autoFocus?: boolean;
-  type?: "text" | "email";
+  type?: "text" | "email" | "password";
   name?: string;
   autoComplete?: string;
   placeholder?: string;

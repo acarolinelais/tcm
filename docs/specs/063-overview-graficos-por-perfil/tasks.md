@@ -57,7 +57,7 @@
 - [x] **T08. Recharts e tokens `--chart-4` e `--chart-5`**
   - Arquivos: `frontend/package.json`, `frontend/package-lock.json`, `frontend/src/core/global.css`,
     `frontend/src/core/theme/contraste-tema-escuro.test.ts`
-  - Cobre: ADR 0049 e ADR 0041
+  - Cobre: ADR 0051 e ADR 0041
   - Verificação: `cd frontend && npx vitest run src/core/theme` → verde (inclui os tokens novos)
 - [x] **T09. `GraficoCard` com título, resumo em texto e estados**
   - Arquivos: `frontend/src/modules/overview/components/graficos/GraficoCard.tsx`, `GraficoCard.test.tsx`,

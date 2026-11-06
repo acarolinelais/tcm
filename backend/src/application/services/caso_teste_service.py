@@ -56,7 +56,6 @@ from src.domain.queries.link_pull_request_com_autor import LinkPullRequestComAut
 class CasoTesteServiceImpl:
     CAMPOS_RESPONSAVEL = frozenset(
         {
-            "category",
             "difficulty",
             "status",
             "situation",
@@ -64,7 +63,8 @@ class CasoTesteServiceImpl:
             "justificativa_exclusao",
         }
     )
-    CAMPOS_GESTAO = CAMPOS_RESPONSAVEL | {"responsavel_id", "backup_id"}
+    # A Category é métrica do time: só a gestão altera.
+    CAMPOS_GESTAO = CAMPOS_RESPONSAVEL | {"category", "responsavel_id", "backup_id"}
     # Colunas do Kanban na ordem do ciclo (spec 037, RN-02): In Fixes antes de Done.
     ORDEM_KANBAN = (
         StatusCasoTeste.TO_DO,
@@ -269,12 +269,12 @@ class CasoTesteServiceImpl:
                 return to_response(caso_atualizado or caso)
             if campos_enviados - self.CAMPOS_RESPONSAVEL:
                 raise ForbiddenException(
-                    "O responsável só pode editar Status, TC Situation, Category, Difficulty "
+                    "O responsável só pode editar Status, TC Situation, Difficulty "
                     "e Automation Level."
                 )
             caso.atualizar_campos_do_responsavel(
                 request.status or caso.status,
-                request.category or caso.category,
+                caso.category,
                 request.difficulty or caso.difficulty,
                 request.situation,
                 automation_level=request.automation_level,

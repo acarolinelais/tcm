@@ -7,12 +7,13 @@ import { baixarPlanilha, montarPlanilha } from "@/shared/lib/exportar-planilha";
 import { usuarioApi } from "../api/usuario.api";
 import { UsuariosTable } from "./UsuariosTable";
 
-const apiMocks = vi.hoisted(() => ({ useUsuariosList: vi.fn(), listarPerfis: vi.fn(), ativar: vi.fn(), inativar: vi.fn() }));
+const apiMocks = vi.hoisted(() => ({ useUsuariosList: vi.fn(), listarPerfis: vi.fn(), ativar: vi.fn(), inativar: vi.fn(), redefinir: vi.fn() }));
 vi.mock("../hooks/useUsuarios", () => ({
   useUsuariosList: apiMocks.useUsuariosList,
   useAtivarUsuario: () => ({ mutate: apiMocks.ativar, isPending: false }),
   useInativarUsuario: () => ({ mutate: apiMocks.inativar, isPending: false }),
   useAtribuirResponsavel: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRedefinirSenha: () => ({ mutate: apiMocks.redefinir, isPending: false }),
 }));
 vi.mock("@/modules/perfis/api/perfis.api", () => ({ listarPerfis: apiMocks.listarPerfis }));
 vi.mock("@/shared/lib/exportar-planilha");
@@ -160,6 +161,30 @@ describe("UsuariosTable", () => {
     await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: /Deactivate/ }));
 
     expect(apiMocks.inativar).toHaveBeenCalledWith("0", expect.anything());
+  });
+
+  it("admin redefine a senha de outra pessoa e vê a senha padrão, mas não na própria linha", async () => {
+    const user = userEvent.setup();
+    apiMocks.redefinir.mockImplementation((_id, { onSuccess, onSettled }) => { onSuccess({ senha_padrao: "tcm@123" }); onSettled(); });
+    renderTable({ podeGerenciar: true, podeAtribuirPerfil: true, podeRedefinirSenha: true, usuarioAtualId: "0" });
+
+    await screen.findByText("Usuário 0");
+    expect(screen.queryByRole("button", { name: "Reset password Usuário 0" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Reset password Usuário 1" }));
+    expect(apiMocks.redefinir).not.toHaveBeenCalled();
+    await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Reset password" }));
+
+    expect(apiMocks.redefinir).toHaveBeenCalledWith("1", expect.anything());
+    const aviso = await screen.findByRole("alertdialog");
+    expect(within(aviso).getByText(/tcm@123/)).toBeInTheDocument();
+    expect(within(aviso).queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
+  });
+
+  it("sem ser admin, a ação Redefinir senha não aparece", async () => {
+    renderTable({ podeGerenciar: true, usuarioAtualId: "x" });
+
+    await screen.findByText("Usuário 0");
+    expect(screen.queryByRole("button", { name: /Reset password/ })).not.toBeInTheDocument();
   });
 
   it("mostra o estado de erro quando a listagem falha", async () => {

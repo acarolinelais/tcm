@@ -7,6 +7,7 @@ from src.application.schemas.auth import (
     LoginRequest,
     PreferenciasResponse,
     SessaoEmitida,
+    TrocarPropriaSenhaRequest,
 )
 
 
@@ -23,4 +24,8 @@ class AuthService(Protocol):
 
     async def alterar_senha_inicial(
         self, usuario_id: UUID, sessao_id: UUID, request: AlterarSenhaRequest
+    ) -> SessaoEmitida: ...
+
+    async def alterar_propria_senha(
+        self, usuario_id: UUID, sessao_id: UUID, request: TrocarPropriaSenhaRequest
     ) -> SessaoEmitida: ...

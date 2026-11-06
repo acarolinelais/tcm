@@ -12,7 +12,7 @@ import { ErroComRetry } from "@/shared/ui/erro-com-retry";
 import { EstadoVazio } from "@/shared/ui/estado-vazio";
 import { PageCard } from "@/shared/ui/page-card";
 
-// Com o React.lazy, o Recharts só é baixado na Overview do KP e do dev (ADR 0049).
+// Com o React.lazy, o Recharts só é baixado na Overview do KP e do dev (ADR 0051).
 const OverviewKp = lazy(() => import("../components/OverviewKp").then((m) => ({ default: m.OverviewKp })));
 const OverviewDev = lazy(() => import("../components/OverviewDev").then((m) => ({ default: m.OverviewDev })));
 

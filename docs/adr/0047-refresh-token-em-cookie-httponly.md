@@ -1,6 +1,6 @@
 # 0047. Refresh token em cookie httpOnly
 
-- **Status:** Aceito
+- **Status:** Aceito; atributo `Secure` substituído em parte por [0050](0050-cookie-de-refresh-sem-secure-por-configuracao.md)
 - **Data:** 2026-11-05
 - **Relacionado:** spec 061, ADRs 0014 e 0020
 - **Substitui em parte:** [0020](0020-sessoes-jwt-e-refresh-rotativo.md), só o armazenamento dos tokens no frontend

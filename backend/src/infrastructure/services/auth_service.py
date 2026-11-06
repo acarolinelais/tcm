@@ -12,8 +12,13 @@ from src.application.schemas.auth import (
     LoginRequest,
     PreferenciasResponse,
     SessaoEmitida,
+    TrocarPropriaSenhaRequest,
 )
-from src.domain.common.exceptions import CredenciaisInvalidasException, NotFoundException
+from src.domain.common.exceptions import (
+    CredenciaisInvalidasException,
+    InvalidInputException,
+    NotFoundException,
+)
 from src.domain.entities.interfaces.autenticador import Autenticador
 from src.domain.entities.interfaces.usuario_repository import UsuarioRepository
 from src.domain.entities.usuario import Usuario
@@ -150,6 +155,25 @@ class AuthServiceImpl:
     async def alterar_senha_inicial(
         self, usuario_id: UUID, sessao_id: UUID, request: AlterarSenhaRequest
     ) -> SessaoEmitida:
+        sessao, usuario_model = await self._sessao_ativa(usuario_id, sessao_id)
+        if not usuario_model.senha_alteracao_obrigatoria:
+            raise CredenciaisInvalidasException("Credenciais inválidas.")
+        return await self._gravar_nova_senha(sessao, usuario_model, request.nova_senha)
+
+    async def alterar_propria_senha(
+        self, usuario_id: UUID, sessao_id: UUID, request: TrocarPropriaSenhaRequest
+    ) -> SessaoEmitida:
+        sessao, usuario_model = await self._sessao_ativa(usuario_id, sessao_id)
+        if (
+            await self._autenticador.autenticar(usuario_model.email, request.senha_atual)
+            != usuario_id
+        ):
+            raise InvalidInputException("A senha atual está incorreta.")
+        return await self._gravar_nova_senha(sessao, usuario_model, request.nova_senha)
+
+    async def _sessao_ativa(
+        self, usuario_id: UUID, sessao_id: UUID
+    ) -> tuple[AuthSessaoModel, UsuarioModel]:
         if self._session is None:
             raise CredenciaisInvalidasException("Credenciais inválidas.")
         agora = datetime.now(UTC).replace(tzinfo=None)
@@ -162,12 +186,18 @@ class AuthServiceImpl:
             or sessao.expires_at <= agora
             or usuario_model is None
             or not usuario_model.ativo
-            or not usuario_model.senha_alteracao_obrigatoria
             or usuario_model.auth_version != sessao.auth_version
         ):
             raise CredenciaisInvalidasException("Credenciais inválidas.")
+        return sessao, usuario_model
 
-        usuario_model.senha_hash = hash_senha(request.nova_senha)
+    async def _gravar_nova_senha(
+        self, sessao: AuthSessaoModel, usuario_model: UsuarioModel, nova_senha: str
+    ) -> SessaoEmitida:
+        agora = datetime.now(UTC).replace(tzinfo=None)
+        usuario_id = usuario_model.id
+        sessao_id = sessao.id
+        usuario_model.senha_hash = hash_senha(nova_senha)
         usuario_model.senha_alteracao_obrigatoria = False
         usuario_model.auth_version += 1
         await self._session.execute(

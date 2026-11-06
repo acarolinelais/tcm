@@ -68,7 +68,7 @@ sem paginação, também pagina ([ADR 0039](../adr/0039-resultados-gerais-com-pa
 | 039 | Overview com dados reais no escopo do perfil (desempenho mensal pela auditoria da 038) | Concluída |
 | 040 | Página do Test Case com endereço próprio e edição dos textos | Rascunho |
 | 041 | Busca global na barra superior (Test Cases, projetos e pessoas) | Rascunho |
-| 042 | Minha conta e redefinição de senha pelo administrador | Rascunho |
+| 042 | Troca da própria senha e redefinição pelo administrador (volta à senha padrão) | Concluída (code-review e security-review pendentes) |
 | 043 | Ações em lote na lista de Test Cases (Status, responsável e Backup) | Rascunho |
 | 044 | Comentários no Test Case | Rascunho |
 | 045 | Evidências anexadas ao Test Case (exige ADR de armazenamento) | Rascunho |
@@ -89,7 +89,7 @@ sem paginação, também pagina ([ADR 0039](../adr/0039-resultados-gerais-com-pa
 | 060 | Importação do relatório SDF no formato novo (SDF ID no nome do arquivo, device e data no cabeçalho, descrição no resultado) | Em andamento (integração do backend pendente) |
 | 061 | Sessão entre abas (refresh token em cookie httpOnly, sessão de 10 horas, ADRs 0047 e 0048) | Concluída |
 | 062 | Esconder a prévia da planilha na importação (botão Hide preview / Show preview) | Concluída (validação manual no navegador pendente) |
-| 063 | Overview com gráficos para KP e dev (burndown, Pass Rate, entregas por dia e semana; Recharts, ADR 0049) | Em andamento (integração do backend e ajuste visual pelo protótipo pendentes) |
+| 063 | Overview com gráficos para KP e dev (burndown, Pass Rate, entregas por dia e semana; Recharts, ADR 0051) | Em andamento (integração do backend e ajuste visual pelo protótipo pendentes) |
 | 064 | Overview com gráficos para gerente e admin (andamento por time e por setor, retrabalho, finalizados por semana) | Rascunho (spec.md) |
 
 > As duas specs 012 foram criadas em paralelo. Os diretórios e históricos foram preservados nesta integração; a harmonização da numeração está registrada no backlog da spec de perfil Dev.

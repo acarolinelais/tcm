@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Pencil, UserRoundCheck, UserRoundCog, UserRoundX } from "lucide-react";
+import { KeyRound, Pencil, UserRoundCheck, UserRoundCog, UserRoundX } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { listarPerfis } from "@/modules/perfis/api/perfis.api";
@@ -18,7 +18,7 @@ import { rowActionIconProps } from "@/shared/ui/row-action-icon";
 import { TONS_ETIQUETA, TagChip } from "@/shared/ui/tag-chip";
 
 import { usuarioApi, type UsuarioFiltros } from "../api/usuario.api";
-import { useAtivarUsuario, useInativarUsuario, useUsuariosList } from "../hooks/useUsuarios";
+import { useAtivarUsuario, useInativarUsuario, useRedefinirSenha, useUsuariosList } from "../hooks/useUsuarios";
 import type { Usuario } from "../model/usuario";
 import { UsuarioResponsavelDrawer } from "./UsuarioResponsavelDrawer";
 
@@ -38,6 +38,8 @@ interface UsuariosTableProps {
   podeAtribuirPerfilKP?: boolean;
   podeConsultarPerfil?: boolean;
   podeConsultarSetores?: boolean;
+  /** Só o admin da unidade redefine senhas, e nunca a própria (spec 042). */
+  podeRedefinirSenha?: boolean;
   usuarioAtualId?: string;
 }
 
@@ -56,6 +58,7 @@ export function UsuariosTable({
   podeAtribuirPerfilKP = false,
   podeConsultarPerfil = false,
   podeConsultarSetores = false,
+  podeRedefinirSenha = false,
   usuarioAtualId = "",
 }: UsuariosTableProps) {
   const { t } = useTranslation();
@@ -78,11 +81,14 @@ export function UsuariosTable({
   });
   const ativar = useAtivarUsuario();
   const inativar = useInativarUsuario();
+  const redefinir = useRedefinirSenha();
   // Confirmação e painel de responsável ficam fora das células: a grade não interfere no teclado deles.
   const [paraInativar, setParaInativar] = useState<Usuario | null>(null);
   const [responsavelDe, setResponsavelDe] = useState<Usuario | null>(null);
+  const [paraRedefinir, setParaRedefinir] = useState<Usuario | null>(null);
+  const [senhaRedefinida, setSenhaRedefinida] = useState<{ nome: string; senha: string } | null>(null);
   const listaGerentes = gerentes.data?.items ?? [];
-  const mostrarAcoes = podeGerenciar || podeAtribuirPerfil;
+  const mostrarAcoes = podeGerenciar || podeAtribuirPerfil || podeRedefinirSenha;
 
   const items = usuarios.isError ? [] : usuarios.data?.items ?? [];
   const temFiltro = Boolean(
@@ -111,6 +117,7 @@ export function UsuariosTable({
         disabled: ativar.isPending || inativar.isPending,
         onPress: () => usuario.ativo ? setParaInativar(usuario) : ativar.mutate(usuario.id),
       }] : []),
+      ...(podeRedefinirSenha && usuario.id !== usuarioAtualId ? [{ label: t("resetPassword"), icon: <KeyRound {...rowActionIconProps} />, onPress: () => setParaRedefinir(usuario) }] : []),
     ];
   }
 
@@ -168,7 +175,7 @@ export function UsuariosTable({
         state={estado}
         pagination={<DataTablePagination page={page} pageSize={pageSize} pageSizeOptions={pageSizeOptions} totalCount={usuarios.data?.total_count ?? 0} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} />}
         exportacao={{ listagem: "usuarios", todosOsItens: () => buscarTodasAsPaginas((pagina, tamanho) => usuarioApi.listar(pagina, tamanho, filtros)) }}
-        rowDependencies={[t, perfis.data, listaGerentes, setores.data, podeGerenciar, podeAtribuirPerfil, usuarioAtualId, ativar.isPending, inativar.isPending]}
+        rowDependencies={[t, perfis.data, listaGerentes, setores.data, podeGerenciar, podeAtribuirPerfil, podeRedefinirSenha, usuarioAtualId, ativar.isPending, inativar.isPending]}
       />
       <AlertConfirm
         open={Boolean(paraInativar)}
@@ -184,6 +191,32 @@ export function UsuariosTable({
           inativar.mutate(usuario.id, { onSuccess: () => toast.success(t("userDeactivated", { name: usuario.nome })) });
           setParaInativar(null);
         }}
+      />
+      <AlertConfirm
+        open={Boolean(paraRedefinir)}
+        onOpenChange={(open) => { if (!open && !redefinir.isPending) setParaRedefinir(null); }}
+        title={t("resetPasswordTitle", { name: paraRedefinir?.nome ?? "" })}
+        description={t("resetPasswordDescription", { name: paraRedefinir?.nome ?? "" })}
+        confirmLabel={t("resetPassword")}
+        isPending={redefinir.isPending}
+        onConfirm={() => {
+          if (!paraRedefinir) return;
+          const usuario = paraRedefinir;
+          redefinir.mutate(usuario.id, {
+            onSuccess: ({ senha_padrao }) => setSenhaRedefinida({ nome: usuario.nome, senha: senha_padrao }),
+            onError: () => toast.error(t("passwordResetError")),
+            onSettled: () => setParaRedefinir(null),
+          });
+        }}
+      />
+      <AlertConfirm
+        open={Boolean(senhaRedefinida)}
+        onOpenChange={(open) => { if (!open) setSenhaRedefinida(null); }}
+        title={t("passwordResetDoneTitle")}
+        description={t("passwordResetDone", { name: senhaRedefinida?.nome ?? "", password: senhaRedefinida?.senha ?? "" })}
+        confirmLabel={t("close")}
+        onConfirm={() => setSenhaRedefinida(null)}
+        hideCancel
       />
       <UsuarioResponsavelDrawer usuario={responsavelDe} gerentes={listaGerentes} onFechar={() => setResponsavelDe(null)} />
     </>

@@ -40,12 +40,17 @@ export function TimelineGrade({ visao, periodo, cards, onAbrir, vazio, agora = n
   const iHoje = indice.get(hoje);
   const iAgora = porHora ? (formatarDiaIso(periodo.inicio) === hoje ? minutos / 60 : undefined)
     : iHoje === undefined ? undefined : iHoje + minutos / 1440;
-  const template = { gridTemplateColumns: `repeat(${colunas.length}, minmax(${LARGURA_COLUNA[visao]}, 1fr))` };
+  // A largura acompanha as colunas: sem ela o grid fica do tamanho da tela, as colunas transbordam e o fundo e a linha
+  // do agora (que se posicionam pela caixa do grid) param no meio.
+  const template = {
+    gridTemplateColumns: `repeat(${colunas.length}, minmax(${LARGURA_COLUNA[visao]}, 1fr))`,
+    minWidth: `max(100%, calc(${colunas.length} * ${LARGURA_COLUNA[visao]}))`,
+  };
 
   // O cabeçalho tem linhas de altura fixa (2rem do mês e 2.25rem dos dias, em `grid-rows`): o fundo, a linha do agora e o
   // vazio começam logo abaixo dele, em `top-[4.25rem]`. Se uma altura mudar, mude as três.
   return <div className="thin-scroll min-h-0 flex-1 overflow-auto">
-    <div className="relative grid min-h-full min-w-full grid-rows-[2rem_2.25rem_1fr]" style={template}>
+    <div className="relative grid min-h-full grid-rows-[2rem_2.25rem_1fr]" style={template}>
       {/* Fundo quadriculado do protótipo, só no claro (RN-07). Decorativo: não captura clique nem entra na leitura. */}
       <div
         data-testid="fundo-grade"
