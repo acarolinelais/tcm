@@ -3,7 +3,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { casosTesteApi, formFactorApi, projetosApi } from "../api/projetos.api";
-import { useCasosTeste, useCriarProjeto, useCriarRodadaFormFactor, useFormFactor, useFormFactorResultados, useHistoricoProjeto, useDesfazerImportacaoSdf, useImportarRelatorioSdf, useProjetosPessoais, useUltimaImportacaoSdf, useResumoExecucoes, useTransferirCasoTeste } from "./useProjetos";
+import { useCasosTeste, useCriarProjeto, useHistoricoProjeto, useDesfazerImportacaoSdf, useImportarRelatorioSdf, useProjetosPessoais, useUltimaImportacaoSdf, useResumoExecucoes, useTransferirCasoTeste } from "./useProjetos";
 import type { PerfilAtual } from "@/core/auth/api";
 
 vi.mock("../api/projetos.api", () => ({
@@ -42,36 +42,6 @@ describe("hooks de projetos", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     rerender({ page: 2, responsavelIds: ["a", "b"] });
     await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("p", 2, 20, { associadosAMim: true, responsavelIds: ["a", "b"] }));
-  });
-
-  it("refaz o Form Factor ao mudar o responsável e não consulta quando desabilitado", async () => {
-    vi.mocked(formFactorApi.listar).mockResolvedValue({ modelos: [], items: [], total_count: 0, page: 1, page_size: 20 });
-    const perfil = { id: "kp", unidade_id: "u" } as PerfilAtual;
-    const { result, rerender } = renderHook(({ responsavelIds, enabled }) => useFormFactor("p", { page: 1, pageSize: 20, responsavelIds }, perfil, enabled), { initialProps: { responsavelIds: undefined as string[] | undefined, enabled: false }, wrapper: criarWrapper() });
-    expect(formFactorApi.listar).not.toHaveBeenCalled();
-    rerender({ responsavelIds: undefined, enabled: true });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    rerender({ responsavelIds: ["ana"], enabled: true });
-    await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("p", { page: 1, pageSize: 20, responsavelIds: ["ana"] }));
-    expect(formFactorApi.listar).toHaveBeenCalledTimes(2);
-  });
-
-  it("isola o cache de Results pelos filtros e recarrega após criar rodada", async () => {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
-    client.setQueryData(["projetos", "p", "form-factor", { page: 1 }], { items: [] });
-    vi.mocked(formFactorApi.listarResultados).mockResolvedValue({ modelos: [], items: [], total_count: 0, page: 1, page_size: 20 });
-    vi.mocked(formFactorApi.criarRodada).mockResolvedValue({} as never);
-    const perfil = { id: "kp", unidade_id: "u" } as PerfilAtual;
-    const { result, rerender } = renderHook(({ tcId }) => useFormFactorResultados("p", { page: 1, pageSize: 20, tcId }, perfil), { initialProps: { tcId: "TC-1" }, wrapper });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    rerender({ tcId: "TC-2" });
-    await waitFor(() => expect(formFactorApi.listarResultados).toHaveBeenLastCalledWith("p", { page: 1, pageSize: 20, tcId: "TC-2" }));
-    const chamadasAntesDaCriacao = vi.mocked(formFactorApi.listarResultados).mock.calls.length;
-    const criar = renderHook(() => useCriarRodadaFormFactor("p"), { wrapper });
-    await criar.result.current.mutateAsync({ sdf_id: "SDF-1" });
-    expect(client.getQueryCache().find({ queryKey: ["projetos", "p", "form-factor", { page: 1 }] })?.state.isInvalidated).toBe(true);
-    await waitFor(() => expect(formFactorApi.listarResultados).toHaveBeenCalledTimes(chamadasAntesDaCriacao + 1));
   });
 
   it("consulta o histórico do projeto com os filtros e o resumo só com um caso escolhido (spec 032)", async () => {

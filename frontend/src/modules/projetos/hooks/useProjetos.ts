@@ -9,9 +9,7 @@ import {
   type AtualizarCasoTesteInput,
   type CriarCasoTesteInput,
   type CriarProjetoInput,
-  type FiltrosFormFactor,
   type FiltrosHistoricoProjeto,
-  type CriarRodadaFormFactorInput,
   type EnviarResultadosRodadaInput,
   type StatusProjeto,
 } from "../api/projetos.api";
@@ -167,14 +165,6 @@ export function useTransferirCasoTeste(projetoId: string) {
   });
 }
 
-export function useFormFactor(projetoId: string, filtros: FiltrosFormFactor, perfil?: PerfilAtual, enabled = true) {
-  return useQuery({
-    queryKey: ["projetos", projetoId, "form-factor", filtros, perfil?.unidade_id, perfil?.id],
-    queryFn: () => formFactorApi.listar(projetoId, filtros),
-    enabled: Boolean(projetoId) && enabled,
-  });
-}
-
 export function useHistoricoProjeto(projetoId: string, filtros: FiltrosHistoricoProjeto, perfil?: PerfilAtual) {
   return useQuery({
     queryKey: ["form-factor", "historico", projetoId, filtros, perfil?.unidade_id, perfil?.id],
@@ -196,41 +186,16 @@ export function useResumoExecucoes(casoTesteId: string | null, perfil?: PerfilAt
   });
 }
 
-export function useFormFactorResultados(projetoId: string, filtros: FiltrosFormFactor, perfil?: PerfilAtual, enabled = true) {
-  return useQuery({
-    queryKey: ["projetos", projetoId, "form-factor-results", filtros, perfil?.unidade_id, perfil?.id],
-    queryFn: () => formFactorApi.listarResultados(projetoId, filtros),
-    enabled: Boolean(projetoId) && enabled,
-  });
-}
-
-export function useCriarRodadaFormFactor(projetoId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationKey: ["projetos", projetoId, "form-factor-manual"],
-    mutationFn: (input: CriarRodadaFormFactorInput) => formFactorApi.criarRodada(projetoId, input),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "form-factor"] }),
-        queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "form-factor-results"] }),
-      ]);
-    },
-  });
-}
-
 export function useRegistrarResultadosRodadaFormFactor(projetoId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ["projetos", projetoId, "form-factor-rodada-results"],
     mutationFn: ({ rodadaId, casoTesteId, input }: { rodadaId: string; casoTesteId: string; input: EnviarResultadosRodadaInput }) =>
       formFactorApi.registrarResultadosRodada(projetoId, rodadaId, casoTesteId, input),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "form-factor"] }),
-        queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "form-factor-results"] }),
-        queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "test-cases"] }),
-      ]);
-    },
+    onSuccess: () => Promise.all([
+      invalidarResultadosSdf(queryClient, projetoId),
+      queryClient.invalidateQueries({ queryKey: ["form-factor", "resumo-execucoes"] }),
+    ]),
   });
 }
 

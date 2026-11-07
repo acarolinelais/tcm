@@ -172,7 +172,7 @@ const fusoHorario = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 export const formFactorApi = {
   historicoProjeto(projetoId: string, filtros: FiltrosHistoricoProjeto = {}) {
-    const { page = 1, pageSize = DEFAULT_TABLE_PAGE_SIZE, tcId, responsavel, sdfId, modeloDispositivoId, periodo } = filtros;
+    const { page = 1, pageSize = DEFAULT_TABLE_PAGE_SIZE, tcId, responsavel, sdfId, modeloDispositivoId, periodo, associadosAMim } = filtros;
     return useMock
       ? Promise.resolve(mockFormFactorApi.historicoProjeto(projetoId, filtros))
       : httpGet<HistoricoProjeto>(`/api/form-factor/general/projetos/${projetoId}/historico`, {
@@ -184,6 +184,7 @@ export const formFactorApi = {
         ...(sdfId ? { sdf_id: sdfId } : {}),
         ...(modeloDispositivoId ? { modelo_dispositivo_id: modeloDispositivoId } : {}),
         ...(periodo ? { [periodo.includes("-W") ? "semana" : "dia"]: periodo } : {}),
+        ...(associadosAMim ? { associados_a_mim: "true" } : {}),
       });
   },
   resumoExecucoes(casoTesteId: string) {

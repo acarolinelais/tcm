@@ -37,8 +37,8 @@ const historico: HistoricoProjeto = {
   page_size: DEFAULT_TABLE_PAGE_SIZE,
   total_count: 45,
   items: [
-    { caso_teste_id: "c1", tc_id: "Clock_001", responsavel_id: "u1", responsavel_identificador: "ANA-001", ultimo_sdf_por_modelo: { s26: "SDF-e1", s27: "SDF-e2" }, resultados: { [DIA]: { s26: resultado("e1", "PASS"), s27: resultado("e2", "FAIL") } } },
-    { caso_teste_id: "c2", tc_id: "Clock_002", responsavel_id: "u1", responsavel_identificador: null, ultimo_sdf_por_modelo: { s26: null, s27: "SDF-e4" }, resultados: { [DIA]: { s26: resultado("e3", "PASS", "MANUAL"), s27: resultado("e4", "PASS") } } },
+    { caso_teste_id: "c1", tc_id: "Clock_001", responsavel_id: "u1", responsavel_identificador: "ANA-001", backup_id: null, rodada_pendente_id: null, ultimo_sdf_por_modelo: { s26: "SDF-e1", s27: "SDF-e2" }, resultados: { [DIA]: { s26: resultado("e1", "PASS"), s27: resultado("e2", "FAIL") } } },
+    { caso_teste_id: "c2", tc_id: "Clock_002", responsavel_id: "u1", responsavel_identificador: null, backup_id: null, rodada_pendente_id: null, ultimo_sdf_por_modelo: { s26: null, s27: "SDF-e4" }, resultados: { [DIA]: { s26: resultado("e3", "PASS", "MANUAL"), s27: resultado("e4", "PASS") } } },
   ],
 };
 

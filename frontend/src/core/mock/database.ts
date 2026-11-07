@@ -1236,13 +1236,14 @@ function noPeriodoMock(dia: string, periodo?: string) {
 
 export const mockFormFactorApi = {
   historicoProjeto(projectId: string, filtros: FiltrosHistoricoProjeto = {}): HistoricoProjeto {
-    const { db } = mockProfile();
+    const { db, user } = mockProfile();
     const { modelos, casos, execucoes } = execucoesMockDoProjeto(db, projetoMockResultadosGerais(db, projectId));
     const userId = (responsavelId: string) => db.usuarios.find((item) => item.id === responsavelId)?.user_id ?? null;
     const selecionados = casos.filter((testCase) => {
       // Como na API, filtro e período casam com a mesma execução.
       const doCaso = execucoes.filter((item) => item.caso_teste_id === testCase.id && noPeriodoMock(item.dia, filtros.periodo));
       return contem(testCase.tc_id, filtros.tcId) &&
+        (!filtros.associadosAMim || testCase.responsavel_id === user.id || testCase.backup_id === user.id) &&
         contem(userId(testCase.responsavel_id), filtros.responsavel) &&
         (!filtros.sdfId?.trim() || doCaso.some((item) => contem(item.sdf_id, filtros.sdfId))) &&
         (!filtros.modeloDispositivoId || doCaso.some((item) => item.modelo_dispositivo_id === filtros.modeloDispositivoId)) &&
@@ -1275,6 +1276,11 @@ export const mockFormFactorApi = {
           tc_id: testCase.tc_id,
           responsavel_id: testCase.responsavel_id,
           responsavel_identificador: userId(testCase.responsavel_id),
+          backup_id: testCase.backup_id,
+          rodada_pendente_id: (() => {
+            const atual = execucaoDaRodadaAtual(db, testCase.id);
+            return atual && !atual.resultados_registrados ? atual.rodada_id : null;
+          })(),
           ultimo_sdf_por_modelo,
           resultados,
         };

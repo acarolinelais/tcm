@@ -1,5 +1,5 @@
 import { Button, Tooltip } from "@heroui/react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -11,6 +11,7 @@ import { DataTablePagination } from "@/shared/ui/data-table-pagination";
 import { estadoDaTabela } from "@/shared/ui/data-table-state";
 import { HistoryIcon } from "@/shared/ui/figma-icons";
 import { RowActions } from "@/shared/ui/row-action-button";
+import { rowActionIconProps } from "@/shared/ui/row-action-icon";
 import type { CasoHistorico, FiltrosHistoricoProjeto, HistoricoProjeto, ModeloFormFactor, ResultadoNaData } from "../../model/projeto";
 import { formatarDia } from "./formatar-dia";
 import { ResultadoBotao, SemExecucao } from "./ResultadoBotao";
@@ -45,6 +46,9 @@ interface Props {
   pageSize: number;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
+  /** Registro manual numa rodada: só a aba Form Factor passa. */
+  podeRegistrar?: (caso: CasoHistorico) => boolean;
+  onRegistrar?: (caso: CasoHistorico) => void;
 }
 
 const SEM_CASOS: CasoHistorico[] = [];
@@ -151,7 +155,10 @@ export function HistoricoProjetoTabela(props: Props) {
       className: "[tbody_&]:align-top",
       header: t("actions"),
       // Um histórico por caso (spec 059, RN-15), na primeira linha, mesmo com a linha aberta.
-      cell: (caso) => <Linha><RowActions identificador={caso.tc_id} actions={[{ label: t("viewExecutionHistory"), icon: <HistoryIcon />, onPress: () => props.onAbrirResumo(caso) }]} /></Linha>,
+      cell: (caso) => <Linha><RowActions identificador={caso.tc_id} actions={[
+        { label: t("viewExecutionHistory"), icon: <HistoryIcon />, onPress: () => props.onAbrirResumo(caso) },
+        ...(props.podeRegistrar?.(caso) ? [{ label: t("recordResult"), icon: <Plus {...rowActionIconProps} />, onPress: () => props.onRegistrar?.(caso) }] : []),
+      ]} /></Linha>,
     },
   ];
 

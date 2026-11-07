@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Button, Label, ListBox, Modal, Select } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 
-import type { EnviarResultadosRodadaInput, LinhaFormFactor, ModeloFormFactor } from "../../model/projeto";
+import type { CasoHistorico, EnviarResultadosRodadaInput, ModeloFormFactor } from "../../model/projeto";
 
 type ResultadoManual = "PASS" | "FAIL";
 const NAO_DEFINIDO = "unselected";
@@ -10,7 +10,7 @@ const NAO_DEFINIDO = "unselected";
 export function FormFactorManualDialog({ aberto, onAbertoChange, linha, modelos, salvando, onSalvar }: {
   aberto: boolean;
   onAbertoChange: (aberto: boolean) => void;
-  linha: Pick<LinhaFormFactor, "caso_teste_id" | "tc_id"> | null;
+  linha: Pick<CasoHistorico, "caso_teste_id" | "tc_id"> | null;
   modelos: ModeloFormFactor[];
   salvando: boolean;
   onSalvar: (input: EnviarResultadosRodadaInput) => void;

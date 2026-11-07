@@ -15,7 +15,7 @@ const DATAS = ["2026-10-10", "2026-10-09", "2026-10-08", "2026-10-07", "2026-10-
 const MODELOS = [{ id: "s26", nome: "S26 Ultra" }, { id: "s25", nome: "S25 Ultra" }, { id: "s24", nome: "S24 Ultra" }, { id: "s23", nome: "S23 Ultra" }];
 
 function caso(tcId: string, resultados: CasoHistorico["resultados"] = {}, ultimo_sdf_por_modelo: CasoHistorico["ultimo_sdf_por_modelo"] = {}): CasoHistorico {
-  return { caso_teste_id: `id-${tcId}`, tc_id: tcId, responsavel_id: "u1", responsavel_identificador: "caroline.silva", ultimo_sdf_por_modelo, resultados };
+  return { caso_teste_id: `id-${tcId}`, tc_id: tcId, responsavel_id: "u1", responsavel_identificador: "caroline.silva", backup_id: null, rodada_pendente_id: null, ultimo_sdf_por_modelo, resultados };
 }
 
 const dados: HistoricoProjeto = {
@@ -136,6 +136,21 @@ describe("HistoricoProjetoTabela", () => {
     await user.click(within(linha).getByRole("button", { name: "View execution history Clock_001" }));
 
     expect(handlers.onAbrirResumo).toHaveBeenCalledWith(dados.items[0]);
+  });
+
+  it("registra o resultado pela linha quando a tela permite (spec 068, CA-07)", async () => {
+    const user = userEvent.setup();
+    const onRegistrar = vi.fn();
+    renderizar({ podeRegistrar: (caso) => caso.tc_id === "Clock_001", onRegistrar });
+
+    await user.click(screen.getByRole("button", { name: "Record result Clock_001" }));
+
+    expect(onRegistrar).toHaveBeenCalledWith(dados.items[0]);
+  });
+
+  it("falha: sem permissão para a linha, não há registro (CA-08)", () => {
+    renderizar({ podeRegistrar: (caso) => caso.tc_id === "Clock_001", onRegistrar: vi.fn() });
+    expect(screen.queryByRole("button", { name: "Record result Clock_002" })).not.toBeInTheDocument();
   });
 
   it("clicar no resultado abre o detalhe do device e da data", async () => {
