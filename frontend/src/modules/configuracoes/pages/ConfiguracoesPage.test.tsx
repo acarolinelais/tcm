@@ -48,6 +48,17 @@ describe("ConfiguracoesPage", () => {
     expect(screen.getByRole("radio", { name: "Azul" })).toBeChecked();
   });
 
+  it("Trocar senha abre o painel de troca da própria senha", async () => {
+    await i18n.changeLanguage("en");
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: "Change password" }));
+
+    expect(await screen.findByRole("heading", { name: "Change password" })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Current password/)).toBeInTheDocument();
+  });
+
   it("ao escolher verde, o avatar da barra superior muda sem recarregar a página", async () => {
     vi.mocked(atualizarCorAvatar).mockResolvedValue({ idioma_preferido: "en", cor_avatar: "verde" });
     await i18n.changeLanguage("en");
