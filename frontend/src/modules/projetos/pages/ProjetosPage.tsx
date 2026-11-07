@@ -227,7 +227,7 @@ export function ProjetosPage() {
     {!criacaoAberta ? <>
       <header className="mb-7 flex shrink-0 items-start justify-between gap-4">
         <div className="min-w-0"><h1 className="text-2xl font-medium text-accent-text">{t("myProjects")}</h1><p className="mt-1.5 text-[14px] leading-5 text-muted">{t("projectsDescription")}</p></div>
-        {podeGerenciar && <HeroButton variant="primary" size="sm" className="rounded-full px-4" onPress={() => { limparFormulario(); setCriacaoAberta(true); }}><Plus aria-hidden="true" className="size-4" />{t("newProject")}</HeroButton>}
+        {podeGerenciar && <HeroButton variant="primary" onPress={() => { limparFormulario(); setCriacaoAberta(true); }}><Plus aria-hidden="true" absoluteStrokeWidth strokeWidth={1.5} className="size-4" />{t("newProject")}</HeroButton>}
       </header>
       <DataTable
         aria-label={t("myProjects")}

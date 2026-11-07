@@ -136,12 +136,12 @@ export function ResultadosGeraisPage() {
       selectedKey={projetoId}
       onSelectionChange={trocarProjeto}
       actions={<>
-        <AcoesGerenciaFormFactor projetoId={projetoId} perfil={perfil} />
         {/* Vindo do estado vazio, a pílula é outra: o foco passa para ela. */}
         <FiltroEncerrados ligado={comEncerrados} onChange={alternarEncerrados} autoFocus={comEncerrados} />
         <WeekPickerHero permitirDia label={t("dayOrWeek")} value={filtros.periodo ?? ""} onChange={(valor) => alterarFiltros({ ...filtros, periodo: valor || undefined })} />
         {/* Pílula cinza na altura do filtro de dia ou semana ao lado (design da spec 059). */}
-        {temFiltros && <Button variant="ghost" onPress={() => alterarFiltros(SEM_FILTROS)} className="h-9 min-h-0 rounded-full bg-panel px-4 text-[15px] font-medium leading-[21px] text-body shadow-none transition-[background-color,transform] duration-100 ease-out hover:bg-default data-[pressed]:scale-[0.97] motion-reduce:transition-none motion-reduce:data-[pressed]:scale-100 dark:text-muted">{t("clearFilters")}</Button>}
+        {temFiltros && <Button variant="ghost" onPress={() => alterarFiltros(SEM_FILTROS)} className="rounded-full bg-panel px-4 font-medium text-body shadow-none transition-[background-color,transform] duration-100 ease-out hover:bg-default data-[pressed]:scale-[0.97] motion-reduce:transition-none motion-reduce:data-[pressed]:scale-100 dark:text-muted">{t("clearFilters")}</Button>}
+        <AcoesGerenciaFormFactor projetoId={projetoId} perfil={perfil} />
       </>}
     >
       <PageTabPanel id={projetoId} className="flex min-h-0 flex-1 flex-col p-0">

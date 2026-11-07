@@ -114,7 +114,7 @@ export function UploadPlanilha({ leitura, onBaixarModelo }: { leitura: Leitura; 
         <p className="flex items-center gap-2 text-base font-medium leading-6 text-body"><ExcelIcon aria-hidden="true" className="size-6 shrink-0" />{t("spreadsheetTemplateTitle")}</p>
         <p className="mt-1.5 max-w-[28rem] text-sm leading-5 text-subtle">{t("spreadsheetTemplateDescription")}</p>
       </div>
-      <Button variant="outline" onPress={onBaixarModelo} className="h-9 rounded-[10px] bg-surface px-4 text-sm font-medium text-body">{t("downloadTemplate")}</Button>
+      <Button variant="outline" onPress={onBaixarModelo} className="rounded-[10px] bg-surface px-4 font-medium text-body">{t("downloadTemplate")}</Button>
     </div>}
 
     {cardArquivo.montado && exibida.arquivo && <CardArquivo arquivo={exibida.arquivo} leitura={exibida} saindo={cardArquivo.saindo} onRemover={remover} />}

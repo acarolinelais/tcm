@@ -137,7 +137,7 @@ export function TimelinePage() {
           <ChevronRight aria-hidden="true" className="size-4" />
         </Button>
       </div>
-      <Button variant="outline" size="sm" className="h-9 rounded-full" onPress={() => setPeriodo(periodoDe(visao, new Date()))}>{t("today")}</Button>
+      <Button variant="outline" className="rounded-full" onPress={() => setPeriodo(periodoDe(visao, new Date()))}>{t("today")}</Button>
       <TimelineFiltros
           opcoesPessoas={opcoes(dados?.pessoas.map((pessoa) => pessoa.id) ?? [], filtros.responsavelIds)}
           opcoesCasos={opcoes(dados?.casos.map((caso) => caso.id) ?? [], filtros.casoIds)}

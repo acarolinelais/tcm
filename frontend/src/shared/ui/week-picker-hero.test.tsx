@@ -45,7 +45,7 @@ describe("WeekPickerHero", () => {
     render(<WeekPickerHero label="Week" value="" onChange={vi.fn()} />);
     const gatilho = screen.getByRole("button", { name: /^Week: / });
 
-    expect(gatilho).toHaveClass("h-9", "rounded-full", "border-edge", "bg-surface", "data-[pressed]:scale-[0.97]", "motion-reduce:data-[pressed]:scale-100");
+    expect(gatilho).toHaveClass("rounded-full", "border-edge", "bg-surface", "data-[pressed]:scale-[0.97]", "motion-reduce:data-[pressed]:scale-100");
     await user.click(gatilho);
     expect(await screen.findByRole("button", { name: "This week" })).toBeInTheDocument();
     await user.keyboard("{Escape}");

@@ -13,7 +13,7 @@ export function FiltroEncerrados({ ligado, onChange, autoFocus }: { ligado: bool
       onChange={onChange}
       autoFocus={autoFocus}
       className={cn(
-        "h-9 min-h-0 shrink-0 gap-2 rounded-full border px-4 text-[15px] font-medium leading-[21px] shadow-none transition-[background-color,border-color,transform] duration-100 ease-out data-[pressed]:scale-[0.97] motion-reduce:transition-none motion-reduce:data-[pressed]:scale-100",
+        "shrink-0 gap-2 rounded-full border px-4 font-medium shadow-none transition-[background-color,border-color,transform] duration-100 ease-out data-[pressed]:scale-[0.97] motion-reduce:transition-none motion-reduce:data-[pressed]:scale-100",
         ligado ? "border-accent/20 bg-accent-tint text-accent-text" : "border-edge bg-surface text-body hover:bg-page dark:text-muted",
       )}
     >
