@@ -14,8 +14,11 @@ FORA_DA_VALIDACAO = [S.TO_DO, S.IN_PROGRESS, S.IN_REVIEW, S.IN_FIXES]
         (S.IN_VALIDATION, False, True, S.IN_FIXES),  # CA-02
         (S.IN_VALIDATION, False, False, S.IN_VALIDATION),  # CA-03, CA-06 e CA-12
         # Fora de In Validation nada muda, nem com tudo PASS: CA-04, CA-05 e CA-14.
-        *[(atual, tudo_pass, fail, atual) for atual in FORA_DA_VALIDACAO
-          for tudo_pass, fail in ((True, False), (False, True), (False, False))],
+        *[
+            (atual, tudo_pass, fail, atual)
+            for atual in FORA_DA_VALIDACAO
+            for tudo_pass, fail in ((True, False), (False, True), (False, False))
+        ],
     ],
 )
 def test_aplicar_resultado_sdf_segue_a_tabela_de_transicoes(atual, tudo_pass, fail, esperado):
