@@ -70,11 +70,55 @@ describe("BoardPage", () => {
     // Estilo do protótipo (spec 056): título azul e cartão de time no painel cinza, sem borda.
     expect(screen.getByRole("heading", { level: 1, name: "Board" })).toHaveClass("text-accent-text");
     expect(time).toHaveClass("bg-panel");
-    expect(within(time).getByText(/11 members/)).toHaveTextContent("11 members·2 projects");
+    expect(within(time).getByText(/11 members/)).toHaveTextContent("11 members·1 project");
     expect(within(screen.getByRole("article", { name: "QA Mobile" })).getByText("This team has no projects yet.")).toBeInTheDocument();
     await user.click(within(time).getByRole("link", { name: /Clock 9\.5/ }));
 
     expect(await screen.findByText("destino /board/p1")).toBeInTheDocument();
+  });
+
+  it("esconde os projetos encerrados até ligar o filtro", async () => {
+    renderBoard(gerente, variosTimes);
+    const user = userEvent.setup();
+    const time = await screen.findByRole("article", { name: "SDF Automation" });
+
+    expect(within(time).queryByRole("link", { name: /Alarm 9\.5/ })).not.toBeInTheDocument();
+    expect(within(time).getByRole("link", { name: /Clock 9\.5/ })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Closed projects" }));
+
+    expect(screen.getByRole("button", { name: "Closed projects" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(time).getByRole("link", { name: /Alarm 9\.5/ })).toBeInTheDocument();
+    expect(within(time).getByText(/11 members/)).toHaveTextContent("11 members·2 projects");
+  });
+
+  it("time só com projetos encerrados avisa que não há projeto aberto, e não que o time não tem projetos", async () => {
+    renderBoard(gerente, { setores: [{ id: "s1", nome: "SVP", times: [
+      { id: "t1", nome: "SDF Automation", membros: 3, projetos: [projeto("p2", "Alarm 9.5", "Completed")] },
+      { id: "t2", nome: "QA Mobile", membros: 1, projetos: [projeto("p1", "Clock 9.5")] },
+    ] }] });
+
+    expect(within(await screen.findByRole("article", { name: "SDF Automation" })).getByText("No open projects")).toBeInTheDocument();
+  });
+
+  it("dev cujo último projeto foi encerrado vai para um aberto", async () => {
+    salvarUltimoProjetoBoard("dev", "p2");
+    renderBoard(dev, umTime);
+
+    expect(await screen.findByText("destino /board/p1")).toBeInTheDocument();
+  });
+
+  it("dev sem projeto aberto vê o aviso com o filtro e, ao ligar, abre o último projeto", async () => {
+    salvarUltimoProjetoBoard("dev", "p5");
+    renderBoard(dev, { setores: [{ id: "s1", nome: "SVP", times: [{ id: "t1", nome: "SDF Automation", membros: 3, projetos: [
+      projeto("p2", "Alarm 9.5", "Completed"), projeto("p5", "Notes 9.5", "Canceled"),
+    ] }] }] });
+    const user = userEvent.setup();
+
+    expect(await screen.findByText("No open projects")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Closed projects" }));
+
+    expect(await screen.findByText("destino /board/p5")).toBeInTheDocument();
   });
 
   it("a busca filtra por time ou por projeto", async () => {

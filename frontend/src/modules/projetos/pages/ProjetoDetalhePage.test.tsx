@@ -299,12 +299,12 @@ describe("ProjetoDetalhePage", () => {
     expect(casosTesteApi.listar).toHaveBeenCalledTimes(consultas);
   });
 
-  it("filtra TCs por semana no cabeçalho e mantém as semanas das abas independentes", async () => {
+  it("filtra TCs por semana na linha das abas e mantém as semanas das abas independentes", async () => {
     vi.mocked(casosTesteApi.listar).mockImplementation(async (_id, page = 1, pageSize = 20, filtros) => ({ items: filtros?.semana ? [] : casos, total_count: filtros?.semana ? 0 : casos.length, page, page_size: pageSize }));
     const user = userEvent.setup();
-    const { container } = renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO", permissoes: [...perfil.permissoes, "form_factor.consultar"] });
+    renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO", permissoes: [...perfil.permissoes, "form_factor.consultar"] });
     await screen.findByRole("row", { name: /Clock_001/ });
-    await user.click(within(container.querySelector("header")!).getByRole("button", { name: "Week: Select a week" }));
+    await user.click(screen.getByRole("button", { name: "Week: Select a week" }));
     await user.click(within(await screen.findByRole("dialog", { name: "Week" })).getByRole("button", { name: "This week" }));
     await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("project-1", 1, DEFAULT_TABLE_PAGE_SIZE, { responsavelId: undefined, associadosAMim: true, semana: semanaIso(new Date()) }));
     expect(screen.queryByRole("row", { name: /Clock_001/ })).not.toBeInTheDocument();
@@ -762,10 +762,10 @@ describe("ProjetoDetalhePage", () => {
   it("Form Factor sem casos para o Assignee oferece limpar semana e Assignee", async () => {
     const admin = { ...perfil, id: "admin", perfil_codigo: "ADMIN_UNIDADE", perfil: "Administrador" };
     const user = userEvent.setup();
-    const { container } = renderPage(admin);
+    renderPage(admin);
     await screen.findByRole("heading", { name: "Clock 9.5" });
     await user.click(screen.getByRole("tab", { name: "Form Factor" }));
-    await user.click(within(container.querySelector("header")!).getByRole("button", { name: "Week: Select a week" }));
+    await user.click(screen.getByRole("button", { name: "Week: Select a week" }));
     await user.click(within(await screen.findByRole("dialog", { name: "Week" })).getByRole("button", { name: "This week" }));
     await user.click(screen.getByRole("button", { name: /Filter by Assignee/i }));
     await user.click(await screen.findByRole("option", { name: "outro-id" }));
@@ -796,7 +796,7 @@ describe("ProjetoDetalhePage", () => {
     expect(screen.getByRole("row", { name: "Clock_001" })).toHaveTextContent(/Clock_001.*12837-93482.*daniel-id.*PASS/);
     expect(formFactorApi.listar).toHaveBeenCalledWith("project-1", expect.objectContaining({ page: 1, pageSize: DEFAULT_TABLE_PAGE_SIZE }));
 
-    await user.click(within(container.querySelector("header")!).getByRole("button", { name: "Week: Select a week" }));
+    await user.click(screen.getByRole("button", { name: "Week: Select a week" }));
     await user.click(within(await screen.findByRole("dialog", { name: "Week" })).getByRole("button", { name: "This week" }));
     expect(screen.queryByRole("columnheader", { name: "One UI Version" })).not.toBeInTheDocument();
     await waitFor(() => expect(formFactorApi.listar).toHaveBeenLastCalledWith("project-1", { page: 1, pageSize: DEFAULT_TABLE_PAGE_SIZE, semana: semanaIso(new Date()), responsavelIds: undefined }));

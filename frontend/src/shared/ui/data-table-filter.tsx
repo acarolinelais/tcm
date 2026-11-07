@@ -26,7 +26,7 @@ interface DataTableFilterProps {
   type?: "text" | "date";
 }
 
-const botaoRodape = "h-7 min-h-0 rounded-lg px-3 text-[12px]";
+const botaoRodape = "rounded-lg px-3";
 // Chave da opção "Todos" (valor vazio): o ListBox não aceita id vazio.
 const TODOS = "__todos__";
 
@@ -112,7 +112,7 @@ export function DataTableFilter({ label, accessibleLabel, value, onChange, optio
               {/* O mesmo calendário dos filtros de semana (spec 050, RN-18), aqui só com os dias. */}
               <Calendario modo="dia" valor={value} onEscolher={aplicar} />
               <div className="flex justify-end border-t border-separator pt-1.5">
-                <Button variant="ghost" className={botaoRodape} onPress={() => aplicar("")}>{t("clearFilters")}</Button>
+                <Button size="sm" variant="ghost" className={botaoRodape} onPress={() => aplicar("")}>{t("clearFilters")}</Button>
               </div>
             </div>
           ) : (
@@ -125,8 +125,8 @@ export function DataTableFilter({ label, accessibleLabel, value, onChange, optio
                 </SearchField.Group>
               </SearchField>
               <div className="flex justify-end gap-2">
-                <Button variant="ghost" className={botaoRodape} onPress={() => aplicar("")}>{t("clearFilters")}</Button>
-                <Button type="submit" variant="primary" className={botaoRodape}>{t("apply")}</Button>
+                <Button size="sm" variant="ghost" className={botaoRodape} onPress={() => aplicar("")}>{t("clearFilters")}</Button>
+                <Button type="submit" size="sm" variant="primary" className={botaoRodape}>{t("apply")}</Button>
               </div>
             </form>
           )}
@@ -182,10 +182,10 @@ export function DataTableMultiFilter({ label, accessibleLabel, values, onChange,
             onKeyDownCapture={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setAberto(false); } }}
           >
           <div className="flex items-center justify-between gap-2">
-            <Button variant="ghost" aria-label={t("closeFilter")} onPress={() => setAberto(false)} className="h-7 min-h-0 gap-1 rounded-lg px-1 text-[14px] font-medium text-body">
+            <Button size="sm" variant="ghost" aria-label={t("closeFilter")} onPress={() => setAberto(false)} className="gap-1 rounded-lg px-1 font-medium text-body">
               <ChevronLeft aria-hidden="true" absoluteStrokeWidth strokeWidth={1.5} className="size-4" />{label}
             </Button>
-            <Button variant="ghost" isDisabled={!ativo} onPress={() => onChange([])} className="h-7 min-h-0 rounded-lg px-1.5 text-[14px] text-accent-text">
+            <Button size="sm" variant="ghost" isDisabled={!ativo} onPress={() => onChange([])} className="rounded-lg px-1.5 text-accent-text">
               {t("clear")}
             </Button>
           </div>

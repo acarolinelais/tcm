@@ -14,7 +14,7 @@ export function FiltrosPopover({ ativos, rotuloDoPainel, children }: { ativos: n
     <Popover>
       <Button
         variant="outline"
-        className="h-9 min-h-0 gap-2 rounded-full border border-edge bg-surface px-4 text-[15px] font-medium leading-[21px] text-body shadow-none hover:bg-page data-[focus-visible]:ring-2 data-[focus-visible]:ring-focus"
+        className="gap-2 rounded-full border border-edge bg-surface px-4 font-medium text-body shadow-none hover:bg-page data-[focus-visible]:ring-2 data-[focus-visible]:ring-focus"
       >
         <FilterIcon />
         {t("filterButton")}

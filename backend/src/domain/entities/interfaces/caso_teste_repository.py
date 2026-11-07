@@ -25,6 +25,10 @@ class CasoTesteRepository(RepositoryBase[CasoTeste], Protocol):
 
     async def existe_tc_id(self, unidade_id: UUID, projeto_id: UUID, tc_id: str) -> bool: ...
 
+    async def contar_pendentes_de_conclusao(self, unidade_id: UUID, projeto_id: UUID) -> int:
+        """Casos ativos do projeto fora de Done e Cancelled."""
+        ...
+
     async def obter_por_projeto_tc_id(
         self, unidade_id: UUID, projeto_id: UUID, tc_id: str
     ) -> CasoTeste | None: ...

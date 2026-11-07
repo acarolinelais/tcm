@@ -8,11 +8,12 @@ import type { PerfilAtual } from "@/core/auth/api";
 import { ProjetoSwitcher } from "@/modules/projetos/components/ProjetoSwitcher";
 import { DetalhesCasoTesteDrawer } from "@/modules/projetos/components/casos-teste/DetalhesCasoTesteDrawer";
 import { useProjetosSeletor } from "@/modules/projetos/hooks/useProjetos";
-import type { CasoTesteResumo } from "@/modules/projetos/model/projeto";
+import { filtrarEncerrados, projetoEncerrado, type CasoTesteResumo } from "@/modules/projetos/model/projeto";
 import { formatarDiaIso } from "@/shared/lib/utils";
 import { AvatarUsuario } from "@/shared/ui/avatar-usuario";
 import { ErroComRetry } from "@/shared/ui/erro-com-retry";
 import { EstadoVazio } from "@/shared/ui/estado-vazio";
+import { FiltroEncerrados } from "@/shared/ui/filtro-encerrados";
 import { PageCard, PageTitle } from "@/shared/ui/page-card";
 import { PilhaAvatares } from "@/shared/ui/pilha-avatares";
 
@@ -36,16 +37,18 @@ export function TimelinePage() {
   const perfil = useOutletContext<PerfilAtual>();
   const permitido = perfil.perfil_codigo === "ADMIN_UNIDADE" || perfil.permissoes.includes("test_cases.consultar");
   const projetosQuery = useProjetosSeletor(perfil, permitido);
-  const projetos = projetosQuery.data?.pages.flatMap((pagina) => pagina.items) ?? [];
+  const todos = projetosQuery.data?.pages.flatMap((pagina) => pagina.items) ?? [];
+  const [comEncerrados, setComEncerrados] = useState(false);
+  const projetos = filtrarEncerrados(todos, comEncerrados);
   const { fetchNextPage, hasNextPage, isFetchingNextPage } = projetosQuery;
   useEffect(() => {
     if (permitido && hasNextPage && !isFetchingNextPage) void fetchNextPage();
   }, [permitido, fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-  // Como na General Results (spec 053): o projeto fica em ?projeto=, e sem ele (ou fora da lista) abre o primeiro.
+  // Como na General Results: o projeto fica em ?projeto= (mesmo encerrado); sem ele, ou fora da lista, abre o primeiro visível.
   const [parametros, setParametros] = useSearchParams();
   const pedido = parametros.get("projeto");
-  const projetoAberto = projetos.find((projeto) => projeto.id === pedido) ?? (pedido && hasNextPage ? undefined : projetos[0]);
+  const projetoAberto = todos.find((projeto) => projeto.id === pedido) ?? (pedido && hasNextPage ? undefined : projetos[0]);
   const projetoId = projetoAberto?.id ?? null;
 
   const [visao, setVisao] = useState<VisaoTimeline>("semana");
@@ -70,6 +73,15 @@ export function TimelinePage() {
     setFiltros(SEM_FILTROS);
   }
 
+  // Desligar a pílula num projeto encerrado volta para o primeiro aberto (ou para o estado vazio, se não houver).
+  function alternarEncerrados(ligado: boolean) {
+    setComEncerrados(ligado);
+    if (ligado || !projetoAberto || !projetoEncerrado(projetoAberto.status)) return;
+    const primeiroAberto = filtrarEncerrados(todos, false)[0];
+    if (primeiroAberto) trocarProjeto(primeiroAberto.id);
+    else setParametros({}, { replace: true });
+  }
+
   function trocarVisao(nova: VisaoTimeline) {
     setVisao(nova);
     // A visão nova parte do primeiro dia da atual: da Semana para o Mês, vale o mês da segunda-feira (CA-05).
@@ -89,8 +101,8 @@ export function TimelinePage() {
   if (projetosQuery.isError) {
     return <PageCard>{cabecalho}<ErroComRetry mensagem={t("timelineLoadError")} retry={{ label: t("retryQuery"), onRetry: () => void projetosQuery.refetch() }} /></PageCard>;
   }
-  if (projetosQuery.isLoading) return <PageCard>{cabecalho}<p role="status" className="text-[14px] text-muted">{t("loading")}</p></PageCard>;
-  if (!projetos.length) {
+  if (projetosQuery.isLoading || (!projetoAberto && hasNextPage)) return <PageCard>{cabecalho}<p role="status" className="text-[14px] text-muted">{t("loading")}</p></PageCard>;
+  if (!todos.length) {
     return <PageCard>
       {cabecalho}
       <EstadoVazio className="m-auto" titulo={t("noAccessibleProjects")} dica={t("noAccessibleProjectsHint")} />
@@ -98,9 +110,10 @@ export function TimelinePage() {
   }
 
   const barra = <div className="mb-5 flex shrink-0 flex-wrap items-center gap-3 border-b border-separator pb-5">
-    {projetoAberto && <div className="min-w-0"><ProjetoSwitcher comoTitulo={false} projetoId={projetoAberto.id} nome={projetoAberto.app} projetos={projetos} buscavel onEscolher={trocarProjeto} /></div>}
+    {projetoAberto && <div className="min-w-0"><ProjetoSwitcher comoTitulo={false} projetoId={projetoAberto.id} nome={projetoAberto.app} projetos={filtrarEncerrados(todos, comEncerrados, projetoAberto.id)} buscavel onEscolher={trocarProjeto} /></div>}
     {/* Como no frame 2550:3921: o projeto à esquerda e, agrupados à direita, as visões, o intervalo, o Hoje e o Filter. */}
     <div className="ml-auto flex flex-wrap items-center gap-3">
+      <FiltroEncerrados ligado={comEncerrados} onChange={alternarEncerrados} />
       <ToggleButtonGroup
         aria-label={t("timelineViews")}
         selectionMode="single"
@@ -124,7 +137,7 @@ export function TimelinePage() {
           <ChevronRight aria-hidden="true" className="size-4" />
         </Button>
       </div>
-      <Button variant="outline" size="sm" className="h-9 rounded-full" onPress={() => setPeriodo(periodoDe(visao, new Date()))}>{t("today")}</Button>
+      <Button variant="outline" className="rounded-full" onPress={() => setPeriodo(periodoDe(visao, new Date()))}>{t("today")}</Button>
       <TimelineFiltros
           opcoesPessoas={opcoes(dados?.pessoas.map((pessoa) => pessoa.id) ?? [], filtros.responsavelIds)}
           opcoesCasos={opcoes(dados?.casos.map((caso) => caso.id) ?? [], filtros.casoIds)}
@@ -146,7 +159,9 @@ export function TimelinePage() {
   return <PageCard>
     {cabecalho}
     {barra}
-    {timeline.isError
+    {!projetoAberto
+      ? <EstadoVazio className="m-auto" titulo={t("noOpenProjects")} dica={t("noOpenProjectsHint")} />
+      : timeline.isError
       ? <ErroComRetry mensagem={t("timelineLoadError")} retry={{ label: t("retryQuery"), onRetry: () => void timeline.refetch() }} />
       : !dados
         ? <p role="status" className="text-[14px] text-muted">{t("loading")}</p>

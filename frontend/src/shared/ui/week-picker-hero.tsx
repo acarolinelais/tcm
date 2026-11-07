@@ -18,7 +18,7 @@ interface WeekPickerHeroProps {
 
 const DIA = /^\d{4}-\d{2}-\d{2}$/;
 
-const botaoRodape = "h-7 min-h-0 rounded-lg px-3 text-[12px]";
+const botaoRodape = "rounded-lg px-3";
 
 /**
  * Filtro por semana ISO (spec 022) ou por dia ou semana (spec 032), com a pílula do Figma (TCM 2482-2966, spec 050).
@@ -44,7 +44,7 @@ export function WeekPickerHero({ label, value, onChange, className, permitirDia 
       <Button
         variant="outline"
         aria-label={`${label}: ${descricao}`}
-        className={cn("h-9 min-h-0 gap-2.5 rounded-full border border-edge bg-surface px-4 text-[15px] font-medium leading-[21px] text-body shadow-none transition-[background-color,transform] duration-100 ease-out hover:bg-page data-[pressed]:scale-[0.97] motion-reduce:transition-none motion-reduce:data-[pressed]:scale-100 dark:text-muted", className)}
+        className={cn("gap-2.5 rounded-full border border-edge bg-surface px-4 font-medium text-body shadow-none transition-[background-color,transform] duration-100 ease-out hover:bg-page data-[pressed]:scale-[0.97] motion-reduce:transition-none motion-reduce:data-[pressed]:scale-100 dark:text-muted", className)}
       >
         <CalendarIcon className="text-body dark:text-muted" />
         <span>{texto}</span>
@@ -54,8 +54,8 @@ export function WeekPickerHero({ label, value, onChange, className, permitirDia 
         <Popover.Dialog aria-label={label} className="outline-none">
           <Calendario modo={permitirDia ? "dia-ou-semana" : "semana"} valor={value} onEscolher={escolher} />
           <div className="flex justify-between border-t border-separator px-1 pt-1.5">
-            <Button variant="ghost" className={botaoRodape} onPress={() => escolher("")}>{t("clearFilters")}</Button>
-            <Button variant="ghost" className={cn(botaoRodape, "text-accent-text")} onPress={() => escolher(semanaIso(new Date()))}>{t("thisWeek")}</Button>
+            <Button size="sm" variant="ghost" className={botaoRodape} onPress={() => escolher("")}>{t("clearFilters")}</Button>
+            <Button size="sm" variant="ghost" className={cn(botaoRodape, "text-accent-text")} onPress={() => escolher(semanaIso(new Date()))}>{t("thisWeek")}</Button>
           </div>
         </Popover.Dialog>
       </Popover.Content>

@@ -335,9 +335,8 @@ function ProjetoDetalhe() {
   });
 
   return <PageCard>
-    <header className="mb-[25px] flex shrink-0 flex-wrap items-start gap-4">
-      <div className="min-w-0 flex-1">{projeto.data ? <ProjetoSwitcher projetoId={projetoId} nome={projeto.data.nome} azul={false} /> : <PageTitle>{t("loadingProjects")}</PageTitle>}</div>
-      {projeto.data && <WeekPickerHero label={t("week")} value={aba === "cases" ? semanaCasos : semana} onChange={(valor) => { if (aba === "cases") setSemanaCasos(valor); else setSemana(valor); setPagina(1); }} className="ml-auto" />}
+    <header className="mb-[25px] min-w-0 shrink-0">
+      {projeto.data ? <ProjetoSwitcher projetoId={projetoId} nome={projeto.data.nome} azul={false} /> : <PageTitle>{t("loadingProjects")}</PageTitle>}
     </header>
     {/* Figma: o seletor de visão do Form Factor fica entre o título e as abas, com Results primeiro. */}
     {projeto.data && aba === "form-factor" && podeConsultarFormFactor && <div className="mb-5 flex shrink-0 flex-wrap items-center justify-between gap-3">
@@ -364,7 +363,11 @@ function ProjetoDetalhe() {
         tabs={abasDisponiveis.map((id) => ({ id, label: t(ROTULO_ABA[id]) }))}
         selectedKey={aba}
         onSelectionChange={(chave) => trocarAba(chave as Aba)}
-        actions={aba === "cases" ? podeGerenciarCasos && <HeroButton variant="primary" size="sm" onPress={() => abrirCaso(null)}><Plus aria-hidden="true" className="size-4" />{t("newTestCase")}</HeroButton> : null}
+        // Filtro de data antes das ações; o botão de adicionar é sempre o último à direita.
+        actions={<>
+          <WeekPickerHero label={t("week")} value={aba === "cases" ? semanaCasos : semana} onChange={(valor) => { if (aba === "cases") setSemanaCasos(valor); else setSemana(valor); setPagina(1); }} />
+          {aba === "cases" && podeGerenciarCasos && <HeroButton variant="primary" onPress={() => abrirCaso(null)}><Plus aria-hidden="true" absoluteStrokeWidth strokeWidth={1.5} className="size-4" />{t("newTestCase")}</HeroButton>}
+        </>}
       >
         {podeConsultarCasos && <PageTabPanel id="cases" className="flex min-h-0 flex-1 flex-col p-0">
           <DataTable

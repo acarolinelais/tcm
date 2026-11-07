@@ -14,6 +14,7 @@ from src.application.schemas.projeto import (
 from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
+from src.domain.entities.interfaces.caso_teste_repository import CasoTesteRepository
 from src.domain.entities.interfaces.modelo_dispositivo_repository import (
     ModeloDispositivoRepository,
 )
@@ -21,7 +22,7 @@ from src.domain.entities.interfaces.projeto_modelo_repository import ProjetoMode
 from src.domain.entities.interfaces.projeto_repository import ProjetoRepository
 from src.domain.entities.interfaces.time_repository import TimeRepository
 from src.domain.entities.interfaces.unit_of_work import UnitOfWork
-from src.domain.entities.projeto import Projeto
+from src.domain.entities.projeto import Projeto, StatusProjeto
 from src.domain.entities.projeto_modelo import ProjetoModelo
 
 
@@ -32,12 +33,14 @@ class ProjetoServiceImpl:
         time_repo: TimeRepository,
         modelo_repo: ModeloDispositivoRepository,
         projeto_modelo_repo: ProjetoModeloRepository,
+        caso_teste_repo: CasoTesteRepository,
         uow: UnitOfWork,
     ) -> None:
         self._projeto_repo = projeto_repo
         self._time_repo = time_repo
         self._modelo_repo = modelo_repo
         self._projeto_modelo_repo = projeto_modelo_repo
+        self._caso_teste_repo = caso_teste_repo
         self._uow = uow
 
     async def criar(
@@ -213,6 +216,17 @@ class ProjetoServiceImpl:
         if time is None:
             raise NotFoundException("Time do projeto não encontrado.")
         self._validar_escopo_time(usuario_atual, time.id, time.setor_id)
+        if request.status is StatusProjeto.COMPLETED:
+            pendentes = await self._caso_teste_repo.contar_pendentes_de_conclusao(
+                usuario_atual.unidade_id, projeto_id
+            )
+            if pendentes:
+                raise ConflictException(
+                    f"{pendentes} Test Case(s) ainda não estão em Done ou Cancelled.",
+                    campo="status",
+                    codigo="projeto_com_casos_pendentes",
+                    parametros={"quantidade": pendentes},
+                )
         projeto.atualizar_status(request.status)
         await self._projeto_repo.atualizar(projeto)
         await self._uow.commit()
