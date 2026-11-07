@@ -13,6 +13,8 @@ Documentação em PT-BR. Termos de domínio no código em português; termos té
    peça aprovação. **Se o usuário pedir pra seguir rápido por todas as fases** (ex.: "implementa tudo
    rápido", "pode seguir sem parar"), encadeie os blocos sem pausa de aprovação entre eles — mas sempre
    rode a verificação de cada bloco e nunca marque uma task com verificação vermelha como concluída.
+4. **Testes durante o trabalho:** rode só os testes dos arquivos que você está mexendo (e os de quem usa o que
+   mudou), nunca a suíte inteira a cada mudança. A suíte completa roda uma vez, antes de abrir o PR.
 
 ## Skills do projeto (`.claude/skills/`)
 | Skill | Quando usar |
