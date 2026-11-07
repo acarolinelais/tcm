@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -9,7 +9,7 @@ import { toast } from "@/shared/lib/toast";
 import { formFactorApi } from "../../api/projetos.api";
 import { AcoesGerenciaFormFactor } from "./AcoesGerenciaFormFactor";
 
-vi.mock("../../api/projetos.api", () => ({ formFactorApi: { importar: vi.fn() } }));
+vi.mock("../../api/projetos.api", () => ({ formFactorApi: { importar: vi.fn(), ultimaImportacao: vi.fn(), desfazerImportacao: vi.fn() } }));
 vi.mock("@/shared/lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const base: PerfilAtual = {
@@ -27,7 +27,10 @@ function renderAcoes(perfil: PerfilAtual) {
 }
 
 describe("AcoesGerenciaFormFactor", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(formFactorApi.ultimaImportacao).mockResolvedValue(null);
+  });
 
   it("gerente e KP com a permissão veem só o Import SDF Report (CA-05)", () => {
     for (const perfil_codigo of ["GERENTE", "KP"]) {
@@ -117,4 +120,67 @@ describe("AcoesGerenciaFormFactor", () => {
     expect(itens.at(-1)).toHaveTextContent("And 3 more problems.");
   });
 
+
+  describe("Undo last import (spec 067)", () => {
+    const ultima = {
+      id: "imp-1", sdf_id: "456789-990123", device: "SM-S948B", data_execucao: "2026-11-06T18:43:35",
+      importado_por_nome: "Ana", importado_em: "2026-11-07T09:00:00",
+    };
+
+    it("confirma no diálogo com os dados da importação e desfaz (CA-01)", async () => {
+      vi.mocked(formFactorApi.ultimaImportacao).mockResolvedValue(ultima);
+      vi.mocked(formFactorApi.desfazerImportacao).mockResolvedValue({ casos_revertidos: 1 });
+      const user = userEvent.setup();
+      const { invalidar } = renderAcoes(base);
+
+      await user.click(await screen.findByRole("button", { name: "Undo last import" }));
+      const dialog = await screen.findByRole("alertdialog");
+      expect(within(dialog).getByText("456789-990123")).toBeInTheDocument();
+      expect(within(dialog).getByText("SM-S948B")).toBeInTheDocument();
+      expect(within(dialog).getByText("Ana")).toBeInTheDocument();
+      await user.click(within(dialog).getByRole("button", { name: "Undo import" }));
+
+      await waitFor(() => expect(formFactorApi.desfazerImportacao).toHaveBeenCalledWith("project-1", "imp-1"));
+      await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Import undone."));
+      expect(invalidar).toHaveBeenCalledWith({ queryKey: ["projetos", "project-1"] });
+    });
+
+    it("cancelar não desfaz nada (CA-07)", async () => {
+      vi.mocked(formFactorApi.ultimaImportacao).mockResolvedValue(ultima);
+      const user = userEvent.setup();
+      renderAcoes(base);
+
+      await user.click(await screen.findByRole("button", { name: "Undo last import" }));
+      await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Cancel" }));
+
+      await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+      expect(formFactorApi.desfazerImportacao).not.toHaveBeenCalled();
+    });
+
+    it("falha: sem importação no projeto o botão não aparece (CA-09)", async () => {
+      renderAcoes(base);
+
+      await waitFor(() => expect(formFactorApi.ultimaImportacao).toHaveBeenCalledWith("project-1"));
+      expect(screen.queryByRole("button", { name: "Undo last import" })).not.toBeInTheDocument();
+    });
+
+    it("falha: outra importação entrou no meio e o aviso aparece no toast (CA-10)", async () => {
+      vi.mocked(formFactorApi.ultimaImportacao).mockResolvedValue(ultima);
+      vi.mocked(formFactorApi.desfazerImportacao).mockRejectedValue(new ApiError({ type: "about:blank", title: "Conflito.", status: 409, detail: "Esta importação não é mais a última do projeto." }));
+      const user = userEvent.setup();
+      renderAcoes(base);
+
+      await user.click(await screen.findByRole("button", { name: "Undo last import" }));
+      await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Undo import" }));
+
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Another import came in after this one. Check the details and try again."));
+      expect(formFactorApi.ultimaImportacao).toHaveBeenCalledTimes(2);
+    });
+
+    it("falha: o dev não busca a última importação (CA-08)", () => {
+      renderAcoes({ ...base, perfil_codigo: "USUARIO_PADRAO" });
+
+      expect(formFactorApi.ultimaImportacao).not.toHaveBeenCalled();
+    });
+  });
 });

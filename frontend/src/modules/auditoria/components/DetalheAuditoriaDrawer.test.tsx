@@ -32,6 +32,12 @@ describe("DetalheAuditoriaDrawer", () => {
     expect(within(screen.getByRole("dialog")).getAllByText("—")).toHaveLength(3);
   });
 
+  it("mostra a origem da importação SDF desfeita (spec 067)", () => {
+    render(<MemoryRouter><DetalheAuditoriaDrawer registro={{ ...criacao, origem: "importacao_sdf_desfeita" }} onFechar={() => undefined} /></MemoryRouter>);
+
+    expect(within(screen.getByRole("dialog")).getByText("Undone SDF import")).toBeInTheDocument();
+  });
+
   it("falha: origem que a tela não conhece aparece como veio, nunca vazia", () => {
     render(<MemoryRouter><DetalheAuditoriaDrawer registro={{ ...criacao, origem: "planilha" }} onFechar={() => undefined} /></MemoryRouter>);
 

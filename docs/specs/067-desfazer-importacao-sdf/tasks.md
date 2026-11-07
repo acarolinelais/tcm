@@ -51,15 +51,15 @@
 
 ## Fase 3: frontend
 
-- [ ] **T07. Cliente HTTP e hooks**
+- [x] **T07. Cliente HTTP e hooks**
   - Arquivos: `modules/projetos/api/projetos.api.ts` (e o modo mock), `hooks/useProjetos.ts`, `useProjetos.test.tsx`
   - Cobre: CA-05 (a importação e o desfazer invalidam a última importação), base para CA-01
   - Verificação: `npx vitest run src/modules/projetos/hooks src/modules/projetos/api` → verde
-- [ ] **T08. Botão Undo last import e diálogo de confirmação**
-  - Arquivos: `AcoesGerenciaFormFactor.tsx` e teste, `DesfazerImportacaoSdfDialog.tsx` (novo), `core/i18n/resources.ts`
+- [x] **T08. Botão Undo last import e diálogo de confirmação**
+  - Arquivos: `AcoesGerenciaFormFactor.tsx` e teste (confirmação com o `AlertConfirm` que já existe), `core/i18n/resources.ts`
   - Cobre: CA-01, CA-07, CA-09, CA-10
   - Verificação: `npx vitest run src/modules/projetos/components/form-factor src/core/i18n` → verde
-- [ ] **T09. Origem "importação desfeita" no histórico e na Auditoria**
+- [x] **T09. Origem "importação desfeita" no histórico e na Auditoria**
   - Arquivos: `AlteracaoCasoTesteItem.tsx` e teste, filtro de origem em `modules/auditoria`, `core/i18n/resources.ts`
   - Cobre: CA-02 (histórico mostra a origem)
   - Verificação: `npx vitest run src/modules/projetos/components/casos-teste src/modules/auditoria && npm run lint && npx tsc -b` → verde

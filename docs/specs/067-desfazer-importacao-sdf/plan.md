@@ -65,8 +65,8 @@ importação entrou no meio. As permissões são as da importação (`form_facto
   invalidada pela importação) e `useDesfazerImportacaoSdf`, que invalida as mesmas consultas da importação.
 - `modules/projetos/components/form-factor/AcoesGerenciaFormFactor.tsx`: botão "Undo last import" (outline) ao lado do
   Import, só quando há importação ativa.
-- `modules/projetos/components/form-factor/DesfazerImportacaoSdfDialog.tsx` (novo): confirmação em HeroUI (ADR 0037)
-  com SDF ID, device, data da execução, quem importou e quando.
+- A confirmação usa o `AlertConfirm` de `shared/ui` (HeroUI, ADR 0037), com SDF ID, device, data da execução, quem
+  importou e quando.
 - `modules/projetos/components/casos-teste/AlteracaoCasoTesteItem.tsx` e a tela de Auditoria: rótulo da origem nova.
 - `core/i18n/resources.ts`: textos nos três idiomas.
 

@@ -122,6 +122,10 @@ describe("APIs de projetos", () => {
     const [url, init] = vi.mocked(fetch).mock.calls.at(-1)!;
     expect(url).toBe("/api/projetos/project-1/relatorios-sdf");
     expect((init?.body as FormData).get("arquivo")).toBe(report);
+    await formFactorApi.ultimaImportacao("project-1");
+    expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/relatorios-sdf/ultimo", expect.any(Object));
+    await formFactorApi.desfazerImportacao("project-1", "imp-1");
+    expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/relatorios-sdf/imp-1/desfazer", expect.objectContaining({ method: "POST" }));
   });
 });
 

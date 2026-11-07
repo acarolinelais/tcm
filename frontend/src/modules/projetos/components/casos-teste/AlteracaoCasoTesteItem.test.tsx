@@ -31,6 +31,12 @@ describe("AlteracaoCasoTesteItem", () => {
     expect(screen.getByText("PR link")).toBeInTheDocument();
   });
 
+  it("mostra quando o Status voltou por uma importação SDF desfeita (spec 067)", () => {
+    item({ origem: "importacao_sdf_desfeita", valor_anterior: "InFixes", valor_novo: "InValidation" });
+
+    expect(screen.getByText(/Undone SDF import/)).toBeInTheDocument();
+  });
+
   it("sem autor mostra Sistema, e valor vazio ou campo desconhecido não quebra", () => {
     item({ usuario_nome: null, usuario_perfil: null, campo: "coluna_nova", valor_anterior: null, valor_novo: "x" });
 

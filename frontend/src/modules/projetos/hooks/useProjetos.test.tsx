@@ -3,13 +3,13 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { casosTesteApi, formFactorApi, projetosApi } from "../api/projetos.api";
-import { useCasosTeste, useCriarProjeto, useCriarRodadaFormFactor, useFormFactor, useFormFactorResultados, useHistoricoProjeto, useImportarRelatorioSdf, useProjetosPessoais, useResumoExecucoes, useTransferirCasoTeste } from "./useProjetos";
+import { useCasosTeste, useCriarProjeto, useCriarRodadaFormFactor, useFormFactor, useFormFactorResultados, useHistoricoProjeto, useDesfazerImportacaoSdf, useImportarRelatorioSdf, useProjetosPessoais, useUltimaImportacaoSdf, useResumoExecucoes, useTransferirCasoTeste } from "./useProjetos";
 import type { PerfilAtual } from "@/core/auth/api";
 
 vi.mock("../api/projetos.api", () => ({
   casosTesteApi: { listar: vi.fn(), transferirParaBackup: vi.fn() },
   projetosApi: { criar: vi.fn(), listar: vi.fn() },
-  formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), historicoProjeto: vi.fn(), resumoExecucoes: vi.fn(), criarRodada: vi.fn(), registrarResultadosRodada: vi.fn(), importar: vi.fn() }, modelosDispositivoApi: {},
+  formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), historicoProjeto: vi.fn(), resumoExecucoes: vi.fn(), criarRodada: vi.fn(), registrarResultadosRodada: vi.fn(), importar: vi.fn(), ultimaImportacao: vi.fn(), desfazerImportacao: vi.fn() }, modelosDispositivoApi: {},
 }));
 
 function criarWrapper() {
@@ -128,6 +128,27 @@ describe("hooks de projetos", () => {
 
     for (const chave of doProjeto) expect(client.getQueryState(chave)?.isInvalidated).toBe(true);
     expect(client.getQueryState(["projetos", "outro", "test-cases", 1, 20])?.isInvalidated).toBe(false);
+  });
+
+  it("desfazer a importação SDF recarrega o projeto e a última importação, sem tocar em outro projeto (spec 067)", async () => {
+    vi.mocked(formFactorApi.desfazerImportacao).mockResolvedValue({ casos_revertidos: 1 });
+    const client = new QueryClient();
+    const doProjeto = [["projetos", "p", "test-cases", 1, 20], ["projetos", "p", "ultima-importacao-sdf"], ["form-factor", "historico", "p", {}]];
+    for (const chave of [...doProjeto, ["projetos", "outro", "ultima-importacao-sdf"]]) client.setQueryData(chave, {});
+    const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    const { result } = renderHook(() => useDesfazerImportacaoSdf("p"), { wrapper });
+
+    await result.current.mutateAsync("imp-1");
+
+    expect(formFactorApi.desfazerImportacao).toHaveBeenCalledWith("p", "imp-1");
+    for (const chave of doProjeto) expect(client.getQueryState(chave)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(["projetos", "outro", "ultima-importacao-sdf"])?.isInvalidated).toBe(false);
+  });
+
+  it("falha: sem permissão de importar, a última importação não é buscada", () => {
+    renderHook(() => useUltimaImportacaoSdf("p", false), { wrapper: criarWrapper() });
+
+    expect(formFactorApi.ultimaImportacao).not.toHaveBeenCalled();
   });
 
   it("invalida consultas de casos, entrada e seletor após transferência", async () => {

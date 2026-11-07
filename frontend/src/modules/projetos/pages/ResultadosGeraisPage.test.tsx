@@ -15,6 +15,8 @@ vi.mock("../hooks/useProjetos", () => ({
   useResumoExecucoes: vi.fn(),
   useProjetosSeletor: vi.fn(),
   useImportarRelatorioSdf: () => ({ mutate: vi.fn(), isPending: false }),
+  useUltimaImportacaoSdf: () => ({ data: null }),
+  useDesfazerImportacaoSdf: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 const perfil = {
