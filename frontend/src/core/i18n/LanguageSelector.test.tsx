@@ -42,6 +42,14 @@ describe("LanguageSelector", () => {
     expect(atualizarIdiomaPreferido).not.toHaveBeenCalled();
   });
 
+  it("in button mode it drops the language icon and still opens the menu", () => {
+    renderComQueryClient(<LanguageSelector botao />);
+    const gatilho = screen.getByRole("button", { name: /English/ });
+    expect(gatilho.querySelectorAll("svg")).toHaveLength(1); // só a seta; o ícone de idioma sai
+    fireEvent.click(gatilho);
+    expect(screen.getByRole("menuitem", { name: "Portuguese" })).toBeInTheDocument();
+  });
+
   it("saves authenticated selections in the account", async () => {
     vi.mocked(atualizarIdiomaPreferido).mockResolvedValue({ idioma_preferido: "ko", cor_avatar: "azul" });
     renderComQueryClient(<LanguageSelector perfil={{ idioma_preferido: "en" } as never} />);

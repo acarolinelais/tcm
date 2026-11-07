@@ -27,17 +27,17 @@ trocada no primeiro acesso.
 | Nome | User ID | Perfil | E-mail |
 |---|---|---|---|
 | Ivan Moreira | `ivan.moreira` | Gerente | `ivan.moreira@sidia.com` |
-| Afonso Fagundes | `a.fagundes` | KP | `a.fagundes@sidia.com` |
+| Afonso Fagundes | `afonso.fagundes` | KP | `afonso.fagundes@sidia.com` |
 | Maria Pernalete | `maria.pernalete` | KP | `maria.pernalete@sidia.com` |
 | Caroline Laís | `caroline.silva` | Dev | `caroline.silva@sidia.com` |
 | Raquel Batista | `raquel.batista` | Dev | `raquel.batista@sidia.com` |
 | Isabel Gama | `isabel.gama` | Dev | `isabel.gama@sidia.com` |
 | Nivea Pereira | `nivea.pereira` | Dev | `nivea.pereira@sidia.com` |
-| Victoria Andrade | `victoria.andrade` | Dev | `victoria.andrade@sidia.com` |
+| Victoria Andrade | `victoria.santos` | Dev | `victoria.santos@sidia.com` |
 | Janderson Brandão | `janderson.brandao` | Dev | `janderson.brandao@sidia.com` |
 | Gilmar Silva | `gilmar.silva` | Dev | `gilmar.silva@sidia.com` |
 | Marcio Marques | `marcio.marques` | Dev | `marcio.marques@sidia.com` |
-| Guilherme Rabaioli | `guilherme.rabaioli` | Dev | `guilherme.rabaioli@sidia.com` |
+| Guilherme Rabaioli | `guilherme.vieira` | Dev | `guilherme.vieira@sidia.com` |
 
 ## Regras de negócio
 

@@ -65,7 +65,7 @@ function DataDoSistema({ valor }: { valor?: string | null }) {
   return <time className="block text-center" dateTime={valor} title={formatDate(valor, { dateStyle: "medium", timeStyle: "short" })}>{formatDate(valor, { dateStyle: "medium" })}</time>;
 }
 // Colunas de valores fechados filtram por vários valores ao mesmo tempo; TC ID (texto) e End date (dia) filtram por um.
-const FILTROS_CASO_VAZIOS = { tcId: "", status: [] as string[], situation: [] as string[], assignee: [] as string[], difficulty: [] as string[], category: [] as string[], automationLevel: [] as string[], endDate: "", backup: [] as string[] };
+const FILTROS_CASO_VAZIOS = { tcId: "", status: [] as string[], situation: [] as string[], assignee: [] as string[], difficulty: [] as string[], category: [] as string[], automationLevel: [] as string[], codeDone: "", endDate: "", backup: [] as string[] };
 
 export function ProjetoDetalhePage() {
   const { projetoId = "" } = useParams();
@@ -99,7 +99,6 @@ function ProjetoDetalhe() {
     return id ? { id, tc_id: parametros.get("tc") ?? "" } : null;
   });
   const [linhaManual, setLinhaManual] = useState<CasoHistorico | null>(null);
-  const [semanaCasos, setSemanaCasos] = useState("");
 
   const admin = perfil.perfil_codigo === "ADMIN_UNIDADE";
   const dev = perfil.perfil_codigo === "USUARIO_PADRAO";
@@ -114,7 +113,7 @@ function ProjetoDetalhe() {
   const abaDaUrl = parametros.get("aba") as Aba | null;
   const aba: Aba = abaDaUrl && abasDisponiveis.includes(abaDaUrl) ? abaDaUrl : podeConsultarCasos ? "cases" : "form-factor";
   const projeto = useProjeto(projetoId, perfil, podeConsultar);
-  const filtrosApiCasos = { responsavelIds: filtrosCaso.assignee.length ? filtrosCaso.assignee : undefined, ...(dev ? { associadosAMim: true } : {}), ...(semanaCasos ? { semana: semanaCasos } : {}) };
+  const filtrosApiCasos = { responsavelIds: filtrosCaso.assignee.length ? filtrosCaso.assignee : undefined, ...(dev ? { associadosAMim: true } : {}) };
   const casos = useCasosTeste(projetoId, pagina, tamanhoPagina, filtrosApiCasos, perfil, Boolean(projeto.isSuccess && podeConsultarCasos && aba === "cases"));
   const associacao = useCasosTeste(projetoId, 1, 1, { associadosAMim: true }, perfil, dev && projeto.isSuccess && podeConsultarCasos);
   // O dev só filtra pelos responsáveis dos casos que aparecem para ele (dono ou backup), não pelo time inteiro.
@@ -173,10 +172,11 @@ function ProjetoDetalhe() {
   const responsavelAtual = perfil.id;
   const mostrarAcoes = podeGerenciarCasos || Boolean(casos.data?.items.some((item) => item.responsavel_id === responsavelAtual));
   // A lista vazia do Assignee é verdadeira para Boolean: conta só quando tem alguém escolhido.
-  const temFiltrosCaso = Boolean(semanaCasos || Object.values(filtrosCaso).some((valor) => Array.isArray(valor) ? valor.length > 0 : Boolean(valor)));
+  const temFiltrosCaso = Boolean(Object.values(filtrosCaso).some((valor) => Array.isArray(valor) ? valor.length > 0 : Boolean(valor)));
   const passaNosFiltrosCaso = (item: CasoTeste) => {
     const endDate = dataFinalDoCaso(item);
     const dataFinal = endDate ? formatarDiaIso(new Date(endDate)) : "";
+    const dataCodeDone = item.code_done_em ? formatarDiaIso(new Date(item.code_done_em)) : "";
     return item.tc_id.toLocaleLowerCase().includes(filtrosCaso.tcId.toLocaleLowerCase())
       && (!filtrosCaso.status.length || filtrosCaso.status.includes(item.status))
       && (!filtrosCaso.situation.length || filtrosCaso.situation.includes(item.situation))
@@ -184,6 +184,7 @@ function ProjetoDetalhe() {
       && (!filtrosCaso.difficulty.length || filtrosCaso.difficulty.includes(item.difficulty))
       && (!filtrosCaso.category.length || filtrosCaso.category.includes(item.category))
       && (!filtrosCaso.automationLevel.length || filtrosCaso.automationLevel.includes(String(item.automation_level ?? "")))
+      && (!filtrosCaso.codeDone || dataCodeDone === filtrosCaso.codeDone)
       && (!filtrosCaso.endDate || dataFinal === filtrosCaso.endDate)
       && (!filtrosCaso.backup.length || filtrosCaso.backup.includes(item.backup_id ?? SEM_BACKUP));
   };
@@ -278,7 +279,12 @@ function ProjetoDetalhe() {
       exportar: { titulo: t("automationLevel"), valor: rotuloAutomacao },
       cell: (caso) => celulaEditavel(caso, "automation_level", t("automationLevel"), String(caso.automation_level ?? ""), opcoes.automacao, <span title={caso.automation_level ? rotuloAutomacao(caso) : undefined}>{caso.automation_level ?? "—"}</span>, podeEditarProprio(caso)),
     },
-    { id: "codeDone", header: t("codeDone"), cell: (caso) => <DataDoSistema valor={caso.code_done_em} /> },
+    {
+      // O rótulo "Dev done" é só visual: o dado continua sendo o `code_done_em` (spec 065).
+      id: "codeDone",
+      header: <DataTableFilter label={t("codeDone")} value={filtrosCaso.codeDone} onChange={(value) => alterarFiltroCaso("codeDone", value)} type="date" />,
+      cell: (caso) => <DataDoSistema valor={caso.code_done_em} />,
+    },
     {
       id: "endDate",
       header: <DataTableFilter label={t("endDate")} value={filtrosCaso.endDate} onChange={(value) => alterarFiltroCaso("endDate", value)} type="date" />,
@@ -320,7 +326,7 @@ function ProjetoDetalhe() {
     isError: casos.isError,
     isEmpty: !casosFiltrados.length,
     hasFilters: temFiltrosCaso,
-    onClearFilters: () => { setSemanaCasos(""); setFiltrosCaso(FILTROS_CASO_VAZIOS); setPagina(1); },
+    onClearFilters: () => { setFiltrosCaso(FILTROS_CASO_VAZIOS); setPagina(1); },
     errorLabel: t("caseLoadError"),
   });
 
@@ -336,9 +342,7 @@ function ProjetoDetalhe() {
         onSelectionChange={(chave) => trocarAba(chave as Aba)}
         // Filtro de data antes das ações; o botão de adicionar é sempre o último à direita.
         actions={<>
-          <WeekPickerHero label={t("week")} value={aba === "cases" ? semanaCasos : tabela.filtros.periodo ?? ""} onChange={(valor) => {
-            if (aba === "cases") { setSemanaCasos(valor); setPagina(1); } else tabela.alterarFiltros({ ...tabela.filtros, periodo: valor || undefined });
-          }} />
+          {aba !== "cases" && <WeekPickerHero label={t("week")} value={tabela.filtros.periodo ?? ""} onChange={(valor) => tabela.alterarFiltros({ ...tabela.filtros, periodo: valor || undefined })} />}
           {aba === "cases" && podeGerenciarCasos && <HeroButton variant="primary" onPress={() => abrirCaso(null)}><Plus aria-hidden="true" absoluteStrokeWidth strokeWidth={1.5} className="size-4" />{t("newTestCase")}</HeroButton>}
         </>}
       >

@@ -83,13 +83,13 @@ describe("ProjetoDetalhePage", () => {
     expect(cabecalhos).not.toContain("All passed");
     const celula = (tr: Element, titulo: RegExp) => within(tr as HTMLElement).getAllByRole("gridcell")[cabecalhos.findIndex((texto) => titulo.test(texto ?? "")) - 1];
 
-    const codeDone = within(celula(linha, /^Code done$/)).getByText(formatDate("2026-11-01T13:30:00Z", { dateStyle: "medium" }));
+    const codeDone = within(celula(linha, /^Dev done$/)).getByText(formatDate("2026-11-01T13:30:00Z", { dateStyle: "medium" }));
     expect(codeDone.tagName).toBe("TIME");
     expect(codeDone).toHaveAttribute("dateTime", "2026-11-01T13:30:00Z");
     expect(codeDone).toHaveAttribute("title", formatDate("2026-11-01T13:30:00Z", { dateStyle: "medium", timeStyle: "short" }));
     expect(celula(linha, /End date/)).toHaveTextContent(formatDate("2026-11-06T08:30:12Z", { dateStyle: "medium" }));
     const done = screen.getByRole("rowheader", { name: "Clock_002" }).closest("tr")!;
-    expect(celula(done, /^Code done$/)).toHaveTextContent("—");
+    expect(celula(done, /^Dev done$/)).toHaveTextContent("—");
     expect(celula(done, /End date/)).toHaveTextContent("—");
   });
 
@@ -270,25 +270,16 @@ describe("ProjetoDetalhePage", () => {
     expect(casosTesteApi.listar).toHaveBeenCalledTimes(consultas);
   });
 
-  it("filtra TCs por semana na linha das abas e mantém as semanas das abas independentes", async () => {
-    vi.mocked(casosTesteApi.listar).mockImplementation(async (_id, page = 1, pageSize = 20, filtros) => ({ items: filtros?.semana ? [] : casos, total_count: filtros?.semana ? 0 : casos.length, page, page_size: pageSize }));
+  it("a aba Test Cases não tem filtro de semana; só a aba Form Factor tem", async () => {
     const user = userEvent.setup();
     renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO", permissoes: [...perfil.permissoes, "form_factor.consultar"] });
     await screen.findByRole("row", { name: /Clock_001/ });
-    await user.click(screen.getByRole("button", { name: "Week: Select a week" }));
-    await user.click(within(await screen.findByRole("dialog", { name: "Week" })).getByRole("button", { name: "This week" }));
-    await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("project-1", 1, DEFAULT_TABLE_PAGE_SIZE, { responsavelId: undefined, associadosAMim: true, semana: semanaIso(new Date()) }));
-    expect(screen.queryByRole("row", { name: /Clock_001/ })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Clear filters" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Week:/ })).not.toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: "Form Factor" }));
     expect(screen.getByRole("button", { name: "Week: Select a week" })).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: "Test Cases" }));
-    await user.click(screen.getByRole("button", { name: /^Week: Week/ }));
-    await user.click(within(await screen.findByRole("dialog", { name: "Week" })).getByRole("button", { name: "Clear filters" }));
-    await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("project-1", 1, DEFAULT_TABLE_PAGE_SIZE, { responsavelId: undefined, associadosAMim: true }));
-    expect(await screen.findByRole("row", { name: /Clock_001/ })).toBeInTheDocument();
-    // Fluxo longo (dois calendários, troca de aba): sozinho leva ~3 s e, com a suíte inteira em paralelo, passava dos 5 s.
-  }, 15_000);
+    expect(screen.queryByRole("button", { name: /^Week:/ })).not.toBeInTheDocument();
+  });
 
   it("erro de acesso prevalece sobre associação vazia antiga no cache", async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -388,6 +379,30 @@ describe("ProjetoDetalhePage", () => {
       await user.click(screen.getByRole("button", { name: /Filter by End date/i }));
       const calendario = await screen.findByRole("dialog", { name: /End date/i });
       // O calendário (spec 050) usa o ordinal no rótulo do dia: "Friday, October 30th, 2026".
+      const dataPorExtenso = `${dia.toLocaleString("en-US", { month: "long" })} ${dia.getDate()}(st|nd|rd|th)?, ${dia.getFullYear()}`;
+      await user.click(within(calendario).getByRole("button", { name: new RegExp(dataPorExtenso) }));
+    };
+
+    await escolherDia(hoje);
+    expect(screen.getByRole("row", { name: /Clock_002/ })).toBeInTheDocument();
+    expect(screen.queryByRole("row", { name: /Clock_001/ })).not.toBeInTheDocument();
+
+    await escolherDia(outroDia);
+    expect(screen.queryByRole("row", { name: /Clock_002/ })).not.toBeInTheDocument();
+  });
+
+  it("filtra os casos pela data de Dev done escolhida no calendário", async () => {
+    const hoje = new Date();
+    hoje.setHours(12, 0, 0, 0);
+    const outroDia = new Date(hoje);
+    outroDia.setDate(hoje.getDate() === 1 ? 2 : 1);
+    vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [casos[0], { ...casos[1], code_done_em: hoje.toISOString() }], page: 1, page_size: 10, total_count: 2 });
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("row", { name: /Clock_002/ });
+    const escolherDia = async (dia: Date) => {
+      await user.click(screen.getByRole("button", { name: /Filter by Dev done/i }));
+      const calendario = await screen.findByRole("dialog", { name: /Dev done/i });
       const dataPorExtenso = `${dia.toLocaleString("en-US", { month: "long" })} ${dia.getDate()}(st|nd|rd|th)?, ${dia.getFullYear()}`;
       await user.click(within(calendario).getByRole("button", { name: new RegExp(dataPorExtenso) }));
     };
