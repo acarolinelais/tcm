@@ -123,6 +123,12 @@ function ProjetoDetalhe() {
   const filtrosApiCasos = { responsavelIds: filtrosCaso.assignee.length ? filtrosCaso.assignee : undefined, ...(dev ? { associadosAMim: true } : {}), ...(semanaCasos ? { semana: semanaCasos } : {}) };
   const casos = useCasosTeste(projetoId, pagina, tamanhoPagina, filtrosApiCasos, perfil, Boolean(projeto.isSuccess && podeConsultarCasos && aba === "cases"));
   const associacao = useCasosTeste(projetoId, 1, 1, { associadosAMim: true }, perfil, dev && projeto.isSuccess && podeConsultarCasos);
+  // O dev só filtra pelos responsáveis dos casos que aparecem para ele (dono ou backup), não pelo time inteiro.
+  const responsaveisDoDev = useQuery({
+    queryKey: ["projetos", projetoId, "responsaveis-associados", perfil.unidade_id, perfil.id],
+    queryFn: async () => new Set((await buscarTodasAsPaginas((page, pageSize) => casosTesteApi.listar(projetoId, page, pageSize, { associadosAMim: true }))).map((caso) => caso.responsavel_id)),
+    enabled: dev && projeto.isSuccess && podeConsultarCasos && aba === "cases",
+  });
   const membros = useQuery({ queryKey: ["projetos", projetoId, "membros", perfil.unidade_id, perfil.id], queryFn: async () => timesApi.membros(projeto.data!.time_id), enabled: projeto.isSuccess && (podeConsultarCasos || podeConsultarFormFactor) });
   const filtrosApiResumo = { semana: semana || undefined, responsavelIds: assigneeFormFactor.length ? assigneeFormFactor : undefined, tcId: filtrosResumo.tcId || undefined, sdfId: filtrosResumo.sdfId || undefined, modeloDispositivoId: filtrosResumo.modeloDispositivoId || undefined, resultado: filtrosResumo.resultado || undefined };
   const filtrosApiResultados = { semana: semana || undefined, tcId: filtrosResultados.tcId || undefined, sdfId: filtrosResultados.sdfId || undefined, responsavelIds: responsaveisResultados.length ? responsaveisResultados : undefined, origem: filtrosResultados.origem ? filtrosResultados.origem as "SDF" | "MANUAL" : undefined, modeloDispositivoId: filtrosResultados.modeloDispositivoId || undefined, resultado: filtrosResultados.resultado || undefined };
@@ -260,7 +266,7 @@ function ProjetoDetalhe() {
     },
     {
       id: "assignee",
-      header: <DataTableMultiFilter label={t("assignee")} values={filtrosCaso.assignee} onChange={(values) => alterarFiltroCaso("assignee", values)} options={opcoesAssignee} searchable />,
+      header: <DataTableMultiFilter label={t("assignee")} values={filtrosCaso.assignee} onChange={(values) => alterarFiltroCaso("assignee", values)} options={dev ? opcoesAssignee.filter((opcao) => responsaveisDoDev.data?.has(opcao.value)) : opcoesAssignee} searchable />,
       exportar: { titulo: t("assignee"), valor: rotuloAssignee },
       cell: (caso) => celulaEditavel(caso, "responsavel_id", t("assignee"), caso.responsavel_id, membrosExceto(caso.backup_id), <span>{rotuloAssignee(caso)}</span>, podeGerenciarCasos),
     },
