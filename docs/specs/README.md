@@ -93,7 +93,7 @@ sem paginação, também pagina ([ADR 0039](../adr/0039-resultados-gerais-com-pa
 | 064 | Overview com gráficos para gerente e admin (andamento por time e por setor, retrabalho, finalizados por semana) | Em andamento (integração do backend pendente) |
 | 065 | Datas de finalização do Test Case (Code done na primeira entrada em In Review; End date passa a ser a data em que todos os devices passam no SDF) | Concluída (caso Cancelled e End date no modo mock em aberto no backlog) |
 | 066 | Status do Test Case pela importação do relatório SDF (só um caso em In Validation muda: tudo PASS vai para Done, FAIL vai para In Fixes) | Em andamento |
-| 067 | Desfazer a última importação do relatório SDF (resultados saem, Status volta a In Validation se ninguém mexeu, SDF ID fica livre) | Aprovada |
+| 067 | Desfazer a última importação do relatório SDF (resultados saem, Status volta a In Validation se ninguém mexeu, SDF ID fica livre) | Concluída (validação manual no navegador pendente) |
 
 > As duas specs 012 foram criadas em paralelo. Os diretórios e históricos foram preservados nesta integração; a harmonização da numeração está registrada no backlog da spec de perfil Dev.
 

@@ -1,6 +1,6 @@
 # 067. Desfazer a última importação do relatório SDF: Spec
 
-- **Status:** Aprovada
+- **Status:** Concluída
 - **Data:** 2026-11-07
 - **Specs relacionadas:** 059 (General Results), 060 (importação do relatório SDF no formato novo), 065 (End date),
   066 (Status pela importação), 038 (histórico do Test Case), 047 (corrigir rodadas e resultados)
