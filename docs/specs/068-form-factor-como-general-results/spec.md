@@ -1,6 +1,6 @@
 # 068. Aba Form Factor com a visão da General Results: Spec
 
-- **Status:** Aprovada
+- **Status:** Concluída
 - **Data:** 2026-11-07
 - **Specs relacionadas:** 059 (redesign da General Results), 032 (janela de detalhe do resultado), 033 (paginação),
   022 (registro de resultado numa rodada), 067 (desfazer importação)
