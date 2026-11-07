@@ -33,6 +33,7 @@ class FormFactorService(Protocol):
         fuso_horario: str = "UTC",
         page: int = 1,
         page_size: int = 20,
+        associados_a_mim: bool = False,
     ) -> HistoricoProjetoResponse: ...
 
     async def resumo_execucoes(

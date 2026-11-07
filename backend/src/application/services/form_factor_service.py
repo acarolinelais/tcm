@@ -92,6 +92,7 @@ class FormFactorServiceImpl:
         fuso_horario: str = "UTC",
         page: int = 1,
         page_size: int = 20,
+        associados_a_mim: bool = False,
     ) -> HistoricoProjetoResponse:
         """Resultados Gerais de um projeto (specs 032, 033 e 059): página de casos e até 5 datas."""
         self._exigir_consulta_execucoes(usuario_atual)
@@ -111,6 +112,7 @@ class FormFactorServiceImpl:
             modelo_dispositivo_id=modelo_dispositivo_id,
             inicio=inicio,
             fim=fim,
+            associado_a=usuario_atual.id if associados_a_mim else None,
         )
         casos = await self._historico_repo.listar_casos(
             unidade_id, projeto.id, filtros, page, page_size

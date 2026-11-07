@@ -27,6 +27,8 @@ class CasoHistoricoResponse(BaseModel):
     tc_id: str
     responsavel_id: UUID
     responsavel_identificador: str | None
+    backup_id: UUID | None
+    rodada_pendente_id: UUID | None
     # SDF ID da execução mais recente de cada modelo, em qualquer data; sem execução, fica fora.
     ultimo_sdf_por_modelo: dict[UUID, str | None]
     resultados: dict[date, dict[UUID, ResultadoNaDataResponse]]
@@ -89,6 +91,8 @@ def to_historico_response(
                 tc_id=caso.tc_id,
                 responsavel_id=caso.responsavel_id,
                 responsavel_identificador=caso.responsavel_identificador,
+                backup_id=caso.backup_id,
+                rodada_pendente_id=caso.rodada_pendente_id,
                 ultimo_sdf_por_modelo=ultimos_sdf.get(caso.caso_teste_id, {}),
                 resultados=resultados.get(caso.caso_teste_id, {}),
             )

@@ -337,3 +337,23 @@ async def test_resumo_de_caso_inexistente_ou_de_projeto_fora_do_escopo_recebe_40
         await ctx.service.resumo_execucoes(ctx.usuario(), uuid4())
 
     ctx.historico.listar_resultados.assert_not_awaited()
+
+
+async def test_associados_a_mim_filtra_pelos_casos_de_quem_consulta(ctx):
+    # Spec 068, CA-02: a aba Form Factor do dev.
+    dev = ctx.usuario("USUARIO_PADRAO")
+
+    await ctx.service.historico_projeto(dev, ctx.projeto.id, associados_a_mim=True)
+
+    ctx.historico.listar_casos.assert_awaited_once_with(
+        ctx.unidade_id, ctx.projeto.id, FiltrosCasoHistorico(associado_a=dev.id), 1, 20
+    )
+
+
+async def test_falha_sem_associados_a_mim_o_dev_ve_o_time(ctx):
+    # A General Results não manda o parâmetro (spec 059): nenhum recorte por pessoa.
+    await ctx.service.historico_projeto(ctx.usuario("USUARIO_PADRAO"), ctx.projeto.id)
+
+    ctx.historico.listar_casos.assert_awaited_once_with(
+        ctx.unidade_id, ctx.projeto.id, FiltrosCasoHistorico(), 1, 20
+    )
