@@ -10,8 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from src.domain.entities.execucao_sdf import ExecucaoSdf
 from src.domain.queries.resumo_overview import EscopoOverview, ResumoPessoal, ResumoTime
 from src.infrastructure.data.auditoria import usuario_auditoria
+from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
+from src.infrastructure.data.models.perfil_model import PerfilModel
 from src.infrastructure.data.models.projeto_model import ProjetoModel
 from src.infrastructure.data.models.time_membro_model import TimeMembroModel
+from src.infrastructure.data.models.time_model import TimeModel
+from src.infrastructure.data.models.usuario_model import UsuarioModel
 from src.infrastructure.repositories.execucao_sdf_repository import ExecucaoSdfRepositoryImpl
 from src.infrastructure.repositories.overview_repository import OverviewRepositoryImpl
 from tests.integration.test_resultado_form_factor_repository import _Cenario
@@ -219,11 +223,35 @@ async def test_resumir_time_criacao_conta_so_os_criados_desde_o_dia(cenario):
 
 
 @pytest.mark.asyncio
-async def test_resumir_time_concluidos_por_dev_ignora_backup_e_mostra_quem_tem_zero(cenario):
-    await _membros(cenario, cenario.ana, cenario.bia)
+async def test_resumir_time_concluidos_por_dev_so_devs_sem_backup_e_com_zero(cenario):
+    # Ana e Bia têm o perfil de dev; o KP do time fica fora, mesmo com Test Cases em Done.
+    await cenario.session.execute(
+        text(
+            "UPDATE perfis SET codigo = 'USUARIO_PADRAO' "
+            "WHERE id = (SELECT perfil_id FROM usuarios WHERE id = :id)"
+        ),
+        {"id": cenario.ana},
+    )
+    perfil_kp, kp = uuid4(), uuid4()
+    cenario.session.add(
+        PerfilModel(id=perfil_kp, unidade_id=cenario.unidade_id, nome="KP", codigo="KP")
+    )
+    await cenario.session.flush()
+    cenario.session.add(
+        UsuarioModel(
+            id=kp,
+            unidade_id=cenario.unidade_id,
+            nome="Kaique",
+            email=f"kp-{kp}@example.com",
+            perfil_id=perfil_kp,
+        )
+    )
+    await cenario.session.flush()
+    await _membros(cenario, cenario.ana, cenario.bia, kp)
     for i in range(3):
         await cenario.caso(f"Clock_{i:03}", status="Done", backup_id=cenario.bia)
     await cenario.caso("Clock_010", status="InProgress", responsavel_id=cenario.bia)
+    await cenario.caso("Clock_020", status="Done", responsavel_id=kp)
 
     resumo = await _resumir_time(cenario)
 
@@ -257,6 +285,8 @@ async def test_resumir_time_done_por_projeto_ignora_excluded(cenario):
     resumo = await _resumir_time(cenario)
 
     assert resumo.done_por_projeto == {cenario.projeto_id: (4, 9)}
+    # Spec 064, RN-12: In Fixes e In Review contam como em andamento; To-Do e Excluded, não.
+    assert resumo.em_andamento_por_projeto == {cenario.projeto_id: 2}
 
 
 @pytest.mark.asyncio
@@ -415,6 +445,10 @@ async def test_resumir_pessoal_conta_so_os_casos_em_que_e_principal(cenario):
     assert resumo.por_dificuldade == {"Low": 2, "High": 1}
     # Os dois criados já em Done entram hoje, pelo INSERT do trigger.
     assert resumo.concluidos_por_dia == {datetime.now(UTC).strftime("%Y-%m-%d"): 2}
+    # Spec 064, RN-12: o projeto do cenário, com os mesmos casos (o Backup e o Excluded ficam fora).
+    assert [
+        (p.projeto, p.concluidos, p.em_andamento, p.atribuidos) for p in resumo.por_projeto
+    ] == [("Clock 9.5", 2, 0, 3)]
 
 
 @pytest.mark.asyncio
@@ -426,3 +460,129 @@ async def test_falha_resumir_pessoal_de_outra_unidade_fica_vazio(cenario):
     )
 
     assert resumo == ResumoPessoal()
+
+
+# Spec 064: andamento por time e por setor, em correção e Pass Rate por projeto.
+
+
+async def _outro_projeto(cenario, nome, time_id=None):
+    """Projeto no `time_id` dado ou num time novo, no mesmo setor do cenário."""
+    if time_id is None:
+        setor_id = (
+            await cenario.session.execute(
+                text("SELECT setor_id FROM times WHERE id = :id"), {"id": cenario.time_id}
+            )
+        ).scalar_one()
+        time_id = uuid4()
+        cenario.session.add(
+            TimeModel(
+                id=time_id, unidade_id=cenario.unidade_id, setor_id=setor_id, nome=f"Time {nome}"
+            )
+        )
+        await cenario.session.flush()
+    projeto_id = uuid4()
+    cenario.session.add(
+        ProjetoModel(
+            id=projeto_id,
+            unidade_id=cenario.unidade_id,
+            time_id=time_id,
+            nome=nome,
+            app=nome,
+            one_ui="9.5",
+        )
+    )
+    await cenario.session.flush()
+    return projeto_id
+
+
+async def _caso_no_projeto(cenario, projeto_id, tc_id, status):
+    cenario.session.add(
+        CasoTesteModel(
+            id=uuid4(),
+            unidade_id=cenario.unidade_id,
+            projeto_id=projeto_id,
+            tc_id=tc_id,
+            category="A",
+            difficulty="Low",
+            situation="New",
+            status=status,
+            responsavel_id=cenario.ana,
+        )
+    )
+    await cenario.session.flush()
+
+
+@pytest.mark.asyncio
+async def test_resumir_time_andamento_por_time_e_por_setor(cenario):
+    for i, status in enumerate(["To-Do", "InProgress", "InFixes", "Done", "Done", "Cancelled"]):
+        await cenario.caso(f"Clock_{i:03}", status=status)
+    alarm = await _outro_projeto(cenario, "Alarm 2.0")
+    await _caso_no_projeto(cenario, alarm, "Alarm_001", "InReview")
+
+    resumo = await _resumir_time(cenario, EscopoOverview())
+
+    andamento = [
+        (a.nome, a.a_fazer, a.em_andamento, a.concluidos) for a in resumo.andamento_por_time
+    ]
+    assert andamento == [("QA", 1, 2, 2), ("Time Alarm 2.0", 0, 1, 0)]
+    # Os dois times são do mesmo setor: o setor soma os dois.
+    assert [
+        (a.nome, a.a_fazer, a.em_andamento, a.concluidos) for a in resumo.andamento_por_setor
+    ] == [("Mobile", 1, 3, 2)]
+
+
+@pytest.mark.asyncio
+async def test_resumir_time_em_correcao_so_projetos_com_in_fixes(cenario):
+    for i in range(3):
+        await cenario.caso(f"Clock_{i:03}", status="InFixes")
+    alarm = await _outro_projeto(cenario, "Alarm 2.0", cenario.time_id)
+    await _caso_no_projeto(cenario, alarm, "Alarm_001", "InValidation")
+
+    resumo = await _resumir_time(cenario)
+
+    assert resumo.em_correcao_por_projeto == {cenario.projeto_id: 3}
+
+
+@pytest.mark.asyncio
+async def test_pass_rate_por_projeto_usa_a_rodada_mais_recente(cenario):
+    _, execucao = await cenario.rodada(
+        await cenario.caso("Clock_001"), "SDF-0", datetime(2025, 9, 1, tzinfo=UTC)
+    )
+    await cenario.registrar(execucao, {cenario.s26: "FAIL", cenario.s25: "FAIL"})
+    recente, execucao = await cenario.rodada(
+        await cenario.caso("Clock_002"), "SDF-1", datetime(2025, 10, 1, tzinfo=UTC)
+    )
+    await cenario.registrar(execucao, {cenario.s26: "PASS", cenario.s25: "FAIL"})
+    for i, resultado in enumerate(("PASS", "PASS", "PASS")):
+        await _execucao_na_rodada(
+            cenario, recente, await cenario.caso(f"Clock_1{i:02}"), {cenario.s26: resultado}
+        )
+
+    resumo = await _resumir_time(cenario)
+
+    # A rodada antiga só tem FAIL e não conta: 4 PASS de 5 resultados na mais recente.
+    assert resumo.pass_rate_por_projeto == {cenario.projeto_id: (4, 5)}
+
+
+@pytest.mark.asyncio
+async def test_pass_rate_por_projeto_ignora_projeto_sem_rodada(cenario):
+    await cenario.caso("Clock_001")
+
+    resumo = await _resumir_time(cenario, EscopoOverview())
+
+    assert resumo.pass_rate_por_projeto == {}
+
+
+@pytest.mark.asyncio
+async def test_falha_resumir_time_de_outro_time_nao_mostra_andamento_nem_pass_rate(cenario):
+    _, execucao = await cenario.rodada(
+        await cenario.caso("Clock_001", status="InFixes"),
+        "SDF-1",
+        datetime(2025, 10, 1, tzinfo=UTC),
+    )
+    await cenario.registrar(execucao, {cenario.s26: "PASS"})
+
+    resumo = await _resumir_time(cenario, EscopoOverview(time_ids=(uuid4(),)))
+
+    assert resumo.andamento_por_time == resumo.andamento_por_setor == []
+    assert resumo.em_correcao_por_projeto == resumo.pass_rate_por_projeto == {}

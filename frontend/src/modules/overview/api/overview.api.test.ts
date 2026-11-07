@@ -57,7 +57,11 @@ describe("overviewApi, gráficos do KP e do dev", () => {
       criacao_por_dia: [{ projeto_id: "p1", projeto: "Clock 9.5", media: 0.5 }],
       concluidos_por_dev: [{ usuario_id: "u1", nome: "Ana", concluidos: 3 }],
       concluidos_por_semana: [{ semana: "2026-11-02", concluidos: 2 }],
-      done_por_projeto: [{ projeto_id: "p1", projeto: "Clock 9.5", concluidos: 4, total: 9 }],
+      done_por_projeto: [{ projeto_id: "p1", projeto: "Clock 9.5", concluidos: 4, total: 9, em_andamento: 2 }],
+      andamento_por_time: [{ id: "t1", nome: "QA", a_fazer: 1, em_andamento: 2, concluidos: 3 }],
+      andamento_por_setor: [{ id: "s1", nome: "Mobile", a_fazer: 1, em_andamento: 2, concluidos: 3 }],
+      em_correcao_por_projeto: [{ projeto_id: "p1", projeto: "Clock 9.5", em_correcao: 3 }],
+      pass_rate_por_projeto: [{ projeto_id: "p1", projeto: "Clock 9.5", aprovados: 8, total: 10 }],
     });
 
     const dados = await overviewApi.obterTime();
@@ -65,7 +69,12 @@ describe("overviewApi, gráficos do KP e do dev", () => {
     expect(vi.mocked(fetch).mock.calls[0][0]).toMatch(/^\/api\/overview\/time\?fuso_horario=/);
     expect(dados.criacaoPorDia).toEqual([{ projetoId: "p1", projeto: "Clock 9.5", media: 0.5 }]);
     expect(dados.concluidosPorDev).toEqual([{ usuarioId: "u1", nome: "Ana", concluidos: 3 }]);
-    expect(dados.donePorProjeto).toEqual([{ projetoId: "p1", projeto: "Clock 9.5", concluidos: 4, total: 9 }]);
+    expect(dados.donePorProjeto).toEqual([{ projetoId: "p1", projeto: "Clock 9.5", concluidos: 4, total: 9, emAndamento: 2 }]);
+    // Spec 064.
+    expect(dados.andamentoPorTime).toEqual([{ id: "t1", nome: "QA", aFazer: 1, emAndamento: 2, concluidos: 3 }]);
+    expect(dados.andamentoPorSetor[0].nome).toBe("Mobile");
+    expect(dados.emCorrecaoPorProjeto).toEqual([{ projetoId: "p1", projeto: "Clock 9.5", emCorrecao: 3 }]);
+    expect(dados.passRatePorProjeto).toEqual([{ projetoId: "p1", projeto: "Clock 9.5", aprovados: 8, total: 10 }]);
   });
 
   it("um projeto sem rodada chega com o Pass Rate nulo", async () => {
@@ -78,10 +87,14 @@ describe("overviewApi, gráficos do KP e do dev", () => {
   });
 
   it("converte a visão pessoal", async () => {
-    responder({ concluidos: 5, atribuidos: 12, por_dificuldade: { Low: 2, Medium: 0, High: 1 }, entregas_por_dia: [], entregas_por_semana: [] });
+    responder({
+      concluidos: 5, atribuidos: 12, por_dificuldade: { Low: 2, Medium: 0, High: 1 }, entregas_por_dia: [], entregas_por_semana: [],
+      projetos: [{ projeto_id: "p1", projeto: "Clock 9.5", app: "Clock", concluidos: 5, em_andamento: 4, atribuidos: 12 }],
+    });
 
     expect(await overviewApi.obterPessoal()).toEqual({
       concluidos: 5, atribuidos: 12, porDificuldade: { Low: 2, Medium: 0, High: 1 }, entregasPorDia: [], entregasPorSemana: [],
+      projetos: [{ projetoId: "p1", projeto: "Clock 9.5", app: "Clock", concluidos: 5, emAndamento: 4, atribuidos: 12 }],
     });
   });
 

@@ -1,6 +1,7 @@
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
 
 import { ALTURA, eixo, grade, tooltip, type Barra } from "./estilo";
+import { AreaDoGrafico } from "./GraficoCard";
 
 interface Forma {
   x?: number;
@@ -25,7 +26,7 @@ export function LollipopChart({ titulo, dados, formatarNome = String }: {
   formatarNome?: (nome: string) => string;
 }) {
   return (
-    <ResponsiveContainer width="100%" height={ALTURA}>
+    <AreaDoGrafico altura={ALTURA}>
       <BarChart data={dados} accessibilityLayer title={titulo} margin={{ top: 12, right: 8, left: -16, bottom: 0 }}>
         <CartesianGrid {...grade} />
         <XAxis dataKey="nome" {...eixo} tickFormatter={formatarNome} minTickGap={8} />
@@ -33,6 +34,6 @@ export function LollipopChart({ titulo, dados, formatarNome = String }: {
         <Tooltip {...tooltip} labelFormatter={(nome) => formatarNome(String(nome))} />
         <Bar dataKey="valor" shape={Pirulito} />
       </BarChart>
-    </ResponsiveContainer>
+    </AreaDoGrafico>
   );
 }

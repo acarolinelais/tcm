@@ -6,7 +6,9 @@ from src.api.dependencies import get_overview_service, get_usuario_atual
 from src.application.services.overview_service import OverviewServiceImpl
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.queries.resumo_overview import (
+    Andamento,
     ProjetoOverview,
+    ProjetoPessoal,
     ResumoOverview,
     ResumoPessoal,
     ResumoTime,
@@ -68,6 +70,7 @@ async def test_overview_time_retorna_os_graficos_do_kp(api_client):
     repo.resumir_time.return_value = ResumoTime(
         projetos=[ProjetoOverview(projeto_id, "Clock 9.5", "Clock")],
         done_por_projeto={projeto_id: (4, 9)},
+        em_andamento_por_projeto={projeto_id: 2},
     )
     _usar(usuario, repo)
 
@@ -77,7 +80,13 @@ async def test_overview_time_retorna_os_graficos_do_kp(api_client):
     corpo = response.json()
     assert corpo["projetos"] == [{"id": str(projeto_id), "nome": "Clock 9.5", "app": "Clock"}]
     assert corpo["done_por_projeto"] == [
-        {"projeto_id": str(projeto_id), "projeto": "Clock 9.5", "concluidos": 4, "total": 9}
+        {
+            "projeto_id": str(projeto_id),
+            "projeto": "Clock 9.5",
+            "concluidos": 4,
+            "total": 9,
+            "em_andamento": 2,
+        }
     ]
     assert len(corpo["concluidos_por_semana"]) == 12
 
@@ -160,7 +169,10 @@ async def test_overview_projeto_de_outro_time_retorna_404(api_client):
 async def test_overview_pessoal_retorna_os_graficos_do_dev(api_client):
     usuario = UsuarioAutenticado(uuid4(), uuid4(), "USUARIO_PADRAO")
     repo = AsyncMock()
-    repo.resumir_pessoal.return_value = ResumoPessoal(5, 12, {"Low": 2}, {})
+    projeto_id = uuid4()
+    repo.resumir_pessoal.return_value = ResumoPessoal(
+        5, 12, {"Low": 2}, {}, [ProjetoPessoal(projeto_id, "Clock 9.5", "Clock", 5, 4, 12)]
+    )
     _usar(usuario, repo)
 
     response = await api_client.get("/api/overview/pessoal")
@@ -171,9 +183,49 @@ async def test_overview_pessoal_retorna_os_graficos_do_dev(api_client):
     assert corpo["por_dificuldade"] == {"Low": 2, "Medium": 0, "High": 0}
     assert (len(corpo["entregas_por_dia"]), len(corpo["entregas_por_semana"])) == (30, 12)
     assert repo.resumir_pessoal.await_args.args[1] == usuario.id
+    assert corpo["projetos"] == [
+        {
+            "projeto_id": str(projeto_id),
+            "projeto": "Clock 9.5",
+            "app": "Clock",
+            "concluidos": 5,
+            "em_andamento": 4,
+            "atribuidos": 12,
+        }
+    ]
 
 
 async def test_overview_pessoal_sem_token_retorna_401(api_client):
     response = await api_client.get("/api/overview/pessoal")
 
     assert response.status_code == 401
+
+
+# Spec 064: o gerente recebe os campos novos com o escopo dele (CA-11).
+
+
+async def test_overview_time_gerente_so_consulta_o_escopo_e_recebe_os_campos_novos(api_client):
+    time_id = uuid4()
+    usuario = UsuarioAutenticado(uuid4(), uuid4(), "GERENTE", time_ids=(time_id,))
+    repo = AsyncMock()
+    projeto_id = uuid4()
+    repo.resumir_time.return_value = ResumoTime(
+        projetos=[ProjetoOverview(projeto_id, "Clock 9.5", "Clock")],
+        andamento_por_time=[Andamento(time_id, "QA", 1, 2, 3)],
+        pass_rate_por_projeto={projeto_id: (8, 10)},
+    )
+    _usar(usuario, repo)
+
+    response = await api_client.get("/api/overview/time")
+
+    assert response.status_code == 200
+    corpo = response.json()
+    assert corpo["andamento_por_time"] == [
+        {"id": str(time_id), "nome": "QA", "a_fazer": 1, "em_andamento": 2, "concluidos": 3}
+    ]
+    assert corpo["pass_rate_por_projeto"] == [
+        {"projeto_id": str(projeto_id), "projeto": "Clock 9.5", "aprovados": 8, "total": 10}
+    ]
+    assert corpo["em_correcao_por_projeto"] == [] and corpo["andamento_por_setor"] == []
+    unidade_id, escopo = repo.resumir_time.await_args.args[:2]
+    assert (unidade_id, escopo.time_ids) == (usuario.unidade_id, usuario.times_no_escopo)

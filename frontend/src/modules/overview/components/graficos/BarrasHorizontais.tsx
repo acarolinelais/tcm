@@ -1,7 +1,8 @@
-import { Bar, BarChart, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, LabelList, Tooltip, XAxis, YAxis } from "recharts";
 
 import { formatNumber } from "@/core/i18n/format";
 import { eixo, tooltip, type Barra } from "./estilo";
+import { AreaDoGrafico } from "./GraficoCard";
 
 const ALTURA_DA_BARRA = 36;
 
@@ -14,15 +15,15 @@ export function BarrasHorizontais({ titulo, dados, formatar = (valor) => formatN
   maximo?: number;
 }) {
   return (
-    <ResponsiveContainer width="100%" height={Math.max(dados.length, 2) * ALTURA_DA_BARRA}>
-      <BarChart data={dados} layout="vertical" accessibilityLayer title={titulo} margin={{ top: 0, right: 48, left: 0, bottom: 0 }}>
+    <AreaDoGrafico altura={Math.max(dados.length, 2) * ALTURA_DA_BARRA}>
+      <BarChart data={dados.map((d) => ({ ...d, rotulo: d.rotulo ?? formatar(d.valor) }))} layout="vertical" accessibilityLayer title={titulo} margin={{ top: 0, right: 48, left: 0, bottom: 0 }}>
         <XAxis type="number" hide domain={[0, maximo ?? "dataMax"]} />
         <YAxis type="category" dataKey="nome" {...eixo} width={120} />
         <Tooltip {...tooltip} formatter={(valor) => formatar(Number(valor))} />
         <Bar dataKey="valor" fill="var(--chart-1)" radius={[0, 8, 8, 0]} barSize={18} background={{ fill: "var(--surface-secondary)", radius: 8 }}>
-          <LabelList dataKey="valor" position="right" formatter={(valor) => formatar(Number(valor))} fill="var(--foreground)" fontSize={12} />
+          <LabelList dataKey="rotulo" position="right" fill="var(--foreground)" fontSize={12} />
         </Bar>
       </BarChart>
-    </ResponsiveContainer>
+    </AreaDoGrafico>
   );
 }

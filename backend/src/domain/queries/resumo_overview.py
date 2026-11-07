@@ -37,6 +37,17 @@ class ConcluidosDev:
 
 
 @dataclass(frozen=True)
+class Andamento:
+    """Test Cases de um time ou setor por etapa (spec 064, RN-02 e RN-08)."""
+
+    id: UUID
+    nome: str
+    a_fazer: int
+    em_andamento: int
+    concluidos: int
+
+
+@dataclass(frozen=True)
 class ResumoTime:
     """Gráficos do escopo de times (spec 063, RN-09 a RN-12). Sem registro, o item não aparece."""
 
@@ -46,6 +57,14 @@ class ResumoTime:
     concluidos_por_semana: dict[str, int] = field(default_factory=dict)  # Segunda "AAAA-MM-DD".
     # Projeto → (Done, total), sem os Excluded.
     done_por_projeto: dict[UUID, tuple[int, int]] = field(default_factory=dict)
+    # Spec 064: só times e setores ativos com Test Cases, em ordem alfabética.
+    andamento_por_time: list[Andamento] = field(default_factory=list)
+    andamento_por_setor: list[Andamento] = field(default_factory=list)
+    em_correcao_por_projeto: dict[UUID, int] = field(default_factory=dict)  # Só os com 1 ou mais.
+    # RN-12: em andamento (In Progress, In Review, In Validation e In Fixes) por projeto.
+    em_andamento_por_projeto: dict[UUID, int] = field(default_factory=dict)
+    # Projeto → (PASS, total) da rodada mais recente; projeto sem rodada não aparece.
+    pass_rate_por_projeto: dict[UUID, tuple[int, int]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -65,6 +84,18 @@ class PassRate:
 
 
 @dataclass(frozen=True)
+class ProjetoPessoal:
+    """Os Test Cases da pessoa num projeto (spec 064, RN-12: os cards do dev)."""
+
+    projeto_id: UUID
+    projeto: str
+    app: str
+    concluidos: int
+    em_andamento: int
+    atribuidos: int
+
+
+@dataclass(frozen=True)
 class ResumoPessoal:
     """Test Cases em que a pessoa é a responsável principal (spec 063, RN-14 a RN-16)."""
 
@@ -73,3 +104,5 @@ class ResumoPessoal:
     por_dificuldade: dict[str, int] = field(default_factory=dict)
     # Dia "AAAA-MM-DD" no fuso pedido → casos com a última entrada em Done nele.
     concluidos_por_dia: dict[str, int] = field(default_factory=dict)
+    # Projetos em que a pessoa é a responsável principal, em ordem alfabética.
+    por_projeto: list[ProjetoPessoal] = field(default_factory=list)

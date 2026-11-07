@@ -1,11 +1,12 @@
-import { useId, type ReactNode } from "react";
+import { useId, type ReactElement, type ReactNode } from "react";
+import { ResponsiveContainer } from "recharts";
 import { Skeleton } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 
 import { cn } from "@/shared/lib/utils";
 import { ErroComRetry } from "@/shared/ui/erro-com-retry";
 import { EstadoVazio } from "@/shared/ui/estado-vazio";
-import type { EstadoGrafico } from "./estilo";
+import type { EstadoGrafico } from "../../hooks/useOverviewGraficos";
 
 /**
  * Cartão de um gráfico da Overview (spec 063, RN-05): título, resumo em texto para leitor de tela e os estados de
@@ -30,12 +31,25 @@ export function GraficoCard({ titulo, resumo, estado, onRetry, vazio, className,
         <ErroComRetry mensagem={t("chartLoadError")} retry={{ label: t("retryQuery"), onRetry }} />
       )}
       {estado === "vazio" && (
-        <EstadoVazio className="m-auto py-4" titulo={vazio?.titulo ?? t("chartEmpty")} dica={vazio?.dica ?? t("chartEmptyHint")} />
+        <EstadoVazio compacto className="m-auto py-4" titulo={vazio?.titulo ?? t("chartEmpty")} dica={vazio?.dica ?? t("chartEmptyHint")} />
       )}
       {estado === "pronto" && <>
         <p className="sr-only">{resumo}</p>
         {children}
       </>}
     </section>
+  );
+}
+
+/**
+ * Onde o gráfico desenha: cresce até a altura do cartão, que a grade iguala à do vizinho, com `altura` de mínimo.
+ * O `debounce` só redesenha quando o tamanho para de mudar: sem ele, recolher a sidebar redesenhava cada gráfico a
+ * cada quadro da animação. Enquanto isso, o que passa do cartão fica cortado.
+ */
+export function AreaDoGrafico({ altura, children }: { altura: number; children: ReactElement }) {
+  return (
+    <div className="min-h-0 min-w-0 flex-1 overflow-hidden" style={{ minHeight: altura }}>
+      <ResponsiveContainer width="100%" height="100%" debounce={150}>{children}</ResponsiveContainer>
+    </div>
   );
 }

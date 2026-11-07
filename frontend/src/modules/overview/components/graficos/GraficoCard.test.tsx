@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
 import { GraficoCard } from "./GraficoCard";
-import { estadoDe } from "./estilo";
+import { estadoDe } from "../../hooks/useOverviewGraficos";
 
 it("pronto: o título nomeia o cartão e o resumo fica para o leitor de tela (CA-09)", () => {
   render(<GraficoCard titulo="Pass Rate by model" resumo="SAMSUNG S26 75%." estado="pronto" onRetry={vi.fn()}><p>gráfico</p></GraficoCard>);

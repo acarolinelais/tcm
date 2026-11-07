@@ -1,8 +1,8 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, type ComponentType } from "react";
 
-import { OverviewHeroCard } from "../components/OverviewHeroCard";
-import { TeamPerformanceChart } from "../components/TeamPerformanceChart";
-import { TotalTcsDonePieChart } from "../components/TotalTcsDonePieChart";
+import { ClipboardCheck, ClipboardList, ClipboardPen } from "lucide-react";
+
+import { CabecalhoDaOverview } from "../components/CabecalhoDaOverview";
 import { useOverview } from "../hooks/useOverview";
 import { useOutletContext } from "react-router";
 import type { PerfilAtual } from "@/core/auth/api";
@@ -12,9 +12,19 @@ import { ErroComRetry } from "@/shared/ui/erro-com-retry";
 import { EstadoVazio } from "@/shared/ui/estado-vazio";
 import { PageCard } from "@/shared/ui/page-card";
 
-// Com o React.lazy, o Recharts só é baixado na Overview do KP e do dev (ADR 0051).
+// Com o React.lazy, o Recharts só é baixado na Overview (ADR 0051).
 const OverviewKp = lazy(() => import("../components/OverviewKp").then((m) => ({ default: m.OverviewKp })));
 const OverviewDev = lazy(() => import("../components/OverviewDev").then((m) => ({ default: m.OverviewDev })));
+const OverviewGerente = lazy(() => import("../components/OverviewGerente").then((m) => ({ default: m.OverviewGerente })));
+const OverviewAdmin = lazy(() => import("../components/OverviewAdmin").then((m) => ({ default: m.OverviewAdmin })));
+
+// Os gráficos de cada perfil (specs 063 e 064); um perfil sem visão própria fica só com os cards.
+const GRAFICOS_POR_PERFIL: Record<string, ComponentType> = {
+  KP: OverviewKp,
+  USUARIO_PADRAO: OverviewDev,
+  GERENTE: OverviewGerente,
+  ADMIN_UNIDADE: OverviewAdmin,
+};
 
 export function OverviewPage() {
   const perfil = useOutletContext<PerfilAtual>();
@@ -52,20 +62,21 @@ export function OverviewPage() {
     );
   }
 
-  const dev = perfil.perfil_codigo === "USUARIO_PADRAO";
-  const graficos = perfil.perfil_codigo === "KP" ? <OverviewKp /> : dev ? <OverviewDev /> : null;
+  const Graficos = GRAFICOS_POR_PERFIL[perfil.perfil_codigo ?? ""];
   return (
-    // A casca do app tem a altura da tela: com os gráficos da spec 063, a Overview rola por dentro, como as outras páginas.
-    <div className="thin-scroll -mr-2 h-full min-h-0 space-y-4 overflow-y-auto pr-2">
-      <OverviewHeroCard dados={data} userName={perfil.nome} comTotal={!dev} title={perfil.perfil_codigo === "ADMIN_UNIDADE"
-        ? t("adminUnitTitle", { name: perfil.unidade_nome })
-        : perfil.perfil_codigo ? t(`catalog.profile.${perfil.perfil_codigo}`, { defaultValue: perfil.perfil ?? t("overview") }) : perfil.perfil || t("overview")} />
-      {graficos ? <Suspense fallback={<div role="status"><span className="sr-only">{t("loading")}</span><Skeleton className="h-72 w-full rounded-3xl" /></div>}>{graficos}</Suspense> : (
-        // Gerente e admin ficam como na spec 039 até a spec 064.
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[300px_1fr]">
-          <TotalTcsDonePieChart dados={data} />
-          <TeamPerformanceChart points={data.desempenho} />
-        </div>
+    // A casca do app tem a altura da tela: com os gráficos, a Overview rola por dentro, como as outras páginas. O
+    // `relative` prende aqui os resumos `sr-only` (absolutos): sem ele, eles esticam o documento e a página toda rola.
+    <div className="thin-scroll relative -mr-2 h-full min-h-0 space-y-4 overflow-y-auto pr-2">
+      {/* Cada visão traz o próprio cabeçalho (spec 064, RN-12); um perfil sem visão fica só com ele. */}
+      {Graficos ? <Suspense fallback={<div role="status"><span className="sr-only">{t("loading")}</span><Skeleton className="h-72 w-full rounded-3xl" /></div>}><Graficos /></Suspense> : (
+        <CabecalhoDaOverview
+          rotuloDosCards={t("overviewMyCards")}
+          cards={[
+            { icone: ClipboardCheck, rotulo: t("completed"), valor: data.concluidos },
+            { icone: ClipboardPen, rotulo: t("inProgress"), valor: data.emAndamento },
+            { icone: ClipboardList, rotulo: t("allTests"), valor: data.total },
+          ]}
+        />
       )}
     </div>
   );

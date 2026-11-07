@@ -7,11 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.caso_teste import StatusCasoTeste
 from src.domain.queries.resumo_overview import (
+    Andamento,
     ConcluidosDev,
     EscopoOverview,
     PassRate,
     PassRateModelo,
     ProjetoOverview,
+    ProjetoPessoal,
     ResumoOverview,
     ResumoPessoal,
     ResumoTime,
@@ -19,10 +21,13 @@ from src.domain.queries.resumo_overview import (
 from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
 from src.infrastructure.data.models.execucao_sdf_model import ExecucaoSdfModel
 from src.infrastructure.data.models.modelo_dispositivo_model import ModeloDispositivoModel
+from src.infrastructure.data.models.perfil_model import PerfilModel
 from src.infrastructure.data.models.projeto_model import ProjetoModel
 from src.infrastructure.data.models.resultado_form_factor_model import ResultadoFormFactorModel
 from src.infrastructure.data.models.rodada_form_factor_model import RodadaFormFactorModel
+from src.infrastructure.data.models.setor_model import SetorModel
 from src.infrastructure.data.models.time_membro_model import TimeMembroModel
+from src.infrastructure.data.models.time_model import TimeModel
 from src.infrastructure.data.models.usuario_model import UsuarioModel
 
 # Escrita só pelos triggers (ADR 0044): aqui basta a forma da tabela para a leitura.
@@ -174,19 +179,91 @@ class OverviewRepositoryImpl:
                 CasoTesteModel.status != StatusCasoTeste.CANCELLED.value,
             )
         )
-        done = CasoTesteModel.status == StatusCasoTeste.DONE.value
+        status = CasoTesteModel.status
+        done = status == StatusCasoTeste.DONE.value
         por_projeto = (
             await self._session.execute(
                 casos.with_only_columns(
                     CasoTesteModel.projeto_id,
-                    func.count().filter(CasoTesteModel.created_at >= desde_dia),
-                    func.count().filter(done),
-                    func.count(),
+                    func.count().filter(CasoTesteModel.created_at >= desde_dia).label("criados"),
+                    func.count().filter(done).label("feitos"),
+                    func.count().label("total"),
+                    func.count()
+                    .filter(status == StatusCasoTeste.IN_FIXES.value)
+                    .label("em_correcao"),
+                    func.count().filter(status.in_(_EM_ANDAMENTO)).label("em_andamento"),
                 ).group_by(CasoTesteModel.projeto_id)
             )
         ).all()
 
-        # RN-10: quem é do time e tem 0 Done aparece com 0; ser Backup não conta.
+        # Spec 064, RN-02 e RN-08: as mesmas etapas dos cards da spec 039.
+        etapas = (
+            func.count().filter(status == StatusCasoTeste.TO_DO.value),
+            func.count().filter(status.in_(_EM_ANDAMENTO)),
+            func.count().filter(done),
+        )
+        com_time = casos.join(TimeModel, TimeModel.id == ProjetoModel.time_id).where(
+            TimeModel.ativo.is_(True)
+        )
+        por_time = (
+            await self._session.execute(
+                com_time.with_only_columns(TimeModel.id, TimeModel.nome, *etapas)
+                .group_by(TimeModel.id, TimeModel.nome)
+                .order_by(TimeModel.nome)
+            )
+        ).all()
+        por_setor = (
+            await self._session.execute(
+                com_time.join(SetorModel, SetorModel.id == TimeModel.setor_id)
+                .where(SetorModel.ativo.is_(True))
+                .with_only_columns(SetorModel.id, SetorModel.nome, *etapas)
+                .group_by(SetorModel.id, SetorModel.nome)
+                .order_by(SetorModel.nome)
+            )
+        ).all()
+
+        # Spec 064, RN-06: a rodada ativa mais recente de cada projeto do escopo.
+        ultima_rodada = (
+            select(RodadaFormFactorModel.id, RodadaFormFactorModel.projeto_id)
+            .where(
+                RodadaFormFactorModel.unidade_id == unidade_id,
+                RodadaFormFactorModel.ativo.is_(True),
+                RodadaFormFactorModel.projeto_id.in_(
+                    select(ProjetoModel.id).where(*projetos_filtros)
+                ),
+            )
+            .distinct(RodadaFormFactorModel.projeto_id)
+            .order_by(
+                RodadaFormFactorModel.projeto_id,
+                RodadaFormFactorModel.created_at.desc(),
+                # Desempate igual ao do pass_rate_ultima_rodada: as duas escolhem a mesma rodada.
+                RodadaFormFactorModel.id.desc(),
+            )
+            .subquery()
+        )
+        pass_rate = (
+            await self._session.execute(
+                select(
+                    ultima_rodada.c.projeto_id,
+                    func.count().filter(ResultadoFormFactorModel.resultado == "PASS"),
+                    func.count(),
+                )
+                .select_from(ResultadoFormFactorModel)
+                .join(
+                    ExecucaoSdfModel,
+                    ExecucaoSdfModel.id == ResultadoFormFactorModel.execucao_sdf_id,
+                )
+                .join(ultima_rodada, ultima_rodada.c.id == ExecucaoSdfModel.rodada_id)
+                .where(
+                    ResultadoFormFactorModel.unidade_id == unidade_id,
+                    ResultadoFormFactorModel.ativo.is_(True),
+                    ExecucaoSdfModel.ativo.is_(True),
+                )
+                .group_by(ultima_rodada.c.projeto_id)
+            )
+        ).all()
+
+        # RN-10: só os devs do time; quem tem 0 Done aparece com 0, e ser Backup não conta.
         membros_filtros = [
             TimeMembroModel.unidade_id == unidade_id,
             TimeMembroModel.ativo.is_(True),
@@ -205,8 +282,10 @@ class OverviewRepositoryImpl:
             await self._session.execute(
                 select(UsuarioModel.id, UsuarioModel.nome, func.coalesce(concluidos.c.total, 0))
                 .outerjoin(concluidos, concluidos.c.usuario_id == UsuarioModel.id)
+                .join(PerfilModel, PerfilModel.id == UsuarioModel.perfil_id)
                 .where(
                     UsuarioModel.ativo.is_(True),
+                    PerfilModel.codigo == "USUARIO_PADRAO",
                     UsuarioModel.id.in_(select(TimeMembroModel.usuario_id).where(*membros_filtros)),
                 )
                 .order_by(UsuarioModel.nome)
@@ -223,11 +302,18 @@ class OverviewRepositoryImpl:
 
         return ResumoTime(
             projetos=[ProjetoOverview(*linha) for linha in projetos],
-            criados_por_projeto={projeto_id: criados for projeto_id, criados, _, _ in por_projeto},
+            criados_por_projeto={linha.projeto_id: linha.criados for linha in por_projeto},
             concluidos_por_dev=[ConcluidosDev(*linha) for linha in por_dev],
             concluidos_por_semana=dict(por_semana.all()),
-            done_por_projeto={
-                projeto_id: (feitos, total) for projeto_id, _, feitos, total in por_projeto
+            done_por_projeto={p.projeto_id: (p.feitos, p.total) for p in por_projeto},
+            em_andamento_por_projeto={p.projeto_id: p.em_andamento for p in por_projeto},
+            andamento_por_time=[Andamento(*linha) for linha in por_time],
+            andamento_por_setor=[Andamento(*linha) for linha in por_setor],
+            em_correcao_por_projeto={
+                p.projeto_id: p.em_correcao for p in por_projeto if p.em_correcao
+            },
+            pass_rate_por_projeto={
+                projeto_id: (aprovados, total) for projeto_id, aprovados, total in pass_rate
             },
         )
 
@@ -286,7 +372,7 @@ class OverviewRepositoryImpl:
                     RodadaFormFactorModel.projeto_id == projeto_id,
                     RodadaFormFactorModel.ativo.is_(True),
                 )
-                .order_by(RodadaFormFactorModel.created_at.desc())
+                .order_by(RodadaFormFactorModel.created_at.desc(), RodadaFormFactorModel.id.desc())
                 .limit(1)
             )
         ).first()
@@ -341,6 +427,22 @@ class OverviewRepositoryImpl:
             )
         ).all()
 
+        status = CasoTesteModel.status
+        por_projeto = (
+            await self._session.execute(
+                casos.with_only_columns(
+                    ProjetoModel.id,
+                    ProjetoModel.nome,
+                    ProjetoModel.app,
+                    func.count().filter(status == StatusCasoTeste.DONE.value),
+                    func.count().filter(status.in_(_EM_ANDAMENTO)),
+                    func.count(),
+                )
+                .group_by(ProjetoModel.id, ProjetoModel.nome, ProjetoModel.app)
+                .order_by(ProjetoModel.nome)
+            )
+        ).all()
+
         ultima = _ultimas_entradas_em_done(unidade_id, casos, desde)
         dia = func.to_char(func.timezone(fuso_horario, ultima.c.quando), "YYYY-MM-DD")
         por_dia = await self._session.execute(
@@ -351,4 +453,5 @@ class OverviewRepositoryImpl:
             atribuidos=sum(total for _, total, _ in por_dificuldade),
             por_dificuldade={dificuldade: total for dificuldade, total, _ in por_dificuldade},
             concluidos_por_dia=dict(por_dia.all()),
+            por_projeto=[ProjetoPessoal(*linha) for linha in por_projeto],
         )

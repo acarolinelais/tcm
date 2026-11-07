@@ -90,7 +90,7 @@ sem paginação, também pagina ([ADR 0039](../adr/0039-resultados-gerais-com-pa
 | 061 | Sessão entre abas (refresh token em cookie httpOnly, sessão de 10 horas, ADRs 0047 e 0048) | Concluída |
 | 062 | Esconder a prévia da planilha na importação (botão Hide preview / Show preview) | Concluída (validação manual no navegador pendente) |
 | 063 | Overview com gráficos para KP e dev (burndown, Pass Rate, entregas por dia e semana; Recharts, ADR 0051) | Em andamento (integração do backend e ajuste visual pelo protótipo pendentes) |
-| 064 | Overview com gráficos para gerente e admin (andamento por time e por setor, retrabalho, finalizados por semana) | Rascunho (spec.md) |
+| 064 | Overview com gráficos para gerente e admin (andamento por time e por setor, retrabalho, finalizados por semana) | Em andamento (integração do backend pendente) |
 | 065 | Datas de finalização do Test Case (Code done na primeira entrada em In Review; End date passa a ser a data em que todos os devices passam no SDF) | Concluída (caso Cancelled e End date no modo mock em aberto no backlog) |
 | 066 | Status do Test Case pela importação do relatório SDF (só um caso em In Validation muda: tudo PASS vai para Done, FAIL vai para In Fixes) | Em andamento |
 

@@ -9,11 +9,13 @@ from src.application.services.overview_service import OverviewServiceImpl, linha
 from src.domain.common.exceptions import InvalidInputException, NotFoundException
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.queries.resumo_overview import (
+    Andamento,
     ConcluidosDev,
     EscopoOverview,
     PassRate,
     PassRateModelo,
     ProjetoOverview,
+    ProjetoPessoal,
     ResumoOverview,
     ResumoPessoal,
     ResumoTime,
@@ -285,3 +287,63 @@ async def test_obter_pessoal_preenche_dificuldades_dias_e_semanas(repo):
 async def test_falha_obter_pessoal_fuso_invalido(repo):
     with pytest.raises(InvalidInputException):
         await _service(repo).obter_pessoal(_usuario("USUARIO_PADRAO"), "Lua/Crateras")
+
+
+# Spec 064: andamento, em correção e Pass Rate por projeto no GET /api/overview/time.
+
+
+@pytest.mark.asyncio
+async def test_obter_time_monta_os_graficos_do_gerente_e_do_admin(repo):
+    clock, alarm = uuid4(), uuid4()
+    time_id, setor_id = uuid4(), uuid4()
+    repo.resumir_time.return_value = ResumoTime(
+        projetos=[
+            ProjetoOverview(alarm, "Alarm 2.0", "Alarm"),
+            ProjetoOverview(clock, "Clock 9.5", "Clock"),
+        ],
+        andamento_por_time=[Andamento(time_id, "QA", 3, 4, 5)],
+        andamento_por_setor=[Andamento(setor_id, "Mobile", 3, 4, 5)],
+        em_correcao_por_projeto={clock: 3},
+        pass_rate_por_projeto={clock: (8, 10)},
+    )
+    gerente = _usuario("GERENTE", time_ids=(time_id,))
+
+    resposta = await _service(repo).obter_time(gerente, "UTC")
+
+    assert [
+        (a.nome, a.a_fazer, a.em_andamento, a.concluidos) for a in resposta.andamento_por_time
+    ] == [("QA", 3, 4, 5)]
+    assert resposta.andamento_por_setor[0].id == setor_id
+    # Só os projetos com In Fixes e só os com rodada, na ordem dos projetos.
+    assert [(p.projeto, p.em_correcao) for p in resposta.em_correcao_por_projeto] == [
+        ("Clock 9.5", 3)
+    ]
+    assert [(p.projeto, p.aprovados, p.total) for p in resposta.pass_rate_por_projeto] == [
+        ("Clock 9.5", 8, 10)
+    ]
+    assert repo.resumir_time.call_args.args[1] == EscopoOverview(time_ids=gerente.times_no_escopo)
+
+
+@pytest.mark.asyncio
+async def test_obter_time_admin_consulta_a_unidade_inteira(repo):
+    repo.resumir_time.return_value = ResumoTime()
+
+    resposta = await _service(repo).obter_time(_usuario("ADMIN_UNIDADE"), "UTC")
+
+    assert repo.resumir_time.call_args.args[1] == EscopoOverview()
+    assert resposta.pass_rate_por_projeto == resposta.em_correcao_por_projeto == []
+
+
+@pytest.mark.asyncio
+async def test_obter_pessoal_devolve_os_projetos_do_dev_com_as_contagens(repo):
+    # Spec 064, RN-12: os cards do dev são do projeto escolhido.
+    projeto_id = uuid4()
+    repo.resumir_pessoal.return_value = ResumoPessoal(
+        por_projeto=[ProjetoPessoal(projeto_id, "Clock 9.5", "Clock", 2, 1, 5)]
+    )
+
+    resposta = await _service(repo).obter_pessoal(_usuario("USUARIO_PADRAO"), "UTC")
+
+    [projeto] = resposta.projetos
+    assert (projeto.projeto_id, projeto.projeto, projeto.app) == (projeto_id, "Clock 9.5", "Clock")
+    assert (projeto.concluidos, projeto.em_andamento, projeto.atribuidos) == (2, 1, 5)
