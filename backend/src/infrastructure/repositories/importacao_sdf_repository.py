@@ -43,10 +43,7 @@ class ImportacaoSdfRepositoryImpl(RepositoryBaseImpl[ImportacaoSdf, ImportacaoSd
     async def obter_ultima_ativa(
         self, unidade_id: UUID, projeto_id: UUID
     ) -> UltimaImportacaoSdf | None:
-        """A importação ativa mais recente do projeto (spec 067, RN-02), com o que o diálogo mostra.
-
-        O relatório tem um SDF ID, um device e uma data só (spec 060): qualquer execução serve.
-        """
+        # O relatório tem um SDF ID, um device e uma data só: qualquer execução serve.
         ultima = (
             select(ImportacaoSdfModel.id, ImportacaoSdfModel.importado_por)
             .where(

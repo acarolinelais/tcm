@@ -59,7 +59,7 @@ export const TOM_ACAO: Record<AcaoAuditoria, TomEtiqueta> = {
   pr_removido: tomDoToken("etiqueta-fixes"),
 };
 
-/** O Form Factor (e a importação SDF desfeita) se destacam da API, que é a origem comum. */
+/** O Form Factor se destaca da API, que é a origem comum. */
 export const tomOrigem = (origem: string) => tomDoToken(origem === "form_factor" || origem === "importacao_sdf_desfeita" ? "etiqueta-progress" : "etiqueta-neutro");
 
 /** A API devolve a origem como texto: uma origem que a tela ainda não conhece aparece como veio. */

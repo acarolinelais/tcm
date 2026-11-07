@@ -8,10 +8,8 @@ from src.domain.entities.caso_teste import StatusCasoTeste
 from src.domain.entities.importacao_sdf_status import ImportacaoSdfStatus
 from src.infrastructure.data.models.importacao_sdf_status_model import ImportacaoSdfStatusModel
 
-# Spec 067, RN-05: o caso volta só se a única mudança de Status dele desde a importação é a dela
-# (In Validation → Status aplicado). Qualquer outra mudança no histórico (ADR 0044) quer dizer que
-# alguém o moveu depois. O `>=` vale porque a auditoria grava com clock_timestamp(), depois do now()
-# que preencheu o created_at da importação; os dois usam o fuso da sessão.
+# O `>=` vale porque a auditoria grava com clock_timestamp(), depois do now() que preencheu o
+# created_at da importação; os dois usam o fuso da sessão.
 _REVERTIVEIS = text(
     """
     SELECT s.id, s.caso_teste_id, s.status_aplicado

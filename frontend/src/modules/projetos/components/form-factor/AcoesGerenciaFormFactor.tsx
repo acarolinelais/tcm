@@ -17,8 +17,7 @@ const MAX_PROBLEMAS = 5;
 
 /**
  * Import SDF Report do projeto aberto na General Results (spec 059, RN-03 a RN-05): importa assim que o arquivo é
- * escolhido. Undo last import desfaz a mais recente, depois de confirmar (spec 067). Só admin, gerente e KP com
- * `form_factor.importar` veem os botões.
+ * escolhido. Só admin, gerente e KP com `form_factor.importar` veem os botões.
  */
 export function AcoesGerenciaFormFactor({ projetoId, perfil }: { projetoId: string; perfil: PerfilAtual }) {
   const { t } = useTranslation();
@@ -28,7 +27,7 @@ export function AcoesGerenciaFormFactor({ projetoId, perfil }: { projetoId: stri
   const importacao = useImportarRelatorioSdf(projetoId);
   const ultima = useUltimaImportacaoSdf(projetoId, podeImportarSdf);
   const desfazer = useDesfazerImportacaoSdf(projetoId);
-  // O que o diálogo mostrou: um refetch com ele aberto não troca a importação confirmada (CA-10).
+  // O que o diálogo mostrou: um refetch com ele aberto não pode trocar a importação confirmada.
   const [alvo, setAlvo] = useState<UltimaImportacaoSdf | null>(null);
   const ocupado = importacao.isPending || desfazer.isPending;
 

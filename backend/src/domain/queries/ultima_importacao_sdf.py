@@ -5,8 +5,6 @@ from uuid import UUID
 
 @dataclass(frozen=True)
 class UltimaImportacaoSdf:
-    """O que o diálogo de desfazer mostra (spec 067, RN-03)."""
-
     id: UUID
     sdf_id: str
     device: str

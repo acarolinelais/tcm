@@ -187,7 +187,6 @@ class ImportacaoSdfServiceImpl:
             caso.aplicar_resultado_sdf(caso.id in aprovados, tc_id in com_fail)
             if caso.status is not anterior:
                 await self._caso_repo.atualizar(caso)
-                # Spec 067: guarda o Status aplicado para a importação poder ser desfeita.
                 await self._status_repo.adicionar(
                     ImportacaoSdfStatus(unidade_id, importacao.id, caso.id, caso.status)
                 )
@@ -204,7 +203,6 @@ class ImportacaoSdfServiceImpl:
     async def obter_ultima(
         self, usuario_atual: UsuarioAutenticado, projeto_id: UUID
     ) -> UltimaImportacaoSdfResponse | None:
-        """A importação que o botão Undo last import desfaz (spec 067, RN-02 e RN-03)."""
         projeto = await self._projeto_para_importar(usuario_atual, projeto_id)
         ultima = await self._importacao_repo.obter_ultima_ativa(
             usuario_atual.unidade_id, projeto.id
@@ -214,7 +212,6 @@ class ImportacaoSdfServiceImpl:
     async def desfazer(
         self, usuario_atual: UsuarioAutenticado, projeto_id: UUID, importacao_id: UUID
     ) -> DesfazerImportacaoSdfResponse:
-        """Desfaz a importação mais recente do projeto (spec 067): tudo entra no mesmo commit."""
         projeto = await self._projeto_para_importar(usuario_atual, projeto_id)
         unidade_id = usuario_atual.unidade_id
         importacao = await self._importacao_repo.obter_por_id(unidade_id, importacao_id)
@@ -240,8 +237,7 @@ class ImportacaoSdfServiceImpl:
             if caso is not None and caso.desfazer_resultado_sdf(item.status_aplicado):
                 await self._caso_repo.atualizar(caso)
                 revertidos += 1
-        # RN-07: a End date é recalculada sem os resultados desfeitos, depois do atualizar() (como
-        # na importação).
+        # Depois do atualizar(), que grava o caso inteiro e apagaria a End date recalculada.
         execucoes = await self._execucao_repo.listar_por_importacao(unidade_id, importacao.id)
         caso_ids = list({execucao.caso_teste_id for execucao in execucoes})
         await self._caso_repo.limpar_todos_aprovados(unidade_id, caso_ids)
@@ -252,7 +248,6 @@ class ImportacaoSdfServiceImpl:
     async def _projeto_para_importar(
         self, usuario_atual: UsuarioAutenticado, projeto_id: UUID
     ) -> Projeto:
-        """Importar e desfazer têm a mesma permissão (spec 060, RN-13; spec 067, RN-01)."""
         if usuario_atual.perfil_codigo not in {
             "ADMIN_UNIDADE",
             "GERENTE",

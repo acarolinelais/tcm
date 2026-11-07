@@ -313,7 +313,6 @@ export interface ImportacaoSdf {
   quantidade_resultados: number;
 }
 
-/** A importação que o Undo last import desfaz (spec 067). */
 export interface UltimaImportacaoSdf {
   id: string;
   sdf_id: string;

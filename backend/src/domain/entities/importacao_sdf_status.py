@@ -5,8 +5,6 @@ from src.domain.entities.caso_teste import StatusCasoTeste
 
 
 class ImportacaoSdfStatus(EntidadeTenant):
-    """Status que uma importação SDF aplicou num caso (spec 067), para desfazer depois."""
-
     def __init__(
         self,
         unidade_id: UUID,

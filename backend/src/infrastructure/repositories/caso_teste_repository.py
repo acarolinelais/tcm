@@ -201,7 +201,6 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
         )
 
     async def limpar_todos_aprovados(self, unidade_id: UUID, caso_ids: Sequence[UUID]) -> None:
-        """Zera a End date para o `marcar_todos_aprovados` recalcular sem a importação desfeita."""
         if not caso_ids:
             return
         await self.session.flush()

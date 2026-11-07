@@ -242,7 +242,6 @@ export function useImportarRelatorioSdf(projetoId: string) {
   });
 }
 
-/** Sob ["projetos", projetoId], então a importação e o desfazer a atualizam (spec 067). */
 export function useUltimaImportacaoSdf(projetoId: string, enabled: boolean) {
   return useQuery({
     queryKey: ["projetos", projetoId, "ultima-importacao-sdf"],
@@ -256,7 +255,7 @@ export function useDesfazerImportacaoSdf(projetoId: string) {
   return useMutation({
     mutationFn: (importacaoId: string) => formFactorApi.desfazerImportacao(projetoId, importacaoId),
     onSuccess: () => invalidarResultadosSdf(queryClient, projetoId),
-    // 409 (CA-10): outra importação entrou depois; a tela passa a mostrar ela e os resultados dela.
+    // 409: outra importação entrou depois; a tela passa a mostrar ela.
     onError: (error) => {
       if (error instanceof ApiError && error.problem.status === 409) return invalidarResultadosSdf(queryClient, projetoId);
     },

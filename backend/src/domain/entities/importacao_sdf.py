@@ -13,7 +13,6 @@ class ImportacaoSdf(EntidadeTenant):
         self.desfeita_em: datetime | None = None
 
     def desfazer(self, usuario_id: UUID) -> None:
-        """Spec 067, RN-04: a importação desfeita sai das telas e continua registrada."""
         if not self.ativo:
             raise ValueError("A importação já foi desfeita.")
         self.ativo = False

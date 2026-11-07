@@ -151,11 +151,7 @@ class CasoTeste(EntidadeTenant):
             self.status = StatusCasoTeste.IN_FIXES
 
     def desfazer_resultado_sdf(self, status_aplicado: StatusCasoTeste) -> bool:
-        """Volta para In Validation o caso que a importação desfeita mudou (spec 067, RN-05).
-
-        Só volta se o caso ainda está no Status que a importação aplicou; quem chama confere que
-        ninguém o moveu depois. Devolve se o Status mudou.
-        """
+        # Quem chama confere, pela auditoria, que ninguém moveu o caso depois da importação.
         if self.status is not status_aplicado:
             return False
         self.status = StatusCasoTeste.IN_VALIDATION
