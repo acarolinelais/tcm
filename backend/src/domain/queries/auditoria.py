@@ -20,6 +20,7 @@ class AcaoAuditoria(StrEnum):
 class OrigemAuditoria(StrEnum):
     API = "api"
     FORM_FACTOR = "form_factor"
+    IMPORTACAO_SDF_DESFEITA = "importacao_sdf_desfeita"
 
 
 @dataclass(frozen=True, kw_only=True)

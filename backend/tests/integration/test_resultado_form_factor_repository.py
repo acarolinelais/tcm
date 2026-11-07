@@ -261,6 +261,7 @@ class _Cenario:
                 ResultadoFormFactor(self.unidade_id, execucao.id, modelo_id, valor)
             )
         await self.session.flush()
+        return importacao
 
     async def rodada(self, caso_id, sdf_id, data):
         rodada = RodadaFormFactor(self.unidade_id, self.projeto_id, self.ana, sdf_id, data)

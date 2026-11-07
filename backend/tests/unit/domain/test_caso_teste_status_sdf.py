@@ -57,3 +57,20 @@ def test_ir_direto_para_done_nao_preenche_o_code_done():
     caso.aplicar_resultado_sdf(True, False)
 
     assert caso.code_done_em is None
+
+
+@pytest.mark.parametrize("aplicado", [S.DONE, S.IN_FIXES])
+def test_desfazer_volta_para_in_validation_o_status_aplicado(aplicado):
+    # Spec 067, CA-02.
+    caso = criar_caso(aplicado)
+
+    assert caso.desfazer_resultado_sdf(aplicado) is True
+    assert caso.status is S.IN_VALIDATION
+
+
+def test_falha_desfazer_nao_mexe_no_caso_movido_depois():
+    # Spec 067, CA-03: a importação levou para Done e alguém moveu para In Progress.
+    caso = criar_caso(S.IN_PROGRESS)
+
+    assert caso.desfazer_resultado_sdf(S.DONE) is False
+    assert caso.status is S.IN_PROGRESS

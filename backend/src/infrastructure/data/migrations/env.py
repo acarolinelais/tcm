@@ -9,6 +9,9 @@ from src.infrastructure.data.models.auth_sessao_model import AuthSessaoModel  # 
 from src.infrastructure.data.models.caso_teste_model import CasoTesteModel  # noqa: F401
 from src.infrastructure.data.models.execucao_sdf_model import ExecucaoSdfModel  # noqa: F401
 from src.infrastructure.data.models.importacao_sdf_model import ImportacaoSdfModel  # noqa: F401
+from src.infrastructure.data.models.importacao_sdf_status_model import (  # noqa: F401
+    ImportacaoSdfStatusModel,
+)
 from src.infrastructure.data.models.modelo_dispositivo_model import ModeloDispositivoModel  # noqa: F401
 from src.infrastructure.data.models.perfil_model import PerfilModel  # noqa: F401
 from src.infrastructure.data.models.permissao_model import PerfilPermissaoModel, PermissaoModel  # noqa: F401

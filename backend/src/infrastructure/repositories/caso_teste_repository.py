@@ -200,6 +200,18 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             .execution_options(synchronize_session=False)
         )
 
+    async def limpar_todos_aprovados(self, unidade_id: UUID, caso_ids: Sequence[UUID]) -> None:
+        """Zera a End date para o `marcar_todos_aprovados` recalcular sem a importação desfeita."""
+        if not caso_ids:
+            return
+        await self.session.flush()
+        await self.session.execute(
+            update(CasoTesteModel)
+            .where(CasoTesteModel.unidade_id == unidade_id, CasoTesteModel.id.in_(caso_ids))
+            .values(all_passed_em=None, updated_at=CasoTesteModel.updated_at)
+            .execution_options(synchronize_session=False)
+        )
+
     @staticmethod
     def _aprovados(unidade_id: UUID, projeto_id: UUID, caso_ids: Sequence[UUID]):
         """Casos (e a data mais recente) em que cada device ativo do projeto tem resultado e o mais

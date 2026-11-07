@@ -27,7 +27,11 @@ from src.application.schemas.importacao_projeto import (
     ImportarProjetoPlanilhaRequest,
     ImportarProjetoPlanilhaResponse,
 )
-from src.application.schemas.importacao_sdf import ImportarRelatorioSdfResponse
+from src.application.schemas.importacao_sdf import (
+    DesfazerImportacaoSdfResponse,
+    ImportarRelatorioSdfResponse,
+    UltimaImportacaoSdfResponse,
+)
 from src.application.schemas.kanban import KanbanResponse
 from src.application.schemas.navegacao_board import NavegacaoBoardResponse
 from src.application.schemas.projeto import (
@@ -261,6 +265,30 @@ async def importar_relatorio_sdf(
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
     return await service.importar(usuario_atual, projeto_id, arquivo.filename, await arquivo.read())
+
+
+@router.get(
+    "/{projeto_id}/relatorios-sdf/ultimo", response_model=UltimaImportacaoSdfResponse | None
+)
+async def obter_ultima_importacao_sdf(
+    projeto_id: UUID,
+    service: ImportacaoSdfService = Depends(get_importacao_sdf_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.obter_ultima(usuario_atual, projeto_id)
+
+
+@router.post(
+    "/{projeto_id}/relatorios-sdf/{importacao_id}/desfazer",
+    response_model=DesfazerImportacaoSdfResponse,
+)
+async def desfazer_importacao_sdf(
+    projeto_id: UUID,
+    importacao_id: UUID,
+    service: ImportacaoSdfService = Depends(get_importacao_sdf_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.desfazer(usuario_atual, projeto_id, importacao_id)
 
 
 @router.get("/{projeto_id}/form-factor", response_model=FormFactorResponse)

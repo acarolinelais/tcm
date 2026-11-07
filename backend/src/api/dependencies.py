@@ -46,6 +46,9 @@ from src.infrastructure.repositories.historico_form_factor_repository import (
     HistoricoFormFactorRepositoryImpl,
 )
 from src.infrastructure.repositories.importacao_sdf_repository import ImportacaoSdfRepositoryImpl
+from src.infrastructure.repositories.importacao_sdf_status_repository import (
+    ImportacaoSdfStatusRepositoryImpl,
+)
 from src.infrastructure.repositories.link_pull_request_repository import (
     LinkPullRequestRepositoryImpl,
 )
@@ -325,6 +328,7 @@ async def get_importacao_sdf_service(
         ResultadoFormFactorRepositoryImpl(session),
         UnitOfWorkImpl(session),
         RodadaFormFactorRepositoryImpl(session),
+        ImportacaoSdfStatusRepositoryImpl(session),
         ContextoAuditoriaImpl(session),
     )
 

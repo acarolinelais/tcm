@@ -6,7 +6,11 @@ from uuid import uuid4
 import pytest
 from src.application.services.importacao_sdf_service import ImportacaoSdfServiceImpl
 from src.application.validators.relatorio_sdf import RelatorioSdfInvalido
-from src.domain.common.exceptions import ForbiddenException, NotFoundException
+from src.domain.common.exceptions import (
+    ConflictException,
+    ForbiddenException,
+    NotFoundException,
+)
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.caso_teste import (
     CasoTeste,
@@ -15,10 +19,14 @@ from src.domain.entities.caso_teste import (
     SituacaoCasoTeste,
     StatusCasoTeste,
 )
+from src.domain.entities.execucao_sdf import ExecucaoSdf
+from src.domain.entities.importacao_sdf import ImportacaoSdf
+from src.domain.entities.importacao_sdf_status import ImportacaoSdfStatus
 from src.domain.entities.modelo_dispositivo import ModeloDispositivo
 from src.domain.entities.projeto import Projeto
 from src.domain.entities.projeto_modelo import ProjetoModelo
 from src.domain.entities.time import Time
+from src.domain.queries.ultima_importacao_sdf import UltimaImportacaoSdf
 from tests.unit.application.validators.test_relatorio_sdf import relatorio
 
 EXEMPLO = Path(__file__).parents[3] / "fixtures" / "sdf" / "123456-789012_0_Test_1_Detail.xlsx"
@@ -38,8 +46,9 @@ class _Contexto:
             self.resultados,
             self.uow,
             self.rodadas,
+            self.status_repo,
             self.contexto,
-        ) = (AsyncMock() for _ in range(11))
+        ) = (AsyncMock() for _ in range(12))
         unidade_id, time_id, setor_id, admin_id = (uuid4() for _ in range(4))
         self.usuario = UsuarioAutenticado(admin_id, unidade_id, "ADMIN_UNIDADE")
         self.projeto = Projeto(unidade_id, time_id, "Keyboard", one_ui)
@@ -83,6 +92,7 @@ class _Contexto:
             self.resultados,
             self.uow,
             self.rodadas,
+            self.status_repo,
             self.contexto,
         )
 
@@ -198,6 +208,12 @@ async def test_cada_caso_do_relatorio_segue_a_sua_regra_de_status(ctx):
     # Só os que mudaram são gravados, com a origem Form Factor, antes do UPDATE da End date.
     assert ordem == ["origem", "Keyboard_000001", "Keyboard_000002", "marcar", "commit"]
     ctx.contexto.definir_origem.assert_awaited_once_with("form_factor")
+    # Spec 067: o Status aplicado fica guardado para desfazer.
+    guardados = [chamada.args[0] for chamada in ctx.status_repo.adicionar.await_args_list]
+    assert [(g.caso_teste_id, g.status_aplicado) for g in guardados] == [
+        (casos["Keyboard_000001"].id, StatusCasoTeste.DONE),
+        (casos["Keyboard_000002"].id, StatusCasoTeste.IN_FIXES),
+    ]
 
 
 async def test_relatorio_recusado_nao_muda_status(ctx):
@@ -311,3 +327,139 @@ async def test_kp_de_outro_time_nao_ve_o_projeto(ctx):
         await ctx.importar(usuario=kp)
 
     ctx.nada_gravado()
+
+
+def _importacao_para_desfazer(ctx, *casos):
+    importacao = ImportacaoSdf(ctx.usuario.unidade_id, ctx.projeto.id, ctx.usuario.id)
+    importacao.created_at = datetime(2026, 11, 7, 10)
+    ctx.importacoes.obter_por_id.return_value = importacao
+    ctx.importacoes.obter_ultima_ativa.return_value = UltimaImportacaoSdf(
+        importacao.id, "SDF-1", "SM-S948B", datetime(2026, 11, 6), "Ana", importacao.created_at
+    )
+    ctx.execucoes.listar_por_importacao.return_value = [
+        ExecucaoSdf(
+            ctx.usuario.unidade_id, importacao.id, caso.id, "SDF-1", datetime(2026, 11, 6), "9.5"
+        )
+        for caso in casos
+    ]
+    return importacao
+
+
+def _caso(ctx, status):
+    return CasoTeste(
+        ctx.usuario.unidade_id,
+        ctx.projeto.id,
+        f"Keyboard_{uuid4().hex[:6]}",
+        CategoriaCasoTeste.A,
+        DificuldadeCasoTeste.LOW,
+        uuid4(),
+        uuid4(),
+        SituacaoCasoTeste.NEW,
+        status,
+    )
+
+
+async def test_desfazer_volta_o_status_e_recalcula_a_end_date_num_commit(ctx):
+    # Spec 067, CA-01, CA-02 e CA-04.
+    em_fixes = _caso(ctx, StatusCasoTeste.IN_FIXES)
+    so_resultado = _caso(ctx, StatusCasoTeste.IN_PROGRESS)
+    importacao = _importacao_para_desfazer(ctx, em_fixes, so_resultado)
+    ctx.status_repo.listar_revertiveis.return_value = (
+        ImportacaoSdfStatus(
+            ctx.usuario.unidade_id, importacao.id, em_fixes.id, StatusCasoTeste.IN_FIXES
+        ),
+    )
+    ctx.caso_repo.obter_por_id.return_value = em_fixes
+    ordem = []
+    ctx.contexto.definir_origem.side_effect = lambda origem: ordem.append(origem)
+    ctx.caso_repo.atualizar.side_effect = lambda _: ordem.append("caso")
+    ctx.caso_repo.limpar_todos_aprovados.side_effect = lambda *_: ordem.append("limpar")
+    ctx.caso_repo.marcar_todos_aprovados.side_effect = lambda *_: ordem.append("marcar")
+    ctx.uow.commit.side_effect = lambda: ordem.append("commit")
+
+    resposta = await ctx.service.desfazer(ctx.usuario, ctx.projeto.id, importacao.id)
+
+    assert resposta.casos_revertidos == 1
+    assert em_fixes.status is StatusCasoTeste.IN_VALIDATION
+    assert (importacao.ativo, importacao.desfeita_por) == (False, ctx.usuario.id)
+    ctx.importacoes.atualizar.assert_awaited_once_with(importacao)
+    assert ordem == ["importacao_sdf_desfeita", "caso", "limpar", "marcar", "commit"]
+    ctx.status_repo.listar_revertiveis.assert_awaited_once_with(
+        ctx.usuario.unidade_id, importacao.id, importacao.created_at
+    )
+    assert set(ctx.caso_repo.limpar_todos_aprovados.await_args.args[1]) == {
+        em_fixes.id,
+        so_resultado.id,
+    }
+
+
+async def test_falha_desfazer_quando_outra_importacao_entrou_no_meio(ctx):
+    # CA-10: o diálogo mostrou a A, mas a B já é a última.
+    importacao = _importacao_para_desfazer(ctx)
+    ctx.importacoes.obter_ultima_ativa.return_value = UltimaImportacaoSdf(
+        uuid4(), "SDF-2", "SM-S948B", datetime(2026, 11, 7), "Bia", datetime(2026, 11, 7, 11)
+    )
+
+    with pytest.raises(ConflictException):
+        await ctx.service.desfazer(ctx.usuario, ctx.projeto.id, importacao.id)
+
+    ctx.importacoes.atualizar.assert_not_awaited()
+    ctx.uow.commit.assert_not_awaited()
+
+
+@pytest.mark.parametrize("situacao", ["inexistente", "desfeita", "outro_projeto"])
+async def test_falha_desfazer_importacao_que_nao_existe_no_projeto(ctx, situacao):
+    # CA-09.
+    importacao = _importacao_para_desfazer(ctx)
+    if situacao == "inexistente":
+        ctx.importacoes.obter_por_id.return_value = None
+    elif situacao == "desfeita":
+        importacao.desfazer(uuid4())
+    else:
+        importacao.projeto_id = uuid4()
+
+    with pytest.raises(NotFoundException):
+        await ctx.service.desfazer(ctx.usuario, ctx.projeto.id, importacao.id)
+
+    ctx.uow.commit.assert_not_awaited()
+
+
+async def test_falha_dev_nao_desfaz_nem_ve_a_ultima(ctx):
+    # CA-08.
+    dev = UsuarioAutenticado(
+        uuid4(),
+        ctx.usuario.unidade_id,
+        "USUARIO_PADRAO",
+        permissoes=frozenset({"form_factor.importar"}),
+    )
+
+    with pytest.raises(ForbiddenException):
+        await ctx.service.desfazer(dev, ctx.projeto.id, uuid4())
+    with pytest.raises(ForbiddenException):
+        await ctx.service.obter_ultima(dev, ctx.projeto.id)
+    ctx.uow.commit.assert_not_awaited()
+
+
+async def test_falha_kp_de_outro_time_nao_desfaz(ctx):
+    # CA-11.
+    kp = UsuarioAutenticado(
+        uuid4(),
+        ctx.usuario.unidade_id,
+        "KP",
+        permissoes=frozenset({"form_factor.importar"}),
+        time_ids=(uuid4(),),
+    )
+
+    with pytest.raises(NotFoundException):
+        await ctx.service.desfazer(kp, ctx.projeto.id, uuid4())
+    ctx.uow.commit.assert_not_awaited()
+
+
+async def test_obter_ultima_devolve_o_que_o_dialogo_mostra_ou_nada(ctx):
+    importacao = _importacao_para_desfazer(ctx)
+
+    ultima = await ctx.service.obter_ultima(ctx.usuario, ctx.projeto.id)
+    ctx.importacoes.obter_ultima_ativa.return_value = None
+
+    assert (ultima.id, ultima.sdf_id, ultima.device) == (importacao.id, "SDF-1", "SM-S948B")
+    assert await ctx.service.obter_ultima(ctx.usuario, ctx.projeto.id) is None
