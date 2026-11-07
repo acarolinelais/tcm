@@ -109,17 +109,17 @@ async def test_migration_seed_gerente_e_responsavel_usuario():
                         UsuarioModel.unidade_id == ivan.unidade_id,
                         UsuarioModel.user_id.in_(
                             (
-                                "a.fagundes",
+                                "afonso.fagundes",
                                 "maria.pernalete",
                                 "caroline.silva",
                                 "raquel.batista",
                                 "isabel.gama",
                                 "nivea.pereira",
-                                "victoria.andrade",
+                                "victoria.santos",
                                 "janderson.brandao",
                                 "gilmar.silva",
                                 "marcio.marques",
-                                "guilherme.rabaioli",
+                                "guilherme.vieira",
                             )
                         ),
                     )

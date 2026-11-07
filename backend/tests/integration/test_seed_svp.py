@@ -29,19 +29,19 @@ pytestmark = pytest.mark.skipif(
 
 USUARIOS = {
     "ivan.moreira@sidia.com": ("Ivan Moreira", "ivan.moreira", "GERENTE"),
-    "a.fagundes@sidia.com": ("Afonso Fagundes", "a.fagundes", "KP"),
+    "afonso.fagundes@sidia.com": ("Afonso Fagundes", "afonso.fagundes", "KP"),
     "maria.pernalete@sidia.com": ("Maria Pernalete", "maria.pernalete", "KP"),
     "caroline.silva@sidia.com": ("Caroline Laís", "caroline.silva", "USUARIO_PADRAO"),
     "raquel.batista@sidia.com": ("Raquel Batista", "raquel.batista", "USUARIO_PADRAO"),
     "isabel.gama@sidia.com": ("Isabel Gama", "isabel.gama", "USUARIO_PADRAO"),
     "nivea.pereira@sidia.com": ("Nivea Pereira", "nivea.pereira", "USUARIO_PADRAO"),
-    "victoria.andrade@sidia.com": ("Victoria Andrade", "victoria.andrade", "USUARIO_PADRAO"),
+    "victoria.santos@sidia.com": ("Victoria Andrade", "victoria.santos", "USUARIO_PADRAO"),
     "janderson.brandao@sidia.com": ("Janderson Brandão", "janderson.brandao", "USUARIO_PADRAO"),
     "gilmar.silva@sidia.com": ("Gilmar Silva", "gilmar.silva", "USUARIO_PADRAO"),
     "marcio.marques@sidia.com": ("Marcio Marques", "marcio.marques", "USUARIO_PADRAO"),
-    "guilherme.rabaioli@sidia.com": (
+    "guilherme.vieira@sidia.com": (
         "Guilherme Rabaioli",
-        "guilherme.rabaioli",
+        "guilherme.vieira",
         "USUARIO_PADRAO",
     ),
 }

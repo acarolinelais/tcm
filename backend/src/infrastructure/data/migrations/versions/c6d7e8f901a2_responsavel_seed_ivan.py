@@ -11,17 +11,17 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 USER_IDS = (
-    "a.fagundes",
+    "afonso.fagundes",
     "maria.pernalete",
     "caroline.silva",
     "raquel.batista",
     "isabel.gama",
     "nivea.pereira",
-    "victoria.andrade",
+    "victoria.santos",
     "janderson.brandao",
     "gilmar.silva",
     "marcio.marques",
-    "guilherme.rabaioli",
+    "guilherme.vieira",
 )
 
 
