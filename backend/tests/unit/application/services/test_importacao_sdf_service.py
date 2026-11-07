@@ -13,6 +13,7 @@ from src.domain.entities.caso_teste import (
     CategoriaCasoTeste,
     DificuldadeCasoTeste,
     SituacaoCasoTeste,
+    StatusCasoTeste,
 )
 from src.domain.entities.modelo_dispositivo import ModeloDispositivo
 from src.domain.entities.projeto import Projeto
@@ -37,7 +38,8 @@ class _Contexto:
             self.resultados,
             self.uow,
             self.rodadas,
-        ) = (AsyncMock() for _ in range(10))
+            self.contexto,
+        ) = (AsyncMock() for _ in range(11))
         unidade_id, time_id, setor_id, admin_id = (uuid4() for _ in range(4))
         self.usuario = UsuarioAutenticado(admin_id, unidade_id, "ADMIN_UNIDADE")
         self.projeto = Projeto(unidade_id, time_id, "Keyboard", one_ui)
@@ -48,18 +50,28 @@ class _Contexto:
             ProjetoModelo(unidade_id, self.projeto.id, self.modelo.id)
         ]
         self.modelo_repo.listar_por_ids.return_value = [self.modelo]
-        self.caso_repo.obter_por_projeto_tc_id.side_effect = lambda _u, _p, tc_id: CasoTeste(
-            unidade_id,
-            self.projeto.id,
-            tc_id,
-            CategoriaCasoTeste.A,
-            DificuldadeCasoTeste.LOW,
-            uuid4(),
-            uuid4(),
-            SituacaoCasoTeste.NEW,
-        )
+        # Status de cada TC (To-Do por padrão) e os casos devolvidos, para o teste conferir depois.
+        self.status_por_tc: dict[str, StatusCasoTeste] = {}
+        self.casos: dict[str, CasoTeste] = {}
+
+        def caso(_u, _p, tc_id):
+            self.casos[tc_id] = CasoTeste(
+                unidade_id,
+                self.projeto.id,
+                tc_id,
+                CategoriaCasoTeste.A,
+                DificuldadeCasoTeste.LOW,
+                uuid4(),
+                uuid4(),
+                SituacaoCasoTeste.NEW,
+                self.status_por_tc.get(tc_id, StatusCasoTeste.TO_DO),
+            )
+            return self.casos[tc_id]
+
+        self.caso_repo.obter_por_projeto_tc_id.side_effect = caso
         self.rodadas.existe_sdf_id_no_projeto.return_value = False
         self.execucoes.existe_sdf_id_importado_no_projeto.return_value = False
+        self.caso_repo.listar_todos_aprovados.return_value = set()
         self.service = ImportacaoSdfServiceImpl(
             self.projeto_repo,
             self.time_repo,
@@ -71,6 +83,7 @@ class _Contexto:
             self.resultados,
             self.uow,
             self.rodadas,
+            self.contexto,
         )
 
     async def importar(self, nome=NOME, conteudo=None, usuario=None):
@@ -144,6 +157,59 @@ async def test_relatorio_recusado_nao_confere_a_finalizacao_de_tudo(ctx):
     await recusado(ctx, conteudo=conteudo)
 
     ctx.caso_repo.marcar_todos_aprovados.assert_not_awaited()
+
+
+async def test_cada_caso_do_relatorio_segue_a_sua_regra_de_status(ctx):
+    # Spec 066, CA-07: tudo PASS, FAIL em In Validation e FAIL fora de In Validation juntos.
+    ctx.status_por_tc.update(
+        {
+            "Keyboard_000001": StatusCasoTeste.IN_VALIDATION,
+            "Keyboard_000002": StatusCasoTeste.IN_VALIDATION,
+            "Keyboard_000003": StatusCasoTeste.IN_PROGRESS,
+            "Keyboard_000004": StatusCasoTeste.IN_VALIDATION,
+        }
+    )
+    casos = ctx.casos
+    ctx.caso_repo.listar_todos_aprovados.side_effect = lambda *_: {casos["Keyboard_000001"].id}
+    ordem = []
+    ctx.contexto.definir_origem.side_effect = lambda _: ordem.append("origem")
+    ctx.caso_repo.atualizar.side_effect = lambda caso: ordem.append(caso.tc_id)
+    ctx.caso_repo.marcar_todos_aprovados.side_effect = lambda *_: ordem.append("marcar")
+    ctx.uow.commit.side_effect = lambda: ordem.append("commit")
+    conteudo = relatorio(
+        [
+            ("Keyboard_000001.py", "PASS", "", "Keyboard_A_OneUI95.ts"),
+            # Maiúsculas e espaços não importam (RN-03): este FAIL é o que leva a In Fixes.
+            ("Keyboard_000002.py", " Fail ", "", "Keyboard_A_OneUI95.ts"),
+            ("Keyboard_000003.py", "FAIL", "", "Keyboard_A_OneUI95.ts"),
+            ("Keyboard_000004.py", "N/A", "", "Keyboard_A_OneUI95.ts"),
+        ]
+    )
+
+    await ctx.importar(conteudo=conteudo)
+
+    assert {tc_id: caso.status for tc_id, caso in casos.items()} == {
+        "Keyboard_000001": StatusCasoTeste.DONE,
+        "Keyboard_000002": StatusCasoTeste.IN_FIXES,
+        # RN-05: fora de In Validation o FAIL só vai para o histórico.
+        "Keyboard_000003": StatusCasoTeste.IN_PROGRESS,
+        "Keyboard_000004": StatusCasoTeste.IN_VALIDATION,
+    }
+    # Só os que mudaram são gravados, com a origem Form Factor, antes do UPDATE da End date.
+    assert ordem == ["origem", "Keyboard_000001", "Keyboard_000002", "marcar", "commit"]
+    ctx.contexto.definir_origem.assert_awaited_once_with("form_factor")
+
+
+async def test_relatorio_recusado_nao_muda_status(ctx):
+    # Spec 066, CA-11 (falha).
+    conteudo = relatorio(
+        [("Keyboard_000001.py", "PASS", "", "Keyboard_A_OneUI95.ts")], device="SM-X"
+    )
+
+    await recusado(ctx, conteudo=conteudo)
+
+    ctx.caso_repo.listar_todos_aprovados.assert_not_awaited()
+    ctx.caso_repo.atualizar.assert_not_awaited()
 
 
 async def test_device_do_c4_ignora_maiusculas_e_espacos(ctx):

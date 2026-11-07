@@ -3,13 +3,13 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { casosTesteApi, formFactorApi, projetosApi } from "../api/projetos.api";
-import { useCasosTeste, useCriarProjeto, useCriarRodadaFormFactor, useFormFactor, useFormFactorResultados, useHistoricoProjeto, useProjetosPessoais, useResumoExecucoes, useTransferirCasoTeste } from "./useProjetos";
+import { useCasosTeste, useCriarProjeto, useCriarRodadaFormFactor, useFormFactor, useFormFactorResultados, useHistoricoProjeto, useImportarRelatorioSdf, useProjetosPessoais, useResumoExecucoes, useTransferirCasoTeste } from "./useProjetos";
 import type { PerfilAtual } from "@/core/auth/api";
 
 vi.mock("../api/projetos.api", () => ({
   casosTesteApi: { listar: vi.fn(), transferirParaBackup: vi.fn() },
   projetosApi: { criar: vi.fn(), listar: vi.fn() },
-  formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), historicoProjeto: vi.fn(), resumoExecucoes: vi.fn(), criarRodada: vi.fn(), registrarResultadosRodada: vi.fn() }, modelosDispositivoApi: {},
+  formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), historicoProjeto: vi.fn(), resumoExecucoes: vi.fn(), criarRodada: vi.fn(), registrarResultadosRodada: vi.fn(), importar: vi.fn() }, modelosDispositivoApi: {},
 }));
 
 function criarWrapper() {
@@ -114,6 +114,20 @@ describe("hooks de projetos", () => {
     rerender({ projetoId: "p2", page: 1 });
     expect(result.current.data).toBeUndefined();
     expect(result.current.isLoading).toBe(true);
+  });
+
+  it("a importação SDF recarrega os casos, o Board e o Form Factor do projeto, sem tocar em outro projeto (spec 066)", async () => {
+    vi.mocked(formFactorApi.importar).mockResolvedValue({ importacao_id: "i", quantidade_execucoes: 1, quantidade_resultados: 1 });
+    const client = new QueryClient();
+    const doProjeto = [["projetos", "p", "test-cases", 1, 20], ["projetos", "p", "kanban", "u", "kp"], ["projetos", "p", "form-factor-results", {}], ["form-factor", "historico", "p", {}]];
+    for (const chave of [...doProjeto, ["projetos", "outro", "test-cases", 1, 20]]) client.setQueryData(chave, {});
+    const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    const { result } = renderHook(() => useImportarRelatorioSdf("p"), { wrapper });
+
+    await result.current.mutateAsync(new File(["x"], "123-4_0_Test_1_Detail.xlsx"));
+
+    for (const chave of doProjeto) expect(client.getQueryState(chave)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(["projetos", "outro", "test-cases", 1, 20])?.isInvalidated).toBe(false);
   });
 
   it("invalida consultas de casos, entrada e seletor após transferência", async () => {

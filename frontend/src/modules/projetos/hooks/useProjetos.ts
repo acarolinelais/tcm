@@ -238,9 +238,10 @@ export function useImportarRelatorioSdf(projetoId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (arquivo: File) => formFactorApi.importar(projetoId, arquivo),
-    // A aba Form Factor do projeto e a tabela da General Results mostram os resultados novos (spec 059, CA-09).
+    // Os resultados novos aparecem no Form Factor e na General Results (spec 059, CA-09), e o Status que a
+    // importação muda aparece na tabela de Test Cases e no Board (spec 066, RN-10): tudo sob ["projetos", projetoId].
     onSuccess: () => Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["projetos", projetoId, "form-factor"] }),
+      queryClient.invalidateQueries({ queryKey: ["projetos", projetoId] }),
       queryClient.invalidateQueries({ queryKey: ["form-factor", "historico", projetoId] }),
     ]),
   });

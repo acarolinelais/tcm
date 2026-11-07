@@ -161,19 +161,49 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             for modelo, nome, cor in linhas
         )
 
+    async def listar_todos_aprovados(
+        self, unidade_id: UUID, projeto_id: UUID, caso_ids: Sequence[UUID]
+    ) -> set[UUID]:
+        """Casos com o último resultado de cada device do projeto em PASS (spec 066, RN-02).
+
+        Diferente do `all_passed_em`, que fica fixo, isto reflete os resultados de hoje.
+        """
+        if not caso_ids:
+            return set()
+        await self.session.flush()
+        aprovados = self._aprovados(unidade_id, projeto_id, caso_ids)
+        return set((await self.session.execute(select(aprovados.c.caso_teste_id))).scalars())
+
     async def marcar_todos_aprovados(
         self, unidade_id: UUID, projeto_id: UUID, caso_ids: Sequence[UUID]
     ) -> None:
         """Grava a finalização de tudo (spec 065) nos casos que fecharam e ainda não a têm.
 
-        Fecha quando cada device ativo do projeto tem resultado e o mais recente de cada um é PASS,
-        com a ordem de "mais recente" da General Results. A data é a mais recente entre esses
-        resultados (RN-03 a RN-08). A migration g065 repete esta regra em SQL para o retroativo.
+        A data é a mais recente entre os últimos resultados de cada device (RN-03 a RN-08). A
+        migration g065 repete esta regra em SQL para o retroativo.
         """
         if not caso_ids:
             return
         # Os resultados recém-adicionados na sessão precisam estar no banco para o UPDATE.
         await self.session.flush()
+        aprovados = self._aprovados(unidade_id, projeto_id, caso_ids)
+        await self.session.execute(
+            update(CasoTesteModel)
+            .where(
+                CasoTesteModel.id == aprovados.c.caso_teste_id,
+                CasoTesteModel.unidade_id == unidade_id,
+                CasoTesteModel.all_passed_em.is_(None),
+            )
+            # Mantém o updated_at: sem isso o onupdate do model muda a End date de um caso Done.
+            .values(all_passed_em=aprovados.c.data, updated_at=CasoTesteModel.updated_at)
+            # Nenhum caminho lê o caso da sessão depois deste UPDATE (plan, Riscos).
+            .execution_options(synchronize_session=False)
+        )
+
+    @staticmethod
+    def _aprovados(unidade_id: UUID, projeto_id: UUID, caso_ids: Sequence[UUID]):
+        """Casos (e a data mais recente) em que cada device ativo do projeto tem resultado e o mais
+        recente de cada um é PASS, com a ordem de "mais recente" da General Results."""
         posicao = (
             func.row_number()
             .over(
@@ -224,18 +254,7 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             )
             .subquery()
         )
-        await self.session.execute(
-            update(CasoTesteModel)
-            .where(
-                CasoTesteModel.id == aprovados.c.caso_teste_id,
-                CasoTesteModel.unidade_id == unidade_id,
-                CasoTesteModel.all_passed_em.is_(None),
-            )
-            # Mantém o updated_at: sem isso o onupdate do model muda a End date de um caso Done.
-            .values(all_passed_em=aprovados.c.data, updated_at=CasoTesteModel.updated_at)
-            # Nenhum caminho lê o caso da sessão depois deste UPDATE (plan, Riscos).
-            .execution_options(synchronize_session=False)
-        )
+        return aprovados
 
     def _to_entity(self, model: CasoTesteModel) -> CasoTeste:
         caso = CasoTeste(

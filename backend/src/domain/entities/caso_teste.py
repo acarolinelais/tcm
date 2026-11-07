@@ -136,6 +136,20 @@ class CasoTeste(EntidadeTenant):
         elif modelos_ids and all(resultados.get(modelo_id) == "PASS" for modelo_id in modelos_ids):
             self.status = StatusCasoTeste.DONE
 
+    def aplicar_resultado_sdf(self, tudo_pass: bool, fail_no_relatorio: bool) -> None:
+        """Status pelo relatório SDF importado (spec 066, RN-04 a RN-07).
+
+        `tudo_pass`: o último resultado de cada device do projeto é PASS. `fail_no_relatorio`: o
+        resultado deste relatório é FAIL. Só um caso em validação muda de Status (RN-05); fora dela
+        o relatório grava o resultado no histórico e quem move o caso é uma pessoa.
+        """
+        if self.status is not StatusCasoTeste.IN_VALIDATION:
+            return
+        if tudo_pass:
+            self.status = StatusCasoTeste.DONE
+        elif fail_no_relatorio:
+            self.status = StatusCasoTeste.IN_FIXES
+
     def cancelar(self, justificativa_exclusao: str) -> None:
         self._mudar_status(StatusCasoTeste.CANCELLED, justificativa_exclusao)
 

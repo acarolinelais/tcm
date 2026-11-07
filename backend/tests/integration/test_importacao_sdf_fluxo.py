@@ -5,12 +5,13 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from src.application.services.form_factor_service import FormFactorServiceImpl
 from src.application.services.importacao_sdf_service import ImportacaoSdfServiceImpl
 from src.application.validators.relatorio_sdf import RelatorioSdfInvalido
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
+from src.infrastructure.data.auditoria import ContextoAuditoriaImpl
 from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
 from src.infrastructure.data.models.execucao_sdf_model import ExecucaoSdfModel
 from src.infrastructure.data.models.modelo_dispositivo_model import ModeloDispositivoModel
@@ -34,6 +35,7 @@ from src.infrastructure.repositories.rodada_form_factor_repository import (
 )
 from src.infrastructure.repositories.time_repository import TimeRepositoryImpl
 from tests.integration.test_resultado_form_factor_repository import _Cenario
+from tests.unit.application.validators.test_relatorio_sdf import relatorio
 
 pytestmark = pytest.mark.skipif(
     not os.environ.get("SDF_TEST_DATABASE_URL"),
@@ -81,6 +83,7 @@ def _servicos(session):
         ResultadoFormFactorRepositoryImpl(session),
         UnitOfWorkImpl(session),
         RodadaFormFactorRepositoryImpl(session),
+        ContextoAuditoriaImpl(session),
     )
     form_factor = FormFactorServiceImpl(
         ProjetoRepositoryImpl(session),
@@ -164,6 +167,46 @@ async def test_importacao_que_completa_os_devices_grava_a_finalizacao_de_tudo(ce
         ).all()
     )
     assert datas == {fechado: datetime(2026, 10, 21, 18, 43, 35), aberto: None}
+
+
+@pytest.mark.asyncio
+async def test_importacao_muda_o_status_e_registra_a_origem_form_factor(cenario):
+    # Spec 066: CA-01 (tudo PASS → Done), CA-02 (FAIL em In Validation → In Fixes) e CA-08.
+    importacao, _ = _servicos(cenario.session)
+    fechado, falhou, parcial = cenario.casos[0], cenario.casos[1], cenario.casos[2]
+    await cenario.importar(fechado, "SDF-2010", datetime(2026, 10, 20, 9), {cenario.s25: "PASS"})
+    conteudo = relatorio(
+        [
+            ("Keyboard_000001.py", "PASS", "", "Keyboard_A_OneUI95.ts"),
+            ("Keyboard_000002.py", "FAIL", "", "Keyboard_A_OneUI95.ts"),
+            ("Keyboard_000003.py", "PASS", "", "Keyboard_A_OneUI95.ts"),
+        ]
+    )
+
+    await importacao.importar(
+        _gerente(cenario), cenario.projeto_id, "777777-000001_0_Test_1_Detail.xlsx", conteudo
+    )
+
+    status = dict(
+        (
+            await cenario.session.execute(
+                select(CasoTesteModel.id, CasoTesteModel.status).where(
+                    CasoTesteModel.id.in_((fechado, falhou, parcial))
+                )
+            )
+        ).all()
+    )
+    assert status == {fechado: "Done", falhou: "InFixes", parcial: "InValidation"}
+    origens = (
+        await cenario.session.execute(
+            text(
+                "SELECT row_id, origem FROM auditoria_alteracoes "
+                "WHERE row_id IN (:fechado, :falhou, :parcial) AND 'status' = ANY(changed_fields)"
+            ),
+            {"fechado": fechado, "falhou": falhou, "parcial": parcial},
+        )
+    ).all()
+    assert sorted(origens) == sorted([(fechado, "form_factor"), (falhou, "form_factor")])
 
 
 @pytest.mark.asyncio
