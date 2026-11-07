@@ -80,6 +80,7 @@ describe("ResultadosGeraisPage", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("General Results");
     expect(screen.getAllByRole("tab").map((aba) => aba.textContent)).toEqual(["Clock", "Gallery"]);
     expect(screen.getByRole("tab", { name: "Clock" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("button", { name: "Next project" })).not.toBeInTheDocument();
     expect(useHistoricoProjeto).toHaveBeenLastCalledWith("clock", comPagina(), perfil);
 
     await user.click(screen.getByRole("tab", { name: "Gallery" }));
@@ -115,6 +116,49 @@ describe("ResultadosGeraisPage", () => {
     renderPage(perfil, "/?projeto=notes");
     expect(screen.getByRole("tab", { name: "Notes" })).toHaveAttribute("aria-selected", "true");
     expect(useHistoricoProjeto).toHaveBeenLastCalledWith("notes", comPagina(), perfil);
+  });
+
+  it("com mais de três projetos mostra três abas, e as setas abrem o projeto vizinho, deslizando a janela na borda", async () => {
+    const cinco = ["Clock", "Gallery", "Notes", "Weather", "Camera"].map((app) => ({ id: app.toLowerCase(), nome: `${app} 9.5`, app }));
+    vi.mocked(useProjetosSeletor).mockReturnValue({ data: { pages: [{ items: cinco, page: 1, page_size: 100, total_count: 5 }] }, isError: false, isLoading: false } as never);
+    const user = userEvent.setup();
+    renderPage();
+    const abas = () => screen.getAllByRole("tab").map((aba) => aba.textContent);
+    const aberta = () => screen.getByRole("tab", { selected: true }).textContent;
+
+    expect(abas()).toEqual(["Clock", "Gallery", "Notes"]);
+    expect(screen.getByRole("button", { name: "Previous project" })).toBeDisabled();
+    expect(screen.getByRole("tab", { name: "Clock" }).closest("[data-abas-direcao]")).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Next project" }));
+    expect(aberta()).toBe("Gallery");
+    expect(abas()).toEqual(["Clock", "Gallery", "Notes"]);
+    expect(screen.getByTestId("endereco")).toHaveTextContent("?projeto=gallery");
+
+    await user.click(screen.getByRole("button", { name: "Next project" }));
+    await user.click(screen.getByRole("button", { name: "Next project" }));
+    // Na borda, a janela anda uma aba, e a fila entra pela direita.
+    expect(aberta()).toBe("Weather");
+    expect(abas()).toEqual(["Gallery", "Notes", "Weather"]);
+    expect(screen.getByRole("tab", { name: "Weather" }).closest("[data-abas-direcao]")).toHaveAttribute("data-abas-direcao", "proximo");
+
+    await user.click(screen.getByRole("button", { name: "Next project" }));
+    expect(aberta()).toBe("Camera");
+    expect(abas()).toEqual(["Notes", "Weather", "Camera"]);
+    expect(screen.getByRole("button", { name: "Next project" })).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Previous project" }));
+    expect(aberta()).toBe("Weather");
+    expect(abas()).toEqual(["Notes", "Weather", "Camera"]);
+  });
+
+  it("o projeto do endereço fora das três primeiras abre com a janela mostrando ele", () => {
+    const cinco = ["Clock", "Gallery", "Notes", "Weather", "Camera"].map((app) => ({ id: app.toLowerCase(), nome: `${app} 9.5`, app }));
+    vi.mocked(useProjetosSeletor).mockReturnValue({ data: { pages: [{ items: cinco, page: 1, page_size: 100, total_count: 5 }] }, isError: false, isLoading: false } as never);
+    renderPage(perfil, "/?projeto=camera");
+
+    expect(screen.getAllByRole("tab").map((aba) => aba.textContent)).toEqual(["Notes", "Weather", "Camera"]);
+    expect(screen.getByRole("tab", { name: "Camera" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("o projeto do endereço abre direto (spec 053, CA-04)", () => {

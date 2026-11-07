@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@heroui/react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useOutletContext, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
@@ -23,6 +24,10 @@ import { ResumoExecucoesDrawer } from "../components/resultados-gerais/ResumoExe
 const SEM_FILTROS: FiltrosHistoricoProjeto = {};
 const NENHUM_EXPANDIDO: ReadonlySet<string> = new Set();
 
+const ABAS_POR_VEZ = 3;
+// Setas soltas: círculo suave no hover, resposta no toque e apagadas quando desabilitadas.
+const classeSeta = "rounded-full text-muted transition-[background-color,color,scale] duration-150 ease-out hover:bg-panel hover:text-body data-[pressed]:scale-[0.92] data-[disabled]:opacity-40 motion-reduce:transition-none motion-reduce:data-[pressed]:scale-100";
+
 /** General Results (specs 032, 053 e 059): uma aba por projeto do escopo, com o histórico por data do projeto aberto. */
 export function ResultadosGeraisPage() {
   const { t } = useTranslation();
@@ -44,6 +49,13 @@ export function ResultadosGeraisPage() {
   const pedido = parametros.get("projeto");
   const projetoAberto = todos.find((projeto) => projeto.id === pedido) ?? (pedido && hasNextPage ? undefined : projetos[0]);
   const abas = filtrarEncerrados(todos, comEncerrados, projetoAberto?.id);
+  // Três abas por vez. As setas abrem o projeto vizinho; a janela só anda quando ele estaria fora dela, e a última
+  // posição escolhida fica enquanto o projeto aberto estiver à vista.
+  const indiceAberto = Math.max(0, abas.findIndex((projeto) => projeto.id === projetoAberto?.id));
+  const [inicioJanela, setInicioJanela] = useState(0);
+  const inicio = Math.min(Math.max(0, abas.length - ABAS_POR_VEZ), indiceAberto < inicioJanela ? indiceAberto : indiceAberto >= inicioJanela + ABAS_POR_VEZ ? indiceAberto - ABAS_POR_VEZ + 1 : inicioJanela);
+  const abasVisiveis = abas.slice(inicio, inicio + ABAS_POR_VEZ);
+  const [direcaoAbas, setDirecaoAbas] = useState<"proximo" | "anterior">();
   const projetoId = projetoAberto?.id ?? "";
   const [filtros, setFiltros] = useState(SEM_FILTROS);
   // Página e tamanho (spec 033): fora de `filtros`, que só guarda o que a pessoa filtrou.
@@ -91,6 +103,14 @@ export function ResultadosGeraisPage() {
     else setParametros({}, { replace: true });
   }
 
+  function irParaVizinho(passo: 1 | -1) {
+    const destino = indiceAberto + passo;
+    const novoInicio = destino < inicio ? destino : destino >= inicio + ABAS_POR_VEZ ? destino - ABAS_POR_VEZ + 1 : inicio;
+    setInicioJanela(novoInicio);
+    setDirecaoAbas(passo > 0 ? "proximo" : "anterior");
+    trocarProjeto(abas[destino].id);
+  }
+
   function alternarLinha(casoId: string) {
     setExpandidos((atuais) => {
       const proximos = new Set(atuais);
@@ -132,7 +152,16 @@ export function ResultadosGeraisPage() {
     <PageTabs
       aria-label={t("generalResults")}
       // Só o nome do app, sem a versão (spec 059, RN-07).
-      tabs={abas.map((projeto) => ({ id: projeto.id, label: projeto.app }))}
+      tabs={abasVisiveis.map((projeto) => ({ id: projeto.id, label: projeto.app }))}
+      direcaoAbas={direcaoAbas}
+      navegacao={abas.length > ABAS_POR_VEZ && <>
+        <Button isIconOnly size="sm" variant="ghost" className={classeSeta} aria-label={t("previousProject")} isDisabled={indiceAberto === 0} onPress={() => irParaVizinho(-1)}>
+          <ChevronLeft aria-hidden="true" className="size-4" strokeWidth={2} />
+        </Button>
+        <Button isIconOnly size="sm" variant="ghost" className={classeSeta} aria-label={t("nextProject")} isDisabled={indiceAberto === abas.length - 1} onPress={() => irParaVizinho(1)}>
+          <ChevronRight aria-hidden="true" className="size-4" strokeWidth={2} />
+        </Button>
+      </>}
       selectedKey={projetoId}
       onSelectionChange={trocarProjeto}
       actions={<>
