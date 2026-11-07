@@ -2,6 +2,7 @@ from src.infrastructure.data.models.auth_sessao_model import AuthSessaoModel
 from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
 from src.infrastructure.data.models.execucao_sdf_model import ExecucaoSdfModel
 from src.infrastructure.data.models.importacao_sdf_model import ImportacaoSdfModel
+from src.infrastructure.data.models.importacao_sdf_status_model import ImportacaoSdfStatusModel
 from src.infrastructure.data.models.link_pull_request_model import LinkPullRequestModel
 from src.infrastructure.data.models.modelo_dispositivo_model import ModeloDispositivoModel
 from src.infrastructure.data.models.perfil_model import PerfilModel
@@ -16,6 +17,7 @@ __all__ = [
     "AuthSessaoModel",
     "CasoTesteModel",
     "ImportacaoSdfModel",
+    "ImportacaoSdfStatusModel",
     "ExecucaoSdfModel",
     "LinkPullRequestModel",
     "ResultadoFormFactorModel",

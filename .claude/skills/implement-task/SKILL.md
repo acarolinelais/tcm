@@ -1,12 +1,13 @@
 ---
 name: implement-task
-description: Implementa as tasks abertas de um docs/specs/NNN-nome/tasks.md em blocos (uma fase do tasks.md por vez), roda a verificação de cada task, a simplify e a suíte completa no fim do bloco, e marca como concluídas. Use quando o usuário pedir "implemente a próxima task", "continue a spec NNN", "faça a task X", ou quiser avançar a implementação de uma spec aprovada.
+description: Implementa as tasks abertas de um docs/specs/NNN-nome/tasks.md em blocos (uma fase do tasks.md por vez), roda os testes dos arquivos que cada task mexe, a simplify no fim do bloco, e marca como concluídas. Use quando o usuário pedir "implemente a próxima task", "continue a spec NNN", "faça a task X", ou quiser avançar a implementação de uma spec aprovada.
 ---
 
 # Skill: implement-task
 
 Trabalhe em **blocos**: um bloco é uma fase do `tasks.md` (ex.: "Fase 1: backend"). As tasks do bloco são feitas
-em sequência, sem parar entre elas; a simplify, a suíte completa e o relatório acontecem uma vez, no fim do bloco.
+em sequência, sem parar entre elas; a simplify e o relatório acontecem uma vez, no fim do bloco. A suíte inteira
+não roda a cada mudança: só antes de abrir o PR.
 Se o usuário pedir uma task específica, o bloco é só essa task.
 
 ## Passos
@@ -29,9 +30,10 @@ Se o usuário pedir uma task específica, o bloco é só essa task.
    - Todo texto em prosa que a task escrever (comentários, docstrings, textos de interface, docs) passa
      pela skill `humanizer` no modo embutido.
      Os testes da task fazem parte da task, com o cenário de **sucesso** e o de **falha** (ADR 0010).
-   - Rode a verificação **filtrada** da task (ex.: `uv run pytest tests/unit/test_usuario_service.py`,
-     `npm test -- usuario-form`). Se falhar, corrija e rode de novo. Nunca marque como concluída uma task
-     com verificação vermelha.
+   - Rode **só os testes dos arquivos que a task mexe** (ex.: `uv run pytest tests/unit/test_usuario_service.py`,
+     `npx vitest run src/modules/usuarios/components/UsuarioForm.test.tsx`), e os testes de quem usa o que
+     mudou, quando a mudança alterar uma assinatura, um mock ou um contrato. Nunca a suíte inteira a cada
+     mudança. Se falhar, corrija e rode de novo. Nunca marque como concluída uma task com verificação vermelha.
    - Marque `- [x]` no `tasks.md` e siga para a próxima, sem relatório intermediário.
 5. **Simplifique o bloco (OBRIGATÓRIO).** Rode a skill `simplify` **uma vez** sobre o diff do bloco inteiro.
    Nunca pule este passo nem decida que "não precisa". Aplique o que for do escopo do bloco.
@@ -41,8 +43,9 @@ Se o usuário pedir uma task específica, o bloco é só essa task.
    você. Quatro agentes custam bem mais tokens e não compensam em blocos deste tamanho.
    Achados que exigem mexer fora do bloco (outra entidade, outro ADR, refatoração geral) **não** viram trabalho agora:
    anote-os em `## Backlog` no fim do `tasks.md` (um item por achado, com o motivo) e siga.
-6. **Verifique o bloco.** Rode a suíte completa da camada (`uv run pytest` no backend ou
-   `cd frontend && npm test && npm run lint` no frontend) depois da simplify.
+6. **Verifique o bloco.** Depois da simplify, rode de novo só os arquivos de teste que o bloco tocou, mais o lint
+   (`uv run ruff check .` ou `npm run lint`) e o `npx tsc -b` no frontend. A suíte inteira da camada
+   (`uv run pytest`, `npm test`) roda uma vez, antes de abrir o PR, e o CI roda de novo.
 7. **Reporte** ao usuário em até 10 linhas, uma vez por bloco:
    - as tasks feitas e os arquivos principais;
    - a saída resumida da verificação;

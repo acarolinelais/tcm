@@ -313,6 +313,15 @@ export interface ImportacaoSdf {
   quantidade_resultados: number;
 }
 
+export interface UltimaImportacaoSdf {
+  id: string;
+  sdf_id: string;
+  device: string;
+  data_execucao: string;
+  importado_por_nome: string;
+  importado_em: string;
+}
+
 export interface CriarProjetoInput {
   time_id: string;
   nome?: string;

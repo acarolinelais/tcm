@@ -1,16 +1,29 @@
 from decimal import Decimal, InvalidOperation
+from uuid import UUID
 
-from src.application.schemas.importacao_sdf import ImportarRelatorioSdfResponse
+from src.application.schemas.importacao_sdf import (
+    DesfazerImportacaoSdfResponse,
+    ImportarRelatorioSdfResponse,
+    UltimaImportacaoSdfResponse,
+)
 from src.application.validators.importacao_projeto import ErroImportacaoPlanilha
 from src.application.validators.relatorio_sdf import RelatorioSdfInvalido, ler_relatorio_sdf
-from src.domain.common.exceptions import ForbiddenException, NotFoundException
+from src.domain.common.exceptions import (
+    ConflictException,
+    ForbiddenException,
+    NotFoundException,
+)
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.execucao_sdf import ExecucaoSdf
 from src.domain.entities.importacao_sdf import ImportacaoSdf
+from src.domain.entities.importacao_sdf_status import ImportacaoSdfStatus
 from src.domain.entities.interfaces.caso_teste_repository import CasoTesteRepository
 from src.domain.entities.interfaces.contexto_auditoria import ContextoAuditoria
 from src.domain.entities.interfaces.execucao_sdf_repository import ExecucaoSdfRepository
 from src.domain.entities.interfaces.importacao_sdf_repository import ImportacaoSdfRepository
+from src.domain.entities.interfaces.importacao_sdf_status_repository import (
+    ImportacaoSdfStatusRepository,
+)
 from src.domain.entities.interfaces.modelo_dispositivo_repository import (
     ModeloDispositivoRepository,
 )
@@ -24,7 +37,9 @@ from src.domain.entities.interfaces.rodada_form_factor_repository import (
 )
 from src.domain.entities.interfaces.time_repository import TimeRepository
 from src.domain.entities.interfaces.unit_of_work import UnitOfWork
+from src.domain.entities.projeto import Projeto
 from src.domain.entities.resultado_form_factor import ResultadoFormFactor
+from src.domain.queries.auditoria import OrigemAuditoria
 
 
 class ImportacaoSdfServiceImpl:
@@ -40,8 +55,10 @@ class ImportacaoSdfServiceImpl:
         resultado_repo: ResultadoFormFactorRepository,
         uow: UnitOfWork,
         rodada_repo: RodadaFormFactorRepository,
+        status_repo: ImportacaoSdfStatusRepository,
         contexto_auditoria: ContextoAuditoria | None = None,
     ) -> None:
+        self._status_repo = status_repo
         self._rodada_repo = rodada_repo
         self._contexto_auditoria = contexto_auditoria
         self._projeto_repo = projeto_repo
@@ -62,19 +79,8 @@ class ImportacaoSdfServiceImpl:
         conteudo: bytes,
     ) -> ImportarRelatorioSdfResponse:
         """Relatório SDF no formato novo (spec 060): com qualquer problema, nada é gravado."""
-        if usuario_atual.perfil_codigo not in {
-            "ADMIN_UNIDADE",
-            "GERENTE",
-            "KP",
-        } or not usuario_atual.pode("form_factor.importar"):
-            raise ForbiddenException("Você não tem permissão para importar resultados Form Factor.")
+        projeto = await self._projeto_para_importar(usuario_atual, projeto_id)
         unidade_id = usuario_atual.unidade_id
-        projeto = await self._projeto_repo.obter_por_id(unidade_id, projeto_id)
-        if projeto is None:
-            raise NotFoundException("Projeto não encontrado.")
-        time = await self._time_repo.obter_por_id(unidade_id, projeto.time_id)
-        if time is None or not usuario_atual.time_no_escopo(time.id, time.setor_id):
-            raise NotFoundException("Projeto não encontrado.")
 
         relatorio = ler_relatorio_sdf(nome_arquivo, conteudo)
         # Os erros do arquivo e os do projeto saem juntos, numa resposta só (RN-12).
@@ -173,7 +179,7 @@ class ImportacaoSdfServiceImpl:
         caso_ids = [caso.id for caso in casos.values()]
         # Spec 066: o Status segue os resultados, e a mudança entra no histórico como Form Factor.
         if self._contexto_auditoria is not None:
-            await self._contexto_auditoria.definir_origem("form_factor")
+            await self._contexto_auditoria.definir_origem(OrigemAuditoria.FORM_FACTOR)
         aprovados = await self._caso_repo.listar_todos_aprovados(unidade_id, projeto.id, caso_ids)
         com_fail = {linha.tc_id for linha in relatorio.linhas if linha.resultado.upper() == "FAIL"}
         for tc_id, caso in casos.items():
@@ -181,6 +187,9 @@ class ImportacaoSdfServiceImpl:
             caso.aplicar_resultado_sdf(caso.id in aprovados, tc_id in com_fail)
             if caso.status is not anterior:
                 await self._caso_repo.atualizar(caso)
+                await self._status_repo.adicionar(
+                    ImportacaoSdfStatus(unidade_id, importacao.id, caso.id, caso.status)
+                )
         # Spec 065: o relatório pode fechar o caso em todos os devices. Depois do atualizar(), que
         # grava o caso inteiro e apagaria a data gravada por este UPDATE.
         await self._caso_repo.marcar_todos_aprovados(unidade_id, projeto.id, caso_ids)
@@ -190,6 +199,68 @@ class ImportacaoSdfServiceImpl:
             quantidade_execucoes=len(relatorio.linhas),
             quantidade_resultados=len(relatorio.linhas),
         )
+
+    async def obter_ultima(
+        self, usuario_atual: UsuarioAutenticado, projeto_id: UUID
+    ) -> UltimaImportacaoSdfResponse | None:
+        projeto = await self._projeto_para_importar(usuario_atual, projeto_id)
+        ultima = await self._importacao_repo.obter_ultima_ativa(
+            usuario_atual.unidade_id, projeto.id
+        )
+        return UltimaImportacaoSdfResponse.from_query(ultima) if ultima is not None else None
+
+    async def desfazer(
+        self, usuario_atual: UsuarioAutenticado, projeto_id: UUID, importacao_id: UUID
+    ) -> DesfazerImportacaoSdfResponse:
+        projeto = await self._projeto_para_importar(usuario_atual, projeto_id)
+        unidade_id = usuario_atual.unidade_id
+        importacao = await self._importacao_repo.obter_por_id(unidade_id, importacao_id)
+        if importacao is None or importacao.projeto_id != projeto.id or not importacao.ativo:
+            raise NotFoundException("Importação não encontrada.")
+        ultima = await self._importacao_repo.obter_ultima_ativa(unidade_id, projeto.id)
+        if ultima is None or ultima.id != importacao.id:
+            raise ConflictException(
+                "Esta importação não é mais a última do projeto. Atualize a página e tente de novo."
+            )
+
+        # Antes de qualquer escrita: a volta do Status também entra na auditoria e mudaria a conta.
+        revertiveis = await self._status_repo.listar_revertiveis(
+            unidade_id, importacao.id, importacao.created_at
+        )
+        if self._contexto_auditoria is not None:
+            await self._contexto_auditoria.definir_origem(OrigemAuditoria.IMPORTACAO_SDF_DESFEITA)
+        importacao.desfazer(usuario_atual.id)
+        await self._importacao_repo.atualizar(importacao)
+        revertidos = 0
+        for item in revertiveis:
+            caso = await self._caso_repo.obter_por_id(unidade_id, item.caso_teste_id)
+            if caso is not None and caso.desfazer_resultado_sdf(item.status_aplicado):
+                await self._caso_repo.atualizar(caso)
+                revertidos += 1
+        # Depois do atualizar(), que grava o caso inteiro e apagaria a End date recalculada.
+        execucoes = await self._execucao_repo.listar_por_importacao(unidade_id, importacao.id)
+        caso_ids = list({execucao.caso_teste_id for execucao in execucoes})
+        await self._caso_repo.limpar_todos_aprovados(unidade_id, caso_ids)
+        await self._caso_repo.marcar_todos_aprovados(unidade_id, projeto.id, caso_ids)
+        await self._uow.commit()
+        return DesfazerImportacaoSdfResponse(casos_revertidos=revertidos)
+
+    async def _projeto_para_importar(
+        self, usuario_atual: UsuarioAutenticado, projeto_id: UUID
+    ) -> Projeto:
+        if usuario_atual.perfil_codigo not in {
+            "ADMIN_UNIDADE",
+            "GERENTE",
+            "KP",
+        } or not usuario_atual.pode("form_factor.importar"):
+            raise ForbiddenException("Você não tem permissão para importar resultados Form Factor.")
+        projeto = await self._projeto_repo.obter_por_id(usuario_atual.unidade_id, projeto_id)
+        if projeto is None:
+            raise NotFoundException("Projeto não encontrado.")
+        time = await self._time_repo.obter_por_id(usuario_atual.unidade_id, projeto.time_id)
+        if time is None or not usuario_atual.time_no_escopo(time.id, time.setor_id):
+            raise NotFoundException("Projeto não encontrado.")
+        return projeto
 
 
 def _mesma_one_ui(do_relatorio: str, do_projeto: str) -> bool:

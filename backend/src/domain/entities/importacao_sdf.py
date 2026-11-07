@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from uuid import UUID
 
 from src.domain.common.entidade_tenant import EntidadeTenant
@@ -8,3 +9,12 @@ class ImportacaoSdf(EntidadeTenant):
         super().__init__(unidade_id)
         self.projeto_id = projeto_id
         self.importado_por = importado_por
+        self.desfeita_por: UUID | None = None
+        self.desfeita_em: datetime | None = None
+
+    def desfazer(self, usuario_id: UUID) -> None:
+        if not self.ativo:
+            raise ValueError("A importação já foi desfeita.")
+        self.ativo = False
+        self.desfeita_por = usuario_id
+        self.desfeita_em = datetime.now(UTC).replace(tzinfo=None)

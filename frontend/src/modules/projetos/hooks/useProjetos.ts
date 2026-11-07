@@ -238,11 +238,35 @@ export function useImportarRelatorioSdf(projetoId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (arquivo: File) => formFactorApi.importar(projetoId, arquivo),
-    // Os resultados novos aparecem no Form Factor e na General Results (spec 059, CA-09), e o Status que a
-    // importação muda aparece na tabela de Test Cases e no Board (spec 066, RN-10): tudo sob ["projetos", projetoId].
-    onSuccess: () => Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["projetos", projetoId] }),
-      queryClient.invalidateQueries({ queryKey: ["form-factor", "historico", projetoId] }),
-    ]),
+    onSuccess: () => invalidarResultadosSdf(queryClient, projetoId),
   });
+}
+
+export function useUltimaImportacaoSdf(projetoId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["projetos", projetoId, "ultima-importacao-sdf"],
+    queryFn: () => formFactorApi.ultimaImportacao(projetoId),
+    enabled,
+  });
+}
+
+export function useDesfazerImportacaoSdf(projetoId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (importacaoId: string) => formFactorApi.desfazerImportacao(projetoId, importacaoId),
+    onSuccess: () => invalidarResultadosSdf(queryClient, projetoId),
+    // 409: outra importação entrou depois; a tela passa a mostrar ela.
+    onError: (error) => {
+      if (error instanceof ApiError && error.problem.status === 409) return invalidarResultadosSdf(queryClient, projetoId);
+    },
+  });
+}
+
+// Os resultados aparecem no Form Factor e na General Results (spec 059, CA-09), e o Status que a importação muda
+// aparece na tabela de Test Cases e no Board (spec 066, RN-10): tudo sob ["projetos", projetoId].
+function invalidarResultadosSdf(queryClient: ReturnType<typeof useQueryClient>, projetoId: string) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["projetos", projetoId] }),
+    queryClient.invalidateQueries({ queryKey: ["form-factor", "historico", projetoId] }),
+  ]);
 }

@@ -26,6 +26,7 @@ import type {
   HistoricoProjeto,
   ImportacaoProjeto,
   ImportacaoSdf,
+  UltimaImportacaoSdf,
   KanbanProjeto,
   LinkPullRequest,
   LinksPullRequest,
@@ -238,5 +239,12 @@ export const formFactorApi = {
     const body = new FormData();
     body.append("arquivo", arquivo);
     return httpPostForm<ImportacaoSdf>(`/api/projetos/${projetoId}/relatorios-sdf`, body);
+  },
+  // O modo mock não grava a importação, então não há o que desfazer.
+  ultimaImportacao(projetoId: string) {
+    return useMock ? Promise.resolve(null) : httpGet<UltimaImportacaoSdf | null>(`/api/projetos/${projetoId}/relatorios-sdf/ultimo`);
+  },
+  desfazerImportacao(projetoId: string, importacaoId: string) {
+    return httpPost<{ casos_revertidos: number }>(`/api/projetos/${projetoId}/relatorios-sdf/${importacaoId}/desfazer`, {});
   },
 };

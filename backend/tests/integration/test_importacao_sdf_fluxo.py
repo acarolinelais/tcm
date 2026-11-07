@@ -14,6 +14,7 @@ from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.infrastructure.data.auditoria import ContextoAuditoriaImpl
 from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
 from src.infrastructure.data.models.execucao_sdf_model import ExecucaoSdfModel
+from src.infrastructure.data.models.importacao_sdf_model import ImportacaoSdfModel
 from src.infrastructure.data.models.modelo_dispositivo_model import ModeloDispositivoModel
 from src.infrastructure.data.unit_of_work import UnitOfWorkImpl
 from src.infrastructure.repositories.caso_teste_repository import CasoTesteRepositoryImpl
@@ -22,6 +23,9 @@ from src.infrastructure.repositories.historico_form_factor_repository import (
     HistoricoFormFactorRepositoryImpl,
 )
 from src.infrastructure.repositories.importacao_sdf_repository import ImportacaoSdfRepositoryImpl
+from src.infrastructure.repositories.importacao_sdf_status_repository import (
+    ImportacaoSdfStatusRepositoryImpl,
+)
 from src.infrastructure.repositories.modelo_dispositivo_repository import (
     ModeloDispositivoRepositoryImpl,
 )
@@ -83,6 +87,7 @@ def _servicos(session):
         ResultadoFormFactorRepositoryImpl(session),
         UnitOfWorkImpl(session),
         RodadaFormFactorRepositoryImpl(session),
+        ImportacaoSdfStatusRepositoryImpl(session),
         ContextoAuditoriaImpl(session),
     )
     form_factor = FormFactorServiceImpl(
@@ -225,3 +230,108 @@ async def test_falha_importar_o_mesmo_arquivo_de_novo_nao_grava_nada(cenario):
 
     assert [item.codigo for item in erro.value.erros] == ["sdf_id_repetido"]
     assert (await cenario.session.execute(contar)).scalar_one() == antes
+
+
+async def _status(cenario, *caso_ids):
+    return dict(
+        (
+            await cenario.session.execute(
+                select(CasoTesteModel.id, CasoTesteModel.status).where(
+                    CasoTesteModel.id.in_(caso_ids)
+                )
+            )
+        ).all()
+    )
+
+
+async def _importar_tres(cenario, importacao, sdf_id="777777-000001"):
+    """Keyboard_000001 fecha (o S25 já tinha PASS), o 000002 falha e o 000003 fica parcial."""
+    conteudo = relatorio(
+        [
+            ("Keyboard_000001.py", "PASS", "", "Keyboard_A_OneUI95.ts"),
+            ("Keyboard_000002.py", "FAIL", "", "Keyboard_A_OneUI95.ts"),
+            ("Keyboard_000003.py", "PASS", "", "Keyboard_A_OneUI95.ts"),
+        ]
+    )
+    return await importacao.importar(
+        _gerente(cenario), cenario.projeto_id, f"{sdf_id}_0_Test_1_Detail.xlsx", conteudo
+    )
+
+
+@pytest.mark.asyncio
+async def test_desfazer_tira_os_resultados_volta_o_status_e_a_end_date(cenario):
+    # Spec 067: CA-01, CA-02, CA-04 e a origem nova no histórico (RN-06).
+    importacao, form_factor = _servicos(cenario.session)
+    fechado, falhou, parcial = cenario.casos[0], cenario.casos[1], cenario.casos[2]
+    await cenario.importar(
+        fechado,
+        "SDF-2010",
+        datetime(2026, 10, 20, 9),
+        {cenario.s25: "PASS"},
+        importado_em=datetime(2026, 10, 20, 10),
+    )
+    feita = await _importar_tres(cenario, importacao)
+
+    resposta = await importacao.desfazer(_gerente(cenario), cenario.projeto_id, feita.importacao_id)
+
+    assert resposta.casos_revertidos == 2
+    assert await _status(cenario, fechado, falhou, parcial) == {
+        fechado: "InValidation",
+        falhou: "InValidation",
+        parcial: "InValidation",
+    }
+    historico = await form_factor.historico_projeto(_gerente(cenario), cenario.projeto_id)
+    caso = next(item for item in historico.items if item.tc_id == "Keyboard_000001")
+    assert set(caso.resultados) == {date(2026, 10, 20)}
+    end_date = (
+        await cenario.session.execute(
+            select(CasoTesteModel.all_passed_em).where(CasoTesteModel.id == fechado)
+        )
+    ).scalar_one()
+    assert end_date is None
+    origens = (
+        await cenario.session.execute(
+            text(
+                "SELECT origem FROM auditoria_alteracoes WHERE row_id = :id "
+                "AND 'status' = ANY(changed_fields) ORDER BY id"
+            ),
+            {"id": falhou},
+        )
+    ).scalars()
+    assert list(origens) == ["form_factor", "importacao_sdf_desfeita"]
+
+
+@pytest.mark.asyncio
+async def test_falha_caso_movido_depois_da_importacao_nao_volta(cenario):
+    # CA-03.
+    importacao, _ = _servicos(cenario.session)
+    falhou = cenario.casos[1]
+    feita = await _importar_tres(cenario, importacao)
+    await cenario.session.execute(
+        update(CasoTesteModel).where(CasoTesteModel.id == falhou).values(status="InProgress")
+    )
+
+    await importacao.desfazer(_gerente(cenario), cenario.projeto_id, feita.importacao_id)
+
+    assert await _status(cenario, falhou) == {falhou: "InProgress"}
+
+
+@pytest.mark.asyncio
+async def test_desfazer_libera_o_sdf_id_e_a_anterior_vira_a_ultima(cenario):
+    # CA-05 e CA-06.
+    importacao, _ = _servicos(cenario.session)
+    primeira = await _importar_tres(cenario, importacao, "777777-000001")
+    # Na mesma transação do teste as duas teriam o mesmo created_at.
+    await cenario.session.execute(
+        update(ImportacaoSdfModel)
+        .where(ImportacaoSdfModel.id == primeira.importacao_id)
+        .values(created_at=datetime(2026, 10, 20, 10))
+    )
+    segunda = await _importar_tres(cenario, importacao, "777777-000002")
+
+    await importacao.desfazer(_gerente(cenario), cenario.projeto_id, segunda.importacao_id)
+    ultima = await importacao.obter_ultima(_gerente(cenario), cenario.projeto_id)
+    de_novo = await _importar_tres(cenario, importacao, "777777-000002")
+
+    assert ultima.id == primeira.importacao_id
+    assert de_novo.importacao_id != segunda.importacao_id

@@ -150,6 +150,13 @@ class CasoTeste(EntidadeTenant):
         elif fail_no_relatorio:
             self.status = StatusCasoTeste.IN_FIXES
 
+    def desfazer_resultado_sdf(self, status_aplicado: StatusCasoTeste) -> bool:
+        # Quem chama confere, pela auditoria, que ninguém moveu o caso depois da importação.
+        if self.status is not status_aplicado:
+            return False
+        self.status = StatusCasoTeste.IN_VALIDATION
+        return True
+
     def cancelar(self, justificativa_exclusao: str) -> None:
         self._mudar_status(StatusCasoTeste.CANCELLED, justificativa_exclusao)
 
