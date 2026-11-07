@@ -1,6 +1,6 @@
 # 069. Projetos encerrados fora das telas de trabalho: Spec
 
-- **Status:** Aprovada
+- **Status:** Concluída
 - **Data:** 2026-11-07
 
 ## Problema
