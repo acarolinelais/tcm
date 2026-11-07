@@ -37,6 +37,10 @@ class CasoTesteRepository(RepositoryBase[CasoTeste], Protocol):
         self, unidade_id: UUID, projeto_id: UUID
     ) -> tuple[CasoTesteComResponsavel, ...]: ...
 
+    async def listar_todos_aprovados(
+        self, unidade_id: UUID, projeto_id: UUID, caso_ids: Sequence[UUID]
+    ) -> set[UUID]: ...
+
     async def marcar_todos_aprovados(
         self, unidade_id: UUID, projeto_id: UUID, caso_ids: Sequence[UUID]
     ) -> None: ...

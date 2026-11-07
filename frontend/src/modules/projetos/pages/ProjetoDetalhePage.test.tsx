@@ -181,6 +181,23 @@ describe("ProjetoDetalhePage", () => {
     expect(toast.success).toHaveBeenCalledWith("Status updated to Excluded.");
   });
 
+  it("o filtro Assignee do dev lista só os responsáveis dos casos dele (dono ou backup), e a gestão vê o time todo", async () => {
+    // user-1 é o dono de case-1 e backup de case-2 (de user-2); backup-1 está no time, mas não é responsável de nada.
+    vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [casos[0], { ...casos[1], backup_id: "user-1" }], page: 1, page_size: 20, total_count: 2 });
+    const user = userEvent.setup();
+    const { unmount } = renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO" });
+    await screen.findByRole("row", { name: /Clock_002/ });
+    await user.click(screen.getByRole("button", { name: /Filter by Assignee/i }));
+    await waitFor(() => expect(screen.getAllByRole("option").map((opcao) => opcao.textContent)).toEqual(["daniel-id", "outro-id"]));
+    expect(casosTesteApi.listar).toHaveBeenCalledWith("project-1", 1, 100, { associadosAMim: true });
+    unmount();
+
+    renderPage({ ...perfil, id: "manager", perfil_codigo: "GERENTE", permissoes: [...perfil.permissoes, "test_cases.gerenciar"] });
+    await screen.findByRole("row", { name: /Clock_002/ });
+    await user.click(screen.getByRole("button", { name: /Filter by Assignee/i }));
+    expect((await screen.findAllByRole("option")).map((opcao) => opcao.textContent)).toContain("kaique-id");
+  });
+
   it("abre a justificativa pelo ícone de observações para o perfil Developer", async () => {
     const excluido = { ...casos[1], status: "Cancelled" as const, justificativa_exclusao: "Depende de hardware indisponível" };
     vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [casos[0], excluido], page: 1, page_size: 20, total_count: 2 });

@@ -325,6 +325,7 @@ async def get_importacao_sdf_service(
         ResultadoFormFactorRepositoryImpl(session),
         UnitOfWorkImpl(session),
         RodadaFormFactorRepositoryImpl(session),
+        ContextoAuditoriaImpl(session),
     )
 
 

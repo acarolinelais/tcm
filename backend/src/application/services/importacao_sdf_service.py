@@ -8,6 +8,7 @@ from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.execucao_sdf import ExecucaoSdf
 from src.domain.entities.importacao_sdf import ImportacaoSdf
 from src.domain.entities.interfaces.caso_teste_repository import CasoTesteRepository
+from src.domain.entities.interfaces.contexto_auditoria import ContextoAuditoria
 from src.domain.entities.interfaces.execucao_sdf_repository import ExecucaoSdfRepository
 from src.domain.entities.interfaces.importacao_sdf_repository import ImportacaoSdfRepository
 from src.domain.entities.interfaces.modelo_dispositivo_repository import (
@@ -39,8 +40,10 @@ class ImportacaoSdfServiceImpl:
         resultado_repo: ResultadoFormFactorRepository,
         uow: UnitOfWork,
         rodada_repo: RodadaFormFactorRepository,
+        contexto_auditoria: ContextoAuditoria | None = None,
     ) -> None:
         self._rodada_repo = rodada_repo
+        self._contexto_auditoria = contexto_auditoria
         self._projeto_repo = projeto_repo
         self._time_repo = time_repo
         self._caso_repo = caso_repo
@@ -167,10 +170,20 @@ class ImportacaoSdfServiceImpl:
                     unidade_id, execucao.id, modelo.id, linha.resultado, linha.descricao
                 )
             )
-        # Spec 065: o relatório pode fechar o caso em todos os devices.
-        await self._caso_repo.marcar_todos_aprovados(
-            unidade_id, projeto.id, [caso.id for caso in casos.values()]
-        )
+        caso_ids = [caso.id for caso in casos.values()]
+        # Spec 066: o Status segue os resultados, e a mudança entra no histórico como Form Factor.
+        if self._contexto_auditoria is not None:
+            await self._contexto_auditoria.definir_origem("form_factor")
+        aprovados = await self._caso_repo.listar_todos_aprovados(unidade_id, projeto.id, caso_ids)
+        com_fail = {linha.tc_id for linha in relatorio.linhas if linha.resultado.upper() == "FAIL"}
+        for tc_id, caso in casos.items():
+            anterior = caso.status
+            caso.aplicar_resultado_sdf(caso.id in aprovados, tc_id in com_fail)
+            if caso.status is not anterior:
+                await self._caso_repo.atualizar(caso)
+        # Spec 065: o relatório pode fechar o caso em todos os devices. Depois do atualizar(), que
+        # grava o caso inteiro e apagaria a data gravada por este UPDATE.
+        await self._caso_repo.marcar_todos_aprovados(unidade_id, projeto.id, caso_ids)
         await self._uow.commit()
         return ImportarRelatorioSdfResponse(
             importacao_id=importacao.id,

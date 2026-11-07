@@ -134,3 +134,38 @@ async def test_projeto_sem_devices_nao_fecha(cenario):
     await _marcar(cenario, caso)
 
     assert await _all_passed(cenario, caso) is None
+
+
+@pytest.mark.asyncio
+async def test_listar_todos_aprovados_usa_os_resultados_de_agora(cenario):
+    # Spec 066, RN-02: CA-01 (tudo PASS), CA-03 (um device só) e CA-06 (FAIL antigo sem correção).
+    fechado = await cenario.caso("Clock_000101")
+    um_device = await cenario.caso("Clock_000102")
+    fail_antigo = await cenario.caso("Clock_000103")
+    reaberto = await cenario.caso("Clock_000104")
+    await cenario.importar(fechado, "SDF-5a", DIA_5, {cenario.s26: "PASS"})
+    await cenario.importar(fechado, "SDF-6a", DIA_6, {cenario.s25: "PASS"})
+    await cenario.importar(um_device, "SDF-6b", DIA_6, {cenario.s25: "PASS"})
+    await cenario.importar(fail_antigo, "SDF-5c", DIA_5, {cenario.s26: "FAIL"})
+    await cenario.importar(fail_antigo, "SDF-6c", DIA_6, {cenario.s25: "PASS"})
+    # Fechou no dia 5 e o S25 falhou no dia 6: a End date fica, mas agora não está tudo PASS.
+    await cenario.importar(reaberto, "SDF-5d", DIA_5, {cenario.s26: "PASS", cenario.s25: "PASS"})
+    await _marcar(cenario, reaberto)
+    await cenario.importar(reaberto, "SDF-6d", DIA_6, {cenario.s25: "FAIL"})
+
+    aprovados = await CasoTesteRepositoryImpl(cenario.session).listar_todos_aprovados(
+        cenario.unidade_id, cenario.projeto_id, (fechado, um_device, fail_antigo, reaberto)
+    )
+
+    assert aprovados == {fechado}
+    assert await _all_passed(cenario, reaberto) == DIA_5
+
+
+@pytest.mark.asyncio
+async def test_listar_todos_aprovados_sem_casos_devolve_vazio(cenario):
+    assert (
+        await CasoTesteRepositoryImpl(cenario.session).listar_todos_aprovados(
+            cenario.unidade_id, cenario.projeto_id, ()
+        )
+        == set()
+    )
