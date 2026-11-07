@@ -26,6 +26,7 @@ async def historico_projeto(
     fuso_horario: str = Query("UTC", min_length=1, max_length=64),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    associados_a_mim: bool = Query(False),
     service: FormFactorService = Depends(get_form_factor_service),
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
@@ -41,6 +42,7 @@ async def historico_projeto(
         fuso_horario=fuso_horario,
         page=page,
         page_size=page_size,
+        associados_a_mim=associados_a_mim,
     )
 
 

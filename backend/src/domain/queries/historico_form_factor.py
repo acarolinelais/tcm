@@ -12,6 +12,9 @@ class CasoHistorico:
     tc_id: str
     responsavel_id: UUID
     responsavel_identificador: str | None
+    backup_id: UUID | None = None
+    # A rodada que espera o registro manual deste caso, quando há uma.
+    rodada_pendente_id: UUID | None = None
 
 
 @dataclass(frozen=True)
@@ -38,5 +41,7 @@ class FiltrosCasoHistorico:
     responsavel: str | None = None
     sdf_id: str | None = None
     modelo_dispositivo_id: UUID | None = None
+    # Só os casos em que esta pessoa é dona ou backup.
+    associado_a: UUID | None = None
     inicio: datetime | None = None
     fim: datetime | None = None

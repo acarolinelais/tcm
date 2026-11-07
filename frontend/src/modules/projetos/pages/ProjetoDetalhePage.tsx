@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button as HeroButton, ToggleButton, ToggleButtonGroup } from "@heroui/react";
+import { Button as HeroButton } from "@heroui/react";
 import { MessageSquareText, Pencil, Plus } from "lucide-react";
 import { Navigate, useOutletContext, useParams, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -31,17 +31,18 @@ import { TcIdBotao } from "../components/casos-teste/TcIdBotao";
 import { ExcluirCasoTesteDialog } from "../components/casos-teste/ExcluirCasoTesteDialog";
 import { JustificativaExclusaoDrawer } from "../components/casos-teste/JustificativaExclusaoDrawer";
 import { estadoCasosTeste } from "../components/casos-teste/estado-casos-teste";
-import { FormFactorTabela } from "../components/form-factor/FormFactorTabela";
 import { FormFactorManualDialog } from "../components/form-factor/FormFactorManualDialog";
-import { FormFactorResultadosTabela } from "../components/form-factor/FormFactorResultadosTabela";
-import { HistoricoCasoPainel } from "../components/form-factor/HistoricoCasoPainel";
-import type { CasoDoResumo } from "../components/resultados-gerais/ResumoExecucoesDrawer";
+import { HistoricoProjetoTabela } from "../components/resultados-gerais/HistoricoProjetoTabela";
+import { ResultadoExecucaoModal } from "../components/resultados-gerais/ResultadoExecucaoModal";
+import { ResumoExecucoesDrawer } from "../components/resultados-gerais/ResumoExecucoesDrawer";
+import { useTabelaHistorico } from "../components/resultados-gerais/useTabelaHistorico";
 import { ProjetoSwitcher } from "../components/ProjetoSwitcher";
 import { statusChipTons } from "../components/status/status-chip-estilos";
 import { ProjetosEntradaPage } from "./ProjetosEntradaPage";
-import { useCasosTeste, useFormFactor, useFormFactorResultados, useProjeto, useRegistrarResultadosRodadaFormFactor, useTransferirCasoTeste } from "../hooks/useProjetos";
+import { useCasosTeste, useProjeto, useRegistrarResultadosRodadaFormFactor, useTransferirCasoTeste } from "../hooks/useProjetos";
 
-import { casosTesteApi, formFactorApi, type CasoTeste, type LinhaFormFactor } from "../api/projetos.api";
+import { casosTesteApi, type CasoTeste } from "../api/projetos.api";
+import type { CasoHistorico } from "../model/projeto";
 import { DIFICULDADES_CASO_TESTE as dificuldades, OPCOES_CATEGORIA, NIVEIS_AUTOMACAO_CASO_TESTE as niveisAutomacao, ROTULO_AUTOMACAO, ROTULO_DIFICULDADE, ROTULO_SITUACAO, ROTULO_STATUS, SITUACOES_CASO_TESTE, STATUS_CASO_TESTE, opcoesRotuladas, perfilGerenciaCasos, type AtualizarCasoTesteInput, type CasoTesteResumo, type StatusCasoTeste } from "../model/projeto";
 
 type CampoInline = "category" | "difficulty" | "automation_level" | "situation" | "status" | "responsavel_id" | "backup_id";
@@ -92,19 +93,12 @@ function ProjetoDetalhe() {
   const [drawerCasoAberto, setDrawerCasoAberto] = useState(false);
   const [aberturasDrawer, setAberturasDrawer] = useState(0);
   const [editar, setEditar] = useState<CasoTeste | null>(null);
-  const [casoDoHistorico, setCasoDoHistorico] = useState<CasoDoResumo | null>(null);
   // `?caso=<id>&tc=<TC ID>` abre o painel do Test Case direto (atalho da Auditoria, spec 052).
   const [casoDetalhado, setCasoDetalhado] = useState<CasoTesteResumo | null>(() => {
     const id = parametros.get("caso");
     return id ? { id, tc_id: parametros.get("tc") ?? "" } : null;
   });
-  const [semana, setSemana] = useState("");
-  const [assigneeFormFactor, setAssigneeFormFactor] = useState<string[]>([]);
-  const [filtrosResumo, setFiltrosResumo] = useState({ tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" });
-  const [visaoFormFactor, setVisaoFormFactor] = useState<"summary" | "results">("summary");
-  const [filtrosResultados, setFiltrosResultados] = useState({ tcId: "", sdfId: "", origem: "", modeloDispositivoId: "", resultado: "" });
-  const [responsaveisResultados, setResponsaveisResultados] = useState<string[]>([]);
-  const [linhaManual, setLinhaManual] = useState<LinhaFormFactor | null>(null);
+  const [linhaManual, setLinhaManual] = useState<CasoHistorico | null>(null);
   const [semanaCasos, setSemanaCasos] = useState("");
 
   const admin = perfil.perfil_codigo === "ADMIN_UNIDADE";
@@ -115,7 +109,7 @@ function ProjetoDetalhe() {
   const podeConsultarFormFactor = admin || perfil.permissoes.includes("form_factor.consultar");
   const perfilGestao = admin || ["GERENTE", "KP"].includes(perfil.perfil_codigo ?? "");
   const podeRegistrarResultado = admin || (["GERENTE", "KP", "USUARIO_PADRAO"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("form_factor.registrar"));
-  const podeRegistrarLinha = (linha: LinhaFormFactor) => Boolean(linha.rodada_pendente_id) && (perfilGestao || linha.responsavel_id === perfil.id || linha.backup_id === perfil.id);
+  const podeRegistrarLinha = (linha: CasoHistorico) => Boolean(linha.rodada_pendente_id) && (perfilGestao || linha.responsavel_id === perfil.id || linha.backup_id === perfil.id);
   const abasDisponiveis: Aba[] = [...(podeConsultarCasos ? ["cases"] as const : []), ...(podeConsultarFormFactor ? ["form-factor"] as const : [])];
   const abaDaUrl = parametros.get("aba") as Aba | null;
   const aba: Aba = abaDaUrl && abasDisponiveis.includes(abaDaUrl) ? abaDaUrl : podeConsultarCasos ? "cases" : "form-factor";
@@ -130,10 +124,8 @@ function ProjetoDetalhe() {
     enabled: dev && projeto.isSuccess && podeConsultarCasos && aba === "cases",
   });
   const membros = useQuery({ queryKey: ["projetos", projetoId, "membros", perfil.unidade_id, perfil.id], queryFn: async () => timesApi.membros(projeto.data!.time_id), enabled: projeto.isSuccess && (podeConsultarCasos || podeConsultarFormFactor) });
-  const filtrosApiResumo = { semana: semana || undefined, responsavelIds: assigneeFormFactor.length ? assigneeFormFactor : undefined, tcId: filtrosResumo.tcId || undefined, sdfId: filtrosResumo.sdfId || undefined, modeloDispositivoId: filtrosResumo.modeloDispositivoId || undefined, resultado: filtrosResumo.resultado || undefined };
-  const filtrosApiResultados = { semana: semana || undefined, tcId: filtrosResultados.tcId || undefined, sdfId: filtrosResultados.sdfId || undefined, responsavelIds: responsaveisResultados.length ? responsaveisResultados : undefined, origem: filtrosResultados.origem ? filtrosResultados.origem as "SDF" | "MANUAL" : undefined, modeloDispositivoId: filtrosResultados.modeloDispositivoId || undefined, resultado: filtrosResultados.resultado || undefined };
-  const resultados = useFormFactor(projetoId, { page: pagina, pageSize: tamanhoPagina, ...filtrosApiResumo }, perfil, projeto.isSuccess && podeConsultarFormFactor && aba === "form-factor" && visaoFormFactor === "summary");
-  const historico = useFormFactorResultados(projetoId, { page: pagina, pageSize: tamanhoPagina, ...filtrosApiResultados }, perfil, projeto.isSuccess && podeConsultarFormFactor && aba === "form-factor" && visaoFormFactor === "results");
+  // O dev vê só os casos em que é dono ou backup; sem a aba aberta, a consulta não roda.
+  const tabela = useTabelaHistorico(projeto.isSuccess && podeConsultarFormFactor && aba === "form-factor" ? projetoId : "", perfil, dev);
   const registrarResultadoRodada = useRegistrarResultadosRodadaFormFactor(projetoId);
 
   const [casoParaExcluir, setCasoParaExcluir] = useState<CasoTeste | null>(null);
@@ -197,8 +189,6 @@ function ProjetoDetalhe() {
   };
   const casosFiltrados = (casos.isError ? [] : casos.data?.items ?? []).filter(passaNosFiltrosCaso);
   // Parte dos filtros é local, sobre a página: para exportar tudo, busca todas as páginas e filtra depois.
-  const buscarResumoParaExportar = () => buscarTodasAsPaginas((page, pageSize) => formFactorApi.listar(projetoId, { ...filtrosApiResumo, page, pageSize }));
-  const buscarResultadosParaExportar = () => buscarTodasAsPaginas((page, pageSize) => formFactorApi.listarResultados(projetoId, { ...filtrosApiResultados, page, pageSize }));
   const buscarCasosParaExportar = async () => (await buscarTodasAsPaginas((page, pageSize) => casosTesteApi.listar(projetoId, page, pageSize, filtrosApiCasos))).filter(passaNosFiltrosCaso);
   const alterarFiltroCaso = <K extends keyof typeof filtrosCaso>(campo: K, valor: (typeof filtrosCaso)[K]) => {
     setPagina(1);
@@ -338,25 +328,6 @@ function ProjetoDetalhe() {
     <header className="mb-[25px] min-w-0 shrink-0">
       {projeto.data ? <ProjetoSwitcher projetoId={projetoId} nome={projeto.data.nome} azul={false} /> : <PageTitle>{t("loadingProjects")}</PageTitle>}
     </header>
-    {/* Figma: o seletor de visão do Form Factor fica entre o título e as abas, com Results primeiro. */}
-    {projeto.data && aba === "form-factor" && podeConsultarFormFactor && <div className="mb-5 flex shrink-0 flex-wrap items-center justify-between gap-3">
-      <ToggleButtonGroup
-        aria-label={t("formFactorViews")}
-        selectionMode="single"
-        disallowEmptySelection
-        selectedKeys={[visaoFormFactor]}
-        onSelectionChange={(chaves) => { const [chave] = chaves; if (chave) { setVisaoFormFactor(chave as "summary" | "results"); setPagina(1); } }}
-        className="w-fit gap-0 rounded-xl bg-panel p-1"
-      >
-        {(["results", "summary"] as const).map((visao) => (
-          <ToggleButton key={visao} id={visao} className="h-8 min-w-24 rounded-lg border-0 bg-transparent px-5 text-[13px] font-medium text-body shadow-none data-[selected=true]:bg-surface data-[selected=true]:text-accent-text data-[selected=true]:shadow-sm">
-            {t(visao === "results" ? "formFactorResults" : "formFactorSummary")}
-          </ToggleButton>
-        ))}
-      </ToggleButtonGroup>
-      <p className="text-[14px] text-muted">{t(visaoFormFactor === "summary" ? "formFactorSummaryHint" : "formFactorResultsHint")}</p>
-    </div>}
-
     {projeto.isLoading ? <p role="status" className="py-8 text-[14px] text-muted">{t("loadingProjects")}</p> : projeto.isError || !projeto.data ? <p role="alert" className="py-8 text-[14px] text-muted">{t("projectNotFound")}</p> : (
       <PageTabs
         aria-label={t("projectTabs")}
@@ -365,7 +336,9 @@ function ProjetoDetalhe() {
         onSelectionChange={(chave) => trocarAba(chave as Aba)}
         // Filtro de data antes das ações; o botão de adicionar é sempre o último à direita.
         actions={<>
-          <WeekPickerHero label={t("week")} value={aba === "cases" ? semanaCasos : semana} onChange={(valor) => { if (aba === "cases") setSemanaCasos(valor); else setSemana(valor); setPagina(1); }} />
+          <WeekPickerHero label={t("week")} value={aba === "cases" ? semanaCasos : tabela.filtros.periodo ?? ""} onChange={(valor) => {
+            if (aba === "cases") { setSemanaCasos(valor); setPagina(1); } else tabela.alterarFiltros({ ...tabela.filtros, periodo: valor || undefined });
+          }} />
           {aba === "cases" && podeGerenciarCasos && <HeroButton variant="primary" onPress={() => abrirCaso(null)}><Plus aria-hidden="true" absoluteStrokeWidth strokeWidth={1.5} className="size-4" />{t("newTestCase")}</HeroButton>}
         </>}
       >
@@ -380,14 +353,8 @@ function ProjetoDetalhe() {
             rowDependencies={[t, opcoes, identificadoresMembros, opcoesMembros, podeGerenciarCasos, responsavelAtual, mostrarAcoes, transfer.isPending, primeiraDaPagina, ordemDosCasos]}
           />
         </PageTabPanel>}
-        {podeConsultarFormFactor && <PageTabPanel id="form-factor" className="flex min-h-0 flex-1 flex-col gap-4 p-0">
-          {visaoFormFactor === "summary"
-            ? <div className="flex min-h-0 flex-1 flex-col">
-                <FormFactorTabela dados={resultados.data} carregando={resultados.isLoading} erro={resultados.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} assignee={assigneeFormFactor} onAssigneeChange={(valor) => { setAssigneeFormFactor(valor); setPagina(1); }} tcId={filtrosResumo.tcId} sdfId={filtrosResumo.sdfId} onFiltroTexto={(campo, valor) => { setFiltrosResumo((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} modeloDispositivoId={filtrosResumo.modeloDispositivoId} resultadoFiltro={filtrosResumo.resultado} onFiltroResultado={(modeloId, valor) => { setFiltrosResumo({ ...filtrosResumo, modeloDispositivoId: valor ? modeloId : "", resultado: valor }); setPagina(1); }} podeRegistrar={podeRegistrarResultado ? podeRegistrarLinha : undefined} onRegistrar={setLinhaManual} onAbrirDetalhes={setCasoDetalhado} buscarTodos={buscarResumoParaExportar} temFiltros={Boolean(semana || assigneeFormFactor.length || filtrosResumo.tcId || filtrosResumo.sdfId || filtrosResumo.resultado)} onLimparFiltros={() => { setSemana(""); setAssigneeFormFactor([]); setFiltrosResumo({ tcId: "", sdfId: "", modeloDispositivoId: "", resultado: "" }); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
-              </div>
-            : <div className="flex min-h-0 flex-1 flex-col">
-                <FormFactorResultadosTabela onAbrirDetalhes={setCasoDetalhado} onAbrirHistorico={setCasoDoHistorico} mostrarAssignee={!dev} buscarTodos={buscarResultadosParaExportar} dados={historico.data} carregando={historico.isLoading} erro={historico.isError} identificadoresMembros={identificadoresMembros} opcoesAssignee={opcoesAssignee} filtros={filtrosResultados} responsaveis={responsaveisResultados} onResponsaveisChange={(valores) => { setResponsaveisResultados(valores); setPagina(1); }} onFiltroChange={(campo, valor) => { setFiltrosResultados((atual) => ({ ...atual, [campo]: valor })); setPagina(1); }} onFiltroResultado={(modeloId, valor) => { setFiltrosResultados((atual) => ({ ...atual, modeloDispositivoId: valor ? modeloId : "", resultado: valor })); setPagina(1); }} onLimparFiltros={() => { setFiltrosResultados({ tcId: "", sdfId: "", origem: "", modeloDispositivoId: "", resultado: "" }); setResponsaveisResultados([]); setPagina(1); }} page={pagina} pageSize={tamanhoPagina} onPageChange={setPagina} onPageSizeChange={(size) => { setTamanhoPagina(size); setPagina(1); }} />
-              </div>}
+        {podeConsultarFormFactor && <PageTabPanel id="form-factor" className="flex min-h-0 flex-1 flex-col p-0">
+          <HistoricoProjetoTabela {...tabela.propsTabela} podeRegistrar={podeRegistrarResultado ? podeRegistrarLinha : undefined} onRegistrar={setLinhaManual} />
         </PageTabPanel>}
       </PageTabs>
     )}
@@ -409,7 +376,8 @@ function ProjetoDetalhe() {
       onConfirm={() => { if (casoParaTransferir) transferir(casoParaTransferir.id); }}
     />
     <JustificativaExclusaoDrawer caso={casoComJustificativa} onFechar={() => setCasoComJustificativa(null)} />
-    <HistoricoCasoPainel caso={casoDoHistorico} perfil={perfil} onFechar={() => setCasoDoHistorico(null)} />
+    <ResumoExecucoesDrawer caso={tabela.casoDoResumo} perfil={perfil} onFechar={() => tabela.setCasoDoResumo(null)} onAbrirResultado={tabela.setResultadoAberto} />
+    <ResultadoExecucaoModal resultado={tabela.resultadoAberto} onFechar={() => tabela.setResultadoAberto(null)} />
     <DetalhesCasoTesteDrawer caso={casoDetalhado} perfil={perfil} onFechar={() => {
       setCasoDetalhado(null);
       // Tira o atalho da Auditoria da URL: recarregar ou voltar não reabre o painel.
@@ -420,7 +388,7 @@ function ProjetoDetalhe() {
       aberto={Boolean(linhaManual)}
       onAbertoChange={(aberto) => { if (!aberto) setLinhaManual(null); }}
       linha={linhaManual}
-      modelos={resultados.data?.modelos ?? []}
+      modelos={tabela.historico.data?.modelos ?? []}
       salvando={registrarResultadoRodada.isPending}
       onSalvar={(input) => linhaManual?.rodada_pendente_id && registrarResultadoRodada.mutate({ rodadaId: linhaManual.rodada_pendente_id, casoTesteId: linhaManual.caso_teste_id, input }, {
         onSuccess: () => { setLinhaManual(null); toast.success(t("manualResultSaved")); },

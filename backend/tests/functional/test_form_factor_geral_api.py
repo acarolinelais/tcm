@@ -41,6 +41,8 @@ async def test_historico_repassa_filtros_e_devolve_o_pivo(api_client):
                 tc_id="Clock_001",
                 responsavel_id=uuid4(),
                 responsavel_identificador="ANA-001",
+                backup_id=None,
+                rodada_pendente_id=None,
                 ultimo_sdf_por_modelo={modelo_id: "SDF-9"},
                 resultados={
                     date(2026, 10, 10): {
@@ -61,7 +63,7 @@ async def test_historico_repassa_filtros_e_devolve_o_pivo(api_client):
     response = await api_client.get(
         f"/api/form-factor/general/projetos/{projeto_id}/historico?tc_id=001&responsavel=ana"
         f"&sdf_id=SDF&busca=ignorada&modelo_dispositivo_id={modelo_id}&semana=2026-W41"
-        "&fuso_horario=America/Manaus&page=2&page_size=10"
+        "&fuso_horario=America/Manaus&page=2&page_size=10&associados_a_mim=true"
     )
 
     assert response.status_code == 200
@@ -78,6 +80,7 @@ async def test_historico_repassa_filtros_e_devolve_o_pivo(api_client):
         fuso_horario="America/Manaus",
         page=2,
         page_size=10,
+        associados_a_mim=True,
     )
     corpo = response.json()
     assert corpo["datas"] == ["2026-10-10"]
@@ -100,6 +103,7 @@ async def test_historico_repassa_filtros_e_devolve_o_pivo(api_client):
         "page_size=101",
         f"responsavel={'a' * 101}",
         f"sdf_id={'a' * 101}",
+        "associados_a_mim=talvez",
     ],
 )
 async def test_periodo_ou_filtro_invalido_retorna_422_problem_details(api_client, consulta):

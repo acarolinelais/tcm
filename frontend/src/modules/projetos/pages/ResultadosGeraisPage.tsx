@@ -5,24 +5,19 @@ import { useOutletContext, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import type { PerfilAtual } from "@/core/auth/api";
-import { buscarTodasAsPaginas } from "@/shared/lib/exportar-planilha";
-import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { ErroComRetry } from "@/shared/ui/erro-com-retry";
 import { EstadoVazio } from "@/shared/ui/estado-vazio";
 import { FiltroEncerrados } from "@/shared/ui/filtro-encerrados";
 import { PageCard, PageTitle } from "@/shared/ui/page-card";
 import { PageTabPanel, PageTabs } from "@/shared/ui/page-tabs";
 import { WeekPickerHero } from "@/shared/ui/week-picker-hero";
-import { useHistoricoProjeto, useProjetosSeletor } from "../hooks/useProjetos";
-import { formFactorApi } from "../api/projetos.api";
-import { filtrarEncerrados, projetoEncerrado, type CasoHistorico, type FiltrosHistoricoProjeto } from "../model/projeto";
+import { useProjetosSeletor } from "../hooks/useProjetos";
+import { filtrarEncerrados, projetoEncerrado } from "../model/projeto";
 import { AcoesGerenciaFormFactor } from "../components/form-factor/AcoesGerenciaFormFactor";
-import { HistoricoProjetoTabela, type ResultadoAberto } from "../components/resultados-gerais/HistoricoProjetoTabela";
+import { HistoricoProjetoTabela } from "../components/resultados-gerais/HistoricoProjetoTabela";
 import { ResultadoExecucaoModal } from "../components/resultados-gerais/ResultadoExecucaoModal";
 import { ResumoExecucoesDrawer } from "../components/resultados-gerais/ResumoExecucoesDrawer";
-
-const SEM_FILTROS: FiltrosHistoricoProjeto = {};
-const NENHUM_EXPANDIDO: ReadonlySet<string> = new Set();
+import { useTabelaHistorico } from "../components/resultados-gerais/useTabelaHistorico";
 
 const ABAS_POR_VEZ = 3;
 // Setas soltas: círculo suave no hover, resposta no toque e apagadas quando desabilitadas.
@@ -57,41 +52,13 @@ export function ResultadosGeraisPage() {
   const abasVisiveis = abas.slice(inicio, inicio + ABAS_POR_VEZ);
   const [direcaoAbas, setDirecaoAbas] = useState<"proximo" | "anterior">();
   const projetoId = projetoAberto?.id ?? "";
-  const [filtros, setFiltros] = useState(SEM_FILTROS);
-  // Página e tamanho (spec 033): fora de `filtros`, que só guarda o que a pessoa filtrou.
-  const [pagina, setPagina] = useState(1);
-  const [tamanhoPagina, setTamanhoPagina] = useState(DEFAULT_TABLE_PAGE_SIZE);
-  // Linhas abertas (spec 059, RN-12): só estado de tela, esquecido ao trocar de página, de projeto ou de filtro.
-  const [expandidos, setExpandidos] = useState(NENHUM_EXPANDIDO);
-  const [resultadoAberto, setResultadoAberto] = useState<ResultadoAberto | null>(null);
-  const [casoDoResumo, setCasoDoResumo] = useState<CasoHistorico | null>(null);
-  const historico = useHistoricoProjeto(projetoId, { ...filtros, page: pagina, pageSize: tamanhoPagina }, perfil);
-  const dados = historico.data;
-  const totalPaginas = Math.max(1, Math.ceil((dados?.total_count ?? 0) / tamanhoPagina));
-  // Casos removidos encolhem a lista: volta para a última página que existe, como nas outras telas.
-  useEffect(() => {
-    if (dados && !historico.isPlaceholderData && pagina > totalPaginas) {
-      setPagina(totalPaginas);
-      setExpandidos(NENHUM_EXPANDIDO);
-    }
-  }, [dados, historico.isPlaceholderData, pagina, totalPaginas]);
-
-  const buscarCasosParaExportar = () => buscarTodasAsPaginas((page, pageSize) => formFactorApi.historicoProjeto(projetoId, { ...filtros, page, pageSize }));
-
-  function irParaPagina(proxima: number) {
-    setPagina(proxima);
-    setExpandidos(NENHUM_EXPANDIDO);
-  }
-
-  function alterarFiltros(proximos: FiltrosHistoricoProjeto) {
-    setFiltros(proximos);
-    irParaPagina(1);
-  }
+  const tabela = useTabelaHistorico(projetoId, perfil);
+  const { filtros, alterarFiltros } = tabela;
 
   function trocarProjeto(id: string) {
     // replace: a troca não entra no histórico, então voltar no navegador não reabre um projeto com os filtros de outro.
     setParametros({ projeto: id }, { replace: true });
-    alterarFiltros(SEM_FILTROS);
+    tabela.limparFiltros();
   }
 
   // Desligar a pílula num projeto encerrado volta para o primeiro aberto (ou para o estado vazio, se não houver).
@@ -110,16 +77,6 @@ export function ResultadosGeraisPage() {
     setDirecaoAbas(passo > 0 ? "proximo" : "anterior");
     trocarProjeto(abas[destino].id);
   }
-
-  function alternarLinha(casoId: string) {
-    setExpandidos((atuais) => {
-      const proximos = new Set(atuais);
-      if (!proximos.delete(casoId)) proximos.add(casoId);
-      return proximos;
-    });
-  }
-
-  const temFiltros = Object.values(filtros).some(Boolean);
 
   if (!permitido) return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;
 
@@ -169,33 +126,15 @@ export function ResultadosGeraisPage() {
         <FiltroEncerrados ligado={comEncerrados} onChange={alternarEncerrados} autoFocus={comEncerrados} />
         <WeekPickerHero permitirDia label={t("dayOrWeek")} value={filtros.periodo ?? ""} onChange={(valor) => alterarFiltros({ ...filtros, periodo: valor || undefined })} />
         {/* Pílula cinza na altura do filtro de dia ou semana ao lado (design da spec 059). */}
-        {temFiltros && <Button variant="ghost" onPress={() => alterarFiltros(SEM_FILTROS)} className="rounded-full bg-panel px-4 font-medium text-body shadow-none transition-[background-color,transform] duration-100 ease-out hover:bg-default data-[pressed]:scale-[0.97] motion-reduce:transition-none motion-reduce:data-[pressed]:scale-100 dark:text-muted">{t("clearFilters")}</Button>}
+        {tabela.temFiltros && <Button variant="ghost" onPress={tabela.limparFiltros} className="rounded-full bg-panel px-4 font-medium text-body shadow-none transition-[background-color,transform] duration-100 ease-out hover:bg-default data-[pressed]:scale-[0.97] motion-reduce:transition-none motion-reduce:data-[pressed]:scale-100 dark:text-muted">{t("clearFilters")}</Button>}
         <AcoesGerenciaFormFactor projetoId={projetoId} perfil={perfil} />
       </>}
     >
       <PageTabPanel id={projetoId} className="flex min-h-0 flex-1 flex-col p-0">
-        <HistoricoProjetoTabela
-          dados={dados}
-          carregando={historico.isLoading}
-          erro={historico.isError}
-          onTentarDeNovo={() => void historico.refetch()}
-          filtros={filtros}
-          onFiltroChange={(campo, valor) => alterarFiltros({ ...filtros, [campo]: valor || undefined })}
-          temFiltros={temFiltros}
-          onLimparFiltros={() => alterarFiltros(SEM_FILTROS)}
-          expandidos={expandidos}
-          onAlternar={alternarLinha}
-          onAbrirResultado={setResultadoAberto}
-          onAbrirResumo={setCasoDoResumo}
-          buscarTodos={buscarCasosParaExportar}
-          page={pagina}
-          pageSize={tamanhoPagina}
-          onPageChange={irParaPagina}
-          onPageSizeChange={(tamanho) => { setTamanhoPagina(tamanho); irParaPagina(1); }}
-        />
+        <HistoricoProjetoTabela {...tabela.propsTabela} />
       </PageTabPanel>
     </PageTabs>
-    <ResumoExecucoesDrawer caso={casoDoResumo} perfil={perfil} onFechar={() => setCasoDoResumo(null)} onAbrirResultado={setResultadoAberto} />
-    <ResultadoExecucaoModal resultado={resultadoAberto} onFechar={() => setResultadoAberto(null)} />
+    <ResumoExecucoesDrawer caso={tabela.casoDoResumo} perfil={perfil} onFechar={() => tabela.setCasoDoResumo(null)} onAbrirResultado={tabela.setResultadoAberto} />
+    <ResultadoExecucaoModal resultado={tabela.resultadoAberto} onFechar={() => tabela.setResultadoAberto(null)} />
   </PageCard>;
 }

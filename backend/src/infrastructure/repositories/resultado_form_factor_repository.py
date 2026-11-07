@@ -20,7 +20,7 @@ from src.infrastructure.data.models.resultado_form_factor_model import Resultado
 from src.infrastructure.data.models.rodada_form_factor_model import RodadaFormFactorModel
 from src.infrastructure.repositories.execucao_sdf_repository import (
     filtros_execucao_de_rodada_ativa,
-    ordem_rodada_atual,
+    rodadas_pendentes,
 )
 from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
 
@@ -176,32 +176,7 @@ class ResultadoFormFactorRepositoryImpl(
         if not casos:
             return PagedResult([], page, page_size, total)
         casos_ids = [caso_id for caso_id, _, _, _ in casos]
-        # Por caso: (rodada, SDF ID informado nela) da rodada atual (RN-13), a mais recente do caso,
-        # enquanto ela ainda não tem resultados; rodadas anteriores sem resultado ficam encerradas.
-        rodadas_pendentes = {
-            caso_id: (rodada_id, sdf_id_rodada)
-            for caso_id, rodada_id, sdf_id_rodada, registrada in (
-                await self.session.execute(
-                    select(
-                        ExecucaoSdfModel.caso_teste_id,
-                        ExecucaoSdfModel.rodada_id,
-                        ExecucaoSdfModel.sdf_id,
-                        ExecucaoSdfModel.resultados_registrados,
-                    )
-                    .join(
-                        RodadaFormFactorModel,
-                        RodadaFormFactorModel.id == ExecucaoSdfModel.rodada_id,
-                    )
-                    .where(
-                        ExecucaoSdfModel.caso_teste_id.in_(casos_ids),
-                        *filtros_execucao_de_rodada_ativa(ExecucaoSdfModel, unidade_id),
-                    )
-                    .ext(distinct_on(ExecucaoSdfModel.caso_teste_id))
-                    .order_by(ExecucaoSdfModel.caso_teste_id, *ordem_rodada_atual(ExecucaoSdfModel))
-                )
-            ).all()
-            if not registrada
-        }
+        pendentes = await rodadas_pendentes(self.session, unidade_id, casos_ids)
 
         # Resultado mais recente de cada par (caso, modelo); empate vence a importação mais recente,
         # e os ids fecham a ordem para a escolha não variar entre consultas.
@@ -241,7 +216,7 @@ class ResultadoFormFactorRepositoryImpl(
         items = []
         for caso_id, tc_id, responsavel_id_caso, backup_id in casos:
             recente = mais_recente.get(caso_id)
-            rodada_id, sdf_id_rodada = rodadas_pendentes.get(caso_id, (None, None))
+            rodada_id, sdf_id_rodada = pendentes.get(caso_id, (None, None))
             items.append(
                 FormFactorLinha(
                     caso_teste_id=caso_id,

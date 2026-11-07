@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from dataclasses import replace
 from datetime import date, datetime
 from uuid import UUID
 
@@ -17,6 +18,7 @@ from src.infrastructure.data.models.importacao_sdf_model import ImportacaoSdfMod
 from src.infrastructure.data.models.projeto_modelo_model import ProjetoModeloModel
 from src.infrastructure.data.models.resultado_form_factor_model import ResultadoFormFactorModel
 from src.infrastructure.data.models.usuario_model import UsuarioModel
+from src.infrastructure.repositories.execucao_sdf_repository import rodadas_pendentes
 
 
 def _dia(fuso_horario: str):
@@ -100,6 +102,13 @@ def _filtros_casos(unidade_id: UUID, projeto_id: UUID, filtros: FiltrosCasoHisto
         CasoTesteModel.projeto_id == projeto_id,
         CasoTesteModel.ativo.is_(True),
     ]
+    if filtros.associado_a is not None:
+        condicoes.append(
+            or_(
+                CasoTesteModel.responsavel_id == filtros.associado_a,
+                CasoTesteModel.backup_id == filtros.associado_a,
+            )
+        )
     if filtros.tc_id and filtros.tc_id.strip():
         condicoes.append(CasoTesteModel.tc_id.ilike(f"%{filtros.tc_id.strip()}%"))
     if filtros.responsavel and filtros.responsavel.strip():
@@ -128,6 +137,7 @@ _COLUNAS_CASO = (
     CasoTesteModel.tc_id,
     CasoTesteModel.responsavel_id,
     UsuarioModel.user_id,
+    CasoTesteModel.backup_id,
 )
 
 
@@ -156,8 +166,20 @@ class HistoricoFormFactorRepositoryImpl:
             .offset((page - 1) * page_size)
             .limit(page_size)
         )
+        casos = [CasoHistorico(*linha) for linha in linhas.all()]
+        pendentes = await rodadas_pendentes(
+            self.session, unidade_id, [caso.caso_teste_id for caso in casos]
+        )
         return PagedResult(
-            [CasoHistorico(*linha) for linha in linhas.all()], page, page_size, total
+            [
+                replace(caso, rodada_pendente_id=pendentes[caso.caso_teste_id][0])
+                if caso.caso_teste_id in pendentes
+                else caso
+                for caso in casos
+            ],
+            page,
+            page_size,
+            total,
         )
 
     async def obter_caso(self, unidade_id: UUID, caso_teste_id: UUID) -> CasoHistorico | None:

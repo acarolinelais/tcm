@@ -1,6 +1,9 @@
+from collections.abc import Sequence
 from uuid import UUID
 
 from sqlalchemy import exists, func, select
+from sqlalchemy.dialects.postgresql import distinct_on
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.execucao_sdf import ExecucaoSdf
 from src.infrastructure.data.models.execucao_sdf_model import ExecucaoSdfModel
@@ -25,6 +28,37 @@ def filtros_execucao_de_rodada_ativa(execucao, unidade_id: UUID):
 def ordem_rodada_atual(execucao):
     """Mais recente primeiro: a primeira execução de rodada do caso nessa ordem é a atual."""
     return (execucao.data_reportada.desc(), execucao.id)
+
+
+async def rodadas_pendentes(
+    session: AsyncSession, unidade_id: UUID, casos_ids: Sequence[UUID]
+) -> dict[UUID, tuple[UUID, str | None]]:
+    """Por caso, (rodada, SDF ID dela) da rodada atual enquanto ela não tem resultados.
+
+    Rodadas anteriores sem resultado ficam encerradas.
+    """
+    if not casos_ids:
+        return {}
+    linhas = await session.execute(
+        select(
+            ExecucaoSdfModel.caso_teste_id,
+            ExecucaoSdfModel.rodada_id,
+            ExecucaoSdfModel.sdf_id,
+            ExecucaoSdfModel.resultados_registrados,
+        )
+        .join(RodadaFormFactorModel, RodadaFormFactorModel.id == ExecucaoSdfModel.rodada_id)
+        .where(
+            ExecucaoSdfModel.caso_teste_id.in_(casos_ids),
+            *filtros_execucao_de_rodada_ativa(ExecucaoSdfModel, unidade_id),
+        )
+        .ext(distinct_on(ExecucaoSdfModel.caso_teste_id))
+        .order_by(ExecucaoSdfModel.caso_teste_id, *ordem_rodada_atual(ExecucaoSdfModel))
+    )
+    return {
+        caso_id: (rodada_id, sdf_id)
+        for caso_id, rodada_id, sdf_id, registrada in linhas.all()
+        if not registrada
+    }
 
 
 class ExecucaoSdfRepositoryImpl(RepositoryBaseImpl[ExecucaoSdf, ExecucaoSdfModel]):

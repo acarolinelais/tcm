@@ -295,3 +295,46 @@ async def test_datas_consideram_os_casos_de_todas_as_paginas(cenario):
     assert [caso.caso_teste_id for caso in pagina.items] == [primeiro]
     # A data do caso fora do filtro de TC ID não entra.
     assert datas == (date(2026, 10, 4), date(2026, 10, 1))
+
+
+@pytest.mark.asyncio
+async def test_associado_a_traz_os_casos_em_que_a_pessoa_e_dona_ou_backup(cenario):
+    # Spec 068, CA-02 e CA-04.
+    dono = await cenario.caso("Clock_001", cenario.bia)
+    backup = await cenario.caso("Clock_002", cenario.ana, backup_id=cenario.bia)
+    await cenario.caso("Clock_003", cenario.ana)
+
+    da_bia = await _listar(_repo(cenario), cenario, associado_a=cenario.bia)
+    todos = await _listar(_repo(cenario), cenario)
+
+    assert [caso.caso_teste_id for caso in da_bia.items] == [dono, backup]
+    assert da_bia.total_count == 2
+    assert todos.total_count == 3
+    assert next(c for c in da_bia.items if c.caso_teste_id == backup).backup_id == cenario.bia
+
+
+@pytest.mark.asyncio
+async def test_falha_associado_a_sem_casos_da_pessoa_nao_traz_nada(cenario):
+    # CA-03: os casos dos colegas não aparecem nem pelo filtro de Assignee.
+    await cenario.caso("Clock_001", cenario.ana)
+
+    pagina = await _listar(_repo(cenario), cenario, associado_a=cenario.bia, responsavel="Ana")
+
+    assert (pagina.items, pagina.total_count) == ([], 0)
+
+
+@pytest.mark.asyncio
+async def test_rodada_esperando_resultado_vem_no_caso(cenario):
+    # CA-07 e CA-08: só a rodada atual sem resultados.
+    pendente = await cenario.caso("Clock_001")
+    registrado = await cenario.caso("Clock_002")
+    rodada, _ = await cenario.rodada(pendente, "SDF-1", INICIO)
+    _, execucao = await cenario.rodada(registrado, "SDF-2", INICIO)
+    await cenario.registrar(execucao, {cenario.s26: "PASS"})
+
+    pagina = await _listar(_repo(cenario), cenario)
+
+    assert {caso.tc_id: caso.rodada_pendente_id for caso in pagina.items} == {
+        "Clock_001": rodada.id,
+        "Clock_002": None,
+    }

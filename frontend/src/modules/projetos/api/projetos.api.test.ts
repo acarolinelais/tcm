@@ -87,6 +87,8 @@ describe("APIs de projetos", () => {
     );
     await formFactorApi.historicoProjeto("project-1", { periodo: "2026-03-25", page: 3, pageSize: 50 });
     expect(fetch).toHaveBeenLastCalledWith(`/api/form-factor/general/projetos/project-1/historico?fuso_horario=${fuso}&page=3&page_size=50&dia=2026-03-25`, expect.any(Object));
+    await formFactorApi.historicoProjeto("project-1", { associadosAMim: true });
+    expect(fetch).toHaveBeenLastCalledWith(`/api/form-factor/general/projetos/project-1/historico?fuso_horario=${fuso}&page=1&page_size=20&associados_a_mim=true`, expect.any(Object));
     await formFactorApi.resumoExecucoes("case-1");
     expect(fetch).toHaveBeenLastCalledWith(`/api/form-factor/general/casos/case-1/execucoes?fuso_horario=${fuso}`, expect.any(Object));
     await formFactorApi.listar("project-1", {
