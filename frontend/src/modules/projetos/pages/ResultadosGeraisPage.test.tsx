@@ -14,7 +14,6 @@ vi.mock("../hooks/useProjetos", () => ({
   useHistoricoProjeto: vi.fn(),
   useResumoExecucoes: vi.fn(),
   useProjetosSeletor: vi.fn(),
-  useCriarRodadaFormFactor: () => ({ mutate: vi.fn(), isPending: false }),
   useImportarRelatorioSdf: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
@@ -92,14 +91,12 @@ describe("ResultadosGeraisPage", () => {
     expect(screen.getAllByRole("tab")).toHaveLength(2);
     expect(useProjetosSeletor).toHaveBeenCalledWith(dev, true);
     expect(screen.queryByRole("button", { name: "Import SDF report" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Create test round" })).not.toBeInTheDocument();
   });
 
-  it("o gerente com as permissões vê Import SDF Report e Create test round no topo da tabela (CA-05)", () => {
+  it("o gerente com as permissões vê Import SDF Report no topo da tabela (CA-05)", () => {
     renderPage();
 
     expect(screen.getByRole("button", { name: "Import SDF report" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create test round" })).toBeInTheDocument();
   });
 
   it("o projeto do endereço abre direto (spec 053, CA-04)", () => {
@@ -282,7 +279,7 @@ describe("ResultadosGeraisPage", () => {
     expect(screen.getByText("No projects to show")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("General Results");
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Create test round" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Import SDF report" })).not.toBeInTheDocument();
     unmount();
 
     renderPage({ ...dev, permissoes: [] });
