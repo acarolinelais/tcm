@@ -24,6 +24,7 @@ export function rotuloDaRota(caminho: string): string {
 // Páginas que não estão na sidebar e a página principal a que pertencem. Nas páginas da sidebar não há voltar.
 const PAIS: [RegExp, (caminho: string) => string][] = [
   [/^\/projetos\/[^/]+$/, () => "/projetos"],
+  [/^\/documentation\/[^/]+$/, () => "/documentation"],
   [/^\/(admin\/)?times\/[^/]+$/, (caminho) => caminho.slice(0, caminho.lastIndexOf("/"))],
 ];
 

@@ -1,11 +1,11 @@
 import { Navigate, createBrowserRouter } from "react-router";
 
 import { AppLayout } from "@/core/layout/AppLayout";
-import { EmBreve } from "@/core/layout/EmBreve";
 import { LoginPage } from "@/core/auth/LoginPage";
 import { AlterarSenhaPage } from "@/core/auth/AlterarSenhaPage";
 import { auditoriaRoutes } from "@/modules/auditoria";
 import { configuracoesRoutes } from "@/modules/configuracoes";
+import { documentacaoRoutes } from "@/modules/documentacao";
 import { modelosDispositivoRoutes } from "@/modules/modelos-dispositivo";
 import { overviewRoutes } from "@/modules/overview";
 import { perfisRoutes } from "@/modules/perfis";
@@ -27,7 +27,7 @@ export const router = createBrowserRouter([
       ...projetosRoutes,
       ...modelosDispositivoRoutes,
       ...timelineRoutes,
-      { path: "documentation", element: <EmBreve titulo="documentation" /> },
+      ...documentacaoRoutes,
       ...configuracoesRoutes,
       ...usuariosRoutes,
       ...perfisRoutes,

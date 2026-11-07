@@ -74,7 +74,7 @@ sem paginação, também pagina ([ADR 0039](../adr/0039-resultados-gerais-com-pa
 | 045 | Evidências anexadas ao Test Case (exige ADR de armazenamento) | Rascunho |
 | 046 | Notificações dentro do sistema (depende das 038, 040 e 044) | Rascunho |
 | 047 | Corrigir rodadas e resultados de Form Factor | Rascunho |
-| 048 | Documentação de uso dentro do sistema | Rascunho |
+| 048 | Documentação de uso dentro do sistema (guias por tarefa, destaque por perfil, slides em PDF para download) | Concluída |
 | 049 | Transição suave ao trocar o tema (cores da tela mudam juntas e aos poucos, ícone do toggle anima) | Concluída |
 | 050 | Ajustes visuais: tema escuro do protótipo, Navbar sem sobreposição, fim do shadcn, calendário e Sidebar | Em andamento (e2e com API real pendentes) |
 | 051 | Estilização da tela de redefinição de senha (visual do login, olho, idioma, tema e sair; HeroUI) | Concluída |
