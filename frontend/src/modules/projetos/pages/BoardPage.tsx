@@ -8,17 +8,18 @@ import type { PerfilAtual } from "@/core/auth/api";
 import { cn } from "@/shared/lib/utils";
 import { ErroComRetry } from "@/shared/ui/erro-com-retry";
 import { EstadoVazio } from "@/shared/ui/estado-vazio";
+import { FiltroEncerrados } from "@/shared/ui/filtro-encerrados";
 import { PageCard, PageTitle } from "@/shared/ui/page-card";
 import { TagChip } from "@/shared/ui/tag-chip";
 import { statusProjetoTons } from "../components/status/status-projeto-estilos";
 import { useNavegacaoBoard } from "../hooks/useProjetos";
-import { ROTULO_STATUS_PROJETO, type NavegacaoBoard, type StatusProjeto } from "../model/projeto";
+import { filtrarEncerrados, projetoEncerrado, ROTULO_STATUS_PROJETO, type NavegacaoBoard } from "../model/projeto";
 import { lerUltimoProjetoBoard } from "../utils/ultimo-projeto-board";
 
 type Time = NavegacaoBoard["setores"][number]["times"][number];
+type CardDoTime = Time & { soEncerrados: boolean };
 
 const linkDoKanban = (projetoId: string) => `/board/${projetoId}`;
-const encerrado = (status: StatusProjeto) => status === "Completed" || status === "Canceled";
 
 /**
  * Board (spec 037, RN-12 a RN-16). O dev e quem tem um time só vão direto para um Kanban; admin, gerente e KP com
@@ -29,6 +30,8 @@ export function BoardPage() {
   const perfil = useOutletContext<PerfilAtual>();
   const navegacao = useNavegacaoBoard(perfil);
   const [busca, setBusca] = useState("");
+  const [comEncerrados, setComEncerrados] = useState(false);
+  const filtro = <FiltroEncerrados ligado={comEncerrados} onChange={setComEncerrados} />;
 
   if (navegacao.isLoading) return <BoardCard><Aviso>{t("loading")}</Aviso></BoardCard>;
   if (navegacao.isError || !navegacao.data) {
@@ -41,32 +44,39 @@ export function BoardPage() {
 
   if (perfil.perfil_codigo === "USUARIO_PADRAO" || times.length === 1) {
     const projetos = times.flatMap((time) => time.projetos);
+    if (!projetos.length) return <BoardCard><EstadoVazio className="m-auto" titulo={t("noAccessibleProjects")} dica={t("noAccessibleProjectsHint")} /></BoardCard>;
+    const candidatos = filtrarEncerrados(projetos, comEncerrados);
     const ultimo = lerUltimoProjetoBoard(perfil.id);
-    const destino = projetos.find((projeto) => projeto.id === ultimo) ?? projetos.find((projeto) => !encerrado(projeto.status)) ?? projetos[0];
-    return destino ? <Navigate to={linkDoKanban(destino.id)} replace /> : <BoardCard><EstadoVazio className="m-auto" titulo={t("noAccessibleProjects")} dica={t("noAccessibleProjectsHint")} /></BoardCard>;
+    const destino = candidatos.find((projeto) => projeto.id === ultimo) ?? candidatos[0];
+    return destino ? <Navigate to={linkDoKanban(destino.id)} replace /> : <BoardCard busca={filtro}><EstadoVazio className="m-auto" titulo={t("noOpenProjects")} dica={t("noOpenProjectsHint")} /></BoardCard>;
   }
 
   const termo = busca.trim().toLocaleLowerCase();
   // Um time que bate com a busca mostra todos os projetos; senão, só os projetos que batem.
-  const filtrarTime = (time: Time): Time | null => {
+  const filtrarTime = (todos: Time): CardDoTime | null => {
+    const projetosVisiveis = filtrarEncerrados(todos.projetos, comEncerrados);
+    const time = { ...todos, projetos: projetosVisiveis, soEncerrados: todos.projetos.length > 0 && !projetosVisiveis.length };
     if (!termo || time.nome.toLocaleLowerCase().includes(termo)) return time;
     const projetos = time.projetos.filter((projeto) => projeto.nome.toLocaleLowerCase().includes(termo));
     return projetos.length ? { ...time, projetos } : null;
   };
   const visiveis = setores
-    .map((setor) => ({ ...setor, times: setor.times.map(filtrarTime).filter((time): time is Time => time !== null) }))
+    .map((setor) => ({ ...setor, times: setor.times.map(filtrarTime).filter((time): time is CardDoTime => time !== null) }))
     .filter((setor) => setor.times.length > 0);
 
   return (
     <BoardCard
       busca={
-        <SearchField aria-label={t("boardSearch")} value={busca} onChange={setBusca} className="w-full sm:w-72">
-          <SearchField.Group className="h-9 rounded-full">
-            <SearchField.SearchIcon />
-            <SearchField.Input placeholder={t("boardSearch")} className="text-[14px]" />
-            <SearchField.ClearButton />
-          </SearchField.Group>
-        </SearchField>
+        <div className="flex flex-wrap items-center gap-4">
+          {filtro}
+          <SearchField aria-label={t("boardSearch")} value={busca} onChange={setBusca} className="w-full sm:w-72">
+            <SearchField.Group className="h-9 rounded-full">
+              <SearchField.SearchIcon />
+              <SearchField.Input placeholder={t("boardSearch")} className="text-[14px]" />
+              <SearchField.ClearButton />
+            </SearchField.Group>
+          </SearchField>
+        </div>
       }
     >
       {visiveis.length ? (
@@ -94,7 +104,7 @@ function iniciais(nome: string) {
   return (palavras.length > 1 ? palavras[0][0] + palavras[1][0] : nome.slice(0, 2)).toLocaleUpperCase();
 }
 
-function CardTime({ time }: { time: Time }) {
+function CardTime({ time }: { time: CardDoTime }) {
   const { t } = useTranslation();
   return (
     <article
@@ -123,7 +133,7 @@ function CardTime({ time }: { time: Time }) {
                 to={linkDoKanban(projeto.id)}
                 className={cn(
                   "group/projeto flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
-                  encerrado(projeto.status) ? "text-muted" : "text-body",
+                  projetoEncerrado(projeto.status) ? "text-muted" : "text-body",
                 )}
               >
                 <FolderKanban aria-hidden="true" className="size-4 shrink-0 text-muted" />
@@ -134,7 +144,7 @@ function CardTime({ time }: { time: Time }) {
             </li>
           ))}
         </ul>
-      ) : <p className="rounded-xl bg-surface px-3 py-3 text-[13px] text-muted">{t("boardTeamWithoutProjects")}</p>}
+      ) : <p className="rounded-xl bg-surface px-3 py-3 text-[13px] text-muted">{t(time.soEncerrados ? "noOpenProjects" : "boardTeamWithoutProjects")}</p>}
     </article>
   );
 }

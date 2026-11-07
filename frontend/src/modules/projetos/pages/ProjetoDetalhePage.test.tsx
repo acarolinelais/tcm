@@ -270,12 +270,12 @@ describe("ProjetoDetalhePage", () => {
     expect(casosTesteApi.listar).toHaveBeenCalledTimes(consultas);
   });
 
-  it("filtra TCs por semana no cabeçalho e mantém as semanas das abas independentes", async () => {
+  it("filtra TCs por semana na linha das abas e mantém as semanas das abas independentes", async () => {
     vi.mocked(casosTesteApi.listar).mockImplementation(async (_id, page = 1, pageSize = 20, filtros) => ({ items: filtros?.semana ? [] : casos, total_count: filtros?.semana ? 0 : casos.length, page, page_size: pageSize }));
     const user = userEvent.setup();
-    const { container } = renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO", permissoes: [...perfil.permissoes, "form_factor.consultar"] });
+    renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO", permissoes: [...perfil.permissoes, "form_factor.consultar"] });
     await screen.findByRole("row", { name: /Clock_001/ });
-    await user.click(within(container.querySelector("header")!).getByRole("button", { name: "Week: Select a week" }));
+    await user.click(screen.getByRole("button", { name: "Week: Select a week" }));
     await user.click(within(await screen.findByRole("dialog", { name: "Week" })).getByRole("button", { name: "This week" }));
     await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("project-1", 1, DEFAULT_TABLE_PAGE_SIZE, { responsavelId: undefined, associadosAMim: true, semana: semanaIso(new Date()) }));
     expect(screen.queryByRole("row", { name: /Clock_001/ })).not.toBeInTheDocument();
@@ -719,9 +719,6 @@ describe("ProjetoDetalhePage", () => {
     await waitFor(() => expect(assignee).toHaveTextContent("daniel-id"));
   });
 
-
-
-
 });
 
 describe("ProjetoDetalhePage: etiquetas e numeração dos Test Cases", () => {
@@ -858,10 +855,10 @@ describe("ProjetoDetalhePage: aba Form Factor (spec 068)", () => {
     await waitFor(() => expect(formFactorApi.registrarResultadosRodada).toHaveBeenCalledWith("project-1", "round-1", "case-1", { resultados: { m1: "FAIL" } }));
   });
 
-  it("a semana do topo filtra as datas da tabela (CA-10)", async () => {
-    const { user, container } = await abrirFormFactor(gestao);
+  it("a semana da linha das abas filtra as datas da tabela (CA-10)", async () => {
+    const { user } = await abrirFormFactor(gestao);
 
-    await user.click(within(container.querySelector("header")!).getByRole("button", { name: "Week: Select a week" }));
+    await user.click(screen.getByRole("button", { name: "Week: Select a week" }));
     await user.click(within(await screen.findByRole("dialog", { name: "Week" })).getByRole("button", { name: "This week" }));
 
     await waitFor(() => expect(formFactorApi.historicoProjeto).toHaveBeenLastCalledWith("project-1", expect.objectContaining({ periodo: semanaIso(new Date()), page: 1 })));

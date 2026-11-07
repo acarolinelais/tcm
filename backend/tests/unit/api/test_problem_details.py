@@ -34,6 +34,15 @@ def _build_app() -> FastAPI:
     async def conflito_com_campo():
         raise ConflictException("SDF ID já usado.", campo="sdf_id")
 
+    @app.get("/conflito-com-codigo")
+    async def conflito_com_codigo():
+        raise ConflictException(
+            "2 Test Cases ainda não estão em Done.",
+            campo="status",
+            codigo="projeto_com_casos_pendentes",
+            parametros={"quantidade": 2},
+        )
+
     @app.get("/proibido")
     async def proibido():
         raise ForbiddenException("Sem permissão.")
@@ -87,6 +96,20 @@ async def test_conflito_com_campo_retorna_409_com_errors():
 
     assert resposta.status_code == 409
     assert resposta.json()["errors"] == [{"campo": "sdf_id", "mensagem": "SDF ID já usado."}]
+
+
+async def test_conflito_com_codigo_retorna_409_com_codigo_e_parametros():
+    resposta = await _get("/conflito-com-codigo")
+
+    assert resposta.status_code == 409
+    assert resposta.json()["errors"] == [
+        {
+            "campo": "status",
+            "mensagem": "2 Test Cases ainda não estão em Done.",
+            "codigo": "projeto_com_casos_pendentes",
+            "parametros": {"quantidade": 2},
+        }
+    ]
 
 
 async def test_forbidden_retorna_403():

@@ -24,7 +24,8 @@ nova no próximo acesso.
 
 ## Regras de negócio
 
-- RN-01: O menu da conta ganha a ação Trocar senha, para todos os perfis.
+- RN-01: A página Configurações tem a ação Trocar senha, para todos os perfis. No começo ela ficava no menu da
+  conta e foi movida para Configurações depois da entrega.
 - RN-02: Trocar a senha pede a senha atual, a nova e a confirmação da nova. Segue as regras atuais de senha
   e encerra as outras sessões abertas da pessoa; a sessão em uso continua.
 - RN-03: O administrador da unidade tem, na lista de usuários, a ação Redefinir senha, com confirmação.

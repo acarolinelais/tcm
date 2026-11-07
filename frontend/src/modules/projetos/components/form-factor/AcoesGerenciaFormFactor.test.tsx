@@ -133,7 +133,8 @@ describe("AcoesGerenciaFormFactor", () => {
       const user = userEvent.setup();
       const { invalidar } = renderAcoes(base);
 
-      await user.click(await screen.findByRole("button", { name: "Undo last import" }));
+      await user.click(await screen.findByRole("button", { name: "More import actions" }));
+      await user.click(await screen.findByRole("menuitem", { name: "Undo last import" }));
       const dialog = await screen.findByRole("alertdialog");
       expect(within(dialog).getByText("456789-990123")).toBeInTheDocument();
       expect(within(dialog).getByText("SM-S948B")).toBeInTheDocument();
@@ -150,7 +151,8 @@ describe("AcoesGerenciaFormFactor", () => {
       const user = userEvent.setup();
       renderAcoes(base);
 
-      await user.click(await screen.findByRole("button", { name: "Undo last import" }));
+      await user.click(await screen.findByRole("button", { name: "More import actions" }));
+      await user.click(await screen.findByRole("menuitem", { name: "Undo last import" }));
       await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Cancel" }));
 
       await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
@@ -161,7 +163,8 @@ describe("AcoesGerenciaFormFactor", () => {
       renderAcoes(base);
 
       await waitFor(() => expect(formFactorApi.ultimaImportacao).toHaveBeenCalledWith("project-1"));
-      expect(screen.queryByRole("button", { name: "Undo last import" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "More import actions" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Import SDF report" })).toBeInTheDocument();
     });
 
     it("falha: outra importação entrou no meio e o aviso aparece no toast (CA-10)", async () => {
@@ -170,7 +173,8 @@ describe("AcoesGerenciaFormFactor", () => {
       const user = userEvent.setup();
       renderAcoes(base);
 
-      await user.click(await screen.findByRole("button", { name: "Undo last import" }));
+      await user.click(await screen.findByRole("button", { name: "More import actions" }));
+      await user.click(await screen.findByRole("menuitem", { name: "Undo last import" }));
       await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Undo import" }));
 
       await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Another import came in after this one. Check the details and try again."));

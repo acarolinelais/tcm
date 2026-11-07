@@ -89,11 +89,11 @@ async function abrirMenuDaConta(page: Page) {
   await page.getByRole("button", { name: "Novo", exact: true }).click();
 }
 
-test("troca a própria senha pelo menu e a senha antiga deixa de entrar", async ({ page }) => {
+test("troca a própria senha em Configurações e a senha antiga deixa de entrar", async ({ page }) => {
   const usuario = await entrarComSenhaPropria(page, "senha-um");
 
-  await abrirMenuDaConta(page);
-  await page.getByRole("menuitem", { name: "Change password" }).click();
+  await page.goto("/configuracoes");
+  await page.getByRole("button", { name: "Change password" }).click();
   await page.getByLabel("Current password").fill("senha-um");
   await page.getByLabel("New password", { exact: true }).fill("senha-dois");
   await page.getByLabel("Confirm new password").fill("senha-dois");
@@ -112,11 +112,11 @@ test("troca a própria senha pelo menu e a senha antiga deixa de entrar", async 
   await expect(page).toHaveURL(/\/overview$/);
 });
 
-test("senha atual errada no menu é recusada e o painel continua aberto", async ({ page }) => {
+test("senha atual errada em Configurações é recusada e o painel continua aberto", async ({ page }) => {
   await entrarComSenhaPropria(page, "senha-um");
 
-  await abrirMenuDaConta(page);
-  await page.getByRole("menuitem", { name: "Change password" }).click();
+  await page.goto("/configuracoes");
+  await page.getByRole("button", { name: "Change password" }).click();
   await page.getByLabel("Current password").fill("errada");
   await page.getByLabel("New password", { exact: true }).fill("senha-dois");
   await page.getByLabel("Confirm new password").fill("senha-dois");

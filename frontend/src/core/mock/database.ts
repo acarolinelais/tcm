@@ -32,6 +32,7 @@ import {
   type LinkPullRequest,
   type LinksPullRequest,
   type Projeto,
+  projetoEncerrado,
   type StatusProjeto,
   NIVEIS_AUTOMACAO_CASO_TESTE,
   MAX_JUSTIFICATIVA_EXCLUSAO,
@@ -729,7 +730,6 @@ export const mockProjetosApi = {
       return { setores: [] };
     }
     const porNome = (a: { nome: string }, b: { nome: string }) => a.nome.localeCompare(b.nome);
-    const encerrado = (status: StatusProjeto) => (status === "Completed" || status === "Canceled" ? 1 : 0);
     const times = db.times.filter((team) => team.ativo && teamInMockScope(db, user.id, profile?.codigo, team));
     const setores = db.setores
       .filter((sector) => sector.ativo && times.some((team) => team.setor_id === sector.id))
@@ -743,7 +743,7 @@ export const mockProjetosApi = {
           membros: db.membrosTime.filter((member) => member.time_id === team.id && member.ativo).length,
           projetos: db.projetos
             .filter((project) => project.ativo && project.time_id === team.id)
-            .sort((a, b) => encerrado(a.status) - encerrado(b.status) || porNome(a, b))
+            .sort((a, b) => Number(projetoEncerrado(a.status)) - Number(projetoEncerrado(b.status)) || porNome(a, b))
             .map(({ id, nome, status }) => ({ id, nome, status })),
         })),
       }));
@@ -898,6 +898,13 @@ export const mockProjetosApi = {
     requireMockPermission("projetos.gerenciar");
     const { db } = mockProfile();
     const project = getMockProject(db, projectId);
+    const pendentes = status === "Completed"
+      ? db.casosTeste.filter((caso) => caso.projeto_id === projectId && caso.ativo && caso.status !== "Done" && caso.status !== "Cancelled").length
+      : 0;
+    if (pendentes) {
+      const mensagem = `${pendentes} Test Case(s) ainda não estão em Done ou Cancelled.`;
+      throw new ApiError({ type: "about:blank", title: "Conflito.", status: 409, detail: mensagem, errors: [{ campo: "status", mensagem, codigo: "projeto_com_casos_pendentes", parametros: { quantidade: pendentes } }] });
+    }
     project.status = status;
     project.updated_at = new Date().toISOString();
     writeDb(db);

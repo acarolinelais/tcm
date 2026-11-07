@@ -75,6 +75,58 @@ describe("TimelinePage", () => {
     expect(screen.getByRole("list", { name: "People with changes in this period" })).toBeInTheDocument();
   });
 
+  it("esconde o projeto cancelado do seletor até ligar o filtro, que volta desligado ao reabrir a tela", async () => {
+    const comCancelado = [...projetos, { id: "notes", nome: "Notes 9.5", app: "Notes", status: "Canceled" }];
+    vi.mocked(useProjetosSeletor).mockReturnValue({ data: { pages: [{ items: comCancelado, page: 1, page_size: 100, total_count: 3 }] }, isError: false, isLoading: false } as never);
+    vi.useRealTimers();
+    const user = userEvent.setup();
+    const { unmount } = renderPage();
+
+    await user.click(screen.getByRole("button", { name: "Clock" }));
+    expect(await screen.findByRole("menuitemradio", { name: "Gallery 9.5" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitemradio", { name: "Notes 9.5" })).not.toBeInTheDocument();
+    await user.keyboard("{Escape}");
+
+    await user.click(screen.getByRole("button", { name: "Closed projects" }));
+    await user.click(screen.getByRole("button", { name: "Clock" }));
+    expect(await screen.findByRole("menuitemradio", { name: "Notes 9.5" })).toBeInTheDocument();
+
+    unmount();
+    renderPage();
+    expect(screen.getByRole("button", { name: "Closed projects" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("desligar a pílula com um projeto encerrado aberto volta para o primeiro aberto", async () => {
+    const comCancelado = [...projetos, { id: "notes", nome: "Notes 9.5", app: "Notes", status: "Canceled" }];
+    vi.mocked(useProjetosSeletor).mockReturnValue({ data: { pages: [{ items: comCancelado, page: 1, page_size: 100, total_count: 3 }] }, isError: false, isLoading: false } as never);
+    vi.useRealTimers();
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: "Closed projects" }));
+    await user.click(screen.getByRole("button", { name: "Clock" }));
+    await user.click(await screen.findByRole("menuitemradio", { name: "Notes 9.5" }));
+    expect(await screen.findByRole("button", { name: "Notes" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Closed projects" }));
+
+    expect(await screen.findByRole("button", { name: "Clock" })).toBeInTheDocument();
+    expect(ultimaConsulta()?.[0]).toBe("clock");
+  });
+
+  it("só com projetos encerrados mostra o aviso com o filtro", async () => {
+    vi.mocked(useProjetosSeletor).mockReturnValue({ data: { pages: [{ items: [{ id: "notes", nome: "Notes 9.5", app: "Notes", status: "Completed" }], page: 1, page_size: 100, total_count: 1 }] }, isError: false, isLoading: false } as never);
+    vi.useRealTimers();
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(screen.getByText("No open projects")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Closed projects" }));
+
+    expect(screen.queryByText("No open projects")).not.toBeInTheDocument();
+    expect(screen.getByText("Notes")).toBeInTheDocument();
+  });
+
   it("volta uma semana pela seta e retorna com Hoje (CA-06)", async () => {
     const user = userEvent.setup();
     renderPage();

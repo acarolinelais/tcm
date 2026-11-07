@@ -193,6 +193,23 @@ describe("ProjetosPage", () => {
     await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith("Could not update the project status."));
   });
 
+  it("recusa concluir com Test Cases pendentes e mostra quantos faltam", async () => {
+    const projeto = { id: "project-1", nome: "Clock 9.5", app: "Clock", one_ui: "9.5", time_id: "team-1", status: "Created" as const, ativo: true, unidade_id: "unit-1", created_at: "2026-05-01T00:00:00Z", updated_at: "2026-05-01T00:00:00Z" };
+    vi.mocked(projetosApi.listar).mockResolvedValue({ items: [projeto], page: 1, page_size: 20, total_count: 1 });
+    vi.mocked(projetosApi.atualizarStatus).mockRejectedValue(new ApiError({
+      type: "about:blank", title: "Conflito.", status: 409,
+      errors: [{ campo: "status", mensagem: "x", codigo: "projeto_com_casos_pendentes", parametros: { quantidade: 2 } }],
+    }));
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: /Status for Clock 9.5/ }));
+    await user.click(await screen.findByRole("option", { name: "Completed" }));
+    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Change status" }));
+
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith("2 Test Cases are not Done or Cancelled yet. Fix them before completing the project."));
+  });
+
   it("apresenta os erros de validação associados às linhas da planilha", async () => {
     vi.mocked(projetosApi.importar).mockRejectedValue(new ApiError({
       type: "about:blank", title: "Planilha inválida", status: 422,

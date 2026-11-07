@@ -1,8 +1,7 @@
 import type { PerfilAtual } from "@/core/auth/api";
 import { useLocation, useNavigate } from "react-router";
-import { TrocarSenhaDrawer } from "@/core/auth/TrocarSenhaDrawer";
 import { useSair } from "@/core/auth/useSair";
-import { ChevronDown, CircleArrowRight, KeyRound, Search } from "lucide-react";
+import { ChevronDown, CircleArrowRight, Search } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LanguageSelector } from "@/core/i18n/LanguageSelector";
@@ -15,7 +14,6 @@ import { rotaPai, rotuloDaRota } from "./voltar";
 export function Navbar({ perfil }: { perfil: PerfilAtual }) {
   const { t } = useTranslation();
   const [menuAberto, setMenuAberto] = useState(false);
-  const [trocandoSenha, setTrocandoSenha] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   useDismiss(menuRef, menuAberto, useCallback(() => setMenuAberto(false), []));
   const voltar = useVoltar();
@@ -56,10 +54,6 @@ export function Navbar({ perfil }: { perfil: PerfilAtual }) {
           </button>
           {menuAberto && <div role="menu" aria-label={perfil.email} className="popover-enter absolute right-0 top-10 z-50 min-w-44 rounded-xl border border-border bg-overlay p-1.5 shadow-overlay">
             <p aria-hidden="true" className="truncate px-2 py-1.5 text-xs text-muted-foreground">{perfil.email}</p>
-            <button type="button" role="menuitem" onClick={() => { setMenuAberto(false); setTrocandoSenha(true); }} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-body hover:bg-default">
-              <KeyRound aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-              <span>{t("changePassword")}</span>
-            </button>
             <button type="button" role="menuitem" onClick={sair} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10">
               <CircleArrowRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
               <span>{t("logout")}</span>
@@ -67,7 +61,6 @@ export function Navbar({ perfil }: { perfil: PerfilAtual }) {
           </div>}
         </div>
       </div>
-      <TrocarSenhaDrawer isOpen={trocandoSenha} onFechar={() => setTrocandoSenha(false)} />
     </header>
   );
 }

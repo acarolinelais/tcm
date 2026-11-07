@@ -95,17 +95,15 @@ describe("avatar do usuário logado", () => {
     await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
   });
 
-  it("Trocar senha no menu fecha o menu e abre o painel de troca", async () => {
+  it("o menu da conta não oferece mais a troca de senha (fica em Configurações)", async () => {
     await i18n.changeLanguage("en");
     const user = userEvent.setup();
     renderEm("/overview");
 
     await user.click(screen.getByRole("button", { name: "Caroline" }));
-    await user.click(screen.getByRole("menuitem", { name: "Change password" }));
 
-    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
-    expect(await screen.findByRole("heading", { name: "Change password" })).toBeInTheDocument();
-    expect(screen.getByLabelText(/Current password/)).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Log out" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Change password" })).not.toBeInTheDocument();
   });
 });
 

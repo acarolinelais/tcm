@@ -93,6 +93,42 @@ describe("BoardKanbanPage", () => {
     expect(await screen.findByText("local /board/p2")).toBeInTheDocument();
   });
 
+  it("projeto concluído abre pelo link, e o seletor só oferece os encerrados com o filtro ligado", async () => {
+    vi.mocked(projetosApi.obter).mockResolvedValue({ ...projeto, status: "Completed" });
+    vi.mocked(casosTesteApi.kanban).mockResolvedValue({ projeto_id: "p1", total: 0, colunas: [] });
+    vi.mocked(projetosApi.navegacao).mockResolvedValue({ setores: [{ id: "s1", nome: "SVP", times: [{ id: "t1", nome: "SDF Automation", membros: 11, projetos: [
+      { id: "p1", nome: "Weather 9.5", status: "Completed" }, { id: "p2", nome: "Clock 9.5", status: "InProgress" }, { id: "p3", nome: "Notes 9.5", status: "Canceled" },
+    ] }] }] });
+    renderPagina();
+    const user = userEvent.setup();
+
+    expect(await screen.findByText("This project has no Test Cases yet.")).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "Weather" }));
+    expect(await screen.findByRole("menuitemradio", { name: "Clock 9.5" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitemradio", { name: "Notes 9.5" })).not.toBeInTheDocument();
+    await user.keyboard("{Escape}");
+
+    await user.click(screen.getByRole("button", { name: "Closed projects" }));
+    await user.click(screen.getByRole("button", { name: "Weather" }));
+    expect(await screen.findByRole("menuitemradio", { name: "Notes 9.5" })).toBeInTheDocument();
+  });
+
+  it("desligar a pílula num projeto encerrado volta direto para o primeiro aberto", async () => {
+    vi.mocked(projetosApi.obter).mockResolvedValue({ ...projeto, status: "Completed" });
+    vi.mocked(casosTesteApi.kanban).mockResolvedValue({ projeto_id: "p1", total: 0, colunas: [] });
+    vi.mocked(projetosApi.navegacao).mockResolvedValue({ setores: [{ id: "s1", nome: "SVP", times: [{ id: "t1", nome: "SDF Automation", membros: 11, projetos: [
+      { id: "p1", nome: "Weather 9.5", status: "Completed" }, { id: "p2", nome: "Clock 9.5", status: "InProgress" },
+    ] }] }] });
+    renderPagina();
+    const user = userEvent.setup();
+    const pilula = await screen.findByRole("button", { name: "Closed projects" });
+
+    await user.click(pilula);
+    await user.click(pilula);
+
+    expect(await screen.findByText("local /board/p2")).toBeInTheDocument();
+  });
+
   it("projeto fora do escopo ou inexistente mostra não encontrado, sem consultar o Kanban", async () => {
     vi.mocked(projetosApi.obter).mockRejectedValue(new Error("404"));
     renderPagina();

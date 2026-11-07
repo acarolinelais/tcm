@@ -1008,3 +1008,50 @@ describe("mock de senha", () => {
     expect(mockAuth.changeOwnPassword().access_token).toBe("mock.mock-user-dev");
   });
 });
+
+describe("conclusão de projeto no mock (spec 069)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    resetMockDatabase();
+    entrar("admin@sdfmanager.com");
+  });
+
+  function criarProjetoComCasos(quantidade: number) {
+    const projeto = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: [] });
+    for (let indice = 0; indice < quantidade; indice += 1) {
+      mockCasosTesteApi.criar(projeto.id, { tc_id: `TC_${indice}`, category: "A", difficulty: "Low", situation: "New", responsavel_id: "mock-user-dev", backup_id: "mock-user-kp" });
+    }
+    return projeto;
+  }
+
+  function casosDoProjeto(projeto: { id: string }, alterar: (casos: { status: string; ativo: boolean }[]) => void) {
+    const database = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
+    const casos = database.casosTeste.filter((caso: { projeto_id: string }) => caso.projeto_id === projeto.id);
+    alterar(casos);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(database));
+  }
+
+  it("recusa concluir com Test Case pendente e informa a quantidade", () => {
+    const projeto = criarProjetoComCasos(5);
+    casosDoProjeto(projeto, (casos) => casos.forEach((caso, indice) => { caso.ativo = true; caso.status = indice < 2 ? "InProgress" : "Done"; }));
+
+    let erro: unknown;
+    try { mockProjetosApi.atualizarStatus(projeto.id, "Completed"); } catch (falha) { erro = falha; }
+
+    expect(erro).toBeInstanceOf(ApiError);
+    expect((erro as ApiError).problem.status).toBe(409);
+    expect((erro as ApiError).problem.errors?.[0]).toMatchObject({ codigo: "projeto_com_casos_pendentes", parametros: { quantidade: 2 } });
+    expect(mockProjetosApi.obter(projeto.id).status).toBe(projeto.status);
+  });
+
+  it("conclui quando os pendentes estão excluídos e os outros em Done ou Cancelled, e cancela sem conferir", () => {
+    const projeto = criarProjetoComCasos(4);
+    casosDoProjeto(projeto, (casos) => casos.forEach((caso, indice) => { caso.ativo = indice !== 0; caso.status = indice === 0 ? "InFixes" : indice === 1 ? "Cancelled" : "Done"; }));
+
+    expect(mockProjetosApi.atualizarStatus(projeto.id, "Completed").status).toBe("Completed");
+
+    casosDoProjeto(projeto, (casos) => casos.forEach((caso) => { caso.ativo = true; caso.status = "InProgress"; }));
+    expect(mockProjetosApi.atualizarStatus(projeto.id, "Canceled").status).toBe("Canceled");
+  });
+});

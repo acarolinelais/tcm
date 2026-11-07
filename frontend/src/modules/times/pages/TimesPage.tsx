@@ -167,7 +167,7 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
                     return <div key={membro.id} className="flex items-center gap-3 rounded-xl border border-edge bg-surface px-3 py-3">
                       <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-tint text-[14px] font-medium text-accent-text">{nomeMembro.slice(0, 1).toLocaleUpperCase()}</span>
                       <div className="min-w-0 flex-1"><p className="truncate text-[14px] font-medium text-body" title={nomeMembro}>{nomeMembro}</p><p className="mt-0.5 text-[12px] text-muted">{perfilNome}</p></div>
-                      <Button variant="ghost" isIconOnly aria-label={`${t("removeTeamMemberTitle")} ${nomeMembro}`} className="shrink-0 text-danger" onPress={() => setMembroParaRemover(membro.usuario_id)}>
+                      <Button size="sm" variant="ghost" isIconOnly aria-label={`${t("removeTeamMemberTitle")} ${nomeMembro}`} className="shrink-0 text-danger" onPress={() => setMembroParaRemover(membro.usuario_id)}>
                         <Trash2 aria-hidden="true" className="size-4" />
                       </Button>
                     </div>;

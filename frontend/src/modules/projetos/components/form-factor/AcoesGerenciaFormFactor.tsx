@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
-import { Button } from "@heroui/react";
-import { Download, Undo2 } from "lucide-react";
+import { Button, Dropdown } from "@heroui/react";
+import { ChevronDown, Download, Undo2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { PerfilAtual } from "@/core/auth/api";
@@ -19,6 +19,9 @@ const MAX_PROBLEMAS = 5;
  * Import SDF Report do projeto aberto na General Results (spec 059, RN-03 a RN-05): importa assim que o arquivo é
  * escolhido. Só admin, gerente e KP com `form_factor.importar` veem os botões.
  */
+// Pílula como os filtros ao lado (Closed projects, Day or Week), no tamanho padrão do HeroUI.
+const classeBotao = "gap-2 rounded-full px-4 shadow-none";
+
 export function AcoesGerenciaFormFactor({ projetoId, perfil }: { projetoId: string; perfil: PerfilAtual }) {
   const { t } = useTranslation();
   const admin = perfil.perfil_codigo === "ADMIN_UNIDADE";
@@ -69,12 +72,26 @@ export function AcoesGerenciaFormFactor({ projetoId, perfil }: { projetoId: stri
       event.target.value = "";
       if (arquivo) importar(arquivo);
     }} />
-    <Button size="sm" variant="primary" isDisabled={ocupado} onPress={() => inputSdf.current?.click()}>
-      <Download aria-hidden="true" className="size-4 shrink-0" />{importacao.isPending ? t("importing") : t("importSdf")}
-    </Button>
-    {ultima.data && <Button size="sm" variant="outline" isDisabled={ocupado} onPress={() => setAlvo(ultima.data ?? null)}>
-      <Undo2 aria-hidden="true" className="size-4 shrink-0" />{t("undoLastImport")}
-    </Button>}
+    {/* Separa estas ações dos filtros que vêm antes na mesma linha; some junto quando a pessoa não importa. */}
+    <span aria-hidden="true" className="mx-1 hidden h-5 w-px bg-separator sm:block" />
+    {/* Com uma importação para desfazer, vira botão dividido: a seta abre o menu com o Undo. */}
+    <div className="flex">
+      <Button variant="primary" isDisabled={ocupado} onPress={() => inputSdf.current?.click()} className={ultima.data ? `${classeBotao} rounded-r-none pr-3` : classeBotao}>
+        <Download aria-hidden="true" className="size-4 shrink-0" />{importacao.isPending ? t("importing") : t("importSdf")}
+      </Button>
+      {ultima.data && <Dropdown>
+        <Button variant="primary" isIconOnly isDisabled={ocupado} aria-label={t("moreImportActions")} className="rounded-l-none border-l border-accent-foreground/30 shadow-none">
+          <ChevronDown aria-hidden="true" className="size-4" />
+        </Button>
+        <Dropdown.Popover placement="bottom end" className="min-w-52">
+          <Dropdown.Menu aria-label={t("moreImportActions")} onAction={() => setAlvo(ultima.data ?? null)}>
+            <Dropdown.Item id="desfazer" textValue={t("undoLastImport")} className="gap-2 text-[14px]">
+              <Undo2 aria-hidden="true" className="size-4 shrink-0" />{t("undoLastImport")}
+            </Dropdown.Item>
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown>}
+    </div>
     {alvo && <AlertConfirm
       open
       onOpenChange={(aberto) => { if (!aberto) setAlvo(null); }}

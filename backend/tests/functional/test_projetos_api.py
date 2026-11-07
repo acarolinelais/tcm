@@ -198,7 +198,9 @@ async def test_gerente_nao_consulta_projeto_de_setor_fora_do_escopo(api_client):
     projeto_repo, time_repo = AsyncMock(), AsyncMock()
     projeto_repo.obter_por_id.return_value = Projeto(unidade_id, time_id, "Clock", "9.5")
     time_repo.obter_por_id.return_value = Time(unidade_id, setor_id, "Fora do escopo", usuario_id)
-    service = ProjetoServiceImpl(projeto_repo, time_repo, AsyncMock(), AsyncMock(), AsyncMock())
+    service = ProjetoServiceImpl(
+        projeto_repo, time_repo, AsyncMock(), AsyncMock(), AsyncMock(), AsyncMock()
+    )
     app.dependency_overrides[get_usuario_atual] = dependency_override(gerente)
     app.dependency_overrides[get_projeto_service] = dependency_override(service)
 
@@ -215,7 +217,9 @@ async def test_projeto_de_outra_unidade_nao_e_encontrado(api_client):
     usuario = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
     projeto_repo, time_repo = AsyncMock(), AsyncMock()
     projeto_repo.obter_por_id.return_value = None
-    service = ProjetoServiceImpl(projeto_repo, time_repo, AsyncMock(), AsyncMock(), AsyncMock())
+    service = ProjetoServiceImpl(
+        projeto_repo, time_repo, AsyncMock(), AsyncMock(), AsyncMock(), AsyncMock()
+    )
     app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
     app.dependency_overrides[get_projeto_service] = dependency_override(service)
 
@@ -338,7 +342,9 @@ async def test_listar_navegacao_retorna_arvore_e_nao_cai_na_rota_por_id(api_clie
             StatusProjeto.TO_DO,
         ),
     )
-    service = ProjetoServiceImpl(projeto_repo, AsyncMock(), AsyncMock(), AsyncMock(), AsyncMock())
+    service = ProjetoServiceImpl(
+        projeto_repo, AsyncMock(), AsyncMock(), AsyncMock(), AsyncMock(), AsyncMock()
+    )
     dev = UsuarioAutenticado(
         uuid4(),
         unidade_id,
@@ -369,7 +375,9 @@ async def test_listar_navegacao_sem_times_retorna_arvore_vazia(api_client):
 
     projeto_repo = AsyncMock()
     projeto_repo.listar_navegacao.return_value = ()
-    service = ProjetoServiceImpl(projeto_repo, AsyncMock(), AsyncMock(), AsyncMock(), AsyncMock())
+    service = ProjetoServiceImpl(
+        projeto_repo, AsyncMock(), AsyncMock(), AsyncMock(), AsyncMock(), AsyncMock()
+    )
     kp = UsuarioAutenticado(uuid4(), uuid4(), "KP", permissoes=frozenset({"test_cases.consultar"}))
     app.dependency_overrides[get_usuario_atual] = dependency_override(kp)
     app.dependency_overrides[get_projeto_service] = dependency_override(service)
@@ -378,3 +386,53 @@ async def test_listar_navegacao_sem_times_retorna_arvore_vazia(api_client):
 
     assert response.status_code == 200
     assert response.json() == {"setores": []}
+
+
+def _status_service(unidade_id, pendentes):
+    projeto_repo, time_repo, vinculo_repo, caso_repo = (AsyncMock() for _ in range(4))
+    time_id = uuid4()
+    projeto = Projeto(unidade_id, time_id, "Clock", "9.5")
+    projeto_repo.obter_por_id.return_value = projeto
+    time_repo.obter_por_id.return_value = Time(unidade_id, uuid4(), "Clock", uuid4())
+    vinculo_repo.listar_nomes_por_projetos.return_value = {}
+    vinculo_repo.listar_ids_por_projetos.return_value = {}
+    caso_repo.contar_pendentes_de_conclusao.return_value = pendentes
+    service = ProjetoServiceImpl(
+        projeto_repo, time_repo, AsyncMock(), vinculo_repo, caso_repo, AsyncMock()
+    )
+    return service, projeto
+
+
+async def test_concluir_projeto_com_casos_terminados_retorna_200(api_client):
+    from src.api.main import app
+
+    admin = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
+    service, projeto = _status_service(admin.unidade_id, 0)
+    app.dependency_overrides[get_usuario_atual] = dependency_override(admin)
+    app.dependency_overrides[get_projeto_service] = dependency_override(service)
+
+    response = await api_client.patch(
+        f"/api/projetos/{projeto.id}/status", json={"status": "Completed"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "Completed"
+
+
+async def test_concluir_projeto_com_casos_pendentes_retorna_409_com_quantidade(api_client):
+    from src.api.main import app
+
+    admin = UsuarioAutenticado(uuid4(), uuid4(), "ADMIN_UNIDADE")
+    service, projeto = _status_service(admin.unidade_id, 2)
+    app.dependency_overrides[get_usuario_atual] = dependency_override(admin)
+    app.dependency_overrides[get_projeto_service] = dependency_override(service)
+
+    response = await api_client.patch(
+        f"/api/projetos/{projeto.id}/status", json={"status": "Completed"}
+    )
+
+    assert response.status_code == 409
+    [erro] = response.json()["errors"]
+    assert erro["codigo"] == "projeto_com_casos_pendentes"
+    assert erro["parametros"] == {"quantidade": 2}
+    assert projeto.status is StatusProjeto.CREATED

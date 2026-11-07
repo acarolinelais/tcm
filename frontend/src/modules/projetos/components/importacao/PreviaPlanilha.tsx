@@ -42,7 +42,7 @@ export function PreviaPlanilha({ previa }: { previa: PlanilhaProjeto }) {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-[13px] tabular-nums text-muted">{t("testCaseCount", { count: previa.casos.length, countLabel: formatNumber(previa.casos.length) })}</span>
-          <Button variant="ghost" size="sm" aria-expanded={visivel} onPress={() => setVisivel((atual) => !atual)} className="h-7 min-h-0 gap-1 rounded-lg px-2 text-[13px] font-medium text-body">
+          <Button variant="ghost" size="sm" aria-expanded={visivel} onPress={() => setVisivel((atual) => !atual)} className="gap-1 rounded-lg px-2 font-medium text-body">
             {t(visivel ? "hidePreview" : "showPreview")}
             <ChevronDown aria-hidden="true" className={cn("size-4 transition-transform duration-150 motion-reduce:transition-none", visivel && "rotate-180")} />
           </Button>
