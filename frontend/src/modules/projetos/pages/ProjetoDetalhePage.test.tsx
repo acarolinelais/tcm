@@ -726,8 +726,7 @@ describe("ProjetoDetalhePage", () => {
       unmount();
       vi.mocked(casosTesteApi.atualizar).mockClear();
     }
-    // Dois perfis com dezenas de cliques: no runner do CI passa dos 5 s padrão.
-  }, 15_000);
+  });
 
   it("edita Assignee e Backup direto na tabela com membros ativos distintos", async () => {
     const manager = { ...perfil, id: "manager", perfil_codigo: "GERENTE", perfil: "Gerente", permissoes: [...perfil.permissoes, "test_cases.gerenciar"] };

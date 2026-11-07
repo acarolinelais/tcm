@@ -24,5 +24,7 @@ export default defineConfig({
     // O minWorkers precisa vir junto: sem ele o mínimo continua sendo o número de núcleos e conflita com o máximo.
     maxWorkers: 4,
     minWorkers: 1,
+    // Com 4 workers num runner do CI de poucos núcleos, os testes longos de página passam dos 5 s padrão.
+    testTimeout: 15_000,
   },
 });
