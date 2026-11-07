@@ -10,7 +10,7 @@ compartilham o passo de gravar o hash, subir o `auth_version`, revogar as outras
 em uso (ADR 0020). A diferença é que a nova confere a senha atual pelo `Autenticador` em vez de exigir a troca
 obrigatória. A redefinição pelo admin é uma ação do `UsuarioServiceImpl`, que já recebe `SENHA_INICIAL_USUARIOS`
 para o cadastro: grava o hash da senha padrão, liga `senha_alteracao_obrigatoria` e sobe o `auth_version`, o que
-derruba os access tokens e as sessões da pessoa (ADR 0019 e 0020). No frontend, o menu da conta abre um
+derruba os access tokens e as sessões da pessoa (ADR 0019 e 0020). No frontend, a página Configurações abre um
 `SideDrawer` com o formulário de troca, a tabela de usuários ganha a ação Redefinir senha com `AlertConfirm`, e o
 login mostra o aviso para quem esqueceu a senha. O modo mock (ADR 0030) ganha as duas operações.
 
@@ -43,7 +43,8 @@ valor configurado no servidor.
 - `core/auth/api.ts`: `alterarPropriaSenha(senhaAtual, novaSenha)`, que salva os tokens novos.
 - `core/auth/TrocarSenhaDrawer.tsx` (novo): `SideDrawer` com senha atual, nova e confirmação, react-hook-form + zod
   (confirmação igual à nova). A senha atual incorreta (422) vira erro no campo.
-- `core/layout/Navbar.tsx`: item Trocar senha no menu da conta, acima de Sair.
+- `modules/configuracoes/pages/ConfiguracoesPage.tsx`: linha Senha com o botão Trocar senha, que abre o painel.
+  No começo o item ficava no menu da conta (`core/layout/Navbar.tsx`), acima de Sair.
 - `modules/usuarios/api/usuario.api.ts` e `hooks/useUsuarios.ts`: `redefinirSenha(id)` e a mutation.
 - `modules/usuarios/components/UsuariosTable.tsx`: ação Redefinir senha (ícone `KeyRound`) só para admin e fora da
   própria linha; `AlertConfirm` para confirmar e, depois, o mesmo diálogo mostra a senha padrão para repassar.

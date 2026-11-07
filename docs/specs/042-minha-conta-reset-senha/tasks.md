@@ -26,6 +26,7 @@
   - Arquivos: `frontend/src/core/auth/TrocarSenhaDrawer.tsx`, `frontend/src/core/auth/TrocarSenhaDrawer.test.tsx`, `frontend/src/core/layout/Navbar.tsx`, `frontend/src/core/i18n/resources.ts`
   - Cobre: CA-01, CA-06, CA-07
   - Verificação: `cd frontend && npx vitest run src/core/auth src/core/layout` → verde
+  - Depois da entrega, o botão saiu do menu da conta e foi para a página Configurações (`frontend/src/modules/configuracoes/pages/ConfiguracoesPage.tsx`).
 - [x] **T06. Ação Redefinir senha na lista de usuários**
   - Arquivos: `frontend/src/modules/usuarios/components/UsuariosTable.tsx`, `frontend/src/modules/usuarios/components/UsuariosTable.test.tsx`, `frontend/src/core/i18n/resources.ts`
   - Cobre: CA-04, CA-08, CA-10
