@@ -105,6 +105,22 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
         )
         return encontrado.scalar_one_or_none() is not None
 
+    async def contar_pendentes_de_conclusao(self, unidade_id: UUID, projeto_id: UUID) -> int:
+        return (
+            await self.session.execute(
+                select(func.count())
+                .select_from(CasoTesteModel)
+                .where(
+                    CasoTesteModel.unidade_id == unidade_id,
+                    CasoTesteModel.projeto_id == projeto_id,
+                    CasoTesteModel.ativo.is_(True),
+                    CasoTesteModel.status.not_in(
+                        (StatusCasoTeste.DONE.value, StatusCasoTeste.CANCELLED.value)
+                    ),
+                )
+            )
+        ).scalar_one()
+
     async def obter_por_projeto_tc_id(
         self, unidade_id: UUID, projeto_id: UUID, tc_id: str
     ) -> CasoTeste | None:

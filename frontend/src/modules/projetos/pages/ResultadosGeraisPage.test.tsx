@@ -101,6 +101,22 @@ describe("ResultadosGeraisPage", () => {
     expect(screen.getByRole("button", { name: "Import SDF report" })).toBeInTheDocument();
   });
 
+  it("esconde a aba do projeto concluído até ligar o filtro; pelo link, ele abre mesmo assim", async () => {
+    const comConcluido = [...projetos, { id: "notes", nome: "Notes 9.5", app: "Notes", status: "Completed" }];
+    vi.mocked(useProjetosSeletor).mockReturnValue({ data: { pages: [{ items: comConcluido, page: 1, page_size: 100, total_count: 3 }] }, isError: false, isLoading: false } as never);
+    const user = userEvent.setup();
+    const { unmount } = renderPage();
+
+    expect(screen.getAllByRole("tab").map((aba) => aba.textContent)).toEqual(["Clock", "Gallery"]);
+    await user.click(screen.getByRole("button", { name: "Closed projects" }));
+    expect(screen.getAllByRole("tab").map((aba) => aba.textContent)).toEqual(["Clock", "Gallery", "Notes"]);
+
+    unmount();
+    renderPage(perfil, "/?projeto=notes");
+    expect(screen.getByRole("tab", { name: "Notes" })).toHaveAttribute("aria-selected", "true");
+    expect(useHistoricoProjeto).toHaveBeenLastCalledWith("notes", comPagina(), perfil);
+  });
+
   it("o projeto do endereço abre direto (spec 053, CA-04)", () => {
     renderPage(perfil, "/?projeto=gallery");
     expect(screen.getByRole("tab", { name: "Gallery" })).toHaveAttribute("aria-selected", "true");

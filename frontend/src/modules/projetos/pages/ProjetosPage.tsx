@@ -121,7 +121,10 @@ export function ProjetosPage() {
     mutationFn: ({ id, status }: { id: string; status: StatusProjeto }) => projetosApi.atualizarStatus(id, status),
     // Só a lista desta página: o prefixo ["projetos"] também casa com o detalhe do projeto, que não tem `items`.
     onMutate: ({ id, status }) => client.setQueryData<Awaited<ReturnType<typeof projetosApi.listar>>>(["projetos", pagina, tamanhoPagina], (old) => old && { ...old, items: old.items.map((item) => item.id === id ? { ...item, status } : item) }),
-    onError: () => toast.error(t("projectStatusError")),
+    onError: (error) => {
+      const quantidade = error instanceof ApiError ? error.problem.errors?.find((erro) => erro.codigo === "projeto_com_casos_pendentes")?.parametros?.quantidade : undefined;
+      toast.error(typeof quantidade === "number" ? t("projectCompleteBlocked", { count: quantidade }) : t("projectStatusError"));
+    },
     onSettled: () => client.invalidateQueries({ queryKey: ["projetos"] }),
   });
   const excluirProjeto = useMutation({

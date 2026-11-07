@@ -401,3 +401,80 @@ async def test_listar_cards_por_projeto_traz_ativos_com_nome_do_responsavel():
             await session.rollback()
     finally:
         await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_contar_pendentes_de_conclusao_ignora_done_cancelled_e_inativos():
+    engine = create_async_engine(os.environ["SDF_TEST_DATABASE_URL"])
+    unidade_id, setor_id, time_id, perfil_id, usuario_id = (uuid4() for _ in range(5))
+    projeto_id, vazio_id = uuid4(), uuid4()
+    try:
+        async with async_sessionmaker(engine, expire_on_commit=False)() as session:
+            session.add(UnidadeModel(id=unidade_id, nome=f"Conclusao {unidade_id}"))
+            await session.flush()
+            session.add_all(
+                [
+                    PerfilModel(id=perfil_id, unidade_id=unidade_id, nome=f"Perfil {perfil_id}"),
+                    SetorModel(id=setor_id, unidade_id=unidade_id, nome="Mobile"),
+                ]
+            )
+            await session.flush()
+            session.add(TimeModel(id=time_id, unidade_id=unidade_id, setor_id=setor_id, nome="T"))
+            await session.flush()
+            session.add_all(
+                [
+                    ProjetoModel(
+                        id=id_,
+                        unidade_id=unidade_id,
+                        time_id=time_id,
+                        nome=f"Clock {versao}",
+                        app="Clock",
+                        one_ui=versao,
+                    )
+                    for id_, versao in ((projeto_id, "9.5"), (vazio_id, "9.0"))
+                ]
+                + [
+                    UsuarioModel(
+                        id=usuario_id,
+                        unidade_id=unidade_id,
+                        nome="Dev",
+                        email=f"dev-{usuario_id}@example.com",
+                        perfil_id=perfil_id,
+                    )
+                ]
+            )
+            await session.flush()
+
+            repository = CasoTesteRepositoryImpl(session)
+            casos = {
+                status: CasoTeste(
+                    unidade_id,
+                    projeto_id,
+                    f"Clock_{status.value}",
+                    CategoriaCasoTeste.A,
+                    DificuldadeCasoTeste.LOW,
+                    usuario_id,
+                    None,
+                    SituacaoCasoTeste.NEW,
+                    exigir_backup=False,
+                )
+                for status in StatusCasoTeste
+            }
+            for status, caso in casos.items():
+                await repository.adicionar(caso)
+                await session.flush()
+                await session.execute(
+                    text("UPDATE casos_teste SET status = :status WHERE id = :id"),
+                    {"status": status.value, "id": caso.id},
+                )
+            await session.execute(
+                text("UPDATE casos_teste SET ativo = false WHERE id = :id"),
+                {"id": casos[StatusCasoTeste.IN_FIXES].id},
+            )
+
+            assert await repository.contar_pendentes_de_conclusao(unidade_id, projeto_id) == 4
+            assert await repository.contar_pendentes_de_conclusao(unidade_id, vazio_id) == 0
+            assert await repository.contar_pendentes_de_conclusao(uuid4(), projeto_id) == 0
+            await session.rollback()
+    finally:
+        await engine.dispose()

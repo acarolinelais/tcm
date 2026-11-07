@@ -258,6 +258,7 @@ async def get_projeto_service(session: AsyncSession = Depends(get_session)) -> P
         TimeRepositoryImpl(session),
         ModeloDispositivoRepositoryImpl(session),
         ProjetoModeloRepositoryImpl(session),
+        CasoTesteRepositoryImpl(session),
         UnitOfWorkImpl(session),
     )
 

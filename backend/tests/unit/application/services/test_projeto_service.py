@@ -19,7 +19,14 @@ from src.domain.queries.linha_navegacao_board import LinhaNavegacaoBoard
 
 
 @pytest.fixture
-def contexto():
+def casos_repo():
+    repo = AsyncMock()
+    repo.contar_pendentes_de_conclusao.return_value = 0
+    return repo
+
+
+@pytest.fixture
+def contexto(casos_repo):
     projeto_repo, time_repo, modelo_repo, vinculo_repo, uow = [AsyncMock() for _ in range(5)]
     vinculo_repo.listar_nomes_por_projetos.return_value = {}
     vinculo_repo.listar_ids_por_projetos.return_value = {}
@@ -35,7 +42,9 @@ def contexto():
         "ADMIN_UNIDADE",
         permissoes=frozenset(),
     )
-    service = ProjetoServiceImpl(projeto_repo, time_repo, modelo_repo, vinculo_repo, uow)
+    service = ProjetoServiceImpl(
+        projeto_repo, time_repo, modelo_repo, vinculo_repo, casos_repo, uow
+    )
     request = CriarProjetoRequest(time_id=time_id, app="Clock", one_ui="9.5")
     return service, projeto_repo, time_repo, modelo_repo, vinculo_repo, uow, usuario, time, request
 
@@ -319,6 +328,54 @@ async def test_atualizar_status_manualmente_preserva_created_at(contexto):
     assert resposta.status is StatusProjeto.IN_PROGRESS
     times.obter_por_id.assert_awaited_once_with(gerente.unidade_id, time.id)
     projetos.atualizar.assert_awaited_once_with(projeto)
+    uow.commit.assert_awaited_once()
+
+
+async def test_concluir_projeto_sem_casos_pendentes_grava_completed(contexto, casos_repo):
+    service, projetos, _, _, _, uow, admin, time, _ = contexto
+    projeto = Projeto(admin.unidade_id, time.id, "Clock", "9.5")
+    projetos.obter_por_id.return_value = projeto
+
+    resposta = await service.atualizar_status(
+        admin, projeto.id, AtualizarStatusProjetoRequest(status=StatusProjeto.COMPLETED)
+    )
+
+    assert resposta.status is StatusProjeto.COMPLETED
+    casos_repo.contar_pendentes_de_conclusao.assert_awaited_once_with(admin.unidade_id, projeto.id)
+    uow.commit.assert_awaited_once()
+
+
+async def test_concluir_projeto_com_casos_pendentes_e_recusado(contexto, casos_repo):
+    service, projetos, _, _, _, uow, admin, time, _ = contexto
+    projeto = Projeto(admin.unidade_id, time.id, "Clock", "9.5")
+    projeto.atualizar_status(StatusProjeto.IN_PROGRESS)
+    projetos.obter_por_id.return_value = projeto
+    casos_repo.contar_pendentes_de_conclusao.return_value = 2
+
+    with pytest.raises(ConflictException) as erro:
+        await service.atualizar_status(
+            admin, projeto.id, AtualizarStatusProjetoRequest(status=StatusProjeto.COMPLETED)
+        )
+
+    assert erro.value.codigo == "projeto_com_casos_pendentes"
+    assert erro.value.parametros == {"quantidade": 2}
+    assert projeto.status is StatusProjeto.IN_PROGRESS
+    projetos.atualizar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+async def test_cancelar_projeto_nao_depende_dos_casos(contexto, casos_repo):
+    service, projetos, _, _, _, uow, admin, time, _ = contexto
+    projeto = Projeto(admin.unidade_id, time.id, "Clock", "9.5")
+    projetos.obter_por_id.return_value = projeto
+    casos_repo.contar_pendentes_de_conclusao.return_value = 5
+
+    resposta = await service.atualizar_status(
+        admin, projeto.id, AtualizarStatusProjetoRequest(status=StatusProjeto.CANCELED)
+    )
+
+    assert resposta.status is StatusProjeto.CANCELED
+    casos_repo.contar_pendentes_de_conclusao.assert_not_awaited()
     uow.commit.assert_awaited_once()
 
 

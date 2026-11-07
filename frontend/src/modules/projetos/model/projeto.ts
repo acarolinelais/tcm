@@ -6,6 +6,10 @@ import type { PagedResult } from "@/shared/types/paged-result";
 export type StatusProjeto = "Created" | "To Do" | "InProgress" | "Completed" | "Canceled";
 /** Chaves i18n dos rótulos do status do projeto. */
 export const ROTULO_STATUS_PROJETO: Record<StatusProjeto, string> = { Created: "projectCreated", "To Do": "toDo", InProgress: "inProgress", Completed: "completed", Canceled: "projectCanceled" };
+export const projetoEncerrado = (status: StatusProjeto) => status === "Completed" || status === "Canceled";
+/** Tira os encerrados da lista, a não ser que o filtro esteja ligado; `manterId` fica sempre (o projeto aberto pelo link). */
+export const filtrarEncerrados = <T extends { id: string; status: StatusProjeto }>(lista: T[], comEncerrados: boolean, manterId?: string) =>
+  comEncerrados ? lista : lista.filter((projeto) => projeto.id === manterId || !projetoEncerrado(projeto.status));
 export const CATEGORIAS_CASO_TESTE = ["A", "B", "C"] as const;
 /** Category não tem tradução: o rótulo é o próprio valor. */
 export const OPCOES_CATEGORIA = CATEGORIAS_CASO_TESTE.map((valor) => ({ value: valor, label: valor }));
