@@ -36,6 +36,7 @@ function abrir() {
 const cartao = (nome: string) => screen.findByRole("region", { name: nome });
 
 beforeEach(() => {
+  vi.spyOn(Math, "random").mockReturnValue(0); // a primeira frase de cada grupo: o teste não depende do sorteio
   vi.clearAllMocks();
   vi.mocked(overviewApi.obter).mockResolvedValue(resumo);
   vi.mocked(overviewApi.obterTime).mockResolvedValue(time);
@@ -44,8 +45,8 @@ beforeEach(() => {
 it("saúda pelo primeiro nome, diz quanto falta na unidade e mostra os cards do primeiro projeto (CA-12)", async () => {
   abrir();
 
-  expect(await screen.findByRole("heading", { level: 2, name: "Hi Caroline, you are almost done." })).toBeInTheDocument();
-  expect(await screen.findByText("Don't give up, only 343 test cases left!")).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { level: 2, name: /Caroline/ })).toBeInTheDocument();
+  expect(await screen.findByText("Don't give up, 343 test cases to go!")).toBeInTheDocument();
   const cards = await screen.findByRole("region", { name: "Test Cases of the chosen project" });
   expect(within(cards).getByText("26 TCs")).toBeInTheDocument();
   expect(within(cards).getByText("16 TCs")).toBeInTheDocument();
