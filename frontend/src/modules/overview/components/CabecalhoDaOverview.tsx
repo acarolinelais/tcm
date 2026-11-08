@@ -1,5 +1,6 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import { ClipboardCheck, ClipboardList, ClipboardPen, type LucideIcon } from "lucide-react";
+import { useState } from "react";
 import { useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
 
@@ -9,6 +10,7 @@ import { ProjetoSwitcher } from "@/modules/projetos/components/ProjetoSwitcher";
 import { cn } from "@/shared/lib/utils";
 import { useOverview } from "../hooks/useOverview";
 import type { OverviewTime, ProjetoOverview } from "../model/overview";
+import { etapaDe, periodoDe, sortear, VARIANTES } from "./saudacao";
 
 // Cabeçalho do protótipo (Figma, frame 2580-4911; spec 064, RN-12), em todos os perfis. Sem Recharts: a página
 // também o usa no perfil sem visão própria.
@@ -26,22 +28,35 @@ export interface CardDoCabecalho {
 }
 
 /** Saudação, quanto falta no escopo do perfil, o seletor de projeto (quando há) e os três cards. */
-export function CabecalhoDaOverview({ selecao, cards, rotuloDosCards }: {
+export function CabecalhoDaOverview({ selecao, cards, rotuloDosCards, progresso }: {
   selecao?: SelecaoDeProjeto;
   cards: CardDoCabecalho[];
   rotuloDosCards: string;
+  /** Andamento que a saudação usa no lugar do resumo geral. O dev passa os dele (só como responsável principal);
+   * `null` é "ainda carregando". Sem a prop, vale o escopo do perfil: unidade (admin) ou times (gerente e KP). */
+  progresso?: { total: number; concluidos: number } | null;
 }) {
   const { t } = useTranslation();
   const perfil = useOutletContext<PerfilAtual>();
-  const resumo = useOverview().data;
-  const faltam = resumo ? resumo.total - resumo.concluidos : 0;
+  const geral = useOverview().data;
+  const resumo = progresso === undefined ? geral : progresso ?? undefined;
+  // Hora e sorteios ficam fixos enquanto a página está aberta: a frase não troca a cada render.
+  const [{ hora, sorteios }] = useState(() => ({ hora: new Date().getHours(), sorteios: [Math.random(), Math.random()] }));
+  const nome = perfil.nome.trim().split(/\s+/)[0];
+  const etapa = resumo && etapaDe(resumo.total, resumo.concluidos);
+  // `overviewTitulo_<grupo>_1..N` e `overviewSubtitulo_<etapa>_1..N`: as mesmas N frases em todos os idiomas.
+  const frases = (tipo: "Titulo" | "Subtitulo", grupo: string, extra?: object) =>
+    Array.from({ length: VARIANTES }, (_, i) => t(`overview${tipo}_${grupo}_${i + 1}`, { name: nome, ...extra }));
+  // Título: saudação da hora do dia ou comentário sobre o andamento. Sem os dados ainda, só a da hora.
+  const titulos = [...frases("Titulo", periodoDe(hora)), ...(etapa ? frases("Titulo", etapa) : [])];
+  const subtitulos = resumo && etapa && frases("Subtitulo", etapa, { count: resumo.total - resumo.concluidos });
   const alinhamento = ["sm:pr-6", "sm:justify-center sm:px-6", "sm:justify-end sm:pl-6"];
 
   return <>
     <header className="space-y-1.5">
       {/* h2, e não h1: a saudação do protótipo é escura, e todo h1 do app usa a cor de acento (spec 055, RN-09). */}
-      <h2 className="text-[22px] font-medium leading-[27px] text-body">{t("overviewGreeting", { name: perfil.nome.trim().split(/\s+/)[0] })}</h2>
-      <p className="text-[15px] leading-5 text-muted">{faltam > 0 ? t("overviewCasesLeft", { count: faltam }) : t("overviewAllDone")}</p>
+      <h2 className="text-[22px] font-medium leading-[27px] text-body">{sortear(titulos, sorteios[0])}</h2>
+      {subtitulos && <p className="text-[15px] leading-5 text-muted">{sortear(subtitulos, sorteios[1])}</p>}
     </header>
     {selecao?.projetoAberto && (
       <div className="border-b border-separator pb-3">

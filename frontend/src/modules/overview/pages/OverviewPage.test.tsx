@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router";
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { PerfilAtual } from "@/core/auth/api";
 import { overviewApi } from "../api/overview.api";
 import type { OverviewData } from "../model/overview";
@@ -22,7 +22,9 @@ function abrir() {
   function Contexto() { return <Outlet context={perfil} />; }
   return render(<QueryClientProvider client={client}><MemoryRouter><Routes><Route element={<Contexto />}><Route index element={<OverviewPage />} /></Route></Routes></MemoryRouter></QueryClientProvider>);
 }
+afterEach(() => vi.useRealTimers());
 beforeEach(() => {
+  vi.spyOn(Math, "random").mockReturnValue(0); // a primeira frase de cada grupo: o teste não depende do sorteio
   vi.clearAllMocks();
   perfil = { ...perfil, perfil_codigo: "GERENTE" };
 });
@@ -32,7 +34,7 @@ it("um perfil sem visão própria fica com o cabeçalho e as contagens do escopo
   vi.mocked(overviewApi.obter).mockResolvedValue(dados);
   abrir();
 
-  expect(await screen.findByRole("heading", { level: 2, name: "Hi Ana, you are almost done." })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { level: 2, name: /Ana/ })).toBeInTheDocument();
   expect(screen.getByText("4 TCs")).toBeInTheDocument();
   expect(screen.getByText("3 TCs")).toBeInTheDocument();
   expect(screen.getByText("10 TCs")).toBeInTheDocument();
@@ -65,7 +67,7 @@ it("o KP vê os gráficos do time", async () => {
 
   // A visão entra por React.lazy: sob carga, o chunk demora mais que o 1 s padrão do findBy.
   expect(await screen.findByRole("region", { name: "Finished per week" }, { timeout: 5000 })).toBeInTheDocument();
-  expect(screen.getByRole("heading", { level: 2, name: "Hi Ana, you are almost done." })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { level: 2, name: /Ana/ })).toBeInTheDocument();
 });
 
 it("o dev vê os próprios gráficos e não vê o card All (RN-13)", async () => {
@@ -75,7 +77,7 @@ it("o dev vê os próprios gráficos e não vê o card All (RN-13)", async () =>
   abrir();
 
   expect(await screen.findByRole("region", { name: "Test Cases by difficulty" }, { timeout: 5000 })).toBeInTheDocument();
-  expect(screen.getByRole("heading", { level: 2, name: "Hi Ana, you are almost done." })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { level: 2, name: /Ana/ })).toBeInTheDocument();
   expect(screen.queryByText("All")).not.toBeInTheDocument();
   expect(overviewApi.obterTime).not.toHaveBeenCalled();
 });
@@ -87,7 +89,7 @@ it("o gerente vê a própria visão de gráficos, com o cabeçalho", async () =>
   abrir();
 
   expect(await screen.findByRole("region", { name: "Progress by team" }, { timeout: 5000 })).toBeInTheDocument();
-  expect(screen.getByRole("heading", { level: 2, name: "Hi Ana, you are almost done." })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { level: 2, name: /Ana/ })).toBeInTheDocument();
 });
 
 it("o admin vê o próprio cabeçalho, sem o cartão de topo dos outros perfis (spec 064, RN-12)", async () => {
@@ -96,7 +98,19 @@ it("o admin vê o próprio cabeçalho, sem o cartão de topo dos outros perfis (
   vi.mocked(overviewApi.obterTime).mockResolvedValue(semGraficos);
   abrir();
 
-  expect(await screen.findByRole("heading", { level: 2, name: "Hi Ana, you are almost done." }, { timeout: 5000 })).toBeInTheDocument();
-  expect(screen.getByText("Don't give up, only 6 test cases left!")).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { level: 2, name: /Ana/ }, { timeout: 5000 })).toBeInTheDocument();
+  expect(screen.getByText("Don't give up, 6 test cases to go!")).toBeInTheDocument();
   expect(screen.getByRole("region", { name: "Progress by sector" })).toBeInTheDocument();
+});
+
+it("a saudação segue a hora do dia e o andamento, e carrega o nome (sorteio fixo em 0)", async () => {
+  // Só a data é falsa: o resto do relógio segue real, e a consulta resolve sem ajuda.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(2026, 10, 7, 9, 0));
+  vi.mocked(overviewApi.obter).mockResolvedValue(dados); // 10 casos, 4 concluídos: ainda no começo
+  vi.mocked(overviewApi.obterTime).mockResolvedValue(semGraficos);
+  abrir();
+
+  expect(await screen.findByRole("heading", { level: 2, name: "Good morning, Ana." })).toBeInTheDocument();
+  expect(await screen.findByText("Don't give up, 6 test cases to go!")).toBeInTheDocument();
 });

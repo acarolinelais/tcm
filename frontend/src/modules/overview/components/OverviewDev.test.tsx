@@ -31,6 +31,7 @@ function abrir() {
 }
 
 beforeEach(() => {
+  vi.spyOn(Math, "random").mockReturnValue(0); // a primeira frase de cada grupo: o teste não depende do sorteio
   vi.clearAllMocks();
   vi.mocked(overviewApi.obter).mockResolvedValue({ total: 5, concluidos: 2, emAndamento: 1, aFazer: 2, atribuidos: 3, desempenho: [] });
 });
@@ -39,13 +40,19 @@ it("o cabeçalho do dev mostra Completed, In Progress e Assigned dele no primeir
   vi.mocked(overviewApi.obterPessoal).mockResolvedValue(pessoal);
   abrir();
 
-  expect(await screen.findByRole("heading", { level: 2, name: "Hi Bia, you are almost done." })).toBeInTheDocument();
-  expect(await screen.findByText("Don't give up, only 3 test cases left!")).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { level: 2, name: /Bia/ })).toBeInTheDocument();
   const cards = await screen.findByRole("region", { name: "Your Test Cases" });
   expect(within(cards).getByText("2 TCs")).toBeInTheDocument();
   expect(within(cards).getByText("1 TCs")).toBeInTheDocument();
   expect(within(cards).getByText("4 TCs")).toBeInTheDocument();
   expect(within(cards).queryByText("All")).not.toBeInTheDocument();
+});
+
+it("a saudação conta o que falta dos TCs atribuídos ao dev, e não do resumo geral (que inclui os de Backup)", async () => {
+  vi.mocked(overviewApi.obterPessoal).mockResolvedValue({ ...pessoal, atribuidos: 10 }); // geral: 5 total, 2 feitos
+  abrir();
+
+  expect(await screen.findByText("Don't give up, 8 test cases to go!")).toBeInTheDocument();
 });
 
 it("com dois ou mais projetos, o dev escolhe o projeto e os cards trocam", async () => {

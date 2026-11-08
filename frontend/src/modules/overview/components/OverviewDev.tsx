@@ -37,6 +37,7 @@ export function OverviewDev() {
       <CabecalhoDaOverview
         selecao={{ projetos, projetoAberto, escolher: setEscolhido }}
         rotuloDosCards={t("overviewMyCards")}
+        progresso={dados ? { total: dados.atribuidos, concluidos: dados.concluidos } : null}
         cards={[
           { icone: ClipboardCheck, rotulo: t("completed"), valor: contagem?.concluidos ?? 0 },
           { icone: ClipboardPen, rotulo: t("inProgress"), valor: contagem?.emAndamento ?? 0 },
