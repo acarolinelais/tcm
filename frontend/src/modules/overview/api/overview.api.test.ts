@@ -108,7 +108,10 @@ describe("overviewApi, gráficos do KP e do dev", () => {
     config.useMock = true;
     vi.stubGlobal("fetch", vi.fn());
 
-    expect((await overviewApi.obterProjeto("p1")).burndown).toHaveLength(30);
+    // Spec 071: o burndown de exemplo vai do início do planejamento até a data planejada.
+    const burndown = (await overviewApi.obterProjeto("p1")).burndown;
+    expect(burndown).toHaveLength(31);
+    expect(burndown.at(-1)).toMatchObject({ planejado: 0, executado: null });
     expect((await overviewApi.obterTime()).concluidosPorSemana).toHaveLength(12);
     expect((await overviewApi.obterPessoal()).entregasPorDia).toHaveLength(30);
     expect(fetch).not.toHaveBeenCalled();

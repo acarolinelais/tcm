@@ -34,9 +34,11 @@ planejada não tem linha de planejado.
   projetos mostra o valor numa coluna **Planned date**, só para leitura. Sem data, a célula mostra um traço.
 - RN-04: Ao definir ou mudar a data, o sistema guarda também o dia em que isso foi feito: é o **início do
   planejamento**.
-- RN-05: A linha de planejado do burndown começa no início do planejamento, com o número de casos não Done do
-  projeto naquele dia, e cai em linha reta, por dia útil (segunda a sexta, sem feriados), até zero na data
-  planejada. Depois da data planejada, fica em zero. Antes do início do planejamento, não há ponto planejado.
+- RN-05: Com data planejada, o burndown vai do início do planejamento até a data planejada (ou até hoje, se a
+  data já passou). A linha de planejado começa com o número de casos não Done do projeto no dia do início e cai
+  em linha reta, por dia útil (segunda a sexta, sem feriados), até zero na data planejada; depois dela, fica em
+  zero. A linha de executado vai do início até hoje e não tem ponto nos dias que ainda não chegaram. Sem data
+  planejada, o gráfico continua com os últimos 30 dias, só com o executado.
 - RN-06: A **meta diária** é esse número de casos dividido pelos dias úteis depois do início do planejamento até a
   data planejada (o dia do início não conta, a data planejada conta). A linha cai a meta a cada um desses dias. O burndown mostra, junto do título, a data planejada e a meta diária (por exemplo,
   "Planned date 19/12/2026 · 3 per business day"), com uma casa decimal quando não for inteira.
@@ -66,8 +68,12 @@ planejada não tem linha de planejado.
   planejado recomeça em 05/12/2026 com o número de casos não Done desse dia.
 - **CA-07:** Dado Clock com data planejada, quando o KP apaga a data, então o burndown volta ao comportamento da
   CA-05.
-- **CA-08:** Dado o burndown de um projeto com planejamento iniciado no meio dos 30 dias do gráfico, quando alguém
-  o abre, então os dias antes do início não têm ponto planejado.
+- **CA-08:** Dado o planejamento de Clock iniciado em 27/11/2026 com data planejada em 11/12/2026, e hoje
+  02/12/2026, quando alguém abre o burndown, então o gráfico vai de 27/11 a 11/12, o planejado aparece em todos os
+  dias e chega a zero em 11/12, e o executado tem pontos só de 27/11 a 02/12.
+- **CA-13:** Dado o planejamento de Clock com data planejada em 11/12/2026, e hoje 15/12/2026, quando alguém abre o
+  burndown, então o gráfico vai até 15/12, o planejado fica em zero depois de 11/12 e o executado mostra os casos
+  ainda abertos.
 - **CA-09 (falha):** Dado um dev do time de Clock, quando ele tenta definir a data planejada, então o sistema recusa
   por falta de permissão.
 - **CA-10 (falha):** Dado hoje 09/11/2026, quando o KP tenta definir a data planejada 08/11/2026, então o sistema
@@ -92,3 +98,5 @@ planejada não tem linha de planejado.
 - A data planejada é um dado do projeto, editado no formulário dele; a coluna da lista é só leitura (RN-03).
 - A meta por dia é variável: sai da data planejada de cada projeto (RN-06). Não há mais meta fixa; sem data
   planejada, não há linha de planejado (RN-07).
+- O burndown com data planejada vai do início do planejamento até a data planejada, como um burndown clássico,
+  e não mais nos últimos 30 dias (RN-05). Um planejamento longo dá mais pontos no gráfico; o eixo espaça as datas.

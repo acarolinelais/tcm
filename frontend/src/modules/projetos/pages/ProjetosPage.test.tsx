@@ -1,6 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
+import { formatarDiaIso } from "@/shared/lib/utils";
 import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as XLSX from "@e965/xlsx";
@@ -115,11 +117,14 @@ describe("ProjetosPage", () => {
     expect(projetosApi.listar).toHaveBeenCalledWith(1, 100);
     const [colunas, itens] = vi.mocked(montarPlanilha).mock.calls[0];
     expect(itens).toEqual([clock, clockAntigo]);
-    expect(colunas.map((coluna) => coluna.titulo)).toEqual(["Project", "Team", "App", "One UI Version", "Device models", "Status", "Created", "Updated"]);
+    expect(colunas.map((coluna) => coluna.titulo)).toEqual(["Project", "Team", "App", "One UI Version", "Device models", "Status", "Created", "Updated", "Planned date"]);
     expect(colunas.map((coluna) => coluna.valor(clockAntigo)).slice(0, 6)).toEqual(["Clock 9.0", "Plataforma", "Clock", "9.0", "S27 Ultra, Tab S11", "Completed"]);
     // Projeto nunca editado: sem data de atualização.
-    expect(colunas.at(-1)?.valor(clockAntigo)).toBe("—");
-    expect(colunas.at(-1)?.valor(clock)).not.toBe("—");
+    const coluna = (titulo: string) => colunas.find((item) => item.titulo === titulo);
+    expect(coluna("Updated")?.valor(clockAntigo)).toBe("—");
+    expect(coluna("Updated")?.valor(clock)).not.toBe("—");
+    // Sem data planejada, a coluna mostra o traço (spec 071, RN-03).
+    expect(coluna("Planned date")?.valor(clock)).toBe("—");
   });
 
   it("filtra os projetos pela data de atualização escolhida no calendário", async () => {
@@ -375,7 +380,7 @@ describe("ProjetosPage", () => {
       await trocarTimeEModelos(user, painel);
       await user.click(within(painel).getByRole("button", { name: "Save" }));
 
-      await waitFor(() => expect(projetosApi.atualizar).toHaveBeenCalledWith("project-1", { nome: "Clock 9.5", app: "Clock", one_ui: "9.5", time_id: "team-2", modelos_ids: ["model-2"] }));
+      await waitFor(() => expect(projetosApi.atualizar).toHaveBeenCalledWith("project-1", { nome: "Clock 9.5", app: "Clock", one_ui: "9.5", time_id: "team-2", modelos_ids: ["model-2"], data_planejada: null }));
       await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
       expect(toastMock.success).toHaveBeenCalledWith("Project updated.");
     });
@@ -392,6 +397,36 @@ describe("ProjetosPage", () => {
       await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith("Could not update the project."));
       expect(screen.getByRole("dialog")).toBeInTheDocument();
       expect(within(painel).getByRole("button", { name: /Team/ })).toHaveTextContent("Suporte");
+    });
+
+    it("define a data planejada e a lista mostra a data na coluna Planned date (spec 071, CA-01)", async () => {
+      vi.mocked(projetosApi.atualizar).mockResolvedValue({ ...clock, data_planejada: "2099-12-19" } as never);
+      const user = userEvent.setup();
+      renderPage();
+
+      const painel = await abrirEdicao(user);
+      await user.click(within(painel).getByRole("button", { name: /Planned date/ }));
+      await user.click(await screen.findByRole("button", { name: "Today" }));
+      expect(within(painel).getByRole("button", { name: /Planned date/ })).not.toHaveTextContent("Select a date");
+      vi.mocked(projetosApi.listar).mockResolvedValue({ items: [{ ...clock, data_planejada: "2099-12-19" }], page: 1, page_size: 20, total_count: 1 } as never);
+      await user.click(within(painel).getByRole("button", { name: "Save" }));
+
+      await waitFor(() => expect(projetosApi.atualizar).toHaveBeenCalledWith("project-1", expect.objectContaining({ data_planejada: formatarDiaIso(new Date()) })));
+      await waitFor(() => expect(screen.getByRole("row", { name: /Clock 9.5/ })).toHaveTextContent("12/19/2099"));
+    });
+
+    it("falha: data planejada no passado mostra o erro e não deixa salvar (spec 071, CA-10)", async () => {
+      const user = userEvent.setup();
+      renderPage();
+
+      const painel = await abrirEdicao(user);
+      await user.click(within(painel).getByRole("button", { name: /Planned date/ }));
+      await user.click(await screen.findByRole("button", { name: /previous month/i }));
+      await user.click(screen.getAllByRole("button", { name: /15th/ })[0]);
+
+      expect(await within(painel).findByText("The planned date can't be in the past.")).toBeInTheDocument();
+      expect(within(painel).getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(projetosApi.atualizar).not.toHaveBeenCalled();
     });
 
     it("fecha com Esc sem salvar e reabre com os dados salvos", async () => {

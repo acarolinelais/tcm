@@ -14,6 +14,10 @@ recusada como passado. No Overview, `linha_planejada` deixa de usar `META_DIARIA
 planejada e os casos não Done no fim do dia do início (o `burndown_executado` já calcula isso para qualquer
 instante), e devolve `None` para os dias antes do início. Sem data planejada, toda a linha é `None` e a meta também.
 
+Revisão de 2026-11-09 (burndown clássico, RN-05): com data planejada, os dias do gráfico vão do início do
+planejamento até a data planejada (ou até hoje, se ela passou), e não mais os últimos 30 dias. O executado só é
+pedido ao repositório até hoje e vem `None` nos dias futuros. Sem data planejada, nada muda.
+
 ## Modelo de dados
 
 | Entidade | Campo | Tipo | Regras |

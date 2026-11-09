@@ -50,6 +50,8 @@ export interface Projeto {
   status: StatusProjeto;
   modelos_dispositivo?: string[];
   modelos_ids?: string[];
+  /** Spec 071: AAAA-MM-DD, sem hora. */
+  data_planejada?: string | null;
   ativo: boolean;
   created_at: string | null;
   updated_at: string | null;
@@ -345,6 +347,8 @@ export interface AtualizarProjetoInput {
   one_ui: string;
   time_id: string;
   modelos_ids: string[];
+  /** Ausente mantém a data; null apaga (spec 071). */
+  data_planejada?: string | null;
 }
 
 export interface CriarCasoTesteInput {

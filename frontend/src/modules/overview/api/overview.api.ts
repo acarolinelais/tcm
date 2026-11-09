@@ -54,6 +54,8 @@ export const overviewApi = {
     if (useMock) return overviewProjetoMock;
     const r = await httpGet<OverviewProjetoResponse>(`/api/overview/projetos/${encodeURIComponent(projetoId)}`, noFusoDoNavegador());
     return {
+      dataPlanejada: r.data_planejada,
+      metaDiaria: r.meta_diaria,
       burndown: r.burndown,
       passRate: r.pass_rate && {
         rodadaEm: r.pass_rate.rodada_em,

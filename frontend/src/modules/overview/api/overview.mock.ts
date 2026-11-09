@@ -1,3 +1,5 @@
+import { formatarDiaIso } from "@/shared/lib/utils";
+
 import type { OverviewData, OverviewPessoal, OverviewProjeto, OverviewTime } from "../model/overview";
 
 export const overviewMock: OverviewData = {
@@ -16,9 +18,6 @@ export const overviewMock: OverviewData = {
 
 // Spec 063: os gráficos do KP e do dev no modo de demonstração, com datas a partir de hoje, como na API.
 
-const iso = (data: Date) =>
-  `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-${String(data.getDate()).padStart(2, "0")}`;
-
 function ultimosDias(quantos: number) {
   const hoje = new Date();
   return Array.from({ length: quantos }, (_, i) => new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - (quantos - 1 - i)));
@@ -28,7 +27,7 @@ function ultimasSemanas(valores: number[]) {
   const hoje = new Date();
   const segunda = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - ((hoje.getDay() + 6) % 7));
   return valores.map((concluidos, i) => ({
-    semana: iso(new Date(segunda.getFullYear(), segunda.getMonth(), segunda.getDate() - 7 * (valores.length - 1 - i))),
+    semana: formatarDiaIso(new Date(segunda.getFullYear(), segunda.getMonth(), segunda.getDate() - 7 * (valores.length - 1 - i))),
     concluidos,
   }));
 }
@@ -67,11 +66,17 @@ export const overviewTimeMock: OverviewTime = {
   ],
 };
 
+// Burndown clássico da spec 071: o planejamento começou há 16 dias e termina daqui a 14; o executado para hoje.
+const DIAS_DO_PLANO = 31;
+const HOJE_NO_PLANO = 16;
+
 export const overviewProjetoMock: OverviewProjeto = {
-  burndown: ultimosDias(30).map((dia, i) => ({
-    dia: iso(dia),
-    planejado: Math.max(36 - 2 * Math.floor((i * 5) / 7), 0),
-    executado: Math.max(36 - Math.round(i * 0.9), 0),
+  dataPlanejada: formatarDiaIso(new Date(Date.now() + 14 * 86_400_000)),
+  metaDiaria: 1.7,
+  burndown: Array.from({ length: DIAS_DO_PLANO }, (_, i) => ({
+    dia: formatarDiaIso(new Date(Date.now() + (i - HOJE_NO_PLANO) * 86_400_000)),
+    planejado: Math.round((36 - (36 * i) / (DIAS_DO_PLANO - 1)) * 10) / 10,
+    executado: i <= HOJE_NO_PLANO ? Math.max(36 - Math.round(i * 1.6), 0) : null,
   })),
   passRate: {
     rodadaEm: new Date().toISOString(),
@@ -87,7 +92,7 @@ export const overviewPessoalMock: OverviewPessoal = {
   concluidos: 6,
   atribuidos: 9,
   porDificuldade: { Low: 4, Medium: 3, High: 2 },
-  entregasPorDia: ultimosDias(30).map((dia, i) => ({ dia: iso(dia), concluidos: [0, 1, 0, 2, 0, 0, 1][i % 7] })),
+  entregasPorDia: ultimosDias(30).map((dia, i) => ({ dia: formatarDiaIso(dia), concluidos: [0, 1, 0, 2, 0, 0, 1][i % 7] })),
   entregasPorSemana: ultimasSemanas([1, 2, 0, 3, 2, 1, 2, 4, 1, 3, 2, 1]),
   projetos: [
     { projetoId: "mock-projeto-alarm", projeto: "Alarm 2.0", app: "Alarm", concluidos: 2, emAndamento: 1, atribuidos: 4 },

@@ -29,13 +29,13 @@
 
 ## Fase 2: frontend
 
-- [ ] **T05. Data planejada no projeto (API, drawer e coluna)**
-  - Arquivos: `modules/projetos/api/projetos.api.ts` e o model, `components/EditarProjetoDrawer.tsx` e
-    `EditarProjetoDrawer.test.tsx` (novo), `pages/ProjetosPage.tsx` e teste, `core/mock/database.ts`,
+- [x] **T05. Data planejada no projeto (API, drawer e coluna)**
+  - Arquivos: `modules/projetos/api/projetos.api.ts` e o model, `components/EditarProjetoDrawer.tsx`,
+    `pages/ProjetosPage.tsx` e `ProjetosPage.test.tsx` (onde já ficam os testes do painel de edição), `core/mock/database.ts`,
     `core/i18n/resources.ts`
   - Cobre: CA-01, CA-07, CA-10 (validação na tela)
-  - Verificação: `npx vitest run src/modules/projetos/components/EditarProjetoDrawer.test.tsx src/modules/projetos/pages/ProjetosPage.test.tsx && npm run lint && npx tsc -b` → verde
-- [ ] **T06. Burndown com data, meta e aviso**
+  - Verificação: `npx vitest run src/modules/projetos/pages/ProjetosPage.test.tsx && npm run lint && npx tsc -b` → verde
+- [x] **T06. Burndown com data, meta e aviso**
   - Arquivos: `modules/overview/model/overview.ts`, `components/graficos/BurndownChart.tsx`,
     `components/OverviewKp.tsx` e `OverviewKp.test.tsx`, `api/overview.mock.ts`, `core/i18n/resources.ts`
   - Cobre: CA-03, CA-05, CA-08 (lacuna antes do início)
@@ -53,3 +53,6 @@
   funções do `overview_service.py`, enquanto `definir_data_planejada` está na entidade `Projeto`. Levar o cálculo
   para o domínio deixa a regra num lugar só; a linha antiga (meta fixa) também ficava no service (simplify do
   bloco 1).
+- O fuso do navegador é montado em três lugares (`overview.api.ts`, `auditoria.api.ts` e o PUT de
+  `projetos.api.ts`), e o PUT monta a query string à mão porque o `httpPut` não aceita `params` como o
+  `httpGet`. Um helper `fusoDoNavegador()` e `params` no `httpPut` limpam os três (simplify do bloco 2).

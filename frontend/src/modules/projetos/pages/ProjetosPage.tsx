@@ -23,7 +23,7 @@ import { baixarPlanilha, buscarTodasAsPaginas } from "@/shared/lib/exportar-plan
 import { comOpcaoTodos } from "@/shared/lib/opcoes";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { toast } from "@/shared/lib/toast";
-import { formatarDiaIso } from "@/shared/lib/utils";
+import { formatarDiaIso, lerDiaIso } from "@/shared/lib/utils";
 import { ApiError } from "@/shared/api/problem-details";
 import { errosDaApi } from "../utils/formatar-erro-planilha";
 import { CABECALHOS_MODELO_PLANILHA, EXEMPLO_MODELO_PLANILHA } from "../utils/planilha-projeto";
@@ -188,6 +188,7 @@ export function ProjetosPage() {
   const rotuloTime = (project: Projeto) => nomeTime[project.time_id] ?? "—";
   const rotuloCriadoEm = (project: Projeto) => project.created_at ? formatDate(project.created_at) : "—";
   const rotuloAtualizadoEm = (project: Projeto) => project.updated_at ? formatDate(project.updated_at) : "—";
+  const rotuloDataPlanejada = (project: Projeto) => project.data_planejada ? formatDate(lerDiaIso(project.data_planejada)) : "—";
   const colunas: DataTableColumn<Projeto>[] = [
     { id: "numero", header: "", className: "w-12 text-right tabular-nums text-muted after:hidden", cell: (project) => String(primeiraDaPagina + projetosFiltrados.indexOf(project) + 1).padStart(2, "0") },
     { id: "nome", isRowHeader: true, header: <DataTableFilter label={t("project")} value={filtrosProjeto.nome} onChange={(value) => alterarFiltroProjeto("nome", value)} />, cell: (project) => <Link to={`/projetos/${project.id}`} className="hover:text-accent-text focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{project.nome}</Link>, exportar: { titulo: t("project"), valor: (project) => project.nome } },
@@ -208,6 +209,7 @@ export function ProjetosPage() {
     },
     { id: "criadoEm", header: <DataTableFilter label={t("createdAt")} value={filtrosProjeto.createdAt} onChange={(value) => alterarFiltroProjeto("createdAt", value)} type="date" />, cell: rotuloCriadoEm, exportar: { titulo: t("createdAt"), valor: rotuloCriadoEm } },
     { id: "atualizadoEm", header: <DataTableFilter label={t("updatedAt")} value={filtrosProjeto.updatedAt} onChange={(value) => alterarFiltroProjeto("updatedAt", value)} type="date" />, cell: rotuloAtualizadoEm, exportar: { titulo: t("updatedAt"), valor: rotuloAtualizadoEm } },
+    { id: "dataPlanejada", header: t("plannedDate"), className: "whitespace-nowrap tabular-nums", cell: rotuloDataPlanejada, exportar: { titulo: t("plannedDate"), valor: rotuloDataPlanejada } },
     { id: "acoes", header: t("actions"), className: "w-px whitespace-nowrap", cell: (project) => <RowActions identificador={project.nome} actions={acoesDoProjeto(project)} /> },
   ];
   const estadoProjetos = estadoDaTabela({

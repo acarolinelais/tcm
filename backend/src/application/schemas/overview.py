@@ -91,8 +91,8 @@ class OverviewTimeResponse(BaseModel):
 
 class PontoBurndownResponse(BaseModel):
     dia: str  # AAAA-MM-DD, no fuso pedido.
-    planejado: float | None  # None: antes do início do planejamento ou sem data planejada.
-    executado: int
+    planejado: float | None  # None: sem data planejada.
+    executado: int | None  # None: dia que ainda não chegou (spec 071, RN-05).
 
 
 class PassRateModeloResponse(BaseModel):

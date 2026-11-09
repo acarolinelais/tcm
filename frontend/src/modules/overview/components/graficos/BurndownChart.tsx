@@ -6,11 +6,12 @@ import { AreaDoGrafico } from "./GraficoCard";
 
 export interface PontoBurndown {
   dia: string;
-  planejado: number;
-  executado: number;
+  /** Null deixa a linha sem ponto naquele dia: sem planejamento, ou um dia que ainda não chegou (spec 071). */
+  planejado: number | null;
+  executado: number | null;
 }
 
-/** Planejado (tracejado) contra executado, por dia (spec 063, RN-07). */
+/** Planejado (tracejado) contra executado, por dia (specs 063 e 071). */
 export function BurndownChart({ titulo, pontos }: { titulo: string; pontos: PontoBurndown[] }) {
   const { t } = useTranslation();
   return (

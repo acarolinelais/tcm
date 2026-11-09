@@ -244,21 +244,34 @@ class OverviewServiceImpl:
         if time_ is None or not usuario_atual.time_no_escopo(time_.id, time_.setor_id):
             raise NotFoundException("Projeto não encontrado.")
 
-        dias = _ultimos_dias(self._hoje(fuso))
+        hoje = self._hoje(fuso)
 
         def fim_do_dia(dia: date) -> datetime:
             return datetime.combine(dia + timedelta(days=1), time(), fuso)
 
-        fins = [fim_do_dia(dia) for dia in dias]
         inicio, data_planejada = projeto.planejamento_iniciado_em, projeto.data_planejada
+        executado: list[int | None]
         if inicio is None or data_planejada is None:
-            executado = await self._overview_repo.burndown_executado(unidade_id, projeto.id, fins)
+            dias = _ultimos_dias(hoje)
+            executado = list(
+                await self._overview_repo.burndown_executado(
+                    unidade_id, projeto.id, [fim_do_dia(dia) for dia in dias]
+                )
+            )
             planejado, meta = [None] * len(dias), None
         else:
-            # O último instante pedido é o fim do dia do início: os casos não Done naquele dia.
-            *executado, restantes = await self._overview_repo.burndown_executado(
-                unidade_id, projeto.id, [*fins, fim_do_dia(inicio)]
+            # Spec 071, RN-05: do início até a data planejada, ou até hoje se ela já passou. O
+            # executado só existe até hoje; o último instante pedido é o fim do dia do início.
+            primeiro = min(inicio, hoje)
+            dias = [
+                primeiro + timedelta(days=n)
+                for n in range((max(data_planejada, hoje) - primeiro).days + 1)
+            ]
+            passados = [dia for dia in dias if dia <= hoje]
+            *contagens, restantes = await self._overview_repo.burndown_executado(
+                unidade_id, projeto.id, [*map(fim_do_dia, passados), fim_do_dia(inicio)]
             )
+            executado = [*contagens, *[None] * (len(dias) - len(passados))]
             meta = meta_diaria(inicio, data_planejada, restantes)
             planejado = linha_planejada(dias, inicio, data_planejada, restantes, meta)
         pass_rate = await self._overview_repo.pass_rate_ultima_rodada(unidade_id, projeto.id)

@@ -389,13 +389,14 @@ async def test_obter_pessoal_devolve_os_projetos_do_dev_com_as_contagens(repo):
 
 
 @pytest.mark.asyncio
-async def test_obter_projeto_com_data_planejada_parte_dos_casos_do_dia_do_inicio(repo):
-    # Spec 071, CA-02 e CA-03: o último instante pedido ao repositório é o fim do dia do início.
+async def test_obter_projeto_com_data_planejada_vai_do_inicio_ate_a_data(repo):
+    # Spec 071, CA-02, CA-03 e CA-08: hoje é 10/02; o gráfico vai de 02/02 a 16/02 e o executado
+    # para em 10/02. O último instante pedido ao repositório é o fim do dia do início.
     inicio, data_planejada = date(2026, 2, 2), date(2026, 2, 16)
     projeto, time_, projeto_repo, time_repo = _projeto_no_time(
         inicio=inicio, data_planejada=data_planejada
     )
-    repo.burndown_executado.return_value = [20] * 30 + [30]
+    repo.burndown_executado.side_effect = lambda _u, _p, fins: [29] * (len(fins) - 1) + [30]
     repo.pass_rate_ultima_rodada.return_value = None
 
     resposta = await _service(repo, projeto_repo, time_repo).obter_projeto(
@@ -403,8 +404,30 @@ async def test_obter_projeto_com_data_planejada_parte_dos_casos_do_dia_do_inicio
     )
 
     *_, fins = repo.burndown_executado.call_args.args
+    assert len(fins) == 10  # 02/02 a 10/02, mais o fim do dia do início
     assert fins[-1] == datetime(2026, 2, 3, tzinfo=ZoneInfo("UTC"))
     assert (resposta.data_planejada, resposta.meta_diaria) == (data_planejada, 3)
-    por_dia = {ponto.dia: ponto.planejado for ponto in resposta.burndown}
-    assert (por_dia["2026-02-01"], por_dia["2026-02-02"], por_dia["2026-02-03"]) == (None, 30, 27)
-    assert por_dia["2026-02-10"] == 12  # seis dias úteis depois do início
+    pontos = {ponto.dia: (ponto.planejado, ponto.executado) for ponto in resposta.burndown}
+    assert (resposta.burndown[0].dia, resposta.burndown[-1].dia) == ("2026-02-02", "2026-02-16")
+    assert pontos["2026-02-02"] == (30, 29)
+    assert pontos["2026-02-10"] == (12, 29)  # seis dias úteis depois do início
+    assert pontos["2026-02-11"] == (9, None)  # o futuro não tem executado
+    assert pontos["2026-02-16"] == (0, None)
+
+
+@pytest.mark.asyncio
+async def test_data_planejada_vencida_estende_o_grafico_ate_hoje(repo):
+    # CA-13: a data passou em 05/02 e hoje é 10/02; o planejado fica em zero e o executado segue.
+    projeto, time_, projeto_repo, time_repo = _projeto_no_time(
+        inicio=date(2026, 1, 26), data_planejada=date(2026, 2, 5)
+    )
+    repo.burndown_executado.side_effect = lambda _u, _p, fins: [4] * (len(fins) - 1) + [16]
+    repo.pass_rate_ultima_rodada.return_value = None
+
+    resposta = await _service(repo, projeto_repo, time_repo).obter_projeto(
+        _usuario("KP", time_ids=(time_.id,)), projeto.id, "UTC"
+    )
+
+    ultimo = resposta.burndown[-1]
+    assert (ultimo.dia, ultimo.planejado, ultimo.executado) == ("2026-02-10", 0, 4)
+    assert all(ponto.executado is not None for ponto in resposta.burndown)

@@ -807,6 +807,10 @@ export const mockProjetosApi = {
     project.nome = input.nome.trim();
     project.app = input.app.trim();
     project.one_ui = input.one_ui.trim();
+    if (input.data_planejada !== undefined && input.data_planejada !== (project.data_planejada ?? null)) {
+      if (input.data_planejada && input.data_planejada < formatarDiaIso(new Date())) throw new Error("A data planejada não pode estar no passado.");
+      project.data_planejada = input.data_planejada;
+    }
     db.projetoModelos.filter((link) => link.projeto_id === projectId).forEach((link) => { link.ativo = selectedModels.has(link.modelo_dispositivo_id); });
     input.modelos_ids.forEach((modelId) => {
       if (!db.projetoModelos.some((link) => link.projeto_id === projectId && link.modelo_dispositivo_id === modelId)) {
