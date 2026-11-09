@@ -10,6 +10,7 @@ import {
   AdministrationIcon,
   AuditIcon,
   BoardIcon,
+  BugReportsIcon,
   ChevronIcon,
   CollapseIcon,
   DeviceIcon,
@@ -46,6 +47,7 @@ export function Sidebar({
   ];
   if (["ADMIN_UNIDADE", "GERENTE", "KP", "USUARIO_PADRAO"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("form_factor.consultar")) {
     itens.push({ to: "/resultados-gerais", label: t("generalResults"), Icon: GeneralResultsIcon });
+    itens.push({ to: "/bug-reports", label: t("bugReports"), Icon: BugReportsIcon });
   }
   if (perfil.permissoes.includes("projetos.consultar") || perfil.permissoes.includes("test_cases.consultar")) {
     itens.push({ to: "/projetos", label: t(perfil.perfil_codigo === "USUARIO_PADRAO" ? "projectsNav" : "myProjects"), Icon: ProjectsIcon });

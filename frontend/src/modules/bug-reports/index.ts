@@ -1,0 +1,1 @@
+export { bugReportsRoutes } from "./routes";

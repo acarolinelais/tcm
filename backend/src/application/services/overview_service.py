@@ -46,6 +46,17 @@ SEMANAS = 12
 META_DIARIA = 2
 
 
+def escopo_do_usuario(usuario_atual: UsuarioAutenticado) -> EscopoOverview:
+    """Spec 039, RN-01: o admin vê a unidade; gerente e KP, os times do escopo (ADR 0036); os
+    demais, os casos em que são principal ou Backup. O Bug Reports (spec 070) usa o mesmo recorte.
+    """
+    if usuario_atual.eh_administrador:
+        return EscopoOverview()
+    if usuario_atual.perfil_codigo in ("GERENTE", "KP"):
+        return EscopoOverview(time_ids=usuario_atual.times_no_escopo)
+    return EscopoOverview(pessoa_id=usuario_atual.id)
+
+
 def _ultimos_dias(hoje: date) -> list[date]:
     """Spec 063, RN-03: os 30 dias até hoje, do mais antigo para o atual."""
     return [hoje - timedelta(days=atras) for atras in range(DIAS - 1, -1, -1)]
@@ -101,7 +112,7 @@ class OverviewServiceImpl:
             meses.append((ano, indice + 1))
         rotulos = [f"{ano:04}-{mes:02}" for ano, mes in meses]
 
-        escopo = self._escopo(usuario_atual)
+        escopo = escopo_do_usuario(usuario_atual)
         if escopo.time_ids == ():
             # KP ou gerente sem time: nada a contar (CA-05).
             resumo = ResumoOverview()
@@ -135,7 +146,7 @@ class OverviewServiceImpl:
         desde_dia = datetime.combine(_ultimos_dias(hoje)[0], time(), fuso)
         desde_dia = desde_dia.astimezone(UTC).replace(tzinfo=None)
 
-        escopo = self._escopo(usuario_atual)
+        escopo = escopo_do_usuario(usuario_atual)
         if escopo.pessoa_id is not None or escopo.time_ids == ():
             # O dev tem a visão pessoal; KP ou gerente sem time não têm o que mostrar.
             resumo = ResumoTime()
@@ -292,13 +303,3 @@ class OverviewServiceImpl:
 
     def _hoje(self, fuso: ZoneInfo) -> date:
         return self._agora().astimezone(fuso).date()
-
-    @staticmethod
-    def _escopo(usuario_atual: UsuarioAutenticado) -> EscopoOverview:
-        # RN-01: o admin vê a unidade; gerente e KP, os times do escopo (ADR 0036); os demais, os
-        # casos em que são principal ou Backup.
-        if usuario_atual.eh_administrador:
-            return EscopoOverview()
-        if usuario_atual.perfil_codigo in ("GERENTE", "KP"):
-            return EscopoOverview(time_ids=usuario_atual.times_no_escopo)
-        return EscopoOverview(pessoa_id=usuario_atual.id)

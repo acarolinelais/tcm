@@ -40,6 +40,7 @@ import {
 } from "@/modules/projetos/model/projeto";
 import type { ModeloDispositivo } from "@/modules/modelos-dispositivo/model/modelo-dispositivo";
 import type { FiltrosAuditoria, RegistroAuditoria } from "@/modules/auditoria/model/auditoria";
+import type { FalhaAberta, FiltrosBugReport } from "@/modules/bug-reports/model/bug-report";
 import { lerPlanilhaProjeto, PlanilhaProjetoError, type PessoasDaLinha, type PlanilhaProjeto } from "@/modules/projetos/utils/planilha-projeto";
 import { ApiError, type ProblemDetailsError } from "@/shared/api/problem-details";
 import type { PagedResult } from "@/shared/types/paged-result";
@@ -1495,5 +1496,38 @@ export const mockAuditoriaApi = {
       && (!filtros.origem || registro.origem === filtros.origem)
       && (!filtros.tela || contem(registro.tela, filtros.tela)));
     return page<RegistroAuditoria>(registros, pageNumber, pageSize);
+  },
+};
+
+/** Spec 070: o resultado mais recente de cada caso + device, quando é FAIL. */
+export const mockBugReportsApi = {
+  listar(pageNumber: number, pageSize: number, filtros: FiltrosBugReport = {}): PagedResult<FalhaAberta> {
+    const { db, user, profile } = mockProfile();
+    const pessoal = profile?.codigo === "USUARIO_PADRAO";
+    const falhas = projetosMockResultadosGerais(db)
+      .filter((project) => !projetoEncerrado(project.status) && (!filtros.projeto_id || project.id === filtros.projeto_id))
+      .flatMap((project) => {
+        const { modelos, casos, execucoes } = execucoesMockDoProjeto(db, project);
+        // `execucoes` vem da mais antiga para a mais recente: a última de cada caso + device fica.
+        const ultimas = new Map(execucoes.map((item) => [`${item.caso_teste_id}|${item.modelo_dispositivo_id}`, item]));
+        return [...ultimas.values()].flatMap((item): FalhaAberta[] => {
+          const testCase = casos.find((caso) => caso.id === item.caso_teste_id);
+          if (!testCase || item.resultado.trim().toUpperCase() !== "FAIL" || testCase.status === "Done" || testCase.status === "Cancelled") return [];
+          if (pessoal && testCase.responsavel_id !== user.id && testCase.backup_id !== user.id) return [];
+          if (filtros.modelo_dispositivo_id && item.modelo_dispositivo_id !== filtros.modelo_dispositivo_id) return [];
+          const identificador = db.usuarios.find((usuario) => usuario.id === testCase.responsavel_id)?.user_id ?? null;
+          if (!contem(identificador, filtros.responsavel)) return [];
+          return [{
+            caso_teste_id: testCase.id, tc_id: testCase.tc_id, titulo: testCase.title ?? null, status: testCase.status,
+            projeto_id: project.id, projeto_nome: project.nome, time_id: project.time_id,
+            modelo_dispositivo_id: item.modelo_dispositivo_id,
+            modelo_nome: modelos.find((modelo) => modelo.id === item.modelo_dispositivo_id)?.nome ?? "",
+            sdf_id: item.sdf_id, motivo: null, data_execucao: item.data_reportada,
+            responsavel_id: testCase.responsavel_id, responsavel_identificador: identificador, backup_id: testCase.backup_id,
+          }];
+        });
+      })
+      .sort((a, b) => b.data_execucao.localeCompare(a.data_execucao) || a.tc_id.localeCompare(b.tc_id));
+    return page(falhas, pageNumber, pageSize);
   },
 };
