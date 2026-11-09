@@ -96,6 +96,7 @@ sem paginação, também pagina ([ADR 0039](../adr/0039-resultados-gerais-com-pa
 | 067 | Desfazer a última importação do relatório SDF (resultados saem, Status volta a In Validation se ninguém mexeu, SDF ID fica livre) | Concluída (validação manual no navegador pendente) |
 | 068 | Aba Form Factor com a visão da General Results (sem Results/Summary; dev vê só os casos dele, gestão vê todos) | Concluída (validação manual no navegador pendente) |
 | 069 | Projetos encerrados fora do Board, da Timeline e da General Results (filtro para exibir) e conclusão só com todos os Test Cases em Done ou Cancelled | Concluída (validação manual no navegador pendente) |
+| 070 | Bug Reports (falhas em aberto do SDF por caso e device, com motivo; KP troca o responsável pela linha) | Aprovada |
 
 > As duas specs 012 foram criadas em paralelo. Os diretórios e históricos foram preservados nesta integração; a harmonização da numeração está registrada no backlog da spec de perfil Dev.
 
