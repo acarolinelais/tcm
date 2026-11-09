@@ -57,9 +57,10 @@ Módulo novo `modules/bug-reports/` (ADR 0009), tela nova em HeroUI (ADR 0037), 
 
 - `model/bug-report.ts`, `api/bug-reports.api.ts`, `hooks/useBugReports.ts` (TanStack Query).
 - `pages/BugReportsPage.tsx`: filtros (projeto, device, responsável), tabela de 20, estados vazio, carregando e erro;
-  a linha leva à página do Test Case (spec 040).
-- `components/TrocarResponsavelDialog.tsx`: modal com os membros ativos do time do caso (`timesApi.membros`),
-  chama `useAtualizarCasoTeste` com `{responsavel_id}` e invalida a lista. Só aparece para quem não é dev.
+  o TC ID abre o `DetalhesCasoTesteDrawer` (a página do caso, spec 040, ainda é rascunho).
+- Troca de responsável na própria célula Assignee (`InlineSelect`, regra 7 das tabelas, como na tabela de Test
+  Cases): opções com os membros ativos do time do caso (`timesApi.membros`), sem o backup; chama o PUT com
+  `{responsavel_id}` e invalida a lista. Só para quem gerencia casos (`perfilGerenciaCasos`).
 - `routes.tsx` e `index.ts`; `core/router.tsx` com a rota `/bug-reports`.
 - `core/layout/Sidebar.tsx` e `sidebar-icons.tsx`: item **Bug Reports** com a mesma condição da General Results.
 - `core/i18n/resources.ts`: os textos (pt, en).
@@ -75,7 +76,7 @@ Módulo novo `modules/bug-reports/` (ADR 0009), tela nova em HeroUI (ADR 0037), 
 | CA-10 | Unidade | `test_bug_report_service.py`: dev filtra por dono ou backup; sem permissão é 403 |
 | CA-01, CA-06 | Funcional | `test_bug_reports_api.py`: 200 com `PagedResult`; 401 sem sessão |
 | CA-14 | Funcional | `test_caso_teste_api.py` (já cobre): KP de outro time recebe 403 no PUT |
-| CA-08, CA-09 | Unidade (Vitest) | `TrocarResponsavelDialog.test.tsx`: envia `{responsavel_id}` e invalida a lista |
+| CA-08, CA-09, CA-14 | Unidade (Vitest) | `BugReportsPage.test.tsx`: envia `{responsavel_id}`, invalida a lista e mostra a recusa |
 | CA-07, CA-10, CA-11 | Unidade (Vitest) | `BugReportsPage.test.tsx`: filtro, dev sem a ação, estado vazio |
 | CA-08 | E2E | `bug-reports.spec.ts`: KP troca o responsável e a linha mostra o novo nome |
 

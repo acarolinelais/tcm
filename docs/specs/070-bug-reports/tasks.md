@@ -30,18 +30,18 @@
 
 ## Fase 2: frontend
 
-- [ ] **T05. Modelo, API, hook e modo mock**
+- [x] **T05. Modelo, API, hook e modo mock**
   - Arquivos: `modules/bug-reports/model/bug-report.ts`, `api/bug-reports.api.ts`, `hooks/useBugReports.ts`,
-    `core/mock/database.ts`
+    `core/mock/database.ts` e `core/mock/bug-reports.test.ts`
   - Cobre: base para CA-01 a CA-11
   - Verificação: `npx vitest run src/modules/bug-reports src/core/mock && npx tsc -b` → verde
-- [ ] **T06. Página Bug Reports com rota e item na sidebar**
+- [x] **T06. Página Bug Reports com rota e item na sidebar**
   - Arquivos: `modules/bug-reports/pages/BugReportsPage.tsx` e teste, `routes.tsx`, `index.ts`, `core/router.tsx`,
     `core/layout/Sidebar.tsx` e teste, `core/layout/sidebar-icons.tsx`, `core/i18n/resources.ts`
   - Cobre: CA-01, CA-04, CA-06, CA-07, CA-10 (sem a ação), CA-11
   - Verificação: `npx vitest run src/modules/bug-reports src/core/layout && npm run lint && npx tsc -b` → verde
-- [ ] **T07. Trocar responsável pela linha**
-  - Arquivos: `modules/bug-reports/components/TrocarResponsavelDialog.tsx` e teste, `BugReportsPage.tsx`
+- [x] **T07. Trocar responsável pela linha**
+  - Arquivos: `BugReportsPage.tsx` e teste (troca inline na célula Assignee, como na tabela de Test Cases)
   - Cobre: CA-08, CA-09, CA-14 (mensagem de recusa da API na tela)
   - Verificação: `npx vitest run src/modules/bug-reports && npm run lint && npx tsc -b` → verde
 
@@ -62,3 +62,6 @@
 - Se o Bug Reports ficar lento para o admin (unidade inteira): a subconsulta correlacionada que acha o projeto do
   caso roda por linha dentro de `_resultados_validos`, e a contagem repete a janela. Medir antes de mexer; índice
   em `execucoes_sdf(caso_teste_id, data_reportada)` é o primeiro candidato (simplify do bloco 1).
+- Opções do filtro de device: saem das falhas da página carregada, porque o catálogo de modelos exige gestão (o dev
+  levaria 403). Com um device escolhido, o filtro só mostra ele; para trocar, volta em "All". Se incomodar, a API
+  do Bug Reports pode devolver os devices com falha no escopo (simplify do bloco 2).

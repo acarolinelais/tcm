@@ -48,7 +48,7 @@ na tabela de Test Cases, como qualquer outro caso dele.
 - RN-09: Trocar o responsável vale para o caso inteiro, não só para aquela falha: se o caso tem FAIL em dois
   devices, as duas linhas passam a mostrar o novo responsável.
 - RN-10: A página só lê os resultados. Ela não muda Status, resultado nem motivo.
-- RN-11: Abrir uma linha leva à página do Test Case (spec 040).
+- RN-11: O TC ID da linha abre o painel de detalhes do caso, como nas tabelas do projeto (specs 028 e 030). A página própria do Test Case (spec 040) ainda é rascunho.
 
 ## Critérios de aceite
 
