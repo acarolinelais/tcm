@@ -43,7 +43,7 @@
 
 ## Fase 3: e2e
 
-- [ ] **T07. KP define a data e vê a meta**
+- [x] **T07. KP define a data e vê a meta**
   - Arquivos: `frontend/e2e/planejamento-projeto.spec.ts`
   - Cobre: CA-01, CA-03
   - Verificação: `npx playwright test e2e/planejamento-projeto.spec.ts` → verde

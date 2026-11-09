@@ -45,7 +45,7 @@ export function OverviewKp() {
           estado={escolha.estado(burndown.every((ponto) => !ponto.executado && !ponto.planejado))}
           onRetry={escolha.tentarDeNovo}
         >
-          <p className="text-xs text-muted">{plano}</p>
+          <p className="text-xs text-body">{plano}</p>
           <BurndownChart titulo={t("burndownTitle")} pontos={burndown} />
         </GraficoCard>
         <PassRatePorModeloCard escolha={escolha} />
