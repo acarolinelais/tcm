@@ -162,7 +162,7 @@ async def test_overview_projeto_com_data_planejada_traz_a_data_e_a_meta(api_clie
     # Spec 071, CA-02 e CA-03: início há 3 dias, 31 casos naquele dia, data daqui a 60 dias.
     time_id, hoje = uuid4(), datetime.now(UTC).date()
     repo = AsyncMock()
-    repo.burndown_executado.side_effect = lambda _u, _p, fins: [3] * (len(fins) - 1) + [31]
+    repo.burndown_executado.side_effect = lambda _u, _p, fins: [31] + [3] * (len(fins) - 1)
     repo.pass_rate_ultima_rodada.return_value = None
     projetos = _projeto_do_time(time_id, hoje - timedelta(days=3), hoje + timedelta(days=60))
     _usar(UsuarioAutenticado(uuid4(), uuid4(), "KP", time_ids=(time_id,)), repo, *projetos)
@@ -174,6 +174,7 @@ async def test_overview_projeto_com_data_planejada_traz_a_data_e_a_meta(api_clie
     # RN-05: do início até a data planejada; o executado para hoje.
     assert len(corpo["burndown"]) == 64
     assert corpo["burndown"][0]["planejado"] == 31
+    assert corpo["burndown"][0]["executado"] == 31
     assert corpo["burndown"][3]["executado"] == 3
     assert corpo["burndown"][4]["executado"] is None
     assert corpo["burndown"][-1]["planejado"] == 0

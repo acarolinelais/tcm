@@ -261,16 +261,20 @@ class OverviewServiceImpl:
             planejado, meta = [None] * len(dias), None
         else:
             # Spec 071, RN-05: do início até a data planejada, ou até hoje se ela já passou. O
-            # executado só existe até hoje; o último instante pedido é o fim do dia do início.
+            # executado só existe até hoje.
             primeiro = min(inicio, hoje)
             dias = [
                 primeiro + timedelta(days=n)
                 for n in range((max(data_planejada, hoje) - primeiro).days + 1)
             ]
             passados = [dia for dia in dias if dia <= hoje]
-            *contagens, restantes = await self._overview_repo.burndown_executado(
-                unidade_id, projeto.id, [*map(fim_do_dia, passados), fim_do_dia(inicio)]
+            # Os casos não Done no fim do dia do início saem da mesma consulta; o instante entra uma
+            # vez só, senão a contagem daquele dia vem em dobro.
+            extra = [] if inicio in passados else [fim_do_dia(inicio)]
+            contagens = await self._overview_repo.burndown_executado(
+                unidade_id, projeto.id, [*map(fim_do_dia, passados), *extra]
             )
+            restantes = contagens.pop() if extra else contagens[passados.index(inicio)]
             executado = [*contagens, *[None] * (len(dias) - len(passados))]
             meta = meta_diaria(inicio, data_planejada, restantes)
             planejado = linha_planejada(dias, inicio, data_planejada, restantes, meta)
