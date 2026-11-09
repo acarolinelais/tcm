@@ -1,18 +1,40 @@
 import { Navigate, Outlet, useLocation } from "react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ApiError } from "@/shared/api/problem-details";
 import { clearTokens, getAccessToken } from "@/core/auth/session";
+import { renovarSessao } from "@/core/api/http-client";
 import { usePerfilAtual } from "@/core/auth/usePerfilAtual";
 import { Navbar } from "./Navbar";
 import { Sidebar } from "./Sidebar";
 import { languageCode, TEMP_LANGUAGE_KEY } from "@/core/i18n";
-import { PageSkeleton, Skeleton } from "@/shared/ui/skeleton";
+import { Skeleton } from "@heroui/react";
+import { PageSkeleton } from "@/shared/ui/page-skeleton";
 
 export function AppLayout() {
-  const [sidebarRecolhida, setSidebarRecolhida] = useState(false);
+  // Abaixo de 1024px a Sidebar abre recolhida: aberta, deixava ~420px para o conteúdo num tablet. A pessoa ainda a abre.
+  const [sidebarRecolhida, setSidebarRecolhida] = useState(() =>
+    typeof window.matchMedia === "function" && window.matchMedia("(max-width: 63.999rem)").matches,
+  );
   const location = useLocation();
+  const conteudo = useRef<HTMLElement>(null);
+  // Troca de página: o conteúdo entra esmaecendo e subindo um pouco. Só opacidade e transform, que a GPU anima sem
+  // travar. Com movimento reduzido, só esmaece. O `animate` falta no jsdom dos testes.
+  useEffect(() => {
+    const parado = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    conteudo.current?.animate?.(
+      parado ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }],
+      { duration: 220, easing: "cubic-bezier(0.32, 0.72, 0, 1)" },
+    );
+  }, [location.pathname]);
+  const [renovando, setRenovando] = useState(() => !getAccessToken());
+  useEffect(() => {
+    if (!renovando) return;
+    renovarSessao()
+      .catch(() => false)
+      .finally(() => setRenovando(false));
+  }, [renovando]);
   const token = getAccessToken();
   const perfil = usePerfilAtual(Boolean(token));
   const { i18n } = useTranslation();
@@ -24,6 +46,7 @@ export function AppLayout() {
     window.sessionStorage.removeItem(TEMP_LANGUAGE_KEY);
     if (i18n.resolvedLanguage !== idioma) void i18n.changeLanguage(idioma);
   }, [i18n, perfil.data]);
+  if (renovando) return <AppSkeleton label={i18n.t("loadingProfile")} />;
   if (!token) return <Navigate to="/login" replace />;
   if (perfil.isLoading || sincronizandoIdioma) return <AppSkeleton label={i18n.t("loadingProfile")} />;
   if (perfil.error instanceof ApiError && perfil.error.problem.status === 401) {
@@ -39,10 +62,10 @@ export function AppLayout() {
   if (location.pathname === "/trocar-senha") return <Navigate to="/overview" replace />;
 
   return (
-    <div className={`box-border grid h-dvh min-h-0 overflow-hidden transition-[grid-template-columns] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${sidebarRecolhida ? "grid-cols-[4.5rem_minmax(0,1fr)]" : "grid-cols-[clamp(17.5rem,20vw,18.3125rem)_minmax(0,1fr)] max-sm:grid-cols-[minmax(9rem,35vw)_minmax(0,1fr)]"} grid-rows-[2rem_minmax(0,1fr)] gap-x-[clamp(1rem,5.5vw,2.75rem)] gap-y-4 bg-[#FBFBFB] p-[clamp(0.5rem,1.25vw,1rem)]`}>
+    <div className={`box-border grid h-dvh min-h-0 overflow-hidden transition-[grid-template-columns] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${sidebarRecolhida ? "grid-cols-[4.5rem_minmax(0,1fr)] max-sm:gap-x-3" : "grid-cols-[clamp(17.5rem,20vw,18.3125rem)_minmax(0,1fr)] max-sm:grid-cols-[minmax(9rem,35vw)_minmax(0,1fr)]"} grid-rows-[2rem_minmax(0,1fr)] gap-x-[clamp(1rem,5.5vw,2.75rem)] gap-y-4 bg-page p-[clamp(0.5rem,1.25vw,1rem)]`}>
       <Sidebar perfil={perfil.data} recolhida={sidebarRecolhida} onToggle={() => setSidebarRecolhida((recolhida) => !recolhida)} />
       <Navbar perfil={perfil.data} />
-      <main className="col-start-2 row-start-2 min-h-0 min-w-0">
+      <main ref={conteudo} className="col-start-2 row-start-2 min-h-0 min-w-0">
         <Outlet context={perfil.data} />
       </main>
     </div>
@@ -52,8 +75,8 @@ export function AppLayout() {
 // Esqueleto da casca do app enquanto o perfil carrega: sidebar, barra do topo e o cartão da página.
 function AppSkeleton({ label }: { label: string }) {
   return (
-    <div className="box-border grid h-dvh min-h-0 grid-cols-[clamp(17.5rem,20vw,18.3125rem)_minmax(0,1fr)] grid-rows-[2rem_minmax(0,1fr)] gap-x-[clamp(1rem,5.5vw,2.75rem)] gap-y-4 overflow-hidden bg-[#FBFBFB] p-[clamp(0.5rem,1.25vw,1rem)] max-sm:grid-cols-[minmax(9rem,35vw)_minmax(0,1fr)]">
-      <div aria-hidden="true" className="col-start-1 row-span-2 row-start-1 space-y-2 rounded-[2rem] border border-border bg-card p-3">
+    <div className="box-border grid h-dvh min-h-0 grid-cols-[clamp(17.5rem,20vw,18.3125rem)_minmax(0,1fr)] grid-rows-[2rem_minmax(0,1fr)] gap-x-[clamp(1rem,5.5vw,2.75rem)] gap-y-4 overflow-hidden bg-page p-[clamp(0.5rem,1.25vw,1rem)] max-sm:grid-cols-[minmax(9rem,35vw)_minmax(0,1fr)]">
+      <div aria-hidden="true" className="col-start-1 row-span-2 row-start-1 space-y-2 rounded-[2rem] border border-edge bg-card p-3">
         <Skeleton className="h-7 w-20" />
         {Array.from({ length: 4 }, (_, index) => <Skeleton key={index} className="h-9 w-full rounded-xl" />)}
       </div>

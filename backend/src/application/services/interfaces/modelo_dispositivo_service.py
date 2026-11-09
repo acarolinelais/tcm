@@ -4,6 +4,7 @@ from uuid import UUID
 from src.application.schemas.modelo_dispositivo import (
     AtualizarModeloDispositivoRequest,
     CriarModeloDispositivoRequest,
+    ModeloDispositivoOpcaoResponse,
     ModeloDispositivoResponse,
 )
 from src.domain.common.paged_result import PagedResult
@@ -19,6 +20,14 @@ class ModeloDispositivoService(Protocol):
         ativo: bool | None = None,
         busca: str | None = None,
     ) -> PagedResult[ModeloDispositivoResponse]: ...
+
+    async def listar_opcoes(
+        self,
+        usuario_atual: UsuarioAutenticado,
+        page: int,
+        page_size: int,
+        busca: str | None = None,
+    ) -> PagedResult[ModeloDispositivoOpcaoResponse]: ...
 
     async def criar(
         self, usuario_atual: UsuarioAutenticado, request: CriarModeloDispositivoRequest

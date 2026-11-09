@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useOutletContext } from "react-router";
+import { Button } from "@heroui/react";
+import { Plus } from "lucide-react";
 
-import { Button } from "@/shared/ui/button";
-import { Dialog, DrawerContent, DrawerHeader, DrawerTitle } from "@/shared/ui/dialog";
+import { PageCard, PageDescription, PageTitle } from "@/shared/ui/page-card";
 import { toast } from "@/shared/lib/toast";
 
-import { UsuarioForm } from "../components/UsuarioForm";
+import { UsuarioDrawer } from "../components/UsuarioDrawer";
 import { UsuariosTable } from "../components/UsuariosTable";
-import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS } from "@/shared/ui/table";
+import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS } from "@/shared/lib/paginacao";
 import type { Usuario } from "../model/usuario";
 import type { PerfilAtual } from "@/core/auth/api";
 import type { UsuarioFiltros } from "../api/usuario.api";
@@ -80,17 +81,15 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[42px] border border-[#EEEEF1] bg-card px-7 py-8 sm:px-11 sm:py-10">
-      <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-medium leading-8 text-primary">{t("users")}</h1>
-        </div>
+    <PageCard>
+      <header className="mb-5 flex shrink-0 items-start justify-between gap-4">
+        <div className="min-w-0"><PageTitle>{t("users")}</PageTitle><PageDescription>{t("usersDescription")}</PageDescription></div>
         {podeGerenciar && (
-          <Button onClick={abrirCriar} className="h-10 rounded-lg px-5 text-sm">
-            {t("newUser")}
+          <Button variant="primary" onPress={abrirCriar}>
+            <Plus aria-hidden="true" absoluteStrokeWidth strokeWidth={1.5} className="size-4" />{t("newUser")}
           </Button>
         )}
-      </div>
+      </header>
       <UsuariosTable
         page={page}
         pageSize={pageSize}
@@ -110,23 +109,19 @@ export function UsuariosPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
         podeAtribuirPerfilKP={podeAtribuirPerfilKP}
         podeConsultarPerfil={podeConsultarPerfilUsuario}
         podeConsultarSetores={ehAdmin || ((ehGerente || perfil.perfil_codigo === "KP") && perfil.permissoes.includes("setores.consultar"))}
+        podeRedefinirSenha={ehAdmin}
         usuarioAtualId={perfil.id}
       />
 
-      <Dialog open={podeGerenciar && modalAberto} onOpenChange={setModalAberto}>
-        <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>{usuarioEmEdicao ? t("editUser") : t("newUser")}</DrawerTitle>
-          </DrawerHeader>
-          <UsuarioForm
-            usuario={usuarioEmEdicao}
-            onSalvo={aoSalvar}
-            podeGerenciar={podeGerenciar}
-            podeAtribuirPerfil={podeAtribuirPerfil}
-            podeAtribuirPerfilKP={podeAtribuirPerfilKP}
-          />
-        </DrawerContent>
-      </Dialog>
-    </div>
+      <UsuarioDrawer
+        isOpen={podeGerenciar && modalAberto}
+        usuario={usuarioEmEdicao}
+        onFechar={() => setModalAberto(false)}
+        onSalvo={aoSalvar}
+        podeGerenciar={podeGerenciar}
+        podeAtribuirPerfil={podeAtribuirPerfil}
+        podeAtribuirPerfilKP={podeAtribuirPerfilKP}
+      />
+    </PageCard>
   );
 }

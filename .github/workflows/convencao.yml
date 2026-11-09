@@ -1,4 +1,4 @@
-# Convenção de branches, commits e PRs (ADR 0027 e 0028). Fica separado do ci.yml para
+# Convenção de branches, commits e PRs (ADRs 0027, 0028 e 0035). Fica separado do ci.yml para
 # revalidar quando só o título do PR é editado, sem rodar backend e frontend de novo.
 name: Convenção
 
@@ -6,10 +6,13 @@ on:
   pull_request:
     branches: [dev, main]
     types: [opened, synchronize, reopened, edited]
+  # Commit direto na dev (ADR 0035): valida as mensagens que chegaram no push.
+  push:
+    branches: [dev]
 
 concurrency:
   group: convencao-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -24,6 +27,8 @@ jobs:
       BASE_SHA: ${{ github.event.pull_request.base.sha }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       TITULO: ${{ github.event.pull_request.title }}
+      ANTES_SHA: ${{ github.event.before }}
+      DEPOIS_SHA: ${{ github.event.after }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,8 +36,14 @@ jobs:
       - name: Testes do script de convenção
         run: sh scripts/git/convencao.test.sh
       - name: Origem do PR e commits
+        if: github.event_name == 'pull_request'
         run: sh scripts/git/convencao.sh pr "$BASE_REF" "$HEAD_REF" "$BASE_SHA" "$HEAD_SHA"
       - name: Título do PR
+        if: github.event_name == 'pull_request'
         run: sh scripts/git/convencao.sh pr-titulo "$TITULO"
       - name: Spec da branch
+        if: github.event_name == 'pull_request'
         run: sh scripts/git/convencao.sh spec "$HEAD_REF"
+      - name: Commits do push
+        if: github.event_name == 'push'
+        run: sh scripts/git/convencao.sh commits "$ANTES_SHA" "$DEPOIS_SHA"

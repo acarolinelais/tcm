@@ -5,12 +5,13 @@ from src.domain.entities.caso_teste import (
     CasoTeste,
     CategoriaCasoTeste,
     DificuldadeCasoTeste,
+    NivelAutomacaoCasoTeste,
     SituacaoCasoTeste,
     StatusCasoTeste,
 )
 
 
-def criar_caso() -> CasoTeste:
+def criar_caso(status: StatusCasoTeste = StatusCasoTeste.TO_DO, **textos) -> CasoTeste:
     return CasoTeste(
         unidade_id=uuid4(),
         projeto_id=uuid4(),
@@ -20,6 +21,8 @@ def criar_caso() -> CasoTeste:
         responsavel_id=uuid4(),
         backup_id=uuid4(),
         situation=SituacaoCasoTeste.NEW,
+        status=status,
+        **textos,
     )
 
 
@@ -50,6 +53,16 @@ def test_responsavel_atualiza_somente_seus_campos_permitidos():
     assert caso.backup_id == backup_id
 
 
+def test_responsavel_atualiza_tc_situation_quando_informada():
+    caso = criar_caso()
+
+    caso.atualizar_campos_do_responsavel(
+        caso.status, caso.category, caso.difficulty, SituacaoCasoTeste.WITHOUT_CHANGES
+    )
+
+    assert caso.situation == SituacaoCasoTeste.WITHOUT_CHANGES
+
+
 def test_gestao_atualiza_situation_e_status():
     caso = criar_caso()
 
@@ -64,6 +77,128 @@ def test_gestao_atualiza_situation_e_status():
 
     assert caso.situation == SituacaoCasoTeste.NEW_STEP
     assert caso.status == StatusCasoTeste.IN_REVIEW
+
+
+def test_excluir_grava_a_justificativa_sem_os_espacos_das_pontas():
+    caso = criar_caso(StatusCasoTeste.IN_PROGRESS)
+
+    caso.atualizar_campos_do_responsavel(
+        StatusCasoTeste.CANCELLED,
+        caso.category,
+        caso.difficulty,
+        justificativa_exclusao="  Depende de hardware indisponível ",
+    )
+
+    assert caso.status is StatusCasoTeste.CANCELLED
+    assert caso.justificativa_exclusao == "Depende de hardware indisponível"
+
+
+def test_cancelar_grava_a_justificativa():
+    caso = criar_caso()
+
+    caso.cancelar("Fora do escopo do projeto")
+
+    assert caso.status is StatusCasoTeste.CANCELLED
+    assert caso.justificativa_exclusao == "Fora do escopo do projeto"
+
+
+@pytest.mark.parametrize("justificativa", [None, "", "   "])
+def test_excluir_sem_justificativa_levanta_erro_e_nao_muda_o_status(justificativa):
+    caso = criar_caso(StatusCasoTeste.IN_PROGRESS)
+
+    with pytest.raises(ValueError, match="Justificativa"):
+        caso.atualizar_campos_do_responsavel(
+            StatusCasoTeste.CANCELLED,
+            caso.category,
+            caso.difficulty,
+            justificativa_exclusao=justificativa,
+        )
+
+    assert caso.status is StatusCasoTeste.IN_PROGRESS
+    assert caso.justificativa_exclusao is None
+
+
+def test_excluir_com_justificativa_acima_de_500_levanta_erro():
+    caso = criar_caso()
+
+    with pytest.raises(ValueError, match="500"):
+        caso.cancelar("x" * 501)
+
+    assert caso.status is StatusCasoTeste.TO_DO
+
+
+def test_sair_de_cancelled_apaga_justificativa():
+    caso = criar_caso()
+    caso.cancelar("Fora do escopo do projeto")
+
+    caso.atualizar_gerenciamento(
+        caso.responsavel_id,
+        caso.backup_id,
+        caso.situation,
+        StatusCasoTeste.TO_DO,
+        caso.category,
+        caso.difficulty,
+    )
+
+    assert caso.status is StatusCasoTeste.TO_DO
+    assert caso.justificativa_exclusao is None
+
+
+def test_continuar_em_cancelled_mantem_a_justificativa():
+    caso = criar_caso()
+    caso.cancelar("Fora do escopo do projeto")
+
+    caso.atualizar_campos_do_responsavel(
+        StatusCasoTeste.CANCELLED, CategoriaCasoTeste.B, caso.difficulty
+    )
+
+    assert caso.justificativa_exclusao == "Fora do escopo do projeto"
+    assert caso.category is CategoriaCasoTeste.B
+
+
+def test_status_inclui_conclusao_e_cancelamento():
+    assert list(StatusCasoTeste) == [
+        "To-Do",
+        "InProgress",
+        "InReview",
+        "InValidation",
+        "Done",
+        "InFixes",
+        "Cancelled",
+    ]
+
+
+def test_resultado_fail_move_tc_para_correcao_e_pass_completo_para_done():
+    caso = criar_caso(status=StatusCasoTeste.IN_VALIDATION)
+    modelos = {uuid4(), uuid4()}
+
+    caso.registrar_resultado_form_factor({next(iter(modelos)): "FAIL"}, modelos)
+    assert caso.status is StatusCasoTeste.IN_FIXES
+
+    caso.atualizar_campos_do_responsavel(
+        StatusCasoTeste.IN_VALIDATION, caso.category, caso.difficulty
+    )
+    caso.registrar_resultado_form_factor({modelo_id: "PASS" for modelo_id in modelos}, modelos)
+    assert caso.status is StatusCasoTeste.DONE
+
+
+def test_resultado_parcial_mantem_tc_em_validacao():
+    caso = criar_caso(status=StatusCasoTeste.IN_VALIDATION)
+    modelos = {uuid4(), uuid4()}
+
+    caso.registrar_resultado_form_factor({next(iter(modelos)): "PASS"}, modelos)
+
+    assert caso.status is StatusCasoTeste.IN_VALIDATION
+
+
+@pytest.mark.parametrize("status", [StatusCasoTeste.CANCELLED, StatusCasoTeste.DONE])
+def test_resultado_de_rodada_nao_traz_tc_fora_da_validacao_de_volta_ao_fluxo(status):
+    caso = criar_caso(status=status)
+    modelos = {uuid4()}
+
+    caso.registrar_resultado_form_factor({next(iter(modelos)): "FAIL"}, modelos)
+
+    assert caso.status is status
 
 
 @pytest.mark.parametrize("situation", ["To-Do", "Changed", ""])
@@ -81,7 +216,8 @@ def test_criar_caso_com_situation_invalida_levanta_erro(situation):
         )
 
 
-def test_criar_caso_com_status_invalido_levanta_erro():
+@pytest.mark.parametrize("status", ["New", "Validation", "In Validation"])
+def test_criar_caso_com_status_invalido_levanta_erro(status):
     with pytest.raises(ValueError):
         CasoTeste(
             unidade_id=uuid4(),
@@ -92,18 +228,18 @@ def test_criar_caso_com_status_invalido_levanta_erro():
             responsavel_id=uuid4(),
             backup_id=uuid4(),
             situation=SituacaoCasoTeste.NEW,
-            status="New",
+            status=status,
         )
 
 
-def test_transferir_para_backup_torna_backup_nulo():
+def test_transferir_para_backup_troca_responsavel_e_backup():
     caso = criar_caso()
-    backup_id = caso.backup_id
+    responsavel_id, backup_id = caso.responsavel_id, caso.backup_id
 
     caso.transferir_para_backup()
 
     assert caso.responsavel_id == backup_id
-    assert caso.backup_id is None
+    assert caso.backup_id == responsavel_id
 
 
 @pytest.mark.parametrize(
@@ -140,6 +276,123 @@ def test_criar_caso_com_mesma_pessoa_responsavel_e_backup_levanta_erro():
         )
 
 
+def test_nivel_de_automacao_aceita_somente_1_2_e_3():
+    assert [nivel.value for nivel in NivelAutomacaoCasoTeste] == [1, 2, 3]
+    assert NivelAutomacaoCasoTeste(2) is NivelAutomacaoCasoTeste.PARCIALMENTE_AUTOMATIZAVEL
+
+
+@pytest.mark.parametrize("valor", [0, 4, -1])
+def test_nivel_de_automacao_fora_de_1_a_3_levanta_erro(valor):
+    with pytest.raises(ValueError):
+        NivelAutomacaoCasoTeste(valor)
+
+
+def test_caso_nasce_sem_nivel_de_automacao_e_aceita_um_na_criacao():
+    assert criar_caso().automation_level is None
+
+    caso = CasoTeste(
+        unidade_id=uuid4(),
+        projeto_id=uuid4(),
+        tc_id="Clock_001",
+        category=CategoriaCasoTeste.A,
+        difficulty=DificuldadeCasoTeste.LOW,
+        responsavel_id=uuid4(),
+        backup_id=uuid4(),
+        situation=SituacaoCasoTeste.NEW,
+        automation_level=3,
+    )
+
+    assert caso.automation_level is NivelAutomacaoCasoTeste.TOTALMENTE_AUTOMATIZAVEL
+
+
+def test_criar_caso_com_nivel_de_automacao_invalido_levanta_erro():
+    with pytest.raises(ValueError):
+        CasoTeste(
+            unidade_id=uuid4(),
+            projeto_id=uuid4(),
+            tc_id="Clock_001",
+            category=CategoriaCasoTeste.A,
+            difficulty=DificuldadeCasoTeste.LOW,
+            responsavel_id=uuid4(),
+            backup_id=uuid4(),
+            situation=SituacaoCasoTeste.NEW,
+            automation_level=4,
+        )
+
+
+def test_responsavel_define_e_troca_o_nivel_de_automacao():
+    caso = criar_caso()
+
+    caso.atualizar_campos_do_responsavel(
+        caso.status,
+        caso.category,
+        caso.difficulty,
+        automation_level=NivelAutomacaoCasoTeste.NAO_AUTOMATIZAVEL,
+    )
+    assert caso.automation_level is NivelAutomacaoCasoTeste.NAO_AUTOMATIZAVEL
+
+    caso.atualizar_campos_do_responsavel(
+        caso.status,
+        caso.category,
+        caso.difficulty,
+        automation_level=NivelAutomacaoCasoTeste.TOTALMENTE_AUTOMATIZAVEL,
+    )
+    assert caso.automation_level is NivelAutomacaoCasoTeste.TOTALMENTE_AUTOMATIZAVEL
+
+
+def test_atualizar_sem_nivel_de_automacao_mantem_o_que_ja_estava():
+    caso = criar_caso()
+    caso.atualizar_campos_do_responsavel(
+        caso.status,
+        caso.category,
+        caso.difficulty,
+        automation_level=NivelAutomacaoCasoTeste.PARCIALMENTE_AUTOMATIZAVEL,
+    )
+
+    caso.atualizar_campos_do_responsavel(
+        StatusCasoTeste.IN_PROGRESS, caso.category, caso.difficulty
+    )
+    caso.atualizar_gerenciamento(
+        caso.responsavel_id,
+        caso.backup_id,
+        caso.situation,
+        caso.status,
+        caso.category,
+        caso.difficulty,
+    )
+
+    assert caso.automation_level is NivelAutomacaoCasoTeste.PARCIALMENTE_AUTOMATIZAVEL
+
+
+def test_gestao_define_o_nivel_de_automacao():
+    caso = criar_caso()
+
+    caso.atualizar_gerenciamento(
+        caso.responsavel_id,
+        caso.backup_id,
+        caso.situation,
+        caso.status,
+        caso.category,
+        caso.difficulty,
+        NivelAutomacaoCasoTeste.TOTALMENTE_AUTOMATIZAVEL,
+    )
+
+    assert caso.automation_level is NivelAutomacaoCasoTeste.TOTALMENTE_AUTOMATIZAVEL
+
+
+def test_atualizar_com_nivel_de_automacao_invalido_levanta_erro_e_nao_altera():
+    caso = criar_caso()
+
+    with pytest.raises(ValueError):
+        caso.atualizar_campos_do_responsavel(
+            StatusCasoTeste.IN_REVIEW, CategoriaCasoTeste.C, caso.difficulty, automation_level=7
+        )
+
+    assert caso.automation_level is None
+    assert caso.status is StatusCasoTeste.TO_DO
+    assert caso.category is CategoriaCasoTeste.A
+
+
 def test_transferir_sem_backup_levanta_erro():
     caso = criar_caso()
     caso.backup_id = None
@@ -162,3 +415,77 @@ def test_reidratar_caso_sem_backup_nao_exige_backup():
     )
 
     assert caso.backup_id is None
+
+
+def test_caso_nasce_sem_os_textos_da_planilha():
+    caso = criar_caso()
+
+    assert (caso.title, caso.precondition, caso.procedure, caso.expected_result) == (
+        None,
+        None,
+        None,
+        None,
+    )
+
+
+def test_textos_perdem_os_espacos_das_pontas_e_mantem_as_quebras_de_linha():
+    caso = criar_caso(
+        title="  Check Writing style  ",
+        precondition="\n1. Settings > General management\n",
+        procedure=" 1. Messages\n2. Compose\r\n2-1. Select Shorten ",
+        expected_result="   ",
+    )
+
+    assert caso.title == "Check Writing style"
+    assert caso.precondition == "1. Settings > General management"
+    assert caso.procedure == "1. Messages\n2. Compose\r\n2-1. Select Shorten"
+    assert caso.expected_result is None
+
+
+def test_textos_no_limite_sao_aceitos_contando_emoji_como_um_caractere():
+    caso = criar_caso(
+        title="😀" + "a" * (CasoTeste.TITLE_MAX_LENGTH - 1),
+        precondition="a" * CasoTeste.TEXTO_MAX_LENGTH,
+        procedure="a" * CasoTeste.TEXTO_MAX_LENGTH,
+        expected_result="😀" * CasoTeste.TEXTO_MAX_LENGTH,
+    )
+
+    assert len(caso.title) == 500
+    assert len(caso.expected_result) == 10_000
+
+
+@pytest.mark.parametrize(
+    ("campo", "tamanho"),
+    [
+        ("title", 501),
+        ("precondition", 10_001),
+        ("procedure", 10_001),
+        ("expected_result", 10_001),
+    ],
+)
+def test_texto_acima_do_limite_levanta_erro(campo, tamanho):
+    with pytest.raises(ValueError, match="no máximo"):
+        criar_caso(**{campo: "a" * tamanho})
+
+
+def test_atualizacoes_nao_recebem_os_textos():
+    caso = criar_caso(procedure="1. Messages")
+
+    with pytest.raises(TypeError):
+        caso.atualizar_campos_do_responsavel(
+            StatusCasoTeste.TO_DO,
+            CategoriaCasoTeste.A,
+            DificuldadeCasoTeste.LOW,
+            procedure="outro",
+        )
+    with pytest.raises(TypeError):
+        caso.atualizar_gerenciamento(
+            caso.responsavel_id,
+            caso.backup_id,
+            SituacaoCasoTeste.NEW,
+            StatusCasoTeste.TO_DO,
+            CategoriaCasoTeste.A,
+            DificuldadeCasoTeste.LOW,
+            procedure="outro",
+        )
+    assert caso.procedure == "1. Messages"

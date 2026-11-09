@@ -4,7 +4,7 @@ from pydantic import BaseModel
 class ProblemDetailsError(BaseModel):
     campo: str
     mensagem: str
-    # Membros de extensão dos erros de planilha (ADR 0033); omitidos quando ausentes.
+    # Membros de extensão; omitidos quando ausentes.
     codigo: str | None = None
     linha: int | None = None
     coluna: str | None = None

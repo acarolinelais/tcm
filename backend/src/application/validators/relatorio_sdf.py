@@ -1,6 +1,8 @@
+import re
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import datetime
 from io import BytesIO
+from pathlib import PureWindowsPath
 from zipfile import BadZipFile
 
 from openpyxl import load_workbook
@@ -10,21 +12,8 @@ from src.application.validators.importacao_projeto import (
     _normalizar_cabecalho,
     _texto,
 )
-
-
-@dataclass(frozen=True)
-class LinhaRelatorioSdf:
-    linha: int
-    tc_id: str
-    sdf_id: str
-    data_reportada: datetime
-    one_ui: str
-    resultados: dict[str, str]
-
-
-@dataclass(frozen=True)
-class RelatorioSdfValidado:
-    linhas: tuple[LinhaRelatorioSdf, ...]
+from src.domain.entities.resultado_form_factor import ResultadoFormFactor
+from src.domain.entities.rodada_form_factor import RodadaFormFactor
 
 
 class RelatorioSdfInvalido(ValueError):
@@ -33,112 +22,260 @@ class RelatorioSdfInvalido(ValueError):
         super().__init__("O relatório SDF possui dados inválidos.")
 
 
-def validar_relatorio_sdf(conteudo: bytes) -> RelatorioSdfValidado:
-    try:
-        workbook = load_workbook(BytesIO(conteudo), read_only=True, data_only=True)
-        planilha = workbook.active
-    except (BadZipFile, InvalidFileException, OSError, ValueError) as erro:
-        raise RelatorioSdfInvalido(
-            (ErroImportacaoPlanilha(1, "arquivo", "O arquivo não é uma planilha Excel válida."),)
-        ) from erro
-
-    linhas = planilha.iter_rows(values_only=True)
-    cabecalho = next(linhas, None)
-    if cabecalho is None:
-        workbook.close()
-        raise RelatorioSdfInvalido(
-            (ErroImportacaoPlanilha(1, "cabecalho", "A planilha está vazia."),)
-        )
-    aliases = {
-        "test id": "tc id",
-        "test case id": "tc id",
-        "tc id": "tc id",
-        "sdf id": "sdf id",
-        "date": "date",
-        "data": "date",
-        "oneui": "one ui",
-        "one ui": "one ui",
-    }
-    mapa_normalizado: dict[str, int] = {}
-    erros: list[ErroImportacaoPlanilha] = []
-    for indice, valor in enumerate(cabecalho):
-        nome = _normalizar_cabecalho(valor) if valor is not None else ""
-        if not nome:
-            erros.append(ErroImportacaoPlanilha(1, "cabecalho", "Há uma coluna sem nome."))
-            continue
-        nome = aliases.get(nome, nome)
-        if nome in mapa_normalizado:
-            erros.append(ErroImportacaoPlanilha(1, nome, "O cabeçalho está duplicado."))
-            continue
-        mapa_normalizado[nome] = indice
-
-    erros.extend(
-        ErroImportacaoPlanilha(1, campo, "Coluna obrigatória não encontrada.")
-        for campo in ("tc id", "sdf id", "date", "one ui")
-        if campo not in mapa_normalizado
-    )
-    campos_fixos = {"tc id", "sdf id", "date", "one ui"}
-    colunas_modelos = {
-        nome: indice for nome, indice in mapa_normalizado.items() if nome not in campos_fixos
-    }
-    if not colunas_modelos:
-        erros.append(ErroImportacaoPlanilha(1, "modelos", "Informe ao menos uma coluna de modelo."))
-    if erros:
-        workbook.close()
-        raise RelatorioSdfInvalido(tuple(erros))
-
-    registros = []
-    for numero, valores in enumerate(linhas, start=2):
-        if not any(_texto(valor) for valor in valores):
-            continue
-        campos = {
-            nome: valores[indice] if indice < len(valores) else None
-            for nome, indice in mapa_normalizado.items()
-        }
-        tc_id = _texto(campos["tc id"])
-        sdf_id = _texto(campos["sdf id"])
-        one_ui = _texto(campos["one ui"])
-        data_reportada = _converter_data(campos["date"])
-        resultados = {
-            modelo: _texto(valores[indice] if indice < len(valores) else None)
-            for modelo, indice in colunas_modelos.items()
-        }
-        if not tc_id:
-            erros.append(ErroImportacaoPlanilha(numero, "tc id", "TC ID é obrigatório."))
-        if not sdf_id:
-            erros.append(ErroImportacaoPlanilha(numero, "sdf id", "SDF ID é obrigatório."))
-        if not one_ui:
-            erros.append(ErroImportacaoPlanilha(numero, "one ui", "One UI é obrigatório."))
-        if data_reportada is None:
-            erros.append(ErroImportacaoPlanilha(numero, "date", "Informe uma data válida."))
-        for modelo, resultado in resultados.items():
-            if not resultado:
-                erros.append(
-                    ErroImportacaoPlanilha(numero, modelo, "Resultado do modelo é obrigatório.")
-                )
-        if tc_id and sdf_id and one_ui and data_reportada and all(resultados.values()):
-            registros.append(
-                LinhaRelatorioSdf(numero, tc_id, sdf_id, data_reportada, one_ui, resultados)
-            )
-    workbook.close()
-    if not registros:
-        erros.append(
-            ErroImportacaoPlanilha(1, "tc id", "O relatório precisa conter execuções válidas.")
-        )
-    if erros:
-        raise RelatorioSdfInvalido(tuple(erros))
-    return RelatorioSdfValidado(tuple(registros))
+# Formato novo do SDF (spec 060): um device por arquivo, SDF ID no nome, device e data no cabeçalho.
+LINHA_CABECALHO_RESULTADOS = 7
+SCRIPTS_DE_PREPARACAO = frozenset({"hq_precondition.py", "setup.py"})
+# O relatório tem 9 colunas. Sem limite, uma célula perdida na coluna XFD faz cada linha vir com
+# 16 mil células e a leitura trava o worker.
+MAX_COLUNAS = 30
+# O mesmo vale para as linhas: uma célula perdida na linha 1.048.576 faria ler um milhão de linhas
+# vazias. A leitura para depois de tantas linhas vazias seguidas.
+MAX_LINHAS_VAZIAS_SEGUIDAS = 200
+_ONE_UI = re.compile(r"oneui(\d+)", re.IGNORECASE)
+_COLUNAS_OBRIGATORIAS = {
+    "script name": "Script Name",
+    "state": "State",
+    "test file path": "Test File Path",
+}
+# Description pode faltar: a descrição é opcional (RN-07).
+_COLUNAS_RESULTADOS = {**_COLUNAS_OBRIGATORIAS, "description": "Description"}
 
 
-def _converter_data(valor: object) -> datetime | None:
+@dataclass(frozen=True)
+class LinhaResultadoSdf:
+    linha: int
+    tc_id: str
+    resultado: str
+    descricao: str | None
+    one_ui: str
+
+
+@dataclass(frozen=True)
+class RelatorioSdfLido:
+    """O que deu para ler do arquivo e os problemas dele; os do projeto vêm depois."""
+
+    sdf_id: str | None
+    device: str
+    data_execucao: datetime | None
+    linhas: tuple[LinhaResultadoSdf, ...]
+    erros: tuple[ErroImportacaoPlanilha, ...]
+
+
+def sdf_id_do_nome(nome_arquivo: str | None) -> str | None:
+    """`123456-789012_0_Test_1_Detail.xlsx` dá `123456-789012`; sem nada antes do "_", nulo."""
+    nome = PureWindowsPath(nome_arquivo or "").name
+    if "_" not in nome:
+        return None
+    return nome.split("_", 1)[0].strip() or None
+
+
+def converter_data_f4(valor: object) -> datetime | None:
+    """Start Time da F4: mês/dia/ano com hora de 12 horas, com espaços e quebra de linha a mais."""
     if isinstance(valor, datetime):
         return valor
-    if isinstance(valor, date):
-        return datetime.combine(valor, datetime.min.time())
-    texto = _texto(valor)
-    for formato in ("%Y-%m-%d", "%m/%d/%Y", "%b %d, %Y", "%d/%m/%Y"):
-        try:
-            return datetime.strptime(texto, formato)
-        except ValueError:
+    texto = " ".join(_texto(valor).split())
+    try:
+        return datetime.strptime(texto, "%m/%d/%Y %I:%M:%S %p")
+    except ValueError:
+        return None
+
+
+def one_ui_do_caminho(caminho: object) -> str | None:
+    """Dígitos depois de "OneUI", sem ponto: `95` é 9.5, `10` é 10 e `105` é 10.5 (RN-08)."""
+    # Só no nome do arquivo: uma pasta "OneUI8/" no caminho não conta.
+    encontrado = _ONE_UI.search(PureWindowsPath(_texto(caminho)).name)
+    if not encontrado:
+        return None
+    digitos = encontrado.group(1)
+    tamanho = 2 if digitos.startswith("1") and len(digitos) > 1 else 1
+    principal, menor = digitos[:tamanho], digitos[tamanho:]
+    return f"{principal}.{menor}" if menor else principal
+
+
+def tc_id_do_script(script: object) -> str:
+    texto = _texto(script)
+    return texto[:-3] if texto.casefold().endswith(".py") else texto
+
+
+def _ler_linhas(linhas) -> list[tuple]:
+    """As linhas até a última preenchida, parando depois de muitas vazias seguidas."""
+    lidas: list[tuple] = []
+    vazias = 0
+    for linha in linhas:
+        vazias = 0 if any(_texto(valor) for valor in linha) else vazias + 1
+        if vazias > MAX_LINHAS_VAZIAS_SEGUIDAS:
+            break
+        lidas.append(linha)
+    return lidas
+
+
+def _celula(linhas: list[tuple], linha: int, coluna: int) -> object:
+    """Valor pela posição do Excel (linha e coluna a partir de 1); fora da planilha, nulo."""
+    if linha > len(linhas) or coluna > len(linhas[linha - 1]):
+        return None
+    return linhas[linha - 1][coluna - 1]
+
+
+def _erro(linha, campo, mensagem, codigo, coluna=None, valor=None, parametros=None):
+    return ErroImportacaoPlanilha(linha, campo, mensagem, codigo, coluna, valor or None, parametros)
+
+
+def ler_relatorio_sdf(nome_arquivo: str | None, conteudo: bytes) -> RelatorioSdfLido:
+    """Lê o relatório novo sem levantar por conteúdo: o service junta estes erros aos do projeto.
+
+    Só um arquivo que não abre como Excel levanta `RelatorioSdfInvalido`.
+    """
+    try:
+        workbook = load_workbook(BytesIO(conteudo), read_only=True, data_only=True)
+        linhas = _ler_linhas(workbook.active.iter_rows(values_only=True, max_col=MAX_COLUNAS))
+        workbook.close()
+    except (BadZipFile, InvalidFileException, OSError, ValueError, KeyError) as erro:
+        raise RelatorioSdfInvalido(
+            (
+                _erro(
+                    None,
+                    "arquivo",
+                    "O arquivo não é uma planilha Excel válida.",
+                    "arquivo_invalido",
+                ),
+            )
+        ) from erro
+
+    erros: list[ErroImportacaoPlanilha] = []
+    sdf_id = sdf_id_do_nome(nome_arquivo)
+    if sdf_id is None:
+        erros.append(
+            _erro(
+                None,
+                "arquivo",
+                'O nome do arquivo precisa começar pelo SDF ID seguido de "_" '
+                "(ex.: 123456-789012_0_Test_1_Detail.xlsx).",
+                "sdf_nome_sem_id",
+                valor=PureWindowsPath(nome_arquivo or "").name,
+            )
+        )
+    elif len(sdf_id) > RodadaFormFactor.SDF_ID_MAX_LENGTH:
+        erros.append(
+            _erro(
+                None,
+                "sdf_id",
+                f"O SDF ID passa de {RodadaFormFactor.SDF_ID_MAX_LENGTH} caracteres.",
+                "texto_muito_longo",
+                coluna="SDF ID",
+                parametros={"maximo": RodadaFormFactor.SDF_ID_MAX_LENGTH},
+            )
+        )
+        sdf_id = None
+
+    cabecalho = [
+        _normalizar_cabecalho(valor) if valor is not None else ""
+        for valor in (
+            linhas[LINHA_CABECALHO_RESULTADOS - 1]
+            if len(linhas) >= LINHA_CABECALHO_RESULTADOS
+            else ()
+        )
+    ]
+    colunas = {nome: cabecalho.index(nome) + 1 for nome in _COLUNAS_RESULTADOS if nome in cabecalho}
+    device = _texto(_celula(linhas, 4, 3))
+    if not _COLUNAS_OBRIGATORIAS.keys() <= colunas.keys() or not device:
+        # Sem a tabela da linha 7 ou sem o device, não é o relatório novo (o antigo cai aqui).
+        erros.append(
+            _erro(
+                None,
+                "arquivo",
+                "O arquivo não está no formato do relatório do SDF.",
+                "sdf_formato_invalido",
+            )
+        )
+        # Sem o formato, o C4 não é um device: nada de "device não associado" além deste erro.
+        return RelatorioSdfLido(sdf_id, "", None, (), tuple(erros))
+
+    bruta = _celula(linhas, 4, 6)
+    data_execucao = converter_data_f4(bruta)
+    if data_execucao is None:
+        erros.append(
+            _erro(
+                None,
+                "f4",
+                "A célula F4 (Start Time) não tem uma data válida. "
+                "Use mês/dia/ano e hora, como 10/21/2026 6:43:35 PM.",
+                "sdf_data_invalida",
+                coluna="F4",
+                valor=" ".join(_texto(bruta).split()),
+            )
+        )
+
+    resultados: list[LinhaResultadoSdf] = []
+    com_problema = False
+    for numero in range(LINHA_CABECALHO_RESULTADOS + 1, len(linhas) + 1):
+        if not any(_texto(valor) for valor in linhas[numero - 1]):
             continue
-    return None
+        campos = {nome: _texto(_celula(linhas, numero, col)) for nome, col in colunas.items()}
+        script, estado = campos["script name"], campos["state"]
+        if script.casefold() in SCRIPTS_DE_PREPARACAO:
+            continue
+        if not script or not estado:
+            com_problema = True
+            erros.append(
+                _erro(
+                    numero,
+                    "script name" if not script else "state",
+                    f"Linha {numero}: Script Name e State são obrigatórios.",
+                    "valor_obrigatorio",
+                    coluna=_COLUNAS_OBRIGATORIAS["script name" if not script else "state"],
+                )
+            )
+            continue
+        caminho = campos["test file path"]
+        one_ui = one_ui_do_caminho(caminho)
+        if one_ui is None:
+            com_problema = True
+            erros.append(
+                _erro(
+                    numero,
+                    "test file path",
+                    f'Linha {numero}: o Test File Path precisa ter "OneUI" seguido da versão '
+                    "(ex.: Keyboard_A_OneUI95.ts).",
+                    "sdf_one_ui_invalido",
+                    coluna="Test File Path",
+                    valor=caminho,
+                )
+            )
+            continue
+        descricao = campos.get("description") or None
+        longos = [
+            (coluna, maximo)
+            for coluna, texto, maximo in (
+                ("State", estado, ResultadoFormFactor.RESULTADO_MAX_LENGTH),
+                ("Description", descricao or "", ResultadoFormFactor.DESCRICAO_MAX_LENGTH),
+            )
+            if len(texto) > maximo
+        ]
+        for coluna, maximo in longos:
+            erros.append(
+                _erro(
+                    numero,
+                    coluna.casefold(),
+                    f"Linha {numero}: {coluna} passa de {maximo} caracteres.",
+                    "texto_muito_longo",
+                    coluna=coluna,
+                    parametros={"maximo": maximo},
+                )
+            )
+        if longos:
+            com_problema = True
+            continue
+        resultados.append(
+            LinhaResultadoSdf(numero, tc_id_do_script(script), estado, descricao, one_ui)
+        )
+
+    if not resultados and not com_problema:
+        erros.append(
+            _erro(
+                None,
+                "arquivo",
+                "O relatório não tem resultados de Test Cases.",
+                "sdf_sem_resultados",
+            )
+        )
+    return RelatorioSdfLido(sdf_id, device, data_execucao, tuple(resultados), tuple(erros))

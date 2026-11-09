@@ -166,6 +166,11 @@ class ImportacaoProjetoServiceImpl:
                     responsavel_id,
                     backup_id,
                     linha.situation,
+                    automation_level=linha.automation_level,
+                    title=linha.title,
+                    precondition=linha.precondition,
+                    procedure=linha.procedure,
+                    expected_result=linha.expected_result,
                 )
             )
 

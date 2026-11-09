@@ -18,6 +18,8 @@ class ImportacaoSdfModel(Base):
     unidade_id: Mapped[UUID] = mapped_column(ForeignKey("unidades.id"), nullable=False)
     projeto_id: Mapped[UUID] = mapped_column(ForeignKey("projetos.id"), nullable=False)
     importado_por: Mapped[UUID] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
+    desfeita_por: Mapped[UUID | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True)
+    desfeita_em: Mapped[datetime | None] = mapped_column(nullable=True)
     ativo: Mapped[bool] = mapped_column(default=True, server_default="true", nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime | None] = mapped_column(onupdate=func.now())

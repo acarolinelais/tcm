@@ -1,7 +1,7 @@
 export interface ProblemDetailsError {
   campo: string;
   mensagem: string;
-  /** Membros de extensão dos erros de planilha (ADR 0033). */
+  /** Membros de extensão; ausentes na maioria dos erros. */
   codigo?: string;
   linha?: number | null;
   coluna?: string | null;

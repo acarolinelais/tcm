@@ -5,6 +5,7 @@ from src.domain.common.entidade_tenant import EntidadeTenant
 
 class ResultadoFormFactor(EntidadeTenant):
     RESULTADO_MAX_LENGTH = 40
+    DESCRICAO_MAX_LENGTH = 2000
 
     def __init__(
         self,
@@ -12,6 +13,7 @@ class ResultadoFormFactor(EntidadeTenant):
         execucao_sdf_id: UUID,
         modelo_dispositivo_id: UUID,
         resultado: str,
+        descricao: str | None = None,
     ) -> None:
         super().__init__(unidade_id)
         self.execucao_sdf_id = execucao_sdf_id
@@ -24,3 +26,10 @@ class ResultadoFormFactor(EntidadeTenant):
                 f"Resultado do modelo deve ter no máximo {self.RESULTADO_MAX_LENGTH} caracteres."
             )
         self.resultado = normalizado
+        # Description do relatório SDF (spec 060); vem com espaços e tabs nas pontas.
+        descricao = (descricao or "").strip() or None
+        if descricao and len(descricao) > self.DESCRICAO_MAX_LENGTH:
+            raise ValueError(
+                f"Descrição do resultado deve ter no máximo {self.DESCRICAO_MAX_LENGTH} caracteres."
+            )
+        self.descricao = descricao

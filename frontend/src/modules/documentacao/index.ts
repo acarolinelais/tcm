@@ -1,0 +1,1 @@
+export { documentacaoRoutes } from "./routes";

@@ -6,11 +6,16 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from src.domain.entities.projeto import Projeto, StatusProjeto
 from src.domain.entities.projeto_modelo import ProjetoModelo
 from src.infrastructure.data.models.modelo_dispositivo_model import ModeloDispositivoModel
+from src.infrastructure.data.models.perfil_model import PerfilModel
 from src.infrastructure.data.models.projeto_model import ProjetoModel
 from src.infrastructure.data.models.setor_model import SetorModel
+from src.infrastructure.data.models.time_membro_model import TimeMembroModel
 from src.infrastructure.data.models.time_model import TimeModel
 from src.infrastructure.data.models.unidade_model import UnidadeModel
 from src.infrastructure.data.models.usuario_model import UsuarioModel  # noqa: F401
+from src.infrastructure.repositories.modelo_dispositivo_repository import (
+    ModeloDispositivoRepositoryImpl,
+)
 from src.infrastructure.repositories.projeto_modelo_repository import ProjetoModeloRepositoryImpl
 from src.infrastructure.repositories.projeto_repository import ProjetoRepositoryImpl
 
@@ -91,6 +96,7 @@ async def test_vinculo_modelo_do_projeto_persiste_e_lista_no_tenant():
                     id=projeto_id,
                     unidade_id=unidade_id,
                     time_id=time_id,
+                    nome="Clock 9.5",
                     app="Clock",
                     one_ui="9.5",
                 )
@@ -114,5 +120,126 @@ async def test_vinculo_modelo_do_projeto_persiste_e_lista_no_tenant():
             assert len(encontrados) == 1
             assert encontrados[0].modelo_dispositivo_id == modelo_id
             assert await repository.listar_por_projeto(uuid4(), projeto_id) == ()
+
+            modelos = ModeloDispositivoRepositoryImpl(session)
+            modelo = await modelos.obter_por_id(unidade_id, modelo_id)
+            assert modelo is not None
+            modelo.inativar()
+            await modelos.atualizar(modelo)
+            await session.flush()
+
+            assert len(await repository.listar_por_projeto(unidade_id, projeto_id)) == 1
+            ativos = await modelos.listar_paginado(unidade_id, 1, 100, True)
+            assert ativos.total_count == 0
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_listar_navegacao_traz_ativos_no_escopo_e_encerrados_por_ultimo():
+    engine = create_async_engine(os.environ["SDF_TEST_DATABASE_URL"])
+    unidade_id, mobile_id, web_id, inativo_id = (uuid4() for _ in range(4))
+    clock_id, vazio_id, web_time_id, time_inativo_id = (uuid4() for _ in range(4))
+    try:
+        async with async_sessionmaker(engine, expire_on_commit=False)() as session:
+            session.add(UnidadeModel(id=unidade_id, nome=f"Board {unidade_id}"))
+            await session.flush()
+            session.add_all(
+                [
+                    SetorModel(id=mobile_id, unidade_id=unidade_id, nome="Mobile"),
+                    SetorModel(id=web_id, unidade_id=unidade_id, nome="Web"),
+                    SetorModel(id=inativo_id, unidade_id=unidade_id, nome="Antigo", ativo=False),
+                ]
+            )
+            await session.flush()
+            session.add_all(
+                [
+                    TimeModel(id=clock_id, unidade_id=unidade_id, setor_id=mobile_id, nome="Clock"),
+                    TimeModel(id=vazio_id, unidade_id=unidade_id, setor_id=mobile_id, nome="Vazio"),
+                    TimeModel(id=web_time_id, unidade_id=unidade_id, setor_id=web_id, nome="Site"),
+                    TimeModel(
+                        id=time_inativo_id,
+                        unidade_id=unidade_id,
+                        setor_id=inativo_id,
+                        nome="Legado",
+                    ),
+                ]
+            )
+            await session.flush()
+
+            def projeto(time_id, nome, status, ativo=True):
+                return ProjetoModel(
+                    id=uuid4(),
+                    unidade_id=unidade_id,
+                    time_id=time_id,
+                    nome=nome,
+                    app=nome,
+                    one_ui="9.5",
+                    status=status.value,
+                    ativo=ativo,
+                )
+
+            session.add_all(
+                [
+                    projeto(clock_id, "Alarm 9.5", StatusProjeto.COMPLETED),
+                    projeto(clock_id, "Clock 9.5", StatusProjeto.IN_PROGRESS),
+                    projeto(clock_id, "Timer 9.5", StatusProjeto.CREATED),
+                    projeto(clock_id, "Excluído 9.5", StatusProjeto.CREATED, ativo=False),
+                    projeto(web_time_id, "Site 9.5", StatusProjeto.TO_DO),
+                    projeto(time_inativo_id, "Legado 9.5", StatusProjeto.TO_DO),
+                ]
+            )
+            await session.flush()
+            # Dois membros ativos e um inativo no time Clock: só os ativos contam.
+            perfil_id = uuid4()
+            session.add(
+                PerfilModel(id=perfil_id, unidade_id=unidade_id, nome=f"Perfil {perfil_id}")
+            )
+            await session.flush()
+            pessoas = [uuid4() for _ in range(3)]
+            session.add_all(
+                UsuarioModel(
+                    id=pessoa,
+                    unidade_id=unidade_id,
+                    nome=f"Pessoa {i}",
+                    email=f"p{i}-{pessoa}@example.com",
+                    perfil_id=perfil_id,
+                )
+                for i, pessoa in enumerate(pessoas)
+            )
+            await session.flush()
+            session.add_all(
+                TimeMembroModel(
+                    id=uuid4(),
+                    unidade_id=unidade_id,
+                    time_id=clock_id,
+                    usuario_id=pessoa,
+                    ativo=i < 2,
+                )
+                for i, pessoa in enumerate(pessoas)
+            )
+            await session.flush()
+            repository = ProjetoRepositoryImpl(session)
+
+            unidade = await repository.listar_navegacao(unidade_id, None)
+            assert [
+                (linha.setor_nome, linha.time_nome, linha.projeto_nome) for linha in unidade
+            ] == [
+                ("Mobile", "Clock", "Clock 9.5"),
+                ("Mobile", "Clock", "Timer 9.5"),
+                ("Mobile", "Clock", "Alarm 9.5"),
+                ("Mobile", "Vazio", None),
+                ("Web", "Site", "Site 9.5"),
+            ]
+            assert unidade[2].projeto_status is StatusProjeto.COMPLETED
+            assert [linha.time_membros for linha in unidade] == [2, 2, 2, 0, 0]
+
+            so_web = await repository.listar_navegacao(unidade_id, (web_time_id,))
+            assert [linha.time_nome for linha in so_web] == ["Site"]
+
+            # Escopo vazio ou outra unidade: nada aparece.
+            assert await repository.listar_navegacao(unidade_id, ()) == ()
+            assert await repository.listar_navegacao(uuid4(), None) == ()
+            await session.rollback()
     finally:
         await engine.dispose()

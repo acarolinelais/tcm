@@ -13,6 +13,8 @@ Documentação em PT-BR. Termos de domínio no código em português; termos té
    peça aprovação. **Se o usuário pedir pra seguir rápido por todas as fases** (ex.: "implementa tudo
    rápido", "pode seguir sem parar"), encadeie os blocos sem pausa de aprovação entre eles — mas sempre
    rode a verificação de cada bloco e nunca marque uma task com verificação vermelha como concluída.
+4. **Testes durante o trabalho:** rode só os testes dos arquivos que você está mexendo (e os de quem usa o que
+   mudou), nunca a suíte inteira a cada mudança. A suíte completa roda uma vez, antes de abrir o PR.
 
 ## Skills do projeto (`.claude/skills/`)
 | Skill | Quando usar |
@@ -30,10 +32,16 @@ Documentação em PT-BR. Termos de domínio no código em português; termos té
 | `web-design-guidelines`, `vercel-react-best-practices` | Revisão de UI contra guidelines e performance de React |
 | `tailwind-v4` | Convenções do Tailwind v4 (`@theme`, migração da v3, classes dinâmicas) |
 | `adversarial-review` | Revisão cética de um diff: tenta quebrar e só reporta o que sobrevive à refutação |
+| `ponytail` | Toda tarefa de código, principalmente alterações pontuais: a menor mudança que resolve a tarefa inteira, sem abstração, opção ou dependência que ninguém pediu. Não corta validação, tratamento de erro, segurança, acessibilidade nem a estrutura dos ADRs. Atalhos conscientes ficam marcados com `shortcut: <limite>, <quando evoluir>` |
+| `ponytail-review`, `ponytail-audit`, `ponytail-debt` | Revisão do diff (`ponytail-review`) ou do repositório inteiro (`ponytail-audit`) focada em correção, carga e código que sobra; `ponytail-debt` lista os comentários `shortcut:`. Relatório em PT-BR |
+| `humanizer` | Textos em prosa: specs, ADRs, descrições de PR, mensagens de commit, comentários de código e textos de interface. Remove vícios de texto gerado por IA sem mudar o conteúdo. Não reescreve código |
 | `caveman` | Respostas enxutas no chat para economizar tokens (`/caveman` liga, "stop caveman" desliga). Código, commits, docs e ADRs continuam em texto normal. Origem e licença em `.claude/skills/caveman/ORIGEM.md` |
 
 ## Skills globais e quando usar
 - `andrej-karpathy-skills:karpathy-guidelines`: toda tarefa de código.
+- `ponytail` e `humanizer` são o padrão do projeto: o hook `SessionStart` em `.claude/settings.json`
+  (script `.claude/hooks/session-start.mjs`, precisa de Node) liga a `ponytail` no nível full e lembra a
+  `humanizer` para prosa em toda sessão. Em conflito com um ADR, o ADR vence.
 - `simplify`: **obrigatória** uma vez por bloco (sobre o diff do bloco inteiro), antes do relatório e de commitar.
   Nunca pule, nem em blocos pequenos. Achados fora do escopo do bloco vão para o `## Backlog` do `tasks.md`.
 - `code-review`: ao terminar todas as tasks de uma spec.
@@ -50,25 +58,57 @@ Documentação em PT-BR. Termos de domínio no código em português; termos té
   sem DELETE (exclusão lógica por padrão; DELETE físico só com justificativa no `plan.md`, ADRs 0004 e 0008),
   documentação com Scalar em `/scalar` (ADR 0008). As migrations Alembic são aplicadas automaticamente quando a
   API inicia (ADR 0012).
-- **Frontend:** React + Vite + TypeScript com arquitetura Modular (`core`/`shared`/`modules`) + shadcn/ui +
-  Tailwind (ADR 0009). Cada domínio é um módulo autossuficiente. Dados com TanStack Query; formulários com
-  react-hook-form + zod.
+- **Frontend:** React + Vite + TypeScript com arquitetura Modular (`core`/`shared`/`modules`) + Tailwind
+  (ADR 0009). Cada domínio é um módulo autossuficiente. Dados com TanStack Query; formulários com
+  react-hook-form + zod. A base de UI é o **HeroUI v3**, com migração gradual a partir do shadcn/ui (ADR 0037):
+  tela nova ou redesenhada usa só HeroUI, tela não migrada continua em shadcn, sem misturar as duas na mesma
+  página e sem adicionar componentes shadcn novos.
 - **Testes:** unidade, integração, funcional, e2e e arquitetura, sempre com um cenário de sucesso
   e um de falha (ADR 0010).
 - **Multi-tenancy:** `Unidade` é a fronteira do tenant; hierarquia `Unidade → Setor → Time → TimeMembro`,
   isolamento por `unidade_id` filtrado no `RepositoryBaseImpl` (ADR 0013).
 - **Autenticação:** e-mail + senha com JWT emitido pelo backend, atrás de uma interface `Autenticador`
-  trocável no futuro por uma API corporativa (ADR 0014). **Ainda não implementada** — enquanto isso, a
-  API não deve ser exposta fora do ambiente local.
+  trocável no futuro por uma API corporativa (ADR 0014). Refresh em cookie httpOnly (ADR 0047); o `Secure`
+  sai por `COOKIE_SECURE=false` só no deploy por HTTP (ADR 0050).
+- **Deploy:** `bash deploy.sh` sobe `deploy/docker-compose.yml` (projeto `tcm-servidor`; web 5173, API 8080,
+  Postgres só em `127.0.0.1:5544`) e gera o `deploy/.env` (ADR 0049). Sem HTTPS: só para rede interna.
 - **Autorização:** quatro papéis fixos — `admin_unidade`, `gerente`, `kp` (Key Person, gerencia tasks só
   do próprio time) e `dev` — com regras de posse sobre as tasks (ADR 0015).
 
-## Git
-- Commits **sem** `Co-Authored-By` nem qualquer atribuição ao Claude.
-- Só commite quando o usuário pedir.
-- **Nunca** commite nem dê push direto em `main` ou `dev`. Uma spec = uma branch `feat/NNN-nome` criada a
-  partir da `dev` atualizada = um PR para a `dev`. Demais regras (hotfix, merge) no ADR 0027.
-- Commits e títulos de PR em Conventional Commits (`tipo(escopo): descrição`). Não use `--no-verify`.
+## Git e pull requests
+Regras para **todas as pessoas e agentes** do projeto (ADRs 0027, 0029 e 0035). O CI (`convencao`) recusa
+o que estiver fora delas, então siga antes de abrir o PR, não depois.
+
+**Antes do primeiro commit no clone:** confira os hooks com `git config --get core.hooksPath`. Se não
+responder `.githooks`, rode `git config core.hooksPath .githooks`. Sem isso nada é barrado localmente.
+
+**Branch**
+- Branch de trabalho sai da `dev` atualizada (`git switch dev && git pull`): `<tipo>/<descricao-em-kebab-case>`,
+  só `a-z`, `0-9`, `.` e `-`. Tipos: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `style`, `perf`, `ci`, `build`.
+- Spec = branch `feat/NNN-nome`, com a pasta `docs/specs/NNN-nome` já criada. **Antes de escolher o NNN**, confira o
+  roadmap (`docs/specs/README.md`), as branches remotas (`git branch -r`) e os PRs abertos (`gh pr list`):
+  duas specs com o mesmo número colidem no roadmap e nas migrations.
+- `hotfix/<descricao>` é a única branch que sai da `main` (fluxo no ADR 0027).
+- **Nunca** commite nem dê push direto na `main`. A `dev` aceita commit direto só para mudanças pequenas (ADR 0035).
+
+**Commits**
+- Conventional Commits: `tipo(escopo): descrição`, escopo em minúsculas e descrição em português.
+  Ex.: `feat(casos-teste): justificativa obrigatoria ao excluir Test Case`.
+- **Sem** `Co-Authored-By` nem qualquer atribuição ao Claude. Não use `--no-verify`.
+- Agentes só commitam quando o usuário pedir.
+
+**Pull request**
+- **Alvo:** sempre a `dev` (`gh pr create --base dev`). A `main` só recebe PR da `dev` (promoção) ou de
+  `hotfix/*`. Um PR de `feat/`, `fix/` etc. para a `main` é recusado pelo CI.
+- **Título:** no mesmo formato dos commits, ex.: `feat(form-factor): recusa SDF ID repetido ao criar rodada`.
+- **Descrição:** o template `.github/pull_request_template.md`, com as três seções: `## Spec` (a pasta
+  `docs/specs/NNN-nome`; em `fix/` sem spec, o problema corrigido), `## O que muda` e `## Como verifiquei`
+  (comandos rodados, resultados e o que **não** foi verificado). **Sem** atribuição ao Claude: nada de
+  "🤖 Generated with Claude Code" nem linha parecida.
+- **Antes de abrir:** atualize a branch com a `dev` (`git merge origin/dev`, sem rebase nem push forçado em branch
+  compartilhada), rode as suítes e, se houver migration, confira que `uv run alembic heads` mostra um único head
+  (o `down_revision` aponta para o head atual da `dev`).
+- Integração por merge commit, com as verificações verdes. A branch é apagada depois do merge.
 
 ## Ambiente
 - O repositório roda no **Windows**. O backend usa Python 3.13 com ambiente gerenciado por **uv**
@@ -85,4 +125,5 @@ uv run pytest                                   # testes do backend
 cd frontend && npm run dev                      # sobe o frontend (Vite)
 cd frontend && npm test && npm run lint && npm run e2e
 sh scripts/git/convencao.test.sh                # testes das regras de branch/commit/PR
+bash deploy.sh                                  # deploy no servidor (ADR 0049)
 ```

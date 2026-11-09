@@ -35,6 +35,10 @@ class UsuarioResponse(BaseModel):
     created_at: datetime
 
 
+class RedefinirSenhaResponse(BaseModel):
+    senha_padrao: str
+
+
 def to_response(u: Usuario) -> UsuarioResponse:
     return UsuarioResponse(
         id=u.id,

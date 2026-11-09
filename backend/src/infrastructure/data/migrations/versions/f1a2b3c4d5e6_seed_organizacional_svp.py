@@ -16,21 +16,21 @@ depends_on: str | Sequence[str] | None = None
 
 USUARIOS = (
     ("Ivan Moreira", "ivan.moreira", "GERENTE", "ivan.moreira@sidia.com"),
-    ("Afonso Fagundes", "a.fagundes", "KP", "a.fagundes@sidia.com"),
+    ("Afonso Fagundes", "afonso.fagundes", "KP", "afonso.fagundes@sidia.com"),
     ("Maria Pernalete", "maria.pernalete", "KP", "maria.pernalete@sidia.com"),
     ("Caroline Laís", "caroline.silva", "USUARIO_PADRAO", "caroline.silva@sidia.com"),
     ("Raquel Batista", "raquel.batista", "USUARIO_PADRAO", "raquel.batista@sidia.com"),
     ("Isabel Gama", "isabel.gama", "USUARIO_PADRAO", "isabel.gama@sidia.com"),
     ("Nivea Pereira", "nivea.pereira", "USUARIO_PADRAO", "nivea.pereira@sidia.com"),
-    ("Victoria Andrade", "victoria.andrade", "USUARIO_PADRAO", "victoria.andrade@sidia.com"),
+    ("Victoria Andrade", "victoria.santos", "USUARIO_PADRAO", "victoria.santos@sidia.com"),
     ("Janderson Brandão", "janderson.brandao", "USUARIO_PADRAO", "janderson.brandao@sidia.com"),
     ("Gilmar Silva", "gilmar.silva", "USUARIO_PADRAO", "gilmar.silva@sidia.com"),
     ("Marcio Marques", "marcio.marques", "USUARIO_PADRAO", "marcio.marques@sidia.com"),
     (
         "Guilherme Rabaioli",
-        "guilherme.rabaioli",
+        "guilherme.vieira",
         "USUARIO_PADRAO",
-        "guilherme.rabaioli@sidia.com",
+        "guilherme.vieira@sidia.com",
     ),
 )
 

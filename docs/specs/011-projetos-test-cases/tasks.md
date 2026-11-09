@@ -12,6 +12,21 @@
 
 - **Spec:** [spec.md](spec.md) · **Plan:** [plan.md](plan.md)
 
+## Ajuste: edição rápida de responsável e backup — 2026-10-25
+
+- [x] **T55. Editar Assignee e Backup diretamente na tabela**
+  - Arquivos: `frontend/src/modules/projetos/ProjetoDetalhePage.tsx`, `ProjetoDetalhePage.test.tsx`, `docs/specs/011-projetos-test-cases/{spec,plan}.md`.
+  - Cobre o critério adicional da spec: gestores autorizados no escopo trocam cada atribuição por dropdown com membros ativos distintos; demais perfis veem texto; falha de API restaura o valor anterior.
+  - Verificação: frontend 44 arquivos/223 testes passaram, lint e build passaram; backend 461 testes passaram com Postgres, Ruff e formatação aprovados.
+
+## Correções do CI frontend — 2026-10-25
+
+- [x] Atualizar as expectativas de versão do mock para schema 16.
+- [x] Atualizar os testes de criação de projeto para os painéis Manual/Import e seus controles duplicados.
+- [x] Enviar o nome composto (`App One UI`) na criação manual quando o campo editável não foi alterado.
+  - CI analisado: run `40230014954`, frontend falhava em `npm test` (5 expectativas de schema e 4 testes da página); lint e backend passaram.
+  - Verificação local final: `npm test` 223/223, `npm run lint` e `npm run build` aprovados; backend com integrações Postgres 461/461, Ruff e formatação aprovados.
+
 > Uma task = um objetivo, ~30 min, verificável. Os testes vão junto com o código que eles cobrem.
 > Implementar com a skill `implement-task`, um bloco (fase) por vez.
 > Na fase 4, `[~]` indica implementação parcial; a pendência está descrita em cada tarefa.
@@ -234,4 +249,27 @@
 - Reavaliar extração de validação compartilhada de textos se a duplicação entre entidades crescer nas fases de schemas/importadores.
 - Dar a `PlanilhaProjetoInvalida` e `RelatorioSdfInvalido` uma base comum (`erros`, `total_linhas`) e tipar o handler de planilha nela, removendo o `getattr(exc, "total_linhas", None)` (simplify da Fase 5; toca o validador SDF, fora do bloco).
 - Migrar os erros do relatório SDF para o formato do ADR 0033 (`linha=None` em problemas gerais e `codigo`); assim o handler deixa de condicionar os membros de extensão a `codigo` (simplify da Fase 5; muda o fluxo SDF).
+- Tirar a Category de `CasoTeste.atualizar_campos_do_responsavel` e deixá-la só em `atualizar_gerenciamento`: a regra "o responsável não altera a Category" fica no domínio, e o service deixa de repassar `caso.category`. Toca os testes de domínio e de integração do repositório, fora do bloco (simplify do ajuste de 2026-11-05).
+- `ProjetoSwitcher.test.tsx` ("carrega e seleciona projeto além das primeiras 100 opções") estoura o timeout de 5 s na suíte completa (6,9 s) e passa sozinho: aumentar o timeout desse teste ou reduzir as 100+ opções do cenário (achado ao fechar o ajuste de 2026-11-05).
 - Extrair um hook `useClientPagination(items)` em `shared` para a paginação no cliente (estado de página/tamanho, `slice` e volta à página 1), hoje repetida em `PreviaPlanilha`, `ErrosPlanilha`, `TimeDetalhePage` e `PerfisPage` (simplify da Fase 6; toca telas fora do bloco).
+
+## Ajuste: edição dos dados do projeto — 2026-10-25
+
+- [x] **T54. Permitir editar nome, time e modelos do projeto**
+  - Arquivos: schema/serviço/repositórios de projeto, migration `d7e8f901a2b3`, `ProjetosPage.tsx`, mock e i18n.
+  - Cobre: CA-34–CA-36.
+  - Verificação: `cd frontend && npm run build`, `cd backend && uv run ruff check ...` e `uv run alembic heads`; migration é head e build/lint passam. Testes automatizados não foram executados.
+
+## Ajuste: Category editada só pela gestão — 2026-11-05
+
+- [x] **T56. Recusar a Category enviada pelo responsável no backend**
+  - Arquivos: `backend/src/application/services/caso_teste_service.py`, `backend/tests/unit/application/services/test_caso_teste_service.py`, `backend/tests/functional/test_casos_teste_api.py`.
+  - `"category"` sai de `CAMPOS_RESPONSAVEL` e entra em `CAMPOS_GESTAO`; o responsável passa `caso.category` ao domínio; a mensagem de recusa deixa de citar a Category. O teste em que o responsável altera vários campos deixa de enviar a Category.
+  - Cobre: CA-09, CA-16, CA-38, CA-39 e CA-40 (unidade e funcional).
+  - Verificação: `cd backend && uv run pytest tests/unit/application/services/test_caso_teste_service.py tests/functional/test_casos_teste_api.py` → admin, gerente e KP do time alteram a Category; o responsável recebe 403 sem `atualizar` nem `commit`; o KP de outro time recebe 403; o responsável continua alterando a Difficulty.
+
+- [x] **T57. Mostrar a Category sem edição para quem não é gestão (tela e modo mock)**
+  - Arquivos: `frontend/src/modules/projetos/pages/ProjetoDetalhePage.tsx`, `frontend/src/modules/projetos/pages/ProjetoDetalhePage.test.tsx`, `frontend/src/core/mock/database.ts`.
+  - A célula Category usa `podeGerenciarCasos`; no mock, `"category"` sai dos `camposPermitidos` do responsável e a mensagem acompanha a do backend. O teste que abre o dropdown de Category no caso próprio passa a usar um perfil de gestão.
+  - Cobre: CA-38 e CA-39 (tela).
+  - Verificação: `cd frontend && npm test -- --run src/modules/projetos/pages/ProjetoDetalhePage && npm run lint` → no caso próprio, o dev vê a Category sem botão e com o botão de Difficulty; a gestão abre o dropdown e salva `{ category: "C" }`.

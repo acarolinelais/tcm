@@ -8,22 +8,36 @@ from src.application.schemas.importacao_projeto import ImportarProjetoPlanilhaRe
 from src.application.services.importacao_projeto_service import ImportacaoProjetoServiceImpl
 from src.application.validators.importacao_projeto import PlanilhaProjetoInvalida
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
-from src.domain.entities.caso_teste import SituacaoCasoTeste, StatusCasoTeste
+from src.domain.entities.caso_teste import (
+    NivelAutomacaoCasoTeste,
+    SituacaoCasoTeste,
+    StatusCasoTeste,
+)
 from src.domain.entities.time import Time
 from src.domain.entities.time_membro import TimeMembro
 from src.domain.entities.usuario import Usuario
 
 
-def criar_arquivo(*linhas, category="A"):
+def criar_arquivo(*linhas, category="A", niveis=None, textos=None):
+    """`niveis` acrescenta a coluna Automation Level, com um valor por linha; `textos` acrescenta
+    colunas de texto (spec 028), como {cabeçalho: [valor por linha]}."""
+    textos = textos or {}
     workbook = Workbook()
     worksheet = workbook.active
-    worksheet.append(
-        ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI", "Assignees", "Backup"]
-    )
-    for tc_id, responsavel, backup in linhas or [
-        ("Clock_001", "dev@example.com", "backup@example.com")
-    ]:
-        worksheet.append(["Clock", tc_id, "Low", category, "New Step", "9.5", responsavel, backup])
+    cabecalho = ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI"]
+    cabecalho += ["Assignees", "Backup"]
+    if niveis is not None:
+        cabecalho.append("Automation Level")
+    cabecalho += list(textos)
+    worksheet.append(cabecalho)
+    for indice, (tc_id, responsavel, backup) in enumerate(
+        linhas or [("Clock_001", "dev@example.com", "backup@example.com")]
+    ):
+        linha = ["Clock", tc_id, "Low", category, "New Step", "9.5", responsavel, backup]
+        if niveis is not None:
+            linha.append(niveis[indice])
+        linha += [valores[indice] for valores in textos.values()]
+        worksheet.append(linha)
     arquivo = BytesIO()
     workbook.save(arquivo)
     return arquivo.getvalue()
@@ -193,6 +207,85 @@ async def test_user_id_que_coincide_com_email_de_outra_pessoa_e_ambiguo(contexto
 
     assert [(item.codigo, item.valor) for item in erro.value.erros] == [
         ("pessoa_ambigua", "backup@example.com")
+    ]
+    projetos.adicionar.assert_not_awaited()
+    casos.adicionar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+def linhas_de_casos(quantidade):
+    return [
+        (f"Clock_{indice:03}", "dev@example.com", "backup@example.com")
+        for indice in range(1, quantidade + 1)
+    ]
+
+
+async def test_importacao_grava_o_automation_level_de_cada_caso(contexto):
+    service, admin, request, _, casos, uow = contexto
+
+    resposta = await service.importar(
+        admin, request, criar_arquivo(*linhas_de_casos(3), niveis=[1, None, 3])
+    )
+
+    assert resposta.quantidade_casos == 3
+    niveis = [chamada.args[0].automation_level for chamada in casos.adicionar.call_args_list]
+    assert niveis == [
+        NivelAutomacaoCasoTeste.NAO_AUTOMATIZAVEL,
+        None,
+        NivelAutomacaoCasoTeste.TOTALMENTE_AUTOMATIZAVEL,
+    ]
+    uow.commit.assert_awaited_once()
+
+
+async def test_importacao_sem_a_coluna_deixa_o_automation_level_vazio(contexto):
+    service, admin, request, _, casos, _ = contexto
+
+    await service.importar(admin, request, criar_arquivo())
+
+    assert casos.adicionar.call_args.args[0].automation_level is None
+
+
+async def test_automation_level_invalido_nao_persiste_nada(contexto):
+    service, admin, request, projetos, casos, uow = contexto
+
+    with pytest.raises(PlanilhaProjetoInvalida) as erro:
+        await service.importar(admin, request, criar_arquivo(*linhas_de_casos(2), niveis=[1, 4]))
+
+    assert [(e.linha, e.coluna, e.codigo, e.valor) for e in erro.value.erros] == [
+        (3, "Automation Level", "valor_invalido", "4")
+    ]
+    projetos.adicionar.assert_not_awaited()
+    casos.adicionar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+async def test_importacao_grava_os_textos_de_cada_caso(contexto):
+    service, admin, request, _, casos, uow = contexto
+    textos = {
+        "Title(English)": ["Check Writing style", None],
+        "Test Procedure(English)": ["1. Messages\n2-1. Select Shorten", "  "],
+    }
+
+    await service.importar(admin, request, criar_arquivo(*linhas_de_casos(2), textos=textos))
+
+    gravados = [chamada.args[0] for chamada in casos.adicionar.call_args_list]
+    assert [(caso.title, caso.procedure) for caso in gravados] == [
+        ("Check Writing style", "1. Messages\n2-1. Select Shorten"),
+        (None, None),
+    ]
+    assert gravados[0].precondition is None
+    uow.commit.assert_awaited_once()
+
+
+async def test_texto_longo_nao_persiste_nada(contexto):
+    service, admin, request, projetos, casos, uow = contexto
+    textos = {"Title(English)": ["ok", "x" * 501]}
+
+    with pytest.raises(PlanilhaProjetoInvalida) as erro:
+        await service.importar(admin, request, criar_arquivo(*linhas_de_casos(2), textos=textos))
+
+    assert [(e.linha, e.coluna, e.codigo) for e in erro.value.erros] == [
+        (3, "Title(English)", "texto_muito_longo")
     ]
     projetos.adicionar.assert_not_awaited()
     casos.adicionar.assert_not_awaited()

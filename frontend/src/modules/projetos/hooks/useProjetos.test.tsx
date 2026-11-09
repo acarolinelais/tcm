@@ -2,14 +2,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { casosTesteApi, projetosApi } from "../api/projetos.api";
-import { useCasosTeste, useCriarProjeto, useProjetosPessoais, useTransferirCasoTeste } from "./useProjetos";
+import { casosTesteApi, formFactorApi, projetosApi } from "../api/projetos.api";
+import { useCasosTeste, useCriarProjeto, useHistoricoProjeto, useDesfazerImportacaoSdf, useImportarRelatorioSdf, useProjetosPessoais, useUltimaImportacaoSdf, useResumoExecucoes, useTransferirCasoTeste } from "./useProjetos";
 import type { PerfilAtual } from "@/core/auth/api";
 
 vi.mock("../api/projetos.api", () => ({
   casosTesteApi: { listar: vi.fn(), transferirParaBackup: vi.fn() },
   projetosApi: { criar: vi.fn(), listar: vi.fn() },
-  formFactorApi: {}, modelosDispositivoApi: {},
+  formFactorApi: { listar: vi.fn(), listarResultados: vi.fn(), historicoProjeto: vi.fn(), resumoExecucoes: vi.fn(), criarRodada: vi.fn(), registrarResultadosRodada: vi.fn(), importar: vi.fn(), ultimaImportacao: vi.fn(), desfazerImportacao: vi.fn() }, modelosDispositivoApi: {},
 }));
 
 function criarWrapper() {
@@ -38,10 +38,87 @@ describe("hooks de projetos", () => {
   it("mantém filtro pessoal ao mudar responsável e paginação", async () => {
     vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [], total_count: 0, page: 1, page_size: 20 });
     const perfil = { id: "dev", unidade_id: "u" } as PerfilAtual;
-    const { result, rerender } = renderHook(({ page, responsavelId }) => useCasosTeste("p", page, 20, { associadosAMim: true, responsavelId }, perfil), { initialProps: { page: 1, responsavelId: "a" }, wrapper: criarWrapper() });
+    const { result, rerender } = renderHook(({ page, responsavelIds }) => useCasosTeste("p", page, 20, { associadosAMim: true, responsavelIds }, perfil), { initialProps: { page: 1, responsavelIds: ["a"] }, wrapper: criarWrapper() });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    rerender({ page: 2, responsavelId: "b" });
-    await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("p", 2, 20, { associadosAMim: true, responsavelId: "b" }));
+    rerender({ page: 2, responsavelIds: ["a", "b"] });
+    await waitFor(() => expect(casosTesteApi.listar).toHaveBeenLastCalledWith("p", 2, 20, { associadosAMim: true, responsavelIds: ["a", "b"] }));
+  });
+
+  it("consulta o histórico do projeto com os filtros e o resumo só com um caso escolhido (spec 032)", async () => {
+    vi.mocked(formFactorApi.historicoProjeto).mockResolvedValue({ modelos: [], datas: [], items: [], page: 1, page_size: 20, total_count: 0 });
+    vi.mocked(formFactorApi.resumoExecucoes).mockResolvedValue({ caso_teste_id: "c1", tc_id: "TC-1", responsavel_identificador: null, modelos: [], datas: [], resultados: {} });
+    const perfil = { id: "manager", unidade_id: "u" } as PerfilAtual;
+    const wrapper = criarWrapper();
+    const filtros = { sdfId: "SDF-1", page: 2, pageSize: 20 };
+    const historico = renderHook(() => useHistoricoProjeto("p1", filtros, perfil), { wrapper });
+    await waitFor(() => expect(historico.result.current.isSuccess).toBe(true));
+    renderHook(() => useResumoExecucoes(null, perfil), { wrapper });
+    const resumo = renderHook(() => useResumoExecucoes("c1", perfil), { wrapper });
+    await waitFor(() => expect(resumo.result.current.isSuccess).toBe(true));
+    expect(formFactorApi.historicoProjeto).toHaveBeenCalledWith("p1", filtros);
+    expect(formFactorApi.resumoExecucoes).toHaveBeenCalledTimes(1);
+  });
+
+  it("ao trocar de página mantém a anterior até a nova chegar, mas outro projeto não herda os dados (spec 033)", async () => {
+    const pagina = (projeto: string, page: number) => ({ modelos: [], datas: [], items: [], page, page_size: 20, total_count: 45, projeto });
+    let liberar: () => void = () => {};
+    vi.mocked(formFactorApi.historicoProjeto).mockImplementation((projetoId, filtros) => {
+      const resposta = pagina(projetoId, filtros?.page ?? 1);
+      return projetoId === "p1" && filtros?.page === 1 ? Promise.resolve(resposta) : new Promise((resolve) => { liberar = () => resolve(resposta); });
+    });
+    const perfil = { id: "manager", unidade_id: "u" } as PerfilAtual;
+    const { result, rerender } = renderHook(({ projetoId, page, quem = perfil }) => useHistoricoProjeto(projetoId, { page }, quem), { wrapper: criarWrapper(), initialProps: { projetoId: "p1", page: 1 } as { projetoId: string; page: number; quem?: PerfilAtual } });
+    await waitFor(() => expect(result.current.data?.page).toBe(1));
+
+    rerender({ projetoId: "p1", page: 2 });
+    expect(result.current.data?.page).toBe(1);
+    expect(result.current.isPlaceholderData).toBe(true);
+    liberar();
+    await waitFor(() => expect(result.current.data?.page).toBe(2));
+
+    rerender({ projetoId: "p1", page: 2, quem: { id: "outro", unidade_id: "u2" } as PerfilAtual });
+    expect(result.current.data).toBeUndefined();
+    liberar();
+    await waitFor(() => expect(result.current.data?.page).toBe(2));
+
+    rerender({ projetoId: "p2", page: 1 });
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.isLoading).toBe(true);
+  });
+
+  it("a importação SDF recarrega os casos, o Board e o Form Factor do projeto, sem tocar em outro projeto (spec 066)", async () => {
+    vi.mocked(formFactorApi.importar).mockResolvedValue({ importacao_id: "i", quantidade_execucoes: 1, quantidade_resultados: 1 });
+    const client = new QueryClient();
+    const doProjeto = [["projetos", "p", "test-cases", 1, 20], ["projetos", "p", "kanban", "u", "kp"], ["projetos", "p", "form-factor-results", {}], ["form-factor", "historico", "p", {}]];
+    for (const chave of [...doProjeto, ["projetos", "outro", "test-cases", 1, 20]]) client.setQueryData(chave, {});
+    const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    const { result } = renderHook(() => useImportarRelatorioSdf("p"), { wrapper });
+
+    await result.current.mutateAsync(new File(["x"], "123-4_0_Test_1_Detail.xlsx"));
+
+    for (const chave of doProjeto) expect(client.getQueryState(chave)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(["projetos", "outro", "test-cases", 1, 20])?.isInvalidated).toBe(false);
+  });
+
+  it("desfazer a importação SDF recarrega o projeto e a última importação, sem tocar em outro projeto (spec 067)", async () => {
+    vi.mocked(formFactorApi.desfazerImportacao).mockResolvedValue({ casos_revertidos: 1 });
+    const client = new QueryClient();
+    const doProjeto = [["projetos", "p", "test-cases", 1, 20], ["projetos", "p", "ultima-importacao-sdf"], ["form-factor", "historico", "p", {}]];
+    for (const chave of [...doProjeto, ["projetos", "outro", "ultima-importacao-sdf"]]) client.setQueryData(chave, {});
+    const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    const { result } = renderHook(() => useDesfazerImportacaoSdf("p"), { wrapper });
+
+    await result.current.mutateAsync("imp-1");
+
+    expect(formFactorApi.desfazerImportacao).toHaveBeenCalledWith("p", "imp-1");
+    for (const chave of doProjeto) expect(client.getQueryState(chave)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(["projetos", "outro", "ultima-importacao-sdf"])?.isInvalidated).toBe(false);
+  });
+
+  it("falha: sem permissão de importar, a última importação não é buscada", () => {
+    renderHook(() => useUltimaImportacaoSdf("p", false), { wrapper: criarWrapper() });
+
+    expect(formFactorApi.ultimaImportacao).not.toHaveBeenCalled();
   });
 
   it("invalida consultas de casos, entrada e seletor após transferência", async () => {

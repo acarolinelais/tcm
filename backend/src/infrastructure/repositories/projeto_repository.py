@@ -1,16 +1,42 @@
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, case, func, or_, select
 
 from src.domain.common.paged_result import PagedResult
 from src.domain.entities.projeto import Projeto, StatusProjeto
+from src.domain.queries.linha_navegacao_board import LinhaNavegacaoBoard
 from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
 from src.infrastructure.data.models.projeto_model import ProjetoModel
+from src.infrastructure.data.models.setor_model import SetorModel
+from src.infrastructure.data.models.time_membro_model import TimeMembroModel
+from src.infrastructure.data.models.time_model import TimeModel
 from src.infrastructure.repositories.repository_base import RepositoryBaseImpl
 
 
 class ProjetoRepositoryImpl(RepositoryBaseImpl[Projeto, ProjetoModel]):
     model = ProjetoModel
+
+    async def tem_atribuicoes_fora_do_time(
+        self, unidade_id: UUID, projeto_id: UUID, time_id: UUID
+    ) -> bool:
+        membros_ativos = select(TimeMembroModel.usuario_id).where(
+            TimeMembroModel.unidade_id == unidade_id,
+            TimeMembroModel.time_id == time_id,
+            TimeMembroModel.ativo.is_(True),
+        )
+        atribuicao_invalida = select(CasoTesteModel.id).where(
+            CasoTesteModel.unidade_id == unidade_id,
+            CasoTesteModel.projeto_id == projeto_id,
+            CasoTesteModel.ativo.is_(True),
+            or_(
+                ~CasoTesteModel.responsavel_id.in_(membros_ativos),
+                and_(
+                    CasoTesteModel.backup_id.is_not(None),
+                    ~CasoTesteModel.backup_id.in_(membros_ativos),
+                ),
+            ),
+        )
+        return (await self.session.execute(select(atribuicao_invalida.exists()))).scalar_one()
 
     async def listar_associados_por_times(
         self,
@@ -123,6 +149,69 @@ class ProjetoRepositoryImpl(RepositoryBaseImpl[Projeto, ProjetoModel]):
         )
         return PagedResult([self._to_entity(model) for model in modelos], page, page_size, total)
 
+    async def listar_navegacao(
+        self, unidade_id: UUID, time_ids: tuple[UUID, ...] | None
+    ) -> tuple[LinhaNavegacaoBoard, ...]:
+        # time_ids None = a unidade inteira (admin). O outer join mantém o time sem projeto ativo.
+        if time_ids == ():
+            return ()
+        encerrado = ProjetoModel.status.in_(
+            (StatusProjeto.COMPLETED.value, StatusProjeto.CANCELED.value)
+        )
+        membros = (
+            select(func.count())
+            .where(TimeMembroModel.time_id == TimeModel.id, TimeMembroModel.ativo.is_(True))
+            .correlate(TimeModel)
+            .scalar_subquery()
+        )
+        stmt = (
+            select(
+                SetorModel.id,
+                SetorModel.nome,
+                TimeModel.id,
+                TimeModel.nome,
+                membros,
+                ProjetoModel.id,
+                ProjetoModel.nome,
+                ProjetoModel.status,
+            )
+            .join(SetorModel, SetorModel.id == TimeModel.setor_id)
+            .outerjoin(
+                ProjetoModel,
+                and_(ProjetoModel.time_id == TimeModel.id, ProjetoModel.ativo.is_(True)),
+            )
+            .where(
+                TimeModel.unidade_id == unidade_id,
+                TimeModel.ativo.is_(True),
+                SetorModel.ativo.is_(True),
+            )
+            .order_by(
+                SetorModel.nome,
+                TimeModel.nome,
+                TimeModel.id,
+                case((encerrado, 1), else_=0),
+                ProjetoModel.nome,
+            )
+        )
+        if time_ids is not None:
+            stmt = stmt.where(TimeModel.id.in_(time_ids))
+        linhas = await self.session.execute(stmt)
+
+        def para_linha(setor_id, setor_nome, time_id, time_nome, membros, projeto_id, nome, status):
+            # Mesma ordem das colunas do select acima.
+            return LinhaNavegacaoBoard(
+                setor_id=setor_id,
+                setor_nome=setor_nome,
+                time_id=time_id,
+                time_nome=time_nome,
+                time_membros=membros,
+                projeto_id=projeto_id,
+                projeto_nome=nome,
+                projeto_status=StatusProjeto(status) if status is not None else None,
+            )
+
+        return tuple(para_linha(*linha) for linha in linhas)
+
     async def desativar(self, unidade_id: UUID, projeto_id: UUID) -> None:
         model = (
             await self.session.execute(
@@ -135,7 +224,7 @@ class ProjetoRepositoryImpl(RepositoryBaseImpl[Projeto, ProjetoModel]):
             model.ativo = False
 
     def _to_entity(self, model: ProjetoModel) -> Projeto:
-        projeto = Projeto(model.unidade_id, model.time_id, model.app, model.one_ui)
+        projeto = Projeto(model.unidade_id, model.time_id, model.app, model.one_ui, model.nome)
         projeto.id = model.id
         projeto.ativo = model.ativo
         projeto.status = StatusProjeto(model.status)
@@ -148,6 +237,7 @@ class ProjetoRepositoryImpl(RepositoryBaseImpl[Projeto, ProjetoModel]):
             id=entity.id,
             unidade_id=entity.unidade_id,
             time_id=entity.time_id,
+            nome=entity.nome,
             app=entity.app,
             one_ui=entity.one_ui,
             status=entity.status.value,

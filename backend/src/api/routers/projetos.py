@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Annotated
 from uuid import UUID
 
@@ -12,18 +13,34 @@ from src.api.dependencies import (
     get_usuario_atual,
 )
 from src.application.schemas.caso_teste import CasoTesteResponse, CriarCasoTesteRequest
-from src.application.schemas.form_factor import FormFactorResponse
+from src.application.schemas.form_factor import (
+    CriarRodadaFormFactorLoteRequest,
+    CriarRodadaFormFactorRequest,
+    EnviarResultadosRodadaRequest,
+    FormFactorExecucaoResponse,
+    FormFactorResponse,
+    FormFactorResultadosResponse,
+    RodadaFormFactorCasosResponse,
+    RodadaFormFactorResponse,
+)
 from src.application.schemas.importacao_projeto import (
     ImportarProjetoPlanilhaRequest,
     ImportarProjetoPlanilhaResponse,
 )
-from src.application.schemas.importacao_sdf import ImportarRelatorioSdfResponse
+from src.application.schemas.importacao_sdf import (
+    DesfazerImportacaoSdfResponse,
+    ImportarRelatorioSdfResponse,
+    UltimaImportacaoSdfResponse,
+)
+from src.application.schemas.kanban import KanbanResponse
+from src.application.schemas.navegacao_board import NavegacaoBoardResponse
 from src.application.schemas.projeto import (
     AtualizarProjetoRequest,
     AtualizarStatusProjetoRequest,
     CriarProjetoRequest,
     ProjetoResponse,
 )
+from src.application.schemas.timeline import TimelineResponse
 from src.application.services.interfaces.caso_teste_service import CasoTesteService
 from src.application.services.interfaces.form_factor_service import FormFactorService
 from src.application.services.interfaces.importacao_projeto_service import ImportacaoProjetoService
@@ -74,6 +91,15 @@ async def importar_projeto(
     )
 
 
+# Declarada antes de /{projeto_id}, senão "navegacao" seria lido como um id.
+@router.get("/navegacao", response_model=NavegacaoBoardResponse)
+async def listar_navegacao(
+    service: ProjetoService = Depends(get_projeto_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.listar_navegacao(usuario_atual)
+
+
 @router.get("/{projeto_id}", response_model=ProjetoResponse)
 async def obter_projeto(
     projeto_id: UUID,
@@ -118,7 +144,7 @@ async def listar_test_cases(
     projeto_id: UUID,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    responsavel_id: UUID | None = Query(None),
+    responsavel_id: list[UUID] | None = Query(None),
     associados_a_mim: bool = Query(False),
     semana: str | None = Query(None, pattern=r"^\d{4}-W\d{2}$"),
     fuso_horario: str = Query("UTC", min_length=1, max_length=64),
@@ -136,6 +162,37 @@ async def listar_test_cases(
     )
 
 
+@router.get("/{projeto_id}/timeline", response_model=TimelineResponse)
+async def obter_timeline(
+    projeto_id: UUID,
+    inicio: date,
+    fim: date,
+    fuso_horario: str = Query("UTC", min_length=1, max_length=64),
+    responsavel_ids: list[UUID] | None = Query(None),
+    caso_teste_ids: list[UUID] | None = Query(None),
+    service: CasoTesteService = Depends(get_caso_teste_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.timeline(
+        usuario_atual,
+        projeto_id,
+        inicio,
+        fim,
+        fuso_horario,
+        responsavel_ids or (),
+        caso_teste_ids or (),
+    )
+
+
+@router.get("/{projeto_id}/kanban", response_model=KanbanResponse)
+async def obter_kanban(
+    projeto_id: UUID,
+    service: CasoTesteService = Depends(get_caso_teste_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.obter_kanban(usuario_atual, projeto_id)
+
+
 @router.post("/{projeto_id}/test-cases", response_model=CasoTesteResponse, status_code=201)
 async def criar_test_case(
     projeto_id: UUID,
@@ -150,6 +207,53 @@ async def criar_test_case(
 
 
 @router.post(
+    "/{projeto_id}/form-factor/rodadas",
+    response_model=RodadaFormFactorResponse,
+    status_code=201,
+)
+async def criar_rodada_form_factor(
+    projeto_id: UUID,
+    request: CriarRodadaFormFactorLoteRequest,
+    service: FormFactorService = Depends(get_form_factor_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.criar_rodada(usuario_atual, projeto_id, request)
+
+
+@router.get(
+    "/{projeto_id}/form-factor/rodadas/{rodada_id}/test-cases",
+    response_model=RodadaFormFactorCasosResponse,
+)
+async def listar_casos_rodada_form_factor(
+    projeto_id: UUID,
+    rodada_id: UUID,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    service: FormFactorService = Depends(get_form_factor_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.listar_casos_rodada(usuario_atual, projeto_id, rodada_id, page, page_size)
+
+
+@router.post(
+    "/{projeto_id}/form-factor/rodadas/{rodada_id}/test-cases/{caso_teste_id}/resultados",
+    response_model=FormFactorExecucaoResponse,
+    status_code=201,
+)
+async def registrar_resultados_rodada_form_factor(
+    projeto_id: UUID,
+    rodada_id: UUID,
+    caso_teste_id: UUID,
+    request: EnviarResultadosRodadaRequest,
+    service: FormFactorService = Depends(get_form_factor_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.registrar_resultados_rodada(
+        usuario_atual, projeto_id, rodada_id, caso_teste_id, request
+    )
+
+
+@router.post(
     "/{projeto_id}/relatorios-sdf",
     response_model=ImportarRelatorioSdfResponse,
     status_code=201,
@@ -160,7 +264,31 @@ async def importar_relatorio_sdf(
     service: ImportacaoSdfService = Depends(get_importacao_sdf_service),
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
-    return await service.importar(usuario_atual, projeto_id, await arquivo.read())
+    return await service.importar(usuario_atual, projeto_id, arquivo.filename, await arquivo.read())
+
+
+@router.get(
+    "/{projeto_id}/relatorios-sdf/ultimo", response_model=UltimaImportacaoSdfResponse | None
+)
+async def obter_ultima_importacao_sdf(
+    projeto_id: UUID,
+    service: ImportacaoSdfService = Depends(get_importacao_sdf_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.obter_ultima(usuario_atual, projeto_id)
+
+
+@router.post(
+    "/{projeto_id}/relatorios-sdf/{importacao_id}/desfazer",
+    response_model=DesfazerImportacaoSdfResponse,
+)
+async def desfazer_importacao_sdf(
+    projeto_id: UUID,
+    importacao_id: UUID,
+    service: ImportacaoSdfService = Depends(get_importacao_sdf_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.desfazer(usuario_atual, projeto_id, importacao_id)
 
 
 @router.get("/{projeto_id}/form-factor", response_model=FormFactorResponse)
@@ -169,8 +297,67 @@ async def listar_form_factor(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     semana: str | None = Query(None, pattern=r"^\d{4}-W\d{2}$"),
-    one_ui: str | None = Query(None, max_length=40),
+    responsavel_id: list[UUID] | None = Query(None),
+    tc_id: str | None = Query(None, max_length=120),
+    sdf_id: str | None = Query(None, max_length=120),
+    modelo_dispositivo_id: UUID | None = Query(None),
+    resultado: str | None = Query(None, max_length=40),
     service: FormFactorService = Depends(get_form_factor_service),
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
-    return await service.listar(usuario_atual, projeto_id, page, page_size, semana, one_ui)
+    return await service.listar(
+        usuario_atual,
+        projeto_id,
+        page,
+        page_size,
+        semana,
+        responsavel_id,
+        tc_id,
+        sdf_id,
+        modelo_dispositivo_id,
+        resultado,
+    )
+
+
+@router.get("/{projeto_id}/form-factor/results", response_model=FormFactorResultadosResponse)
+async def listar_resultados_form_factor(
+    projeto_id: UUID,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    semana: str | None = Query(None, pattern=r"^\d{4}-W\d{2}$"),
+    responsavel_id: list[UUID] | None = Query(None),
+    tc_id: str | None = Query(None, max_length=120),
+    sdf_id: str | None = Query(None, max_length=120),
+    modelo_dispositivo_id: UUID | None = Query(None),
+    resultado: str | None = Query(None, max_length=40),
+    origem: str | None = Query(None, pattern=r"^(SDF|MANUAL)$"),
+    service: FormFactorService = Depends(get_form_factor_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.listar_resultados(
+        usuario_atual,
+        projeto_id,
+        page,
+        page_size,
+        semana,
+        responsavel_id,
+        tc_id,
+        sdf_id,
+        modelo_dispositivo_id,
+        resultado,
+        origem,
+    )
+
+
+@router.post(
+    "/{projeto_id}/form-factor/results",
+    response_model=FormFactorExecucaoResponse,
+    status_code=201,
+)
+async def criar_rodada_manual_form_factor(
+    projeto_id: UUID,
+    request: CriarRodadaFormFactorRequest,
+    service: FormFactorService = Depends(get_form_factor_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.criar_rodada_manual(usuario_atual, projeto_id, request)

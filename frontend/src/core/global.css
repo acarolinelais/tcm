@@ -1,23 +1,325 @@
 @import "tailwindcss";
 @import "@fontsource-variable/inter";
+@import "tw-animate-css";
 
+/* HeroUI v3 em camadas, sem reimportar o Tailwind (ADR 0037). */
+@import "@heroui/styles/base/base.css" layer(base);
+@import "@heroui/styles/components/index.css" layer(components);
+@import "@heroui/styles/themes/default" layer(theme);
+@import "@heroui/styles/utilities";
+@import "@heroui/styles/variants";
+
+/* Tema escuro só pela classe no <html>, sem o fallback de prefers-color-scheme do HeroUI (ADR 0040). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Tokens com o mesmo nome no shadcn e no HeroUI: um valor só, em cor completa. Ficam fora de camada para
+   vencer o tema do HeroUI. --muted segue o HeroUI (texto secundário); o fundo cinza do shadcn é bg-secondary. */
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222 47% 11%;
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(222 47% 11%);
+  --border: hsl(214 32% 91%);
+  --muted: #7e7e7e; /* subtítulos do protótipo: 4,05:1 sobre o branco, abaixo do AA por decisão do protótipo (ajuste de 2026-11-04) */
+  --accent: #0081f9; /* azul do Figma: 3,8:1 sobre o branco, abaixo do AA por decisão do protótipo (ajuste de 2026-11-04) */
+  --accent-text: var(--accent); /* texto e ícones de acento; no escuro é um passo próprio da rampa */
+  --accent-soft-foreground: var(--accent-text); /* item ativo da Sidebar: o HeroUI escurece o azul no claro */
+  --focus: var(--accent);
+  --radius: 0.5rem;
+  /* Campos do HeroUI vêm sem borda; num painel branco ficariam invisíveis. */
+  --field-border: var(--border);
+  --field-border-width: 1px;
+  /* Todo campo de uma linha (input, busca, select) é pílula, como os botões; o textarea volta a um canto suave. */
+  --field-radius: 9999px;
+  /* Sombra dos campos mais leve que a do HeroUI (três camadas): só um contorno de 1px quase imperceptível. */
+  --field-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.03);
+  /* Inter em todo o texto (spec 050, RN-06). O HeroUI traz a fonte do sistema em --font-sans, e o Tailwind usa
+     --default-font-family no <html>: as duas apontam para a Inter. */
+  --font-sans: "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --default-font-family: var(--font-sans);
+}
+
+/* Tema escuro (ADR 0040): os tokens acima também ficam fora de camada, então precisam do valor escuro aqui.
+   Os demais tokens do HeroUI (surface, overlay, success...) já mudam pelo tema dele. */
+:root.dark {
+  color-scheme: dark;
+  --field-shadow: 0 0 0 0 transparent inset; /* o HeroUI não usa sombra nos campos no escuro */
+  /* Paleta do protótipo escuro (Figma Timeline e login, ajuste de 2026-11-04): a página é preta, os cartões #0f0f0f,
+     bordas e campos #1b1b1b, borda do campo #262626, texto branco e apoio #b5b5b5, azul #0c8aff. O que o protótipo não
+     mostra (sucesso, aviso, erro) continua com as cores de sistema da spec 034. O contraste é medido par a par em
+     contraste-tema-escuro.test.ts. */
+  --background: #000000;                  /* fundo da página */
+  --foreground: #ffffff;
+  --surface: #0f0f0f;                     /* Sidebar, cartão da página e busca */
+  --surface-secondary: #1b1b1b;
+  --surface-tertiary: #262626;
+  --overlay: #1b1b1b;                     /* fundo elevado: menus, popovers, drawers */
+  --default: #1b1b1b;
+  --field-background: #1b1b1b;
+  --field-border: #262626;
+  --separator: #1b1b1b;
+  --border: #1b1b1b;
+  --muted: #b5b5b5;
+  --accent: #0c8aff;                      /* azul do protótipo: texto branco por cima mede 3,45:1, abaixo do AA por decisão do protótipo */
+  --accent-foreground: var(--snow);
+  --accent-text: #0c8aff;                 /* título, aba ativa e ícones de acento */
+  --accent-soft-foreground: var(--accent-text);
+  --focus: #409cff;                       /* keyboardFocusIndicatorColor */
+  --success: #30d158;
+  --warning: #ff9f0a;
+  --danger: #ff453a;
+}
+
+/* Tokens só do shadcn, em tripla HSL. */
+:root {
   --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
-  --primary: 219 92% 58%;
+  --primary: 209 100% 48.8%; /* o mesmo --accent em HSL (#0081F9) */
   --primary-foreground: 0 0% 100%;
   --secondary: 210 20% 96%;
   --secondary-foreground: 222 47% 11%;
-  --muted: 210 20% 96%;
   --muted-foreground: 215 16% 47%;
-  --border: 214 32% 91%;
   --input: 214 32% 91%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --ring: 219 92% 58%;
-  --radius: 0.5rem;
+  --ring: 209 100% 48.8%;
+}
+
+:root.dark {
+  --card: 0 0% 5.9%;                /* #0F0F0F, o mesmo da --surface */
+  --card-foreground: 0 0% 100%;
+  --primary: 209 100% 52.4%;        /* #0C8AFF, o mesmo --accent */
+  --primary-foreground: 0 0% 100%;
+  --ring: 212 100% 63%;             /* #409CFF */
+  --secondary: 0 0% 10.6%;          /* #1B1B1B */
+  --secondary-foreground: 0 0% 100%;
+  --muted-foreground: 0 0% 71%;     /* #B5B5B5 */
+  --input: 0 0% 14.9%;              /* #262626 */
+  --destructive: 3 100% 61%;        /* #FF453A */
+  --destructive-foreground: 0 0% 100%;
+}
+
+/* Tokens do projeto (ADR 0041): cores do Figma sem equivalente no HeroUI, nomeadas pelo papel. */
+:root {
+  --page: #fbfbfb;        /* fundo das páginas, atrás dos cartões */
+  --edge: #f2f2f2;        /* borda dos cartões, dos botões em pílula, da busca e do botão de tema (spec 050) */
+  --table-body: var(--surface); /* corpo da tabela */
+  --accent-tint: #e6f3ff; /* fundo azul claro do Figma: item ativo da sidebar, ilustração do login, dropzone */
+  --body: #454442;        /* texto corrido das telas do Figma */
+  --subtle: #7e7e7e;      /* texto de apoio (Figma #7E7E7E; 4,05:1 sobre o branco, abaixo do AA por decisão do protótipo) */
+  --panel: #f3f5f7;       /* moldura das tabelas e painéis */
+  --elevado: #ffffff;     /* cartão sobre o cartão da página (card da Timeline) */
+  --table-row-divider: #efeff0; /* divisórias entre linhas */
+  --strong-foreground: #ffffff; /* texto e ícones sobre uma cor forte (círculo do status) */
+  --chart-1: #5588f5;     /* série principal dos gráficos do overview */
+  --chart-2: #c9daff;
+  --chart-3: #b9c4e8;
+  --chart-4: #d97706;     /* segunda série com significado (ADR 0051): 3,2:1 sobre o branco */
+  --chart-5: #15803d;     /* terceira série com significado: 5,0:1 sobre o branco */
+}
+
+:root.dark {
+  --page: var(--background);
+  --accent-tint: #081d32;           /* item ativo da Sidebar no protótipo */
+  --edge: #1b1b1b;
+  --table-body: #0f0f0f;            /* corpo da tabela, abaixo da moldura */
+  --body: #ffffff;
+  --subtle: #b5b5b5;
+  --panel: #1b1b1b;                 /* moldura e cabeçalho da tabela */
+  --elevado: #1f1f1f;               /* card da Timeline sobre o cartão da página */
+  --table-row-divider: #1b1b1b;
+  --chart-1: #0a84ff;
+  --chart-2: #5e5ce6;
+  --chart-3: #8e8e93;               /* systemGray: 5,1:1 sobre o cartão (gráfico com significado pede ≥ 3:1) */
+  --chart-4: #ff9f0a;               /* systemOrange */
+  --chart-5: #30d158;               /* systemGreen */
+}
+
+/* Login e troca de senha (ajuste de 2026-11-03, Figma login claro e escuro): só a moldura de entrada lê estes tokens;
+   o resto do tema escuro segue a paleta de cima. O subtítulo e o título claros ficam abaixo de 4,5:1 por decisão do
+   protótipo (a lista de cores fixa os valores). */
+:root {
+  --auth-titulo: #0081f9;
+  --auth-subtitulo: #7e7e7e;
+  --auth-texto: #454442;        /* Email, Password e os rótulos */
+  --auth-controle: #454442;     /* botão de idioma e ícone do botão de tema */
+  --auth-card: #ffffff;
+  --auth-borda: #f2f2f2;        /* bordas do cartão e linha vertical entre os controles */
+  --auth-campo: #ffffff;
+  --auth-campo-borda: #f2f2f2;
+  --auth-icone: #7e7e7e;        /* olho da senha */
+  --auth-fundo-claro: #ffffff;  /* base de cada camada do fundo da ilustração: fixa, para a troca de tema não repintar a camada */
+  --auth-fundo-escuro: #0f0f0f;
+  --auth-pagina: #fbfbfb;       /* fundo atrás do cartão */
+  --auth-botao: #0081f9;        /* botão de entrar e de salvar a senha */
+  --auth-botao-hover: #006cd1;
+  --auth-botao-texto: #ffffff;
+}
+
+:root.dark {
+  --auth-titulo: #0c8aff;
+  --auth-subtitulo: #b5b5b5;
+  --auth-texto: #ffffff;
+  --auth-controle: #b5b5b5;
+  --auth-card: #0f0f0f;
+  --auth-borda: #1b1b1b;
+  --auth-campo: #1b1b1b;
+  --auth-campo-borda: #262626;
+  --auth-icone: #b5b5b5;
+  --auth-pagina: #000000;
+  --auth-botao: #0c8aff;
+  --auth-botao-hover: #0a72d1;
+  --auth-botao-texto: #ffffff;
+}
+
+/* Paleta da cor do avatar (ADR 0043), na ordem de `CorAvatar`: o fundo do avatar enquanto a esfera do HeroUI não carrega
+   (ou se ela não carregar). No claro, tons fortes; no escuro, tons claros. O contraste com o fundo é travado por
+   src/core/theme/contraste-avatar.test.ts. */
+:root {
+  --avatar-1: #2563eb;  /* azul */
+  --avatar-2: #4f46e5;  /* indigo */
+  --avatar-3: #7e22ce;  /* roxo */
+  --avatar-4: #c62828;  /* vermelho */
+  --avatar-5: #c2410c;  /* laranja */
+  --avatar-6: #15803d;  /* verde */
+  --avatar-7: #4b5563;  /* cinza */
+  --avatar-8: #8e8e93;  /* cinza-claro */
+}
+
+:root.dark {
+  --avatar-1: #60a5fa;  /* azul */
+  --avatar-2: #a5b4fc;  /* indigo */
+  --avatar-3: #c084fc;  /* roxo */
+  --avatar-4: #f87171;  /* vermelho */
+  --avatar-5: #fb923c;  /* laranja */
+  --avatar-6: #4ade80;  /* verde */
+  --avatar-7: #8e8e93;  /* cinza */
+  --avatar-8: #d4d4d8;  /* cinza-claro */
+}
+
+/* Tons das etiquetas e dos status (ADR 0041). No claro, os pares do Figma (texto `--x`/`-fg`, fundo `-bg`), com o
+   texto escurecido onde não passava no AA; no status do Test Case, `--x` é o círculo do ícone. No escuro, o fundo vira
+   a cor forte translúcida e o texto, a cor forte clareada. */
+:root {
+  --etiqueta-todo: #3470c6;
+  --etiqueta-todo-bg: #edfaff;
+  --etiqueta-todo-fg: var(--etiqueta-todo);
+  --etiqueta-progress: #855f2e;
+  --etiqueta-progress-bg: #fef2de;
+  --etiqueta-progress-fg: var(--etiqueta-progress);
+  --etiqueta-review: #6664bc;
+  --etiqueta-review-bg: #f0f4ff;
+  --etiqueta-review-fg: var(--etiqueta-review);
+  --etiqueta-validation: #b33e91;
+  --etiqueta-validation-bg: #f7eff3;
+  --etiqueta-validation-fg: var(--etiqueta-validation);
+  --etiqueta-fixes: #bf3f44;
+  --etiqueta-fixes-bg: #fdeeee;
+  --etiqueta-fixes-fg: var(--etiqueta-fixes);
+  --etiqueta-cancelled: #5f6068;
+  --etiqueta-cancelled-bg: #f1f1f4;
+  --etiqueta-cancelled-fg: var(--etiqueta-cancelled);
+  --etiqueta-ativo: #37794e;
+  --etiqueta-ativo-bg: #dcf7e8;
+  --etiqueta-ativo-fg: var(--etiqueta-ativo);
+  --etiqueta-neutro: #6a6a6a;
+  --etiqueta-neutro-bg: #edeff1;
+  --etiqueta-neutro-fg: var(--etiqueta-neutro);
+  --projeto-created: #195ef0;
+  --projeto-created-bg: #e6efff;
+  --projeto-created-fg: var(--projeto-created);
+  --projeto-todo: #686b70;
+  --projeto-todo-bg: #eff0f2;
+  --projeto-todo-fg: var(--projeto-todo);
+  --projeto-progress: #9e5d11;
+  --projeto-progress-bg: #fff1dd;
+  --projeto-progress-fg: var(--projeto-progress);
+  --projeto-completed: #237c44;
+  --projeto-completed-bg: #e3f6e9;
+  --projeto-completed-fg: var(--projeto-completed);
+  --projeto-canceled: #b64646;
+  --projeto-canceled-bg: #fde8e8;
+  --projeto-canceled-fg: var(--projeto-canceled);
+  --status-todo: #64748b;
+  --status-todo-bg: #f1f5f9;
+  --status-todo-fg: #334155;
+  --status-progress: #1d4ed8;
+  --status-progress-bg: #eff6ff;
+  --status-progress-fg: #1e40af;
+  --status-review: #d97706;
+  --status-review-bg: #fffbeb;
+  --status-review-fg: #92400e;
+  --status-validation: #7c3aed;
+  --status-validation-bg: #f5f3ff;
+  --status-validation-fg: #5b21b6;
+  --status-done: #166534;
+  --status-done-bg: #f0fdf4;
+  --status-done-fg: #166534;
+  --status-fixes: #ea580c;
+  --status-fixes-bg: #fff7ed;
+  --status-fixes-fg: #9a3412;
+  --status-cancelled: #475569;
+  --status-cancelled-bg: #f1f5f9;
+  --status-cancelled-fg: #334155;
+  --status-todo-icon: var(--status-todo);
+  --status-progress-icon: var(--status-progress);
+  --status-review-icon: var(--status-review);
+  --status-validation-icon: var(--status-validation);
+  --status-done-icon: var(--status-done);
+  --status-fixes-icon: var(--status-fixes);
+  --status-cancelled-icon: var(--status-cancelled);
+  --status-glyph: var(--strong-foreground);
+}
+
+:root.dark {
+  /* Cada tom vira a cor de sistema da Apple equivalente: o texto usa a variante de contraste aumentado (clareada
+     onde não chegava a 4,6:1) e o fundo é a cor a 18% sobre o conteúdo. O círculo do status usa a cor cheia. */
+  --etiqueta-todo-bg: #102344; /* To-Do do protótipo */
+  --etiqueta-todo-fg: #9bc4ff;
+  --etiqueta-progress-bg: #46351a; /* orange */
+  --etiqueta-progress-fg: #ffb340;
+  --etiqueta-review-bg: #2a2942; /* indigo */
+  --etiqueta-review-fg: #8a87ff;
+  --etiqueta-validation-bg: #46232a; /* pink */
+  --etiqueta-validation-fg: #ff6482;
+  --etiqueta-fixes-bg: #462523; /* red */
+  --etiqueta-fixes-fg: #ff6961;
+  --etiqueta-cancelled-bg: #323233; /* gray */
+  --etiqueta-cancelled-fg: #aeaeb2;
+  --etiqueta-ativo-bg: #213e28; /* green */
+  --etiqueta-ativo-fg: #30db5b;
+  --etiqueta-neutro-bg: #27272a; /* New (TC Situation) do protótipo */
+  --etiqueta-neutro-fg: #9f9fa9;
+  --projeto-created-bg: #1a3046; /* blue */
+  --projeto-created-fg: #409cff;
+  --projeto-todo-bg: #323233; /* gray */
+  --projeto-todo-fg: #aeaeb2;
+  --projeto-progress-bg: #46351a; /* orange */
+  --projeto-progress-fg: #ffb340;
+  --projeto-completed-bg: #213e28; /* green */
+  --projeto-completed-fg: #30db5b;
+  --projeto-canceled-bg: #462523; /* red */
+  --projeto-canceled-fg: #ff6961;
+  --status-todo-bg: #323233; /* gray */
+  --status-todo-fg: #aeaeb2;
+  --status-todo-icon: #8e8e93;
+  --status-progress-bg: #1a3046; /* blue */
+  --status-progress-fg: #409cff;
+  --status-progress-icon: #0a84ff;
+  --status-review-bg: #463f1a; /* yellow */
+  --status-review-fg: #ffd426;
+  --status-review-icon: #ffd60a;
+  --status-validation-bg: #3b2944; /* purple */
+  --status-validation-fg: #da8fff;
+  --status-validation-icon: #bf5af2;
+  --status-done-bg: #213e28; /* green */
+  --status-done-fg: #30db5b;
+  --status-done-icon: #30d158;
+  --status-fixes-bg: #46351a; /* orange */
+  --status-fixes-fg: #ffb340;
+  --status-fixes-icon: #ff9f0a;
+  --status-cancelled-bg: #323233; /* gray */
+  --status-cancelled-fg: #aeaeb2;
+  --status-cancelled-icon: #8e8e93;
+  --status-glyph: var(--surface);
 }
 
 @theme inline {
@@ -27,40 +329,149 @@
   --text-lg: 1.0625rem;
   --text-xl: 1.1875rem;
   --text-2xl: 1.375rem;
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
   --color-secondary: hsl(var(--secondary));
   --color-secondary-foreground: hsl(var(--secondary-foreground));
-  --color-muted: hsl(var(--muted));
   --color-muted-foreground: hsl(var(--muted-foreground));
-  --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-destructive: hsl(var(--destructive));
   --color-destructive-foreground: hsl(var(--destructive-foreground));
   --color-ring: hsl(var(--ring));
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
+  --color-page: var(--page);
+  --color-accent-text: var(--accent-text);
+  --color-accent-tint: var(--accent-tint);
+  --color-body: var(--body);
+  --color-subtle: var(--subtle);
+  --color-panel: var(--panel);
+  --color-elevado: var(--elevado);
+  --color-edge: var(--edge);
+  --color-auth-titulo: var(--auth-titulo);
+  --color-auth-subtitulo: var(--auth-subtitulo);
+  --color-auth-texto: var(--auth-texto);
+  --color-auth-controle: var(--auth-controle);
+  --color-auth-card: var(--auth-card);
+  --color-auth-borda: var(--auth-borda);
+  --color-auth-campo: var(--auth-campo);
+  --color-auth-campo-borda: var(--auth-campo-borda);
+  --color-auth-icone: var(--auth-icone);
+  --color-auth-fundo-claro: var(--auth-fundo-claro);
+  --color-auth-fundo-escuro: var(--auth-fundo-escuro);
+  --color-auth-pagina: var(--auth-pagina);
+  --color-auth-botao: var(--auth-botao);
+  --color-auth-botao-hover: var(--auth-botao-hover);
+  --color-auth-botao-texto: var(--auth-botao-texto);
+  --color-table-body: var(--table-body);
+  --color-avatar-1: var(--avatar-1);
+  --color-avatar-2: var(--avatar-2);
+  --color-avatar-3: var(--avatar-3);
+  --color-avatar-4: var(--avatar-4);
+  --color-avatar-5: var(--avatar-5);
+  --color-avatar-6: var(--avatar-6);
+  --color-avatar-7: var(--avatar-7);
+  --color-avatar-8: var(--avatar-8);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-status-todo: var(--status-todo);
+  --color-status-todo-bg: var(--status-todo-bg);
+  --color-status-todo-fg: var(--status-todo-fg);
+  --color-status-progress: var(--status-progress);
+  --color-status-progress-bg: var(--status-progress-bg);
+  --color-status-progress-fg: var(--status-progress-fg);
+  --color-status-review: var(--status-review);
+  --color-status-review-bg: var(--status-review-bg);
+  --color-status-review-fg: var(--status-review-fg);
+  --color-status-validation: var(--status-validation);
+  --color-status-validation-bg: var(--status-validation-bg);
+  --color-status-validation-fg: var(--status-validation-fg);
+  --color-status-done: var(--status-done);
+  --color-status-done-bg: var(--status-done-bg);
+  --color-status-done-fg: var(--status-done-fg);
+  --color-status-fixes: var(--status-fixes);
+  --color-status-fixes-bg: var(--status-fixes-bg);
+  --color-status-fixes-fg: var(--status-fixes-fg);
+  --color-status-cancelled: var(--status-cancelled);
+  --color-status-cancelled-bg: var(--status-cancelled-bg);
+  --color-status-cancelled-fg: var(--status-cancelled-fg);
+  --color-status-todo-icon: var(--status-todo-icon);
+  --color-status-progress-icon: var(--status-progress-icon);
+  --color-status-review-icon: var(--status-review-icon);
+  --color-status-validation-icon: var(--status-validation-icon);
+  --color-status-done-icon: var(--status-done-icon);
+  --color-status-fixes-icon: var(--status-fixes-icon);
+  --color-status-cancelled-icon: var(--status-cancelled-icon);
+  --color-status-glyph: var(--status-glyph);
+}
+
+/* Increase Contrast (HIG): bordas e separadores mais visíveis e rótulos secundários mais fortes. A borda dos
+   cartões e controles (--edge) deixa de ser só decorativa e passa de 3:1 nos dois temas (spec 050). */
+@media (prefers-contrast: more) {
+  :root {
+    --edge: #8e8e93;
+  }
+  :root.dark {
+    --edge: var(--border);
+    --separator: #545458;
+    --border: #7c7c80;
+    --muted: rgb(255 255 255 / 0.7);
+    --subtle: rgb(255 255 255 / 0.7);
+    --foreground: #ffffff;
+    --body: #ffffff;
+  }
+}
+
+/* Texto claro sobre fundo escuro parece mais grosso com o antialiasing de subpixel: no escuro, suaviza. */
+:root.dark body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Pausa as transições enquanto o tema troca (core/theme/use-theme.ts): na troca pelo toggle, quem anima é a View
+   Transition, e um elemento com transição própria mudaria de cor em separado dentro da foto nova. */
+.sem-transicao,
+.sem-transicao *,
+:root.trocando-tema *,
+:root.trocando-tema *::before,
+:root.trocando-tema *::after {
+  transition: none !important;
+}
+
+/* Troca de tema pelo toggle (spec 049): esmaece da foto da tela antiga para a nova. Só opacidade, sem movimento:
+   vale também com movimento reduzido. O base.css do HeroUI tira o nome da raiz (sem nome, não há foto), então ele
+   volta durante a troca. */
+:root.trocando-tema {
+  view-transition-name: root;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 300ms;
+  animation-timing-function: ease-in-out;
+}
+
+/* Ícone do toggle de tema. É uma animação, e não uma transição, porque a .trocando-tema pausa as transições durante a troca. */
+@keyframes tema-icone-entrar {
+  from { opacity: 0; transform: rotate(-90deg) scale(0.6); }
+}
+
+.tema-icone-entrar {
+  animation: tema-icone-entrar 200ms ease-out;
 }
 
 body {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
-  font-family:
-    "Inter Variable",
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    sans-serif;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
 }
 
 .thin-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
 .thin-scroll::-webkit-scrollbar {
@@ -74,11 +485,11 @@ body {
 
 .thin-scroll::-webkit-scrollbar-thumb {
   border-radius: 9999px;
-  background: #cbd5e1;
+  background: var(--scrollbar-thumb);
 }
 
 .thin-scroll::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: color-mix(in oklch, var(--foreground) 30%, transparent);
 }
 
 .thin-scroll::-webkit-scrollbar-button {
@@ -88,71 +499,62 @@ body {
 }
 
 /* Área de soltar arquivo do Figma: traço tracejado com cantos arredondados, que border-dashed não reproduz.
-   O stroke de 2px fica metade fora do retângulo, então aparece com 1px. */
+   O stroke de 2px fica metade fora do retângulo, então aparece com 1px. O SVG vira máscara de um ::before, para o
+   traço usar um token (ADR 0041) e mudar com o tema. */
 .dropzone-tracejada {
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='20' ry='20' stroke='%23CBCFD3' stroke-width='2' stroke-dasharray='8 8'/%3e%3c/svg%3e");
+  --dropzone-traco: var(--border-tertiary);
+  position: relative;
   border-radius: 20px;
 }
 
-.dropzone-tracejada[data-arrastando="true"] {
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='20' ry='20' stroke='%233672F2' stroke-width='2' stroke-dasharray='8 8'/%3e%3c/svg%3e");
+.dropzone-tracejada::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-color: var(--dropzone-traco);
+  mask: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='20' ry='20' stroke='black' stroke-width='2' stroke-dasharray='8 8'/%3e%3c/svg%3e");
 }
 
-[data-sonner-toast] [data-close-button] {
-  left: auto !important;
-  right: 0.5rem !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
+.select__trigger[data-focus-visible="true"] {
+  --tw-ring-offset-width: 0px;
+}
+
+.dropzone-tracejada[data-arrastando="true"],
+.dropzone-tracejada:hover,
+.dropzone-tracejada:focus-visible {
+  --dropzone-traco: var(--accent);
+}
+
+/* Upload da planilha (spec 016): cards e prévia surgem subindo alguns pixels e saem pelo mesmo caminho. */
+@keyframes upload-surgir {
+  from { opacity: 0; transform: translateY(var(--surgir-y, 4px)); }
+}
+
+.upload-surgir {
+  animation: upload-surgir 200ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.upload-surgir-previa {
+  --surgir-y: 8px;
+  animation-duration: 250ms;
+}
+
+.upload-surgir[data-saindo] {
+  animation: upload-surgir 150ms ease-in reverse both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .upload-surgir,
+  .upload-surgir[data-saindo] {
+    --surgir-y: 0px;
+    animation-duration: 150ms;
+  }
 }
 
 @keyframes dialog-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
-}
-
-@keyframes dialog-enter {
-  from { opacity: 0; scale: 0.98; }
-  to { opacity: 1; scale: 1; }
-}
-
-.dialog-overlay[data-state="open"] {
-  animation: dialog-fade-in 160ms ease-out;
-}
-
-.dialog-content[data-state="open"] {
-  animation: dialog-enter 180ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes drawer-overlay-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes drawer-enter {
-  from { opacity: 0.8; transform: translateX(1rem); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-.drawer-overlay[data-state="open"] {
-  animation: drawer-overlay-in 160ms ease-out;
-}
-
-.drawer-content[data-state="open"] {
-  animation: drawer-enter 200ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* Saídas: mesmo caminho da entrada, mais curtas e suaves. */
-.dialog-overlay[data-state="closed"],
-.drawer-overlay[data-state="closed"] {
-  animation: dialog-fade-in 140ms ease-out reverse;
-}
-
-.dialog-content[data-state="closed"] {
-  animation: dialog-enter 140ms ease-out reverse;
-}
-
-.drawer-content[data-state="closed"] {
-  animation: drawer-enter 160ms ease-out reverse;
 }
 
 /* Menus e popovers nascem do gatilho. */
@@ -177,53 +579,25 @@ body {
   pointer-events: none;
 }
 
-.select-content {
-  transform-origin: var(--radix-select-content-transform-origin);
-}
-
-/* Popups do Base UI: transição (interrompível) que entra e sai pelo mesmo caminho, a partir do gatilho. */
-.base-popup {
-  transform-origin: var(--transform-origin);
-  transition: opacity 140ms cubic-bezier(0.2, 0, 0, 1), scale 140ms cubic-bezier(0.2, 0, 0, 1);
-}
-
-.base-popup[data-starting-style],
-.base-popup[data-ending-style] {
-  opacity: 0;
-  scale: 0.96;
-}
-
 /* Movimento reduzido: sem deslizar nem escalar, mas com um fade curto (o retorno visual continua). */
 @media (prefers-reduced-motion: reduce) {
-  .dialog-overlay[data-state="open"],
-  .dialog-content[data-state="open"],
-  .drawer-overlay[data-state="open"],
-  .drawer-content[data-state="open"],
   .popover-enter {
     animation: dialog-fade-in 140ms ease-out;
-  }
-
-  .dialog-overlay[data-state="closed"],
-  .dialog-content[data-state="closed"],
-  .drawer-overlay[data-state="closed"],
-  .drawer-content[data-state="closed"] {
-    animation: dialog-fade-in 120ms ease-out reverse;
   }
 
   .popover-enter[data-saindo="true"] {
     animation: dialog-fade-in 100ms ease-out reverse forwards;
   }
 
-  .base-popup {
-    transition-property: opacity;
+  .tema-icone-entrar {
+    animation: dialog-fade-in 200ms ease-out;
   }
 }
 
-/* Transparência reduzida: overlays sem desfoque e um pouco mais opacos. */
-@media (prefers-reduced-transparency: reduce) {
-  .dialog-overlay,
-  .drawer-overlay {
-    backdrop-filter: none;
-    background-color: rgb(2 6 23 / 0.6);
+/* O brilho do Skeleton do HeroUI não respeita o "reduzir movimento" (spec 050): o carregamento fica parado. */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton,
+  .skeleton::after {
+    animation: none;
   }
 }

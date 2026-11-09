@@ -1,12 +1,17 @@
 ---
 name: react-crud
-description: Receita para criar ou alterar uma feature CRUD no frontend React deste repositório (arquitetura Modular com core, shared e modules, shadcn/ui + Tailwind, TanStack Query, react-hook-form + zod, Vitest e Playwright). Use sempre que for criar ou alterar telas, componentes, clientes HTTP, hooks de dados, rotas ou testes no frontend.
+description: Receita para criar ou alterar uma feature CRUD no frontend React deste repositório (arquitetura Modular com core, shared e modules, HeroUI v3 + Tailwind com migração gradual do shadcn/ui, TanStack Query, react-hook-form + zod, Vitest e Playwright). Use sempre que for criar ou alterar telas, componentes, clientes HTTP, hooks de dados, rotas ou testes no frontend.
 ---
 
 # Skill: react-crud
 
-Regras completas no ADR 0009 (Modular + shadcn/ui), no ADR 0008 (contrato REST) e no ADR 0010 (testes).
-Os exemplos usam `usuario`. Para outra entidade, troque o nome.
+Regras completas no ADR 0009 (Modular), no ADR 0037 (HeroUI como base de UI), no ADR 0008 (contrato REST)
+e no ADR 0010 (testes). Os exemplos usam `usuario`. Para outra entidade, troque o nome.
+
+> **Migração para HeroUI (ADR 0037):** tela nova ou redesenhada usa só HeroUI v3 (`@heroui/react`). Os
+> primitivos vêm direto de `@heroui/react`; tabela, diálogo de confirmação e toast vêm das composições de
+> `shared/ui`. Os exemplos abaixo que citam componentes shadcn valem só para telas ainda não migradas. Não
+> adicione componentes shadcn novos e não misture as duas bibliotecas na mesma página.
 
 > A base comum (`core/` com providers, cliente HTTP, layout e tratamento de ProblemDetails; `shared/` com
 > `PagedResult<T>`, os componentes shadcn e os helpers de erro) já existe (spec 001). Aqui só se adiciona um módulo.
@@ -95,15 +100,22 @@ export const usuarioApi = {
 
 ## Regras gerais
 - Componentes funcionais, tipados; nada de `any`. Os tipos vêm de `model/`.
-- Só shadcn/ui + Tailwind para UI. Textos de interface em português (skill `better-writing`) e acessibilidade
+- UI com HeroUI v3 + Tailwind em telas novas ou redesenhadas; shadcn/ui só nas telas ainda não migradas (ADR 0037). Textos de interface em português (skill `better-writing`) e acessibilidade
   básica: labels, foco e botões com texto (skill `better-accessibility`).
 - Dados de servidor só via hooks TanStack Query; nunca `fetch` solto no componente.
+- Botão só nos dois tamanhos do HeroUI (ADR 0052): padrão no cabeçalho, nas barras, nas pílulas de filtro e nos rodapés; `size="sm"` dentro de tabela, de estado vazio e nos botões só de ícone. Altura e tamanho de texto do botão não vão no `className`. O botão de adicionar é a última ação à direita (cabeçalho, ou fim da linha das abas quando a ação é de uma aba), e o filtro de data fica na linha de ferramentas, antes das ações (ADR 0053).
+- Cores só por token com valor no claro e no escuro (ADRs 0040 e 0041): os do HeroUI (`bg-surface`, `text-muted`,
+  `border-separator`, `bg-accent-soft`...) ou os do projeto em `core/global.css` (`text-body`, `bg-page`, `bg-panel`...).
+  Nada de hex (`text-[#454442]`), paleta crua do Tailwind (`bg-white`, `text-slate-700`) nem `rgb()`. Ao portar do
+  Figma, mapeie cada hex para um token ou crie um com nome de papel nos dois temas. O teste
+  `core/theme/cores-por-token.test.ts` barra o que escapar.
 
 ## Checklist de pronto
 - [ ] `modules/<x>/` com `model`, `api`, `hooks`, `components`, `pages`, `routes.tsx` e `index.ts`
 - [ ] `UsuarioForm` (criar/editar), `UsuariosTable` (paginação no servidor) e `UsuarioToggleAtivo`
 - [ ] Rota do módulo registrada no roteador de `core/` e item no menu do layout
 - [ ] Nenhum import de outro módulo; reuso entre domínios em `shared/`
+- [ ] Nenhuma cor fixa; a tela conferida também no tema escuro
 - [ ] `npm run lint` verde (regras de boundaries `core`/`shared`/`modules`)
 - [ ] `npm test` verde, com sucesso e falha
 - [ ] `npm run e2e` verde, com sucesso e falha
