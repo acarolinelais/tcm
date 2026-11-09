@@ -8,6 +8,7 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from src.domain.queries.bug_report import FiltrosBugReport
 from src.domain.queries.resumo_overview import EscopoOverview
+from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
 from src.infrastructure.data.models.projeto_model import ProjetoModel
 from src.infrastructure.data.models.projeto_modelo_model import ProjetoModeloModel
 from src.infrastructure.data.models.resultado_form_factor_model import ResultadoFormFactorModel
@@ -111,14 +112,18 @@ async def test_pass_depois_do_fail_tira_e_fail_depois_do_pass_poe(cenario):
 
 
 @pytest.mark.asyncio
-async def test_fail_em_dois_devices_vira_duas_linhas(cenario):
-    # CA-04.
+async def test_fail_em_dois_devices_vira_duas_linhas_com_o_mesmo_responsavel(cenario):
+    # CA-04 e CA-09: o responsável é do caso, então trocar muda as duas linhas.
     caso = await cenario.caso("Clock_000005")
     await cenario.importar(caso, "SDF-5", DIA_5, {cenario.s26: "FAIL", cenario.s25: "FAIL"})
+    await cenario.session.execute(
+        update(CasoTesteModel).where(CasoTesteModel.id == caso).values(responsavel_id=cenario.bia)
+    )
 
     resultado = await _listar(cenario)
 
     assert sorted(f.modelo_nome for f in resultado.items) == ["SAMSUNG S25", "SAMSUNG S26"]
+    assert {f.responsavel_id for f in resultado.items} == {cenario.bia}
 
 
 @pytest.mark.asyncio

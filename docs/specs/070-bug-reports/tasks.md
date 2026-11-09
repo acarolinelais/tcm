@@ -47,9 +47,10 @@
 
 ## Fase 3: e2e
 
-- [ ] **T08. Fluxo do KP**
+- [x] **T08. Fluxo da gestão (admin)**
   - Arquivos: `frontend/e2e/bug-reports.spec.ts`
-  - Cobre: CA-01, CA-08 (KP abre a página, vê a falha e troca o responsável)
+  - Cobre: CA-01, CA-08 (a gestão abre a página, vê a falha e troca o responsável; o perfil KP fica no
+    `BugReportsPage.test.tsx`, porque o e2e entra como o admin existente, como os outros e2e)
   - Verificação: `npx playwright test e2e/bug-reports.spec.ts` → verde
 
 ## Backlog
@@ -65,3 +66,8 @@
 - Opções do filtro de device: saem das falhas da página carregada, porque o catálogo de modelos exige gestão (o dev
   levaria 403). Com um device escolhido, o filtro só mostra ele; para trocar, volta em "All". Se incomodar, a API
   do Bug Reports pode devolver os devices com falha no escopo (simplify do bloco 2).
+- `bug_report_service.py` importa a regra de permissão de `form_factor_service` e a de escopo de
+  `overview_service`. Com três services usando as mesmas regras, elas cabem num módulo neutro (ex.:
+  `application/services/escopo.py`) ou num método de `UsuarioAutenticado` (code-review da spec).
+- Responsável inativo no time: o seletor de Assignee mostra o nome dele, mas a lista não tem a opção, porque só
+  entram membros ativos. Funciona (dá para trocar), mas vale indicar "inativo" na célula (code-review da spec).

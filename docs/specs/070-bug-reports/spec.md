@@ -1,6 +1,6 @@
 # 070. Bug Reports: Spec
 
-- **Status:** Aprovada
+- **Status:** Concluída
 - **Data:** 2026-11-09
 - **Specs relacionadas:** 060 (importação do relatório SDF), 065 (resultado mais recente por device), 066 (FAIL
   devolve o caso para In Fixes), 068 (o que o dev enxerga), 069 (projetos encerrados)

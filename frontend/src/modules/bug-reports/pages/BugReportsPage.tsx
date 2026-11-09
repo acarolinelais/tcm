@@ -54,7 +54,7 @@ export function BugReportsPage() {
     mutationFn: ({ casoId, responsavelId }: { casoId: string; responsavelId: string }) => casosTesteApi.atualizar(casoId, { responsavel_id: responsavelId }),
     onSuccess: () => toast.success(t("assigneeChanged")),
     onError: (error) => toast.error(error instanceof Error ? error.message : t("caseUpdateError")),
-    onSettled: () => Promise.all([client.invalidateQueries({ queryKey: ["bug-reports"] }), client.invalidateQueries({ queryKey: ["projetos"] })]),
+    onSettled: () => Promise.all([client.invalidateQueries({ queryKey: ["bug-reports"] }), client.invalidateQueries({ queryKey: ["projetos"] }), client.invalidateQueries({ queryKey: ["overview"] })]),
   });
   const temFiltro = Object.values(filtros).some(Boolean);
   const filtro = (campo: keyof FiltrosBugReport) => (valor: string) => { setPagina(1); setFiltros({ ...filtros, [campo]: valor || undefined }); };

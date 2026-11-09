@@ -40,7 +40,13 @@ class BugReportRepositoryImpl:
             await self.session.execute(select(func.count()).select_from(falhas.subquery()))
         ).scalar_one()
         linhas = await self.session.execute(
-            falhas.order_by(ultimos.c.data_execucao.desc(), ultimos.c.tc_id, ultimos.c.modelo_nome)
+            falhas.order_by(
+                ultimos.c.data_execucao.desc(),
+                ultimos.c.tc_id,
+                ultimos.c.modelo_nome,
+                ultimos.c.caso_teste_id,
+                ultimos.c.modelo_dispositivo_id,
+            )
             .offset((page - 1) * page_size)
             .limit(page_size)
         )
