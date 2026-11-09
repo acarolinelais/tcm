@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.services.auditoria_service import AuditoriaServiceImpl
+from src.application.services.bug_report_service import BugReportServiceImpl
 from src.application.services.caso_teste_service import CasoTesteServiceImpl
 from src.application.services.form_factor_service import FormFactorServiceImpl
 from src.application.services.importacao_projeto_service import ImportacaoProjetoServiceImpl
@@ -37,6 +38,7 @@ from src.infrastructure.data.models.usuario_model import UsuarioModel
 from src.infrastructure.data.session import get_session as get_session
 from src.infrastructure.data.unit_of_work import UnitOfWorkImpl
 from src.infrastructure.repositories.auditoria_repository import AuditoriaRepositoryImpl
+from src.infrastructure.repositories.bug_report_repository import BugReportRepositoryImpl
 from src.infrastructure.repositories.caso_teste_repository import CasoTesteRepositoryImpl
 from src.infrastructure.repositories.execucao_sdf_repository import ExecucaoSdfRepositoryImpl
 from src.infrastructure.repositories.historico_caso_teste_repository import (
@@ -282,6 +284,12 @@ async def get_auditoria_service(
     session: AsyncSession = Depends(get_session),
 ) -> AuditoriaServiceImpl:
     return AuditoriaServiceImpl(AuditoriaRepositoryImpl(session), UsuarioRepositoryImpl(session))
+
+
+async def get_bug_report_service(
+    session: AsyncSession = Depends(get_session),
+) -> BugReportServiceImpl:
+    return BugReportServiceImpl(BugReportRepositoryImpl(session))
 
 
 async def get_overview_service(
