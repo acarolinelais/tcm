@@ -73,3 +73,14 @@ def test_data_planejada_no_passado_e_recusada():
         projeto.definir_data_planejada(date(2026, 11, 8), HOJE)
 
     assert projeto.data_planejada == HOJE
+
+
+def test_data_planejada_alem_de_dois_anos_e_recusada():
+    # RN-09 (falha): o limite segura o tamanho do burndown; dois anos exatos ainda valem.
+    projeto = Projeto(uuid4(), uuid4(), "Clock", "9.5")
+    projeto.definir_data_planejada(date(2028, 11, 8), HOJE)
+
+    with pytest.raises(InvalidInputException, match="dois anos"):
+        projeto.definir_data_planejada(date(2028, 11, 10), HOJE)
+
+    assert projeto.data_planejada == date(2028, 11, 8)

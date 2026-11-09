@@ -75,6 +75,17 @@ it("com dias futuros no gráfico, o resumo usa hoje, o último dia com executado
   expect(await within(await cartao("Planned vs. executed")).findByText("26 Test Cases still open today, against 27 planned.")).toBeInTheDocument();
 });
 
+it("com data planejada e nada aberto, o cartão mostra a meta em vez do estado vazio", async () => {
+  vi.mocked(overviewApi.obterProjeto).mockResolvedValue({
+    ...comRodada,
+    metaDiaria: 0,
+    burndown: [{ dia: "2026-12-01", planejado: 0, executado: 0 }, { dia: "2026-12-02", planejado: 0, executado: null }],
+  });
+  abrir();
+
+  expect(await within(await cartao("Planned vs. executed")).findByText("Planned date 12/11/2026 · 0 per business day")).toBeInTheDocument();
+});
+
 it("falha: sem data planejada, o burndown avisa e não tem planejado (spec 071, CA-05)", async () => {
   vi.mocked(overviewApi.obterProjeto).mockResolvedValue({
     ...comRodada,

@@ -42,7 +42,7 @@ export function OverviewKp() {
         <GraficoCard
           titulo={t("burndownTitle")}
           resumo={resumoBurndown}
-          estado={escolha.estado(burndown.every((ponto) => !ponto.executado && !ponto.planejado))}
+          estado={escolha.estado(!projeto?.dataPlanejada && burndown.every((ponto) => !ponto.executado))}
           onRetry={escolha.tentarDeNovo}
         >
           <p className="text-xs text-body">{plano}</p>

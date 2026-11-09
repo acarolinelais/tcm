@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from enum import StrEnum
 from uuid import UUID
 
@@ -19,6 +19,8 @@ class Projeto(EntidadeTenant):
     APP_MAX_LENGTH = 100
     ONE_UI_MAX_LENGTH = 40
     STATUS_MAX_LENGTH = 20
+    # O burndown tem um ponto por dia até a data planejada: o limite segura o tamanho do gráfico.
+    DATA_PLANEJADA_MAX_DIAS = 730
 
     def __init__(
         self,
@@ -55,6 +57,8 @@ class Projeto(EntidadeTenant):
             return
         if data is not None and data < hoje:
             raise InvalidInputException("A data planejada não pode estar no passado.")
+        if data is not None and data > hoje + timedelta(days=self.DATA_PLANEJADA_MAX_DIAS):
+            raise InvalidInputException("A data planejada deve estar em até dois anos.")
         self.data_planejada = data
         self.planejamento_iniciado_em = None if data is None else hoje
 

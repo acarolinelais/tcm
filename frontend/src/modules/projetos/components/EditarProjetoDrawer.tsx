@@ -51,12 +51,14 @@ export function EditarProjetoDrawer({ projeto, onFechar, times, nomeTime, opcoes
     }
   }
   const editar = useMutation({
-    mutationFn: () => projetosApi.atualizar(exibido!.id, { nome: nome.trim(), app: app.trim(), one_ui: oneUi.trim(), time_id: timeId, modelos_ids: modelosIds, data_planejada: dataPlanejada || null }),
+    mutationFn: () => projetosApi.atualizar(exibido!.id, { nome: nome.trim(), app: app.trim(), one_ui: oneUi.trim(), time_id: timeId, modelos_ids: modelosIds, ...(dataMudou ? { data_planejada: dataPlanejada || null } : {}) }),
     onSuccess: async () => { await client.invalidateQueries({ queryKey: ["projetos"] }); onFechar(); toast.success(t("projectUpdateSuccess")); },
     onError: () => toast.error(t("projectUpdateError")),
   });
   // A data que o projeto já tem continua valendo mesmo depois de passar (spec 071, RN-09).
-  const dataNoPassado = Boolean(dataPlanejada) && dataPlanejada !== (exibido?.data_planejada ?? "") && dataPlanejada < formatarDiaIso(new Date());
+  // Só manda a data quando ela mudou: o cache da lista pode estar velho e desfazer a data que outra pessoa trocou.
+  const dataMudou = dataPlanejada !== (exibido?.data_planejada ?? "");
+  const dataNoPassado = Boolean(dataPlanejada) && dataMudou && dataPlanejada < formatarDiaIso(new Date());
   const incompleto = !nome.trim() || !app.trim() || !oneUi.trim() || !timeId || dataNoPassado;
   // O time atual inativo continua visível e marcado, mas não pode ser escolhido de novo (como na RN-06).
   const opcoesTime = [

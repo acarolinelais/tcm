@@ -1,6 +1,6 @@
 # 071. Data planejada do projeto: Spec
 
-- **Status:** Aprovada
+- **Status:** Concluída
 - **Data:** 2026-11-09
 - **Specs relacionadas:** 063 (burndown do Overview, RN-07, e a proposta de planejamento por projeto), 064 (seletor
   de projeto no Overview), 069 (projetos encerrados)
@@ -46,7 +46,7 @@ planejada não tem linha de planejado.
   o projeto não tem data planejada. A meta fixa de 2 por dia deixa de existir.
 - RN-08: Mudar a data planejada recomeça o planejamento no dia da mudança (RN-04 e RN-05). Apagar a data volta à
   RN-07.
-- RN-09: A data planejada não pode ser anterior ao dia em que é definida. Uma data já gravada que fica no passado
+- RN-09: A data planejada não pode ser anterior ao dia em que é definida, nem ficar a mais de dois anos dele. Uma data já gravada que fica no passado
   continua valendo.
 - RN-10: Se não há nenhum dia útil depois do início até a data planejada (por exemplo, a data é o próprio dia ou o
   sábado seguinte a uma sexta), a meta é o número inteiro de casos não Done, e a linha vai a zero na data planejada.

@@ -380,7 +380,7 @@ describe("ProjetosPage", () => {
       await trocarTimeEModelos(user, painel);
       await user.click(within(painel).getByRole("button", { name: "Save" }));
 
-      await waitFor(() => expect(projetosApi.atualizar).toHaveBeenCalledWith("project-1", { nome: "Clock 9.5", app: "Clock", one_ui: "9.5", time_id: "team-2", modelos_ids: ["model-2"], data_planejada: null }));
+      await waitFor(() => expect(projetosApi.atualizar).toHaveBeenCalledWith("project-1", { nome: "Clock 9.5", app: "Clock", one_ui: "9.5", time_id: "team-2", modelos_ids: ["model-2"] }));
       await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
       expect(toastMock.success).toHaveBeenCalledWith("Project updated.");
     });

@@ -56,3 +56,15 @@
 - O fuso do navegador é montado em três lugares (`overview.api.ts`, `auditoria.api.ts` e o PUT de
   `projetos.api.ts`), e o PUT monta a query string à mão porque o `httpPut` não aceita `params` como o
   `httpGet`. Um helper `fusoDoNavegador()` e `params` no `httpPut` limpam os três (simplify do bloco 2).
+- Burndown com planejamento longo: a consulta pede uma contagem por dia desde o início do planejamento, e cada dia
+  cruza todos os casos com duas subconsultas na auditoria. Com o limite de dois anos o tamanho fica contido, mas um
+  projeto grande com meses de planejamento pode pesar; medir antes de mexer (amostrar dias ou uma passada só pela
+  auditoria) (code-review da spec).
+- O "hoje" do PUT vem do `fuso_horario` que o cliente manda, com padrão UTC. Quem chama sem o parâmetro (Scalar,
+  scripts) depois das 21h no Brasil tem a data de hoje recusada, e um fuso escolhido de propósito aceita ontem.
+  Tornar o parâmetro obrigatório ou guardar o fuso da conta resolve (code-review da spec).
+- A linha de planejado parte dos casos não Done no fim do dia do início, não no momento em que a data foi salva:
+  casos fechados mais tarde naquele dia baixam a meta. É a leitura da RN-05 ("naquele dia"); se incomodar, gravar o
+  número no momento em que a data é definida (code-review da spec).
+- `DateInputField` (`form-field.tsx`) e o filtro de data de `data-table-filter.tsx` repetem o Popover com o
+  `Calendario` e o rodapé de Limpar; um `CalendarioPopover` compartilhado tira a cópia (code-review da spec).
