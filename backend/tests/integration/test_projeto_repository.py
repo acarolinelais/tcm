@@ -1,4 +1,5 @@
 import os
+from datetime import date
 from uuid import uuid4
 
 import pytest
@@ -57,6 +58,8 @@ async def test_projeto_persiste_status_e_isola_obtencao_por_unidade():
             assert encontrado is not None
             criado_em = encontrado.created_at
             encontrado.atualizar_status(StatusProjeto.IN_PROGRESS)
+            # Spec 071, CA-01: as duas datas do planejamento vão e voltam do banco.
+            encontrado.definir_data_planejada(date(2026, 12, 19), date(2026, 11, 9))
             await repository.atualizar(encontrado)
             await session.flush()
 
@@ -66,7 +69,17 @@ async def test_projeto_persiste_status_e_isola_obtencao_por_unidade():
             assert encontrado.nome == "Clock 9.5"
             assert encontrado.status == StatusProjeto.IN_PROGRESS
             assert encontrado.created_at == criado_em
+            assert encontrado.data_planejada == date(2026, 12, 19)
+            assert encontrado.planejamento_iniciado_em == date(2026, 11, 9)
             assert await repository.obter_por_id(outra_unidade_id, projeto.id) is None
+
+            # CA-07: apagar a data limpa as duas colunas.
+            encontrado.definir_data_planejada(None, date(2026, 11, 10))
+            await repository.atualizar(encontrado)
+            await session.flush()
+            apagado = await repository.obter_por_id(unidade_id, projeto.id)
+            assert apagado is not None
+            assert (apagado.data_planejada, apagado.planejamento_iniciado_em) == (None, None)
     finally:
         await engine.dispose()
 

@@ -7,21 +7,21 @@
 
 ## Fase 1: backend
 
-- [ ] **T01. Data planejada na entidade**
+- [x] **T01. Data planejada na entidade**
   - Arquivos: `src/domain/entities/projeto.py`, `tests/unit/domain/test_projeto.py`
   - Cobre: CA-06, CA-07, CA-10, CA-12 (`definir_data_planejada`: recusa passado, `None` limpa, início = hoje)
   - Verificação: `uv run pytest tests/unit/domain/test_projeto.py -q` → verde
-- [ ] **T02. Colunas, migration e repositório**
+- [x] **T02. Colunas, migration e repositório**
   - Arquivos: `src/infrastructure/data/models/projeto_model.py`, `src/infrastructure/repositories/projeto_repository.py`,
     migration nova (`down_revision = "g067a1b2c3d4"`), `tests/integration/test_projeto_repository.py`
   - Cobre: CA-01, CA-06, CA-07
   - Verificação: `uv run pytest tests/integration/test_projeto_repository.py -q` → verde; `uv run alembic heads` → um head
-- [ ] **T03. PUT de projeto com a data planejada e o fuso**
+- [x] **T03. PUT de projeto com a data planejada e o fuso**
   - Arquivos: `src/application/schemas/projeto.py`, `src/application/services/projeto_service.py`,
     `src/api/routers/projetos.py`, `tests/functional/test_projetos_api.py`
   - Cobre: CA-01, CA-09, CA-10, CA-11, CA-12
   - Verificação: `uv run pytest tests/functional/test_projetos_api.py -q` → verde
-- [ ] **T04. Burndown pela data planejada**
+- [x] **T04. Burndown pela data planejada**
   - Arquivos: `src/application/services/overview_service.py`, `src/application/schemas/overview.py`,
     `tests/unit/application/services/test_overview_service.py`, `tests/functional/test_overview_api.py`
   - Cobre: CA-02, CA-03, CA-04, CA-05, CA-07, CA-08 e a RN-10
@@ -49,3 +49,7 @@
   - Verificação: `npx playwright test e2e/planejamento-projeto.spec.ts` → verde
 
 ## Backlog
+- `meta_diaria` e `linha_planejada` são regras do planejamento do projeto (RN-05, RN-06, RN-10) e estão como
+  funções do `overview_service.py`, enquanto `definir_data_planejada` está na entidade `Projeto`. Levar o cálculo
+  para o domínio deixa a regra num lugar só; a linha antiga (meta fixa) também ficava no service (simplify do
+  bloco 1).

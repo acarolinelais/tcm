@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -91,7 +91,7 @@ class OverviewTimeResponse(BaseModel):
 
 class PontoBurndownResponse(BaseModel):
     dia: str  # AAAA-MM-DD, no fuso pedido.
-    planejado: int
+    planejado: float | None  # None: antes do início do planejamento ou sem data planejada.
     executado: int
 
 
@@ -108,6 +108,8 @@ class PassRateResponse(BaseModel):
 
 
 class OverviewProjetoResponse(BaseModel):
+    data_planejada: date | None = None  # Spec 071.
+    meta_diaria: float | None = None
     burndown: list[PontoBurndownResponse]
     pass_rate: PassRateResponse | None  # None: o projeto não tem rodada de Form Factor.
 

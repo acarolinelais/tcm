@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -42,6 +42,8 @@ class AtualizarProjetoRequest(BaseModel):
     one_ui: str = Field(min_length=1, max_length=Projeto.ONE_UI_MAX_LENGTH)
     time_id: UUID | None = None
     modelos_ids: list[UUID] | None = None
+    # Spec 071: ausente mantém a data; null apaga.
+    data_planejada: date | None = None
 
     @field_validator("app", "one_ui")
     @classmethod
@@ -72,6 +74,7 @@ class ProjetoResponse(BaseModel):
     status: StatusProjeto
     modelos_dispositivo: list[str] = Field(default_factory=list)
     modelos_ids: list[UUID] = Field(default_factory=list)
+    data_planejada: date | None = None
     ativo: bool
     created_at: datetime | None
     updated_at: datetime | None
@@ -92,6 +95,7 @@ def to_response(
         status=projeto.status,
         modelos_dispositivo=modelos_dispositivo or [],
         modelos_ids=modelos_ids or [],
+        data_planejada=projeto.data_planejada,
         ativo=projeto.ativo,
         created_at=projeto.created_at,
         updated_at=projeto.updated_at,

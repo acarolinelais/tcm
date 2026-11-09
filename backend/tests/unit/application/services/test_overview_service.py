@@ -5,7 +5,11 @@ from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 import pytest
-from src.application.services.overview_service import OverviewServiceImpl, linha_planejada
+from src.application.services.overview_service import (
+    OverviewServiceImpl,
+    linha_planejada,
+    meta_diaria,
+)
 from src.domain.common.exceptions import InvalidInputException, NotFoundException
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.queries.resumo_overview import (
@@ -179,22 +183,57 @@ async def test_falha_obter_time_fuso_invalido(repo):
 # Spec 063: burndown e Pass Rate do projeto escolhido, e a visão pessoal.
 
 
-def test_linha_planejada_cai_dois_por_dia_util_e_para_no_fim_de_semana():
-    # Segunda 02/02/2026 até a segunda seguinte.
-    dias = [date(2026, 2, 2) + timedelta(days=i) for i in range(8)]
+def test_linha_planejada_cai_a_meta_por_dia_util_ate_zero_na_data_planejada():
+    # Spec 071, CA-02: definida na sexta 27/11 com 30 casos para 11/12: 10 dias úteis, 3 por dia.
+    inicio, data_planejada = date(2026, 11, 27), date(2026, 12, 11)
+    dias = [inicio + timedelta(days=i) for i in range(17)]
 
-    assert linha_planejada(dias, 10) == [10, 8, 6, 4, 2, 2, 2, 0]
+    meta = meta_diaria(inicio, data_planejada, 30)
+    linha = linha_planejada(dias, inicio, data_planejada, 30, meta)
+
+    assert meta == 3
+    assert linha[:4] == [30, 30, 30, 27]  # sábado e domingo não contam
+    assert linha[14:] == [0, 0, 0]  # 11/12 e depois
 
 
-def test_linha_planejada_nao_fica_negativa():
-    dias = [date(2026, 2, 2) + timedelta(days=i) for i in range(4)]
+def test_linha_planejada_sem_ponto_antes_do_inicio_e_meta_decimal():
+    # CA-04 e CA-08: 20 casos em 6 dias úteis; o gráfico começa dois dias antes do início.
+    inicio = date(2026, 11, 30)
+    dias = [inicio + timedelta(days=i) for i in range(-2, 2)]
 
-    assert linha_planejada(dias, 3) == [3, 1, 0, 0]
+    meta = meta_diaria(inicio, date(2026, 12, 8), 20)
+    linha = linha_planejada(dias, inicio, date(2026, 12, 8), 20, meta)
+
+    assert round(meta, 1) == 3.3
+    assert linha == [None, None, 20, pytest.approx(16.67, abs=0.01)]
 
 
-def _projeto_no_time(ativo=True):
+def test_linha_planejada_com_inicio_antes_da_janela_conta_os_dias_uteis_ja_passados():
+    # O gráfico começa na segunda 07/12, uma semana depois do início (segunda 30/11): 5 dias úteis.
+    inicio = date(2026, 11, 30)
+
+    linha = linha_planejada([date(2026, 12, 7)], inicio, date(2026, 12, 31), 40, 2)
+
+    assert linha == [30]
+
+
+def test_sem_dia_util_ate_a_data_a_meta_e_tudo_de_uma_vez():
+    # RN-10 (falha): definida na sexta para o sábado.
+    inicio, sabado = date(2026, 11, 27), date(2026, 11, 28)
+
+    assert meta_diaria(inicio, sabado, 12) == 12
+    assert linha_planejada([inicio, sabado], inicio, sabado, 12, 12) == [12, 0]
+
+
+def _projeto_no_time(ativo=True, inicio=None, data_planejada=None):
     time_ = SimpleNamespace(id=uuid4(), setor_id=uuid4())
-    projeto = SimpleNamespace(id=uuid4(), time_id=time_.id, ativo=ativo)
+    projeto = SimpleNamespace(
+        id=uuid4(),
+        time_id=time_.id,
+        ativo=ativo,
+        planejamento_iniciado_em=inicio,
+        data_planejada=data_planejada,
+    )
     projeto_repo, time_repo = AsyncMock(), AsyncMock()
     projeto_repo.obter_por_id.return_value = projeto
     time_repo.obter_por_id.return_value = time_
@@ -213,10 +252,10 @@ async def test_obter_projeto_monta_o_burndown_de_30_dias_e_o_pass_rate(repo):
 
     assert len(resposta.burndown) == 30
     primeiro, ultimo = resposta.burndown[0], resposta.burndown[-1]
-    assert (primeiro.dia, primeiro.planejado, primeiro.executado) == ("2026-01-12", 20, 20)
-    assert (ultimo.dia, ultimo.executado) == ("2026-02-10", 15)
-    # 12/01 é segunda: 21 dias úteis depois dele, até 10/02, levam o planejado a 0.
-    assert ultimo.planejado == 0
+    assert (primeiro.dia, primeiro.planejado, primeiro.executado) == ("2026-01-12", None, 20)
+    assert (ultimo.dia, ultimo.planejado, ultimo.executado) == ("2026-02-10", None, 15)
+    # Spec 071, CA-05: sem data planejada não há linha de planejado nem meta.
+    assert (resposta.data_planejada, resposta.meta_diaria) == (None, None)
     _, projeto_id, fins = repo.burndown_executado.call_args.args
     assert (projeto_id, fins[0], fins[-1]) == (
         projeto.id,
@@ -347,3 +386,25 @@ async def test_obter_pessoal_devolve_os_projetos_do_dev_com_as_contagens(repo):
     [projeto] = resposta.projetos
     assert (projeto.projeto_id, projeto.projeto, projeto.app) == (projeto_id, "Clock 9.5", "Clock")
     assert (projeto.concluidos, projeto.em_andamento, projeto.atribuidos) == (2, 1, 5)
+
+
+@pytest.mark.asyncio
+async def test_obter_projeto_com_data_planejada_parte_dos_casos_do_dia_do_inicio(repo):
+    # Spec 071, CA-02 e CA-03: o último instante pedido ao repositório é o fim do dia do início.
+    inicio, data_planejada = date(2026, 2, 2), date(2026, 2, 16)
+    projeto, time_, projeto_repo, time_repo = _projeto_no_time(
+        inicio=inicio, data_planejada=data_planejada
+    )
+    repo.burndown_executado.return_value = [20] * 30 + [30]
+    repo.pass_rate_ultima_rodada.return_value = None
+
+    resposta = await _service(repo, projeto_repo, time_repo).obter_projeto(
+        _usuario("KP", time_ids=(time_.id,)), projeto.id, "UTC"
+    )
+
+    *_, fins = repo.burndown_executado.call_args.args
+    assert fins[-1] == datetime(2026, 2, 3, tzinfo=ZoneInfo("UTC"))
+    assert (resposta.data_planejada, resposta.meta_diaria) == (data_planejada, 3)
+    por_dia = {ponto.dia: ponto.planejado for ponto in resposta.burndown}
+    assert (por_dia["2026-02-01"], por_dia["2026-02-02"], por_dia["2026-02-03"]) == (None, 30, 27)
+    assert por_dia["2026-02-10"] == 12  # seis dias úteis depois do início

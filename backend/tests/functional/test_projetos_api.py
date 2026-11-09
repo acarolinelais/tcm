@@ -1,3 +1,4 @@
+from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
@@ -436,3 +437,118 @@ async def test_concluir_projeto_com_casos_pendentes_retorna_409_com_quantidade(a
     assert erro["codigo"] == "projeto_com_casos_pendentes"
     assert erro["parametros"] == {"quantidade": 2}
     assert projeto.status is StatusProjeto.CREATED
+
+
+# Spec 071: data planejada no PUT do projeto.
+
+# 01h em UTC já é dia 10, mas em Manaus ainda é dia 9: o "hoje" é o de quem salva.
+AGORA = datetime(2026, 11, 10, 1, tzinfo=UTC)
+
+
+def _servico_de_edicao(unidade_id, time_id, setor_id):
+    projeto = Projeto(unidade_id, time_id, "Clock", "9.5")
+    projeto_repo, time_repo, projeto_modelo_repo = AsyncMock(), AsyncMock(), AsyncMock()
+    projeto_repo.obter_por_id.return_value = projeto
+    time_repo.obter_por_id.return_value = Time(unidade_id, setor_id, "QA", None)
+    time_repo.obter_por_id.return_value.id = time_id
+    projeto_modelo_repo.listar_nomes_por_projetos.return_value = {}
+    projeto_modelo_repo.listar_ids_por_projetos.return_value = {}
+    service = ProjetoServiceImpl(
+        projeto_repo,
+        time_repo,
+        AsyncMock(),
+        projeto_modelo_repo,
+        AsyncMock(),
+        AsyncMock(),
+        agora=lambda: AGORA,
+    )
+    return service, projeto, projeto_repo
+
+
+def _editar(api_client, usuario, service, projeto, **campos):
+    from src.api.main import app
+
+    app.dependency_overrides[get_usuario_atual] = dependency_override(usuario)
+    app.dependency_overrides[get_projeto_service] = dependency_override(service)
+    return api_client.put(
+        f"/api/projetos/{projeto.id}",
+        json={"app": "Clock", "one_ui": "9.5", **campos},
+        params={"fuso_horario": "America/Manaus"},
+    )
+
+
+def _kp(unidade_id, time_id):
+    return UsuarioAutenticado(
+        uuid4(), unidade_id, "KP", permissoes=frozenset({"projetos.gerenciar"}), time_ids=(time_id,)
+    )
+
+
+async def test_kp_define_e_apaga_a_data_planejada(api_client):
+    # CA-01 e CA-07.
+    unidade_id, time_id = uuid4(), uuid4()
+    service, projeto, projeto_repo = _servico_de_edicao(unidade_id, time_id, uuid4())
+    kp = _kp(unidade_id, time_id)
+
+    response = await _editar(api_client, kp, service, projeto, data_planejada="2026-12-19")
+
+    assert response.status_code == 200
+    assert response.json()["data_planejada"] == "2026-12-19"
+    assert projeto.planejamento_iniciado_em == date(2026, 11, 9)
+    projeto_repo.atualizar.assert_awaited_once()
+
+    response = await _editar(api_client, kp, service, projeto, data_planejada=None)
+
+    assert response.json()["data_planejada"] is None
+    assert projeto.planejamento_iniciado_em is None
+
+
+async def test_sem_data_planejada_no_corpo_a_data_fica(api_client):
+    unidade_id, time_id = uuid4(), uuid4()
+    service, projeto, _ = _servico_de_edicao(unidade_id, time_id, uuid4())
+    projeto.definir_data_planejada(date(2026, 12, 19), date(2026, 11, 9))
+
+    response = await _editar(api_client, _kp(unidade_id, time_id), service, projeto)
+
+    assert response.json()["data_planejada"] == "2026-12-19"
+
+
+async def test_data_planejada_no_passado_retorna_422(api_client):
+    # CA-10 (falha): em Manaus hoje é 09/11, então 08/11 já passou.
+    unidade_id, time_id = uuid4(), uuid4()
+    service, projeto, projeto_repo = _servico_de_edicao(unidade_id, time_id, uuid4())
+    kp = _kp(unidade_id, time_id)
+
+    response = await _editar(api_client, kp, service, projeto, data_planejada="2026-11-08")
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "A data planejada não pode estar no passado."
+    projeto_repo.atualizar.assert_not_awaited()
+
+
+async def test_data_planejada_invalida_retorna_422(api_client):
+    # CA-12 (falha).
+    unidade_id, time_id = uuid4(), uuid4()
+    service, projeto, _ = _servico_de_edicao(unidade_id, time_id, uuid4())
+    kp = _kp(unidade_id, time_id)
+
+    response = await _editar(api_client, kp, service, projeto, data_planejada="2026-02-31")
+
+    assert response.status_code == 422
+    assert response.headers["content-type"].startswith("application/problem+json")
+
+
+async def test_dev_e_kp_de_outro_time_nao_definem_a_data(api_client):
+    # CA-09 e CA-11 (falha).
+    unidade_id, time_id = uuid4(), uuid4()
+    service, projeto, projeto_repo = _servico_de_edicao(unidade_id, time_id, uuid4())
+    dev = UsuarioAutenticado(
+        uuid4(), unidade_id, "USUARIO_PADRAO", permissoes=frozenset({"test_cases.consultar"})
+    )
+    outro_kp = _kp(unidade_id, uuid4())
+
+    sem_permissao = await _editar(api_client, dev, service, projeto, data_planejada="2026-12-19")
+    outro_time = await _editar(api_client, outro_kp, service, projeto, data_planejada="2026-12-19")
+
+    assert (sem_permissao.status_code, outro_time.status_code) == (403, 403)
+    assert projeto.data_planejada is None
+    projeto_repo.atualizar.assert_not_awaited()

@@ -41,9 +41,6 @@ MESES_DE_DESEMPENHO = 6
 # Spec 063, RN-03: os gráficos por dia mostram 30 dias, e os por semana, 12 semanas.
 DIAS = 30
 SEMANAS = 12
-# shortcut: a mesma meta para todos os projetos (spec 063, RN-07); trocar pelo planejamento por
-# projeto quando a spec dele existir.
-META_DIARIA = 2
 
 
 def escopo_do_usuario(usuario_atual: UsuarioAutenticado) -> EscopoOverview:
@@ -68,14 +65,35 @@ def _ultimas_semanas(hoje: date) -> list[date]:
     return [segunda - timedelta(weeks=atras) for atras in range(SEMANAS - 1, -1, -1)]
 
 
-def linha_planejada(dias: list[date], inicio: int) -> list[int]:
-    """Planejado do burndown (spec 063, RN-07): começa em `inicio` e cai a META_DIARIA a cada
-    dia útil (segunda a sexta) depois do primeiro, até 0."""
-    linha, restante = [], inicio
-    for indice, dia in enumerate(dias):
-        if indice and dia.weekday() < 5:
-            restante = max(restante - META_DIARIA, 0)
-        linha.append(restante)
+def _dias_uteis(depois_de: date, ate: date) -> int:
+    """Dias de segunda a sexta depois de `depois_de` até `ate`, contando `ate`."""
+    return sum(
+        (depois_de + timedelta(days=n)).weekday() < 5 for n in range(1, (ate - depois_de).days + 1)
+    )
+
+
+def meta_diaria(inicio: date, data_planejada: date, restantes: int) -> float:
+    """Spec 071, RN-06 e RN-10: os casos não Done no início divididos pelos dias úteis até a data
+    planejada; sem dia útil no meio, a meta é tudo de uma vez."""
+    uteis = _dias_uteis(inicio, data_planejada)
+    return restantes / uteis if uteis else float(restantes)
+
+
+def linha_planejada(
+    dias: list[date], inicio: date, data_planejada: date, restantes: int, meta: float
+) -> list[float | None]:
+    """Spec 071, RN-05: sem ponto antes do início; depois, cai a meta a cada dia útil até zero na
+    data planejada, e fica em zero."""
+    # Dias úteis já passados desde o início até a véspera do primeiro dia do gráfico.
+    uteis = _dias_uteis(inicio, max(dias[0] - timedelta(days=1), inicio))
+    linha: list[float | None] = []
+    for dia in dias:
+        if dia > inicio and dia.weekday() < 5:
+            uteis += 1
+        if dia < inicio:
+            linha.append(None)
+        else:
+            linha.append(0.0 if dia >= data_planejada else max(restantes - meta * uteis, 0.0))
     return linha
 
 
@@ -227,13 +245,32 @@ class OverviewServiceImpl:
             raise NotFoundException("Projeto não encontrado.")
 
         dias = _ultimos_dias(self._hoje(fuso))
-        fins = [datetime.combine(dia + timedelta(days=1), time(), fuso) for dia in dias]
-        executado = await self._overview_repo.burndown_executado(unidade_id, projeto.id, fins)
-        planejado = linha_planejada(dias, executado[0])
+
+        def fim_do_dia(dia: date) -> datetime:
+            return datetime.combine(dia + timedelta(days=1), time(), fuso)
+
+        fins = [fim_do_dia(dia) for dia in dias]
+        inicio, data_planejada = projeto.planejamento_iniciado_em, projeto.data_planejada
+        if inicio is None or data_planejada is None:
+            executado = await self._overview_repo.burndown_executado(unidade_id, projeto.id, fins)
+            planejado, meta = [None] * len(dias), None
+        else:
+            # O último instante pedido é o fim do dia do início: os casos não Done naquele dia.
+            *executado, restantes = await self._overview_repo.burndown_executado(
+                unidade_id, projeto.id, [*fins, fim_do_dia(inicio)]
+            )
+            meta = meta_diaria(inicio, data_planejada, restantes)
+            planejado = linha_planejada(dias, inicio, data_planejada, restantes, meta)
         pass_rate = await self._overview_repo.pass_rate_ultima_rodada(unidade_id, projeto.id)
         return OverviewProjetoResponse(
+            data_planejada=data_planejada,
+            meta_diaria=None if meta is None else round(meta, 1),
             burndown=[
-                PontoBurndownResponse(dia=dia.isoformat(), planejado=plano, executado=feito)
+                PontoBurndownResponse(
+                    dia=dia.isoformat(),
+                    planejado=None if plano is None else round(plano, 1),
+                    executado=feito,
+                )
                 for dia, plano, feito in zip(dias, planejado, executado, strict=True)
             ],
             pass_rate=None

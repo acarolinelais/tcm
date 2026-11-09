@@ -228,6 +228,8 @@ class ProjetoRepositoryImpl(RepositoryBaseImpl[Projeto, ProjetoModel]):
         projeto.id = model.id
         projeto.ativo = model.ativo
         projeto.status = StatusProjeto(model.status)
+        projeto.data_planejada = model.data_planejada
+        projeto.planejamento_iniciado_em = model.planejamento_iniciado_em
         projeto.created_at = model.created_at
         projeto.updated_at = model.updated_at
         return projeto
@@ -241,6 +243,8 @@ class ProjetoRepositoryImpl(RepositoryBaseImpl[Projeto, ProjetoModel]):
             app=entity.app,
             one_ui=entity.one_ui,
             status=entity.status.value,
+            data_planejada=entity.data_planejada,
+            planejamento_iniciado_em=entity.planejamento_iniciado_em,
             ativo=entity.ativo,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
