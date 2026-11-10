@@ -12,7 +12,7 @@ import { toast } from "@/shared/lib/toast";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 
 import { bugReportsApi } from "../api/bug-reports.api";
-import type { FalhaAberta } from "../model/bug-report";
+import type { CasoComFalhas, FalhaSdf } from "../model/bug-report";
 import { BugReportsPage } from "./BugReportsPage";
 
 vi.mock("../api/bug-reports.api", () => ({ bugReportsApi: { listar: vi.fn() } }));
@@ -27,76 +27,141 @@ const kp: PerfilAtual = {
   time_atual_id: "time-1", tem_multiplos_times: false, senha_alteracao_obrigatoria: false, idioma_preferido: "en", cor_avatar: "azul",
 };
 
-const falha = (extra: Partial<FalhaAberta> = {}): FalhaAberta => ({
-  caso_teste_id: "caso-2", tc_id: "Clock_000002", titulo: "Girar a tela", status: "InFixes", projeto_id: "clock", projeto_nome: "Clock 9.5",
-  time_id: "time-1", modelo_dispositivo_id: "sm-1234", modelo_nome: "SM-1234", sdf_id: "SDF-5", motivo: "Crash ao girar a tela",
-  data_execucao: "2026-11-05T09:00:00Z", responsavel_id: "bia", responsavel_identificador: "bia.s", backup_id: null, ...extra,
+const falha = (extra: Partial<FalhaSdf> = {}): FalhaSdf => ({
+  modelo_dispositivo_id: "sm-1234", modelo_nome: "SM-1234", sdf_id: "SDF-5", resultado: "FAIL",
+  descricao: "Crash ao girar a tela", data_execucao: "2026-11-05T09:00:00Z", ...extra,
 });
-const pagina = (items: FalhaAberta[], total = items.length) => ({ items, page: 1, page_size: DEFAULT_TABLE_PAGE_SIZE, total_count: total });
+const caso = (extra: Partial<CasoComFalhas> = {}): CasoComFalhas => ({
+  caso_teste_id: "caso-2", tc_id: "Clock_000002", status: "To-Do", time_id: "time-1", responsavel_id: "bia",
+  responsavel_identificador: "bia.s", backup_id: null, dev_fix_id: null, dev_fix_identificador: null,
+  falhas: [falha({ modelo_nome: "S26 Ultra", sdf_id: "SDF-6", resultado: "EXCEPTION", descricao: null, data_execucao: "2026-11-06T09:00:00Z" }), falha()],
+  ...extra,
+});
+const pagina = (items: CasoComFalhas[]) => ({ items, page: 1, page_size: DEFAULT_TABLE_PAGE_SIZE, total_count: items.length });
 
-function renderPage(perfil = kp) {
+function renderPage(perfil = kp, rota = "/bug-reports") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   function ContextOutlet() { return <Outlet context={perfil} />; }
-  const router = createMemoryRouter([{ path: "/", element: <ContextOutlet />, children: [{ path: "bug-reports", element: <BugReportsPage /> }] }], { initialEntries: ["/bug-reports"] });
+  const router = createMemoryRouter([{ path: "/", element: <ContextOutlet />, children: [{ path: "bug-reports", element: <BugReportsPage /> }] }], { initialEntries: [rota] });
   return render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
 }
 
-describe("BugReportsPage", () => {
+describe("BugReportsPage (SDF Failures)", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     await i18n.changeLanguage("en");
-    vi.mocked(bugReportsApi.listar).mockResolvedValue(pagina([falha(), falha({ modelo_dispositivo_id: "s26", modelo_nome: "S26 Ultra", motivo: null, sdf_id: null })]));
+    vi.mocked(bugReportsApi.listar).mockResolvedValue(pagina([caso()]));
     vi.mocked(timesApi.membros).mockResolvedValue([
       { usuario_id: "bia", usuario_user_id: "bia.s", usuario_nome: "Bia", ativo: true },
       { usuario_id: "ana", usuario_user_id: "ana.s", usuario_nome: "Ana", ativo: true },
       { usuario_id: "rafa", usuario_user_id: "rafa.l", usuario_nome: "Rafael", ativo: false },
     ] as never);
-    vi.mocked(projetosApi.listar).mockResolvedValue({ items: [{ id: "clock", nome: "Clock 9.5" }, { id: "camera", nome: "Camera 9.5" }], page: 1, page_size: 100, total_count: 2 } as never);
+    vi.mocked(projetosApi.listar).mockResolvedValue({
+      items: [
+        { id: "clock", nome: "Clock 9.5", app: "Clock", time_id: "time-1", status: "InProgress" },
+        { id: "camera", nome: "Camera 9.5", app: "Camera", time_id: "time-1", status: "InProgress" },
+        { id: "antigo", nome: "Antigo 9.5", app: "Antigo", time_id: "time-1", status: "Completed" },
+      ],
+      page: 1, page_size: 100, total_count: 3,
+    } as never);
   });
 
-  it("mostra uma linha por device com motivo, SDF ID, Status e responsável (CA-01 e CA-04)", async () => {
+  it("abre o primeiro projeto e mostra a falha mais recente do caso (CA-01)", async () => {
     renderPage();
 
-    const linhas = await screen.findAllByRole("row", { name: /Clock_000002/ });
-    expect(linhas).toHaveLength(2);
-    expect(within(linhas[0]).getByText("SM-1234")).toBeInTheDocument();
-    expect(within(linhas[0]).getByText("Crash ao girar a tela")).toBeInTheDocument();
-    expect(within(linhas[0]).getByText("SDF-5")).toBeInTheDocument();
-    expect(within(linhas[0]).getByText("In Fixes")).toBeInTheDocument();
-    expect(linhas[0]).toHaveTextContent("bia.s");
-    expect(within(linhas[1]).getAllByText("—")).toHaveLength(2);
-    expect(bugReportsApi.listar).toHaveBeenCalledWith(1, DEFAULT_TABLE_PAGE_SIZE, {});
+    const [linha] = await screen.findAllByRole("row", { name: /Clock_000002/ });
+    expect(screen.getByRole("heading", { name: "SDF Failures" })).toBeInTheDocument();
+    expect(within(linha).getByText("S26 Ultra")).toBeInTheDocument();
+    expect(within(linha).getByText("SDF-6")).toBeInTheDocument();
+    expect(within(linha).getByText("To-Do")).toBeInTheDocument();
+    expect(linha).toHaveTextContent("bia.s");
+    expect(within(linha).queryByText("SM-1234")).not.toBeInTheDocument();
+    expect(bugReportsApi.listar).toHaveBeenCalledWith("clock", 1, DEFAULT_TABLE_PAGE_SIZE, {});
   });
 
-  it("filtra por projeto e volta para a página 1 (CA-07)", async () => {
+  it("a seta abre todas as falhas do caso, uma embaixo da outra (CA-05)", async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findAllByRole("row", { name: /Clock_000002/ });
 
-    await user.click(screen.getByRole("button", { name: "Filter by Project" }));
-    await user.click(await screen.findByRole("option", { name: "Camera 9.5" }));
+    await user.click(await screen.findByRole("button", { name: "Show all failures of Clock_000002" }));
 
-    await waitFor(() => expect(bugReportsApi.listar).toHaveBeenLastCalledWith(1, DEFAULT_TABLE_PAGE_SIZE, { projeto_id: "camera" }));
+    const [linha] = screen.getAllByRole("row", { name: /Clock_000002/ });
+    expect(within(linha).getByText("S26 Ultra")).toBeInTheDocument();
+    expect(within(linha).getByText("SM-1234")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show all failures of Clock_000002" })).toHaveAttribute("aria-expanded", "true");
   });
 
-  it("vazio sem filtro avisa que não há falhas no SDF (CA-11)", async () => {
+  it("o botão da Description abre o texto inteiro (CA-10)", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Show all failures of Clock_000002" }));
+    await user.click(screen.getByRole("button", { name: /View description/ }));
+
+    expect(await screen.findByText("Crash ao girar a tela")).toBeInTheDocument();
+  });
+
+  it("o projeto vem de ?projeto=, e projeto encerrado não entra (CA-08 e RN-06)", async () => {
+    renderPage(kp, "/bug-reports?projeto=camera");
+    await waitFor(() => expect(bugReportsApi.listar).toHaveBeenCalledWith("camera", 1, DEFAULT_TABLE_PAGE_SIZE, {}));
+
+    vi.mocked(bugReportsApi.listar).mockClear();
+    renderPage(kp, "/bug-reports?projeto=antigo");
+    await waitFor(() => expect(bugReportsApi.listar).toHaveBeenCalledWith("clock", 1, DEFAULT_TABLE_PAGE_SIZE, {}));
+  });
+
+  it("o KP escolhe o Dev Fix, até o próprio dono, sem os membros inativos (CA-11 e CA-12)", async () => {
+    const user = userEvent.setup();
+    vi.mocked(casosTesteApi.atualizar).mockResolvedValue({} as never);
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: /Change Dev Fix Clock_000002/ }));
+    expect(screen.queryByRole("option", { name: "rafa.l" })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole("option", { name: "bia.s" }));
+
+    await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("caso-2", { dev_fix_id: "bia" }));
+    expect(toast.success).toHaveBeenCalledWith("Dev Fix changed.");
+    expect(timesApi.membros).toHaveBeenCalledWith("time-1");
+  });
+
+  it("No Dev Fix remove o Dev Fix com null", async () => {
+    const user = userEvent.setup();
+    vi.mocked(bugReportsApi.listar).mockResolvedValue(pagina([caso({ dev_fix_id: "ana", dev_fix_identificador: "ana.s" })]));
+    vi.mocked(casosTesteApi.atualizar).mockResolvedValue({} as never);
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: /Change Dev Fix Clock_000002/ }));
+    await user.click(await screen.findByRole("option", { name: "No Dev Fix" }));
+
+    await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("caso-2", { dev_fix_id: null }));
+  });
+
+  it("falha: a recusa da API aparece num toast (CA-13)", async () => {
+    const user = userEvent.setup();
+    vi.mocked(casosTesteApi.atualizar).mockRejectedValue(new Error("Responsável e backup devem ser usuários ativos do time."));
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: /Change Dev Fix Clock_000002/ }));
+    await user.click(await screen.findByRole("option", { name: "ana.s" }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Responsável e backup devem ser usuários ativos do time."));
+  });
+
+  it("falha: o dev vê o Dev Fix sem a ação de escolher (CA-14)", async () => {
+    vi.mocked(bugReportsApi.listar).mockResolvedValue(pagina([caso({ dev_fix_id: "ana", dev_fix_identificador: "ana.s" })]));
+    renderPage({ ...kp, perfil_codigo: "USUARIO_PADRAO", permissoes: ["form_factor.consultar"] });
+
+    const [linha] = await screen.findAllByRole("row", { name: /Clock_000002/ });
+    expect(within(linha).getByText("ana.s")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Change Dev Fix/ })).not.toBeInTheDocument();
+    expect(timesApi.membros).not.toHaveBeenCalled();
+  });
+
+  it("vazio avisa que não há falhas no SDF", async () => {
     vi.mocked(bugReportsApi.listar).mockResolvedValue(pagina([]));
     renderPage();
 
     expect(await screen.findByText("No SDF failures")).toBeInTheDocument();
-  });
-
-  it("vazio com filtro: Clear filters volta à lista completa", async () => {
-    const user = userEvent.setup();
-    renderPage();
-    await screen.findAllByRole("row", { name: /Clock_000002/ });
-    vi.mocked(bugReportsApi.listar).mockResolvedValueOnce(pagina([]));
-
-    await user.click(screen.getByRole("button", { name: "Filter by Project" }));
-    await user.click(await screen.findByRole("option", { name: "Camera 9.5" }));
-    await user.click(await screen.findByRole("button", { name: "Clear filters" }));
-
-    await waitFor(() => expect(bugReportsApi.listar).toHaveBeenLastCalledWith(1, DEFAULT_TABLE_PAGE_SIZE, {}));
   });
 
   it("falha: erro da API aparece com role alert", async () => {
@@ -104,40 +169,5 @@ describe("BugReportsPage", () => {
     renderPage();
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't load the failures. Try again.");
-  });
-
-  it("o KP troca o responsável pela linha e a lista recarrega (CA-08)", async () => {
-    const user = userEvent.setup();
-    vi.mocked(casosTesteApi.atualizar).mockResolvedValue({} as never);
-    renderPage();
-
-    await user.click(await screen.findByRole("button", { name: /Change assignee Clock_000002 SM-1234/ }));
-    expect(screen.queryByRole("option", { name: "rafa.l" })).not.toBeInTheDocument();
-    await user.click(await screen.findByRole("option", { name: "ana.s" }));
-
-    await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("caso-2", { responsavel_id: "ana" }));
-    expect(toast.success).toHaveBeenCalledWith("Assignee changed.");
-    await waitFor(() => expect(bugReportsApi.listar).toHaveBeenCalledTimes(2));
-    expect(timesApi.membros).toHaveBeenCalledWith("time-1");
-  });
-
-  it("falha: a recusa da API aparece num toast (CA-14)", async () => {
-    const user = userEvent.setup();
-    vi.mocked(casosTesteApi.atualizar).mockRejectedValue(new Error("O time está fora do seu escopo de projetos."));
-    renderPage();
-
-    await user.click(await screen.findByRole("button", { name: /Change assignee Clock_000002 SM-1234/ }));
-    await user.click(await screen.findByRole("option", { name: "ana.s" }));
-
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("O time está fora do seu escopo de projetos."));
-  });
-
-  it("falha: o dev vê o responsável sem a ação de trocar (CA-10)", async () => {
-    renderPage({ ...kp, perfil_codigo: "USUARIO_PADRAO", permissoes: ["form_factor.consultar"] });
-
-    const [linha] = await screen.findAllByRole("row", { name: /Clock_000002/ });
-    expect(within(linha).getByText("bia.s")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Change assignee/ })).not.toBeInTheDocument();
-    expect(timesApi.membros).not.toHaveBeenCalled();
   });
 });

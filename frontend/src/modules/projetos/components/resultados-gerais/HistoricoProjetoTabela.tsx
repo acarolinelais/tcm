@@ -10,6 +10,7 @@ import { DataTableFilter } from "@/shared/ui/data-table-filter";
 import { DataTablePagination } from "@/shared/ui/data-table-pagination";
 import { estadoDaTabela } from "@/shared/ui/data-table-state";
 import { HistoryIcon } from "@/shared/ui/figma-icons";
+import { LinhaDaPilha as Linha } from "@/shared/ui/linha-da-pilha";
 import { RowActions } from "@/shared/ui/row-action-button";
 import { rowActionIconProps } from "@/shared/ui/row-action-icon";
 import type { CasoHistorico, FiltrosHistoricoProjeto, HistoricoProjeto, ModeloFormFactor, ResultadoNaData } from "../../model/projeto";
@@ -57,10 +58,6 @@ const SEM_MODELOS: ModeloFormFactor[] = [];
 // Número, TC ID e Assignee ficam fixos ao rolar para os lados; as larguras fixas dão o recuo de cada um.
 const fixa = "sticky z-[1] bg-table-body [thead_&]:bg-surface-secondary";
 
-/** Uma linha da pilha, com os 40px das linhas de tabela: os devices ficam alinhados entre as colunas. */
-function Linha({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("flex h-10 items-center", className)}>{children}</div>;
-}
 
 /**
  * General Results de um projeto (specs 032, 033 e 059): uma página de casos e até 5 datas, as mesmas em todas as

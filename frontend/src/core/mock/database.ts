@@ -40,7 +40,7 @@ import {
 } from "@/modules/projetos/model/projeto";
 import type { ModeloDispositivo } from "@/modules/modelos-dispositivo/model/modelo-dispositivo";
 import type { FiltrosAuditoria, RegistroAuditoria } from "@/modules/auditoria/model/auditoria";
-import type { FalhaAberta, FiltrosBugReport } from "@/modules/bug-reports/model/bug-report";
+import type { CasoComFalhas, FiltrosBugReport } from "@/modules/bug-reports/model/bug-report";
 import { lerPlanilhaProjeto, PlanilhaProjetoError, type PessoasDaLinha, type PlanilhaProjeto } from "@/modules/projetos/utils/planilha-projeto";
 import { ApiError, type ProblemDetailsError } from "@/shared/api/problem-details";
 import type { PagedResult } from "@/shared/types/paged-result";
@@ -1503,35 +1503,42 @@ export const mockAuditoriaApi = {
   },
 };
 
-/** Spec 070: o resultado mais recente de cada caso + device, quando é FAIL. */
+const NAO_FALHA = new Set(["PASS", "N/A", "NA", "CHECK"]);
+
+/** Spec 072: um item por caso, com todas as falhas do SDF (tudo que não é PASS, N/A, NA ou Check). */
 export const mockBugReportsApi = {
-  listar(pageNumber: number, pageSize: number, filtros: FiltrosBugReport = {}): PagedResult<FalhaAberta> {
+  // shortcut: o mock não guarda a correção concluída (RN-08) e as falhas não saem da lista; evoluir se o modo mock passar a simular a importação do SDF com Dev Fix.
+  listar(projetoId: string, pageNumber: number, pageSize: number, filtros: FiltrosBugReport = {}): PagedResult<CasoComFalhas> {
     const { db, user, profile } = mockProfile();
+    const project = projetosMockResultadosGerais(db).find((item) => item.id === projetoId && !projetoEncerrado(item.status));
+    if (!project) return page<CasoComFalhas>([], pageNumber, pageSize);
     const pessoal = profile?.codigo === "USUARIO_PADRAO";
-    const falhas = projetosMockResultadosGerais(db)
-      .filter((project) => !projetoEncerrado(project.status) && (!filtros.projeto_id || project.id === filtros.projeto_id))
-      .flatMap((project) => {
-        const { modelos, casos, execucoes } = execucoesMockDoProjeto(db, project);
-        // `execucoes` vem da mais antiga para a mais recente: a última de cada caso + device fica.
-        const ultimas = new Map(execucoes.map((item) => [`${item.caso_teste_id}|${item.modelo_dispositivo_id}`, item]));
-        return [...ultimas.values()].flatMap((item): FalhaAberta[] => {
-          const testCase = casos.find((caso) => caso.id === item.caso_teste_id);
-          if (!testCase || item.resultado.trim().toUpperCase() !== "FAIL" || testCase.status === "Done" || testCase.status === "Cancelled") return [];
-          if (pessoal && testCase.responsavel_id !== user.id && testCase.backup_id !== user.id) return [];
-          if (filtros.modelo_dispositivo_id && item.modelo_dispositivo_id !== filtros.modelo_dispositivo_id) return [];
-          const identificador = db.usuarios.find((usuario) => usuario.id === testCase.responsavel_id)?.user_id ?? null;
-          if (!contem(identificador, filtros.responsavel)) return [];
-          return [{
-            caso_teste_id: testCase.id, tc_id: testCase.tc_id, titulo: testCase.title ?? null, status: testCase.status,
-            projeto_id: project.id, projeto_nome: project.nome, time_id: project.time_id,
-            modelo_dispositivo_id: item.modelo_dispositivo_id,
-            modelo_nome: modelos.find((modelo) => modelo.id === item.modelo_dispositivo_id)?.nome ?? "",
-            sdf_id: item.sdf_id, motivo: null, data_execucao: item.data_reportada,
-            responsavel_id: testCase.responsavel_id, responsavel_identificador: identificador, backup_id: testCase.backup_id,
-          }];
-        });
-      })
-      .sort((a, b) => b.data_execucao.localeCompare(a.data_execucao) || a.tc_id.localeCompare(b.tc_id));
-    return page(falhas, pageNumber, pageSize);
+    const { modelos, casos, execucoes } = execucoesMockDoProjeto(db, project);
+    const identificador = (id?: string | null) => db.usuarios.find((usuario) => usuario.id === id)?.user_id ?? null;
+    const itens = casos.flatMap((testCase): CasoComFalhas[] => {
+      if (testCase.status === "Cancelled") return [];
+      if (pessoal && ![testCase.responsavel_id, testCase.backup_id, testCase.dev_fix_id].includes(user.id)) return [];
+      const dono = identificador(testCase.responsavel_id);
+      const devFix = identificador(testCase.dev_fix_id);
+      if (!contem(dono, filtros.responsavel) || !contem(devFix, filtros.dev_fix)) return [];
+      // `execucoes` vem da mais antiga para a mais recente; a página mostra a mais recente primeiro.
+      const falhas = execucoes
+        .filter((item) => item.caso_teste_id === testCase.id && !NAO_FALHA.has(item.resultado.trim().toUpperCase())
+          && noPeriodoMock(item.dia, filtros.periodo)
+          && (!filtros.modelo_dispositivo_id || item.modelo_dispositivo_id === filtros.modelo_dispositivo_id))
+        .reverse()
+        .map((item) => ({
+          modelo_dispositivo_id: item.modelo_dispositivo_id,
+          modelo_nome: modelos.find((modelo) => modelo.id === item.modelo_dispositivo_id)?.nome ?? "",
+          sdf_id: item.sdf_id, resultado: item.resultado, descricao: null, data_execucao: item.data_reportada,
+        }));
+      if (!falhas.length) return [];
+      return [{
+        caso_teste_id: testCase.id, tc_id: testCase.tc_id, status: testCase.status, time_id: project.time_id,
+        responsavel_id: testCase.responsavel_id, responsavel_identificador: dono, backup_id: testCase.backup_id,
+        dev_fix_id: testCase.dev_fix_id ?? null, dev_fix_identificador: devFix, falhas,
+      }];
+    }).sort((a, b) => b.falhas[0].data_execucao.localeCompare(a.falhas[0].data_execucao) || a.tc_id.localeCompare(b.tc_id));
+    return page(itens, pageNumber, pageSize);
   },
 };
