@@ -14,6 +14,7 @@ from src.domain.common.exceptions import (
     NotFoundException,
 )
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
+from src.domain.entities.caso_teste import StatusCasoTeste
 from src.domain.entities.execucao_sdf import ExecucaoSdf
 from src.domain.entities.importacao_sdf import ImportacaoSdf
 from src.domain.entities.importacao_sdf_status import ImportacaoSdfStatus
@@ -181,14 +182,27 @@ class ImportacaoSdfServiceImpl:
         if self._contexto_auditoria is not None:
             await self._contexto_auditoria.definir_origem(OrigemAuditoria.FORM_FACTOR)
         aprovados = await self._caso_repo.listar_todos_aprovados(unidade_id, projeto.id, caso_ids)
-        com_fail = {linha.tc_id for linha in relatorio.linhas if linha.resultado.upper() == "FAIL"}
+        com_falha = {
+            linha.tc_id
+            for linha in relatorio.linhas
+            if ResultadoFormFactor.eh_falha(linha.resultado)
+        }
         for tc_id, caso in casos.items():
             anterior = caso.status
-            caso.aplicar_resultado_sdf(caso.id in aprovados, tc_id in com_fail)
+            caso.aplicar_resultado_sdf(caso.id in aprovados, tc_id in com_falha)
             if caso.status is not anterior:
+                # Spec 072, RN-08: o Done só encerra a correção se o caso voltou à validação
+                # depois do Dev Fix.
+                concluiu = (
+                    caso.status is StatusCasoTeste.DONE
+                    and caso.dev_fix_em is not None
+                    and await self._status_repo.entrou_em_validacao_depois_do_dev_fix(
+                        unidade_id, caso.id, caso.dev_fix_em
+                    )
+                )
                 await self._caso_repo.atualizar(caso)
                 await self._status_repo.adicionar(
-                    ImportacaoSdfStatus(unidade_id, importacao.id, caso.id, caso.status)
+                    ImportacaoSdfStatus(unidade_id, importacao.id, caso.id, caso.status, concluiu)
                 )
         # Spec 065: o relatório pode fechar o caso em todos os devices. Depois do atualizar(), que
         # grava o caso inteiro e apagaria a data gravada por este UPDATE.

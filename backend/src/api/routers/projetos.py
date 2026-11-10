@@ -113,10 +113,11 @@ async def obter_projeto(
 async def atualizar_projeto(
     projeto_id: UUID,
     request: AtualizarProjetoRequest,
+    fuso_horario: str = Query("UTC", min_length=1, max_length=64),
     service: ProjetoService = Depends(get_projeto_service),
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
-    return await service.atualizar(usuario_atual, projeto_id, request)
+    return await service.atualizar(usuario_atual, projeto_id, request, fuso_horario)
 
 
 @router.delete("/{projeto_id}", status_code=204)

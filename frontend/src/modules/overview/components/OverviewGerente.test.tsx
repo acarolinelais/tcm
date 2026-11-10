@@ -24,6 +24,8 @@ const time: OverviewTime = {
   passRatePorProjeto: [{ projetoId: "p1", projeto: "Alarm 2.0", aprovados: 8, total: 10 }],
 };
 const comRodada: OverviewProjeto = {
+  dataPlanejada: null,
+  metaDiaria: null,
   burndown: [],
   passRate: { rodadaEm: "2026-11-01T12:00:00Z", modelos: [{ modeloId: "m1", modelo: "SAMSUNG S26", aprovados: 3, total: 4 }] },
 };
@@ -71,7 +73,7 @@ it("falha: sem In Fixes, o retrabalho mostra o próprio vazio e os outros gráfi
 });
 
 it("falha: projeto sem rodada mostra o Pass Rate por modelo vazio (CA-10)", async () => {
-  vi.mocked(overviewApi.obterProjeto).mockResolvedValue({ burndown: [], passRate: null });
+  vi.mocked(overviewApi.obterProjeto).mockResolvedValue({ dataPlanejada: null, metaDiaria: null, burndown: [], passRate: null });
   abrir();
 
   expect(await within(await cartao("Pass Rate by model")).findByRole("heading", { name: "No Form Factor round yet" })).toBeInTheDocument();

@@ -14,6 +14,7 @@ from src.domain.entities.caso_teste import (
     SituacaoCasoTeste,
     StatusCasoTeste,
 )
+from src.domain.entities.resultado_form_factor import ResultadoFormFactor
 from src.domain.queries.caso_teste_com_responsavel import CasoTesteComResponsavel
 from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
 from src.infrastructure.data.models.execucao_sdf_model import ExecucaoSdfModel
@@ -196,7 +197,8 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
         """Grava a finalização de tudo (spec 065) nos casos que fecharam e ainda não a têm.
 
         A data é a mais recente entre os últimos resultados de cada device (RN-03 a RN-08). A
-        migration g065 repete esta regra em SQL para o retroativo.
+        migration g065 calculou o retroativo com a regra antiga, só PASS; a spec 072 passou a
+        aceitar N/A e Check sem recalcular o que já estava gravado (RN-04).
         """
         if not caso_ids:
             return
@@ -230,7 +232,8 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
     @staticmethod
     def _aprovados(unidade_id: UUID, projeto_id: UUID, caso_ids: Sequence[UUID]):
         """Casos (e a data mais recente) em que cada device ativo do projeto tem resultado e o mais
-        recente de cada um é PASS, com a ordem de "mais recente" da General Results."""
+        recente de cada um não é falha (`ResultadoFormFactor.NAO_FALHA`, spec 072), com a ordem de
+        "mais recente" da General Results."""
         posicao = (
             func.row_number()
             .over(
@@ -276,7 +279,9 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             .where(ultimos.c.posicao == 1)
             .group_by(ultimos.c.caso_teste_id)
             .having(
-                func.bool_and(func.upper(func.trim(ultimos.c.resultado)) == "PASS"),
+                func.bool_and(
+                    func.upper(func.trim(ultimos.c.resultado)).in_(ResultadoFormFactor.NAO_FALHA)
+                ),
                 func.count() == devices_do_projeto,
             )
             .subquery()
@@ -309,6 +314,8 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
         caso.id = model.id
         caso.code_done_em = model.code_done_em
         caso.all_passed_em = model.all_passed_em
+        caso.dev_fix_id = model.dev_fix_id
+        caso.dev_fix_em = model.dev_fix_em
         caso.ativo = model.ativo
         caso.created_at = model.created_at
         caso.updated_at = model.updated_at
@@ -336,6 +343,8 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             expected_result=entity.expected_result,
             code_done_em=entity.code_done_em,
             all_passed_em=entity.all_passed_em,
+            dev_fix_id=entity.dev_fix_id,
+            dev_fix_em=entity.dev_fix_em,
             ativo=entity.ativo,
             created_at=entity.created_at,
             updated_at=entity.updated_at,

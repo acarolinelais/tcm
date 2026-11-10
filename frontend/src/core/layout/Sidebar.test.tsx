@@ -33,6 +33,7 @@ describe("Sidebar project navigation", () => {
     for (const perfilCodigo of ["ADMIN_UNIDADE", "GERENTE", "KP", "USUARIO_PADRAO"] as const) {
       const { unmount } = renderSidebar({ ...perfil, perfil_codigo: perfilCodigo, permissoes: ["form_factor.consultar"] });
       expect(screen.getByRole("link", { name: "General Results" })).toHaveAttribute("href", "/resultados-gerais");
+      expect(screen.getByRole("link", { name: "SDF Failures" })).toHaveAttribute("href", "/bug-reports");
       unmount();
     }
     for (const current of [
@@ -41,6 +42,7 @@ describe("Sidebar project navigation", () => {
     ]) {
       const { unmount } = renderSidebar({ ...perfil, ...current });
       expect(screen.queryByRole("link", { name: "General Results" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "SDF Failures" })).not.toBeInTheDocument();
       unmount();
     }
   });

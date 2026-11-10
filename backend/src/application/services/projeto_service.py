@@ -1,3 +1,5 @@
+from collections.abc import Callable
+from datetime import UTC, datetime
 from uuid import UUID
 
 from src.application.schemas.navegacao_board import (
@@ -11,6 +13,7 @@ from src.application.schemas.projeto import (
     ProjetoResponse,
     to_response,
 )
+from src.application.validators.semana import fuso_horario_valido
 from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
@@ -35,6 +38,7 @@ class ProjetoServiceImpl:
         projeto_modelo_repo: ProjetoModeloRepository,
         caso_teste_repo: CasoTesteRepository,
         uow: UnitOfWork,
+        agora: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         self._projeto_repo = projeto_repo
         self._time_repo = time_repo
@@ -42,6 +46,7 @@ class ProjetoServiceImpl:
         self._projeto_modelo_repo = projeto_modelo_repo
         self._caso_teste_repo = caso_teste_repo
         self._uow = uow
+        self._agora = agora
 
     async def criar(
         self, usuario_atual: UsuarioAutenticado, request: CriarProjetoRequest
@@ -135,7 +140,11 @@ class ProjetoServiceImpl:
         return await self._to_response_com_modelos(projeto)
 
     async def atualizar(
-        self, usuario_atual: UsuarioAutenticado, projeto_id: UUID, request: AtualizarProjetoRequest
+        self,
+        usuario_atual: UsuarioAutenticado,
+        projeto_id: UUID,
+        request: AtualizarProjetoRequest,
+        fuso_horario: str,
     ) -> ProjetoResponse:
         self._exigir_permissao(usuario_atual, "projetos.gerenciar")
         projeto = await self._projeto_repo.obter_por_id(usuario_atual.unidade_id, projeto_id)
@@ -182,6 +191,10 @@ class ProjetoServiceImpl:
         projeto.atualizar_dados(
             request.nome or projeto.nome, request.app, request.one_ui, time_novo.id
         )
+        if "data_planejada" in request.model_fields_set:
+            # O "hoje" é o de quem salva: no Brasil depois das 21h o dia em UTC já virou.
+            hoje = self._agora().astimezone(fuso_horario_valido(fuso_horario)).date()
+            projeto.definir_data_planejada(request.data_planejada, hoje)
         if modelos_ids is not None:
             await self._projeto_modelo_repo.substituir_modelos(
                 usuario_atual.unidade_id, projeto.id, tuple(modelos_ids)

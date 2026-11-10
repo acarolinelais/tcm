@@ -41,7 +41,11 @@ class ProjetoService(Protocol):
     ) -> ProjetoResponse: ...
 
     async def atualizar(
-        self, usuario_atual: UsuarioAutenticado, projeto_id: UUID, request: AtualizarProjetoRequest
+        self,
+        usuario_atual: UsuarioAutenticado,
+        projeto_id: UUID,
+        request: AtualizarProjetoRequest,
+        fuso_horario: str,
     ) -> ProjetoResponse: ...
 
     async def excluir(self, usuario_atual: UsuarioAutenticado, projeto_id: UUID) -> None: ...

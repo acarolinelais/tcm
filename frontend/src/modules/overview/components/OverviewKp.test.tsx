@@ -24,6 +24,8 @@ const time: OverviewTime = {
   passRatePorProjeto: [],
 };
 const projeto = (passRate: OverviewProjeto["passRate"]): OverviewProjeto => ({
+  dataPlanejada: "2026-12-11",
+  metaDiaria: 3.3,
   burndown: [{ dia: "2026-11-04", planejado: 20, executado: 20 }, { dia: "2026-11-05", planejado: 18, executado: 19 }],
   passRate,
 });
@@ -51,6 +53,51 @@ it("abre no primeiro projeto e resume cada gráfico em texto", async () => {
   expect(within(await cartao("Finished per developer")).getByText("Ana 3 and Bia 0.")).toBeInTheDocument();
   expect(within(await cartao("Done per project")).getByText("Alarm 2.0 44% and Clock 9.5 0%.")).toBeInTheDocument();
   expect(within(await cartao("Finished per week")).getByText("3 Test Cases in the last 12 weeks, 2 this week.")).toBeInTheDocument();
+});
+
+it("o burndown mostra a data planejada e a meta por dia útil (spec 071, CA-03 e CA-04)", async () => {
+  abrir();
+
+  expect(await within(await cartao("Planned vs. executed")).findByText("Planned date 12/11/2026 · 3.3 per business day")).toBeInTheDocument();
+});
+
+it("com dias futuros no gráfico, o resumo usa hoje, o último dia com executado (spec 071, CA-08)", async () => {
+  vi.mocked(overviewApi.obterProjeto).mockResolvedValue({
+    ...comRodada,
+    burndown: [
+      { dia: "2026-12-01", planejado: 30, executado: 30 },
+      { dia: "2026-12-02", planejado: 27, executado: 26 },
+      { dia: "2026-12-03", planejado: 24, executado: null },
+    ],
+  });
+  abrir();
+
+  expect(await within(await cartao("Planned vs. executed")).findByText("26 Test Cases still open today, against 27 planned.")).toBeInTheDocument();
+});
+
+it("com data planejada e nada aberto, o cartão mostra a meta em vez do estado vazio", async () => {
+  vi.mocked(overviewApi.obterProjeto).mockResolvedValue({
+    ...comRodada,
+    metaDiaria: 0,
+    burndown: [{ dia: "2026-12-01", planejado: 0, executado: 0 }, { dia: "2026-12-02", planejado: 0, executado: null }],
+  });
+  abrir();
+
+  expect(await within(await cartao("Planned vs. executed")).findByText("Planned date 12/11/2026 · 0 per business day")).toBeInTheDocument();
+});
+
+it("falha: sem data planejada, o burndown avisa e não tem planejado (spec 071, CA-05)", async () => {
+  vi.mocked(overviewApi.obterProjeto).mockResolvedValue({
+    ...comRodada,
+    dataPlanejada: null,
+    metaDiaria: null,
+    burndown: [{ dia: "2026-11-05", planejado: null, executado: 19 }],
+  });
+  abrir();
+
+  const card = await cartao("Planned vs. executed");
+  expect(await within(card).findByText(/This project has no planned date/)).toBeInTheDocument();
+  expect(within(card).getByText("19 Test Cases still open today.")).toBeInTheDocument();
 });
 
 it("trocar de projeto refaz o burndown e o Pass Rate com o projeto escolhido (CA-02)", async () => {

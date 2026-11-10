@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from sqlalchemy import ForeignKey, Index, String, func
@@ -23,6 +23,8 @@ class ProjetoModel(Base):
         server_default=StatusProjeto.CREATED.value,
         nullable=False,
     )
+    data_planejada: Mapped[date | None] = mapped_column()
+    planejamento_iniciado_em: Mapped[date | None] = mapped_column()
     ativo: Mapped[bool] = mapped_column(default=True, server_default="true", nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime | None] = mapped_column(onupdate=func.now())

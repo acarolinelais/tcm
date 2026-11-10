@@ -124,6 +124,21 @@ async def test_projetos_incluem_principal_backup_sem_duplicar(contexto):
     assert pagina.total_count == 2
 
 
+async def test_projetos_incluem_o_dev_fix(contexto):
+    # Spec 072, RN-15: o dev que só é Dev Fix chega ao projeto pelo seletor de SDF Failures.
+    c = contexto
+    projeto = await c.projeto()
+    caso = await c.caso(projeto, c.colega_id, c.terceiro_id)
+    caso.dev_fix_id = c.dev_id
+    await c.session.flush()
+
+    pagina = await c.projetos.listar_associados_por_times(
+        c.unidade_id, (c.time_id,), c.dev_id, 1, 20
+    )
+
+    assert [p.id for p in pagina.items] == [projeto.id]
+
+
 async def test_projetos_ignoram_sem_associacao_e_inativos(contexto):
     c = contexto
     await c.projeto()

@@ -16,6 +16,7 @@ from src.domain.common.exceptions import ForbiddenException, NotFoundException
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.caso_teste import CategoriaCasoTeste, StatusCasoTeste
 from src.infrastructure.data.auditoria import ContextoAuditoriaImpl, usuario_auditoria
+from src.infrastructure.data.models.time_membro_model import TimeMembroModel
 from src.infrastructure.data.unit_of_work import UnitOfWorkImpl
 from src.infrastructure.repositories.caso_teste_repository import CasoTesteRepositoryImpl
 from src.infrastructure.repositories.execucao_sdf_repository import ExecucaoSdfRepositoryImpl
@@ -162,6 +163,32 @@ async def test_exclusao_categoria_e_transferencia_entram_com_autor_e_valores(cen
     assert ("backup_id", "Ana", "Bia", "Bia", "api") in itens
     assert ("category", "A", "B", "Ana", "api") in itens
     assert itens[-1][0] == "criacao"
+
+
+@pytest.mark.asyncio
+async def test_dev_fix_entra_com_o_nome_e_sem_a_data(cenario):
+    # Spec 072: o Dev Fix aparece como o Responsável e o Backup; o `dev_fix_em` fica oculto.
+    caso_id = await cenario.caso("TC-1", cenario.ana, status="InFixes")
+    cenario.session.add(
+        TimeMembroModel(
+            id=uuid4(),
+            unidade_id=cenario.unidade_id,
+            time_id=cenario.time_id,
+            usuario_id=cenario.bia,
+        )
+    )
+    await cenario.session.flush()
+    casos = _casos(cenario.session)
+
+    await casos.atualizar(
+        await _como(cenario, cenario.gestora),
+        caso_id,
+        AtualizarCasoTesteRequest(dev_fix_id=cenario.bia),
+    )
+    itens = _itens(await casos.historico(cenario.gestora, caso_id))
+
+    assert itens[0] == ("dev_fix_id", None, "Bia", "Ana", "api")
+    assert not any(item[0] == "dev_fix_em" for item in itens)
 
 
 @pytest.mark.asyncio

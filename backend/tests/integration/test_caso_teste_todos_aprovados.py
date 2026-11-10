@@ -82,6 +82,33 @@ async def test_fail_antigo_corrigido_nao_impede(cenario):
 
 
 @pytest.mark.asyncio
+async def test_na_e_check_fecham_como_pass(cenario):
+    # Spec 072, CA-07: N/A, NA e Check não são falha e fecham o caso.
+    com_na, com_check = await cenario.caso("Clock_000012"), await cenario.caso("Clock_000013")
+    await cenario.importar(com_na, "SDF-5", DIA_5, {cenario.s26: "PASS", cenario.s25: " n/a "})
+    await cenario.importar(com_check, "SDF-6", DIA_6, {cenario.s26: "NA", cenario.s25: "Check"})
+
+    aprovados = await CasoTesteRepositoryImpl(cenario.session).listar_todos_aprovados(
+        cenario.unidade_id, cenario.projeto_id, (com_na, com_check)
+    )
+    await _marcar(cenario, com_na, com_check)
+
+    assert aprovados == {com_na, com_check}
+    assert await _all_passed(cenario, com_na) == DIA_5
+
+
+@pytest.mark.asyncio
+async def test_exception_e_none_nao_fecham(cenario):
+    # Spec 072, RN-01 (falha): EXCEPTION e None são falha como o FAIL.
+    caso = await cenario.caso("Clock_000014")
+    await cenario.importar(caso, "SDF-5", DIA_5, {cenario.s26: "EXCEPTION", cenario.s25: "None"})
+
+    await _marcar(cenario, caso)
+
+    assert await _all_passed(cenario, caso) is None
+
+
+@pytest.mark.asyncio
 async def test_ultimo_resultado_fail_nao_fecha(cenario):
     # CA-05 (falha).
     caso = await cenario.caso("Clock_000007")

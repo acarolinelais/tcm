@@ -90,13 +90,21 @@ export interface PassRateModelo {
 }
 
 export interface OverviewProjetoResponse {
-  burndown: { dia: string; planejado: number; executado: number }[];
+  data_planejada: string | null;
+  meta_diaria: number | null;
+  burndown: { dia: string; planejado: number | null; executado: number | null }[];
   pass_rate: { rodada_em: string; modelos: { modelo_id: string; modelo: string; aprovados: number; total: number }[] } | null;
 }
 
 export interface OverviewProjeto {
-  /** Os últimos 30 dias, do mais antigo ao de hoje. */
-  burndown: { dia: string; planejado: number; executado: number }[];
+  /** Spec 071: a data planejada do projeto (AAAA-MM-DD) e a meta de casos por dia útil; null sem data. */
+  dataPlanejada: string | null;
+  metaDiaria: number | null;
+  /**
+   * Com data planejada, do início do planejamento até a data (ou até hoje, se ela passou); sem data, os últimos 30
+   * dias. Planejado null: sem data planejada. Executado null: dia que ainda não chegou.
+   */
+  burndown: { dia: string; planejado: number | null; executado: number | null }[];
   /** Null: o projeto ainda não tem rodada de Form Factor. */
   passRate: { rodadaEm: string; modelos: PassRateModelo[] } | null;
 }

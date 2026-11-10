@@ -41,9 +41,17 @@ MESES_DE_DESEMPENHO = 6
 # Spec 063, RN-03: os gráficos por dia mostram 30 dias, e os por semana, 12 semanas.
 DIAS = 30
 SEMANAS = 12
-# shortcut: a mesma meta para todos os projetos (spec 063, RN-07); trocar pelo planejamento por
-# projeto quando a spec dele existir.
-META_DIARIA = 2
+
+
+def escopo_do_usuario(usuario_atual: UsuarioAutenticado) -> EscopoOverview:
+    """Spec 039, RN-01: o admin vê a unidade; gerente e KP, os times do escopo (ADR 0036); os
+    demais, os casos em que são principal ou Backup. O Bug Reports (spec 070) usa o mesmo recorte.
+    """
+    if usuario_atual.eh_administrador:
+        return EscopoOverview()
+    if usuario_atual.perfil_codigo in ("GERENTE", "KP"):
+        return EscopoOverview(time_ids=usuario_atual.times_no_escopo)
+    return EscopoOverview(pessoa_id=usuario_atual.id)
 
 
 def _ultimos_dias(hoje: date) -> list[date]:
@@ -57,14 +65,35 @@ def _ultimas_semanas(hoje: date) -> list[date]:
     return [segunda - timedelta(weeks=atras) for atras in range(SEMANAS - 1, -1, -1)]
 
 
-def linha_planejada(dias: list[date], inicio: int) -> list[int]:
-    """Planejado do burndown (spec 063, RN-07): começa em `inicio` e cai a META_DIARIA a cada
-    dia útil (segunda a sexta) depois do primeiro, até 0."""
-    linha, restante = [], inicio
-    for indice, dia in enumerate(dias):
-        if indice and dia.weekday() < 5:
-            restante = max(restante - META_DIARIA, 0)
-        linha.append(restante)
+def _dias_uteis(depois_de: date, ate: date) -> int:
+    """Dias de segunda a sexta depois de `depois_de` até `ate`, contando `ate`."""
+    return sum(
+        (depois_de + timedelta(days=n)).weekday() < 5 for n in range(1, (ate - depois_de).days + 1)
+    )
+
+
+def meta_diaria(inicio: date, data_planejada: date, restantes: int) -> float:
+    """Spec 071, RN-06 e RN-10: os casos não Done no início divididos pelos dias úteis até a data
+    planejada; sem dia útil no meio, a meta é tudo de uma vez."""
+    uteis = _dias_uteis(inicio, data_planejada)
+    return restantes / uteis if uteis else float(restantes)
+
+
+def linha_planejada(
+    dias: list[date], inicio: date, data_planejada: date, restantes: int, meta: float
+) -> list[float | None]:
+    """Spec 071, RN-05: sem ponto antes do início; depois, cai a meta a cada dia útil até zero na
+    data planejada, e fica em zero."""
+    # Dias úteis já passados desde o início até a véspera do primeiro dia do gráfico.
+    uteis = _dias_uteis(inicio, max(dias[0] - timedelta(days=1), inicio))
+    linha: list[float | None] = []
+    for dia in dias:
+        if dia > inicio and dia.weekday() < 5:
+            uteis += 1
+        if dia < inicio:
+            linha.append(None)
+        else:
+            linha.append(0.0 if dia >= data_planejada else max(restantes - meta * uteis, 0.0))
     return linha
 
 
@@ -101,7 +130,7 @@ class OverviewServiceImpl:
             meses.append((ano, indice + 1))
         rotulos = [f"{ano:04}-{mes:02}" for ano, mes in meses]
 
-        escopo = self._escopo(usuario_atual)
+        escopo = escopo_do_usuario(usuario_atual)
         if escopo.time_ids == ():
             # KP ou gerente sem time: nada a contar (CA-05).
             resumo = ResumoOverview()
@@ -135,7 +164,7 @@ class OverviewServiceImpl:
         desde_dia = datetime.combine(_ultimos_dias(hoje)[0], time(), fuso)
         desde_dia = desde_dia.astimezone(UTC).replace(tzinfo=None)
 
-        escopo = self._escopo(usuario_atual)
+        escopo = escopo_do_usuario(usuario_atual)
         if escopo.pessoa_id is not None or escopo.time_ids == ():
             # O dev tem a visão pessoal; KP ou gerente sem time não têm o que mostrar.
             resumo = ResumoTime()
@@ -215,14 +244,50 @@ class OverviewServiceImpl:
         if time_ is None or not usuario_atual.time_no_escopo(time_.id, time_.setor_id):
             raise NotFoundException("Projeto não encontrado.")
 
-        dias = _ultimos_dias(self._hoje(fuso))
-        fins = [datetime.combine(dia + timedelta(days=1), time(), fuso) for dia in dias]
-        executado = await self._overview_repo.burndown_executado(unidade_id, projeto.id, fins)
-        planejado = linha_planejada(dias, executado[0])
+        hoje = self._hoje(fuso)
+
+        def fim_do_dia(dia: date) -> datetime:
+            return datetime.combine(dia + timedelta(days=1), time(), fuso)
+
+        inicio, data_planejada = projeto.planejamento_iniciado_em, projeto.data_planejada
+        executado: list[int | None]
+        if inicio is None or data_planejada is None:
+            dias = _ultimos_dias(hoje)
+            executado = list(
+                await self._overview_repo.burndown_executado(
+                    unidade_id, projeto.id, [fim_do_dia(dia) for dia in dias]
+                )
+            )
+            planejado, meta = [None] * len(dias), None
+        else:
+            # Spec 071, RN-05: do início até a data planejada, ou até hoje se ela já passou. O
+            # executado só existe até hoje.
+            primeiro = min(inicio, hoje)
+            dias = [
+                primeiro + timedelta(days=n)
+                for n in range((max(data_planejada, hoje) - primeiro).days + 1)
+            ]
+            passados = [dia for dia in dias if dia <= hoje]
+            # Os casos não Done no fim do dia do início saem da mesma consulta; o instante entra uma
+            # vez só, senão a contagem daquele dia vem em dobro.
+            extra = [] if inicio in passados else [fim_do_dia(inicio)]
+            contagens = await self._overview_repo.burndown_executado(
+                unidade_id, projeto.id, [*map(fim_do_dia, passados), *extra]
+            )
+            restantes = contagens.pop() if extra else contagens[passados.index(inicio)]
+            executado = [*contagens, *[None] * (len(dias) - len(passados))]
+            meta = meta_diaria(inicio, data_planejada, restantes)
+            planejado = linha_planejada(dias, inicio, data_planejada, restantes, meta)
         pass_rate = await self._overview_repo.pass_rate_ultima_rodada(unidade_id, projeto.id)
         return OverviewProjetoResponse(
+            data_planejada=data_planejada,
+            meta_diaria=None if meta is None else round(meta, 1),
             burndown=[
-                PontoBurndownResponse(dia=dia.isoformat(), planejado=plano, executado=feito)
+                PontoBurndownResponse(
+                    dia=dia.isoformat(),
+                    planejado=None if plano is None else round(plano, 1),
+                    executado=feito,
+                )
                 for dia, plano, feito in zip(dias, planejado, executado, strict=True)
             ],
             pass_rate=None
@@ -292,13 +357,3 @@ class OverviewServiceImpl:
 
     def _hoje(self, fuso: ZoneInfo) -> date:
         return self._agora().astimezone(fuso).date()
-
-    @staticmethod
-    def _escopo(usuario_atual: UsuarioAutenticado) -> EscopoOverview:
-        # RN-01: o admin vê a unidade; gerente e KP, os times do escopo (ADR 0036); os demais, os
-        # casos em que são principal ou Backup.
-        if usuario_atual.eh_administrador:
-            return EscopoOverview()
-        if usuario_atual.perfil_codigo in ("GERENTE", "KP"):
-            return EscopoOverview(time_ids=usuario_atual.times_no_escopo)
-        return EscopoOverview(pessoa_id=usuario_atual.id)

@@ -15,6 +15,7 @@ const ROTULO_CAMPO: Record<string, string> = {
   status: "status",
   responsavel_id: "owner",
   backup_id: "backup",
+  dev_fix_id: "devFix",
   justificativa_exclusao: "exclusionJustification",
   title: "caseTitle",
   precondition: "casePrecondition",
