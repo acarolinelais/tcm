@@ -38,6 +38,7 @@ def _caso(usuario, projeto_id, automation_level=None):
         status="To-Do",
         responsavel_id=uuid4(),
         backup_id=uuid4(),
+        dev_fix_id=None,
         justificativa_exclusao=None,
         code_done_em=None,
         all_passed_em=None,
@@ -176,6 +177,29 @@ async def test_responsavel_nao_altera_category_e_admin_altera(api_client):
 
     assert permitido.status_code == 200
     assert permitido.json()["category"] == "C"
+
+
+async def test_dev_fix_pelo_put_so_para_a_gestao(api_client):
+    # Spec 072, CA-11 e CA-14: o dev recebe 403 até no próprio caso; a gestão grava.
+    from src.api.main import app
+
+    caso, uow = _usar_service_real_com_caso(caso_do_membro=True)
+    dev_fix = str(uuid4())
+
+    negado = await api_client.put(f"/api/test-cases/{caso.id}", json={"dev_fix_id": dev_fix})
+
+    assert negado.status_code == 403
+    assert caso.dev_fix_id is None
+    uow.commit.assert_not_awaited()
+
+    admin = UsuarioAutenticado(uuid4(), caso.unidade_id, "ADMIN_UNIDADE")
+    app.dependency_overrides[get_usuario_atual] = dependency_override(admin)
+    permitido = await api_client.put(f"/api/test-cases/{caso.id}", json={"dev_fix_id": dev_fix})
+    removido = await api_client.put(f"/api/test-cases/{caso.id}", json={"dev_fix_id": None})
+
+    assert permitido.status_code == 200
+    assert permitido.json()["dev_fix_id"] == dev_fix
+    assert removido.json()["dev_fix_id"] is None
 
 
 async def test_responsavel_volta_o_status_para_to_do(api_client):

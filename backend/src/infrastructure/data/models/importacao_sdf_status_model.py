@@ -23,4 +23,8 @@ class ImportacaoSdfStatusModel(Base):
     )
     caso_teste_id: Mapped[UUID] = mapped_column(ForeignKey("casos_teste.id"), nullable=False)
     status_aplicado: Mapped[str] = mapped_column(String(20), nullable=False)
+    # Spec 072, RN-08: o Done desta importação encerrou a correção do Dev Fix.
+    concluiu_correcao: Mapped[bool] = mapped_column(
+        default=False, server_default="false", nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)

@@ -673,6 +673,80 @@ async def test_gestor_pode_reatribuir_caso_a_membros_ativos(contexto):
     uow.commit.assert_awaited_once()
 
 
+def _caso_do_projeto(projeto, responsavel_id=None, status=StatusCasoTeste.TO_DO):
+    return CasoTeste(
+        projeto.unidade_id,
+        projeto.id,
+        "Clock_001",
+        CategoriaCasoTeste.A,
+        DificuldadeCasoTeste.LOW,
+        responsavel_id or uuid4(),
+        uuid4(),
+        SituacaoCasoTeste.NEW,
+        status,
+    )
+
+
+async def test_gestor_escolhe_o_dev_fix_sem_mudar_status_nem_responsavel(contexto):
+    # Spec 072, CA-11 e CA-12: outro membro ou o próprio responsável.
+    service, casos, _, _, membros, usuarios, uow, admin, projeto, time = contexto
+    caso = _caso_do_projeto(projeto, status=StatusCasoTeste.IN_FIXES)
+    casos.obter_por_id.return_value = caso
+    for dev_fix in (uuid4(), caso.responsavel_id):
+        tornar_membro(membros, usuarios, admin.unidade_id, time.id, dev_fix)
+
+        resposta = await service.atualizar(
+            admin, caso.id, AtualizarCasoTesteRequest(dev_fix_id=dev_fix)
+        )
+
+        assert (resposta.dev_fix_id, resposta.status) == (dev_fix, StatusCasoTeste.IN_FIXES)
+        assert resposta.responsavel_id == caso.responsavel_id
+    assert uow.commit.await_count == 2
+
+
+async def test_gestor_remove_o_dev_fix_com_null(contexto):
+    service, casos, _, _, membros, _, _, admin, projeto, _ = contexto
+    caso = _caso_do_projeto(projeto)
+    caso.definir_dev_fix(uuid4())
+    casos.obter_por_id.return_value = caso
+
+    resposta = await service.atualizar(admin, caso.id, AtualizarCasoTesteRequest(dev_fix_id=None))
+
+    assert resposta.dev_fix_id is None
+    membros.obter_por_time_e_usuario.assert_not_awaited()
+
+
+async def test_dev_fix_fora_do_time_e_recusado(contexto):
+    # Spec 072, CA-13 (falha): a mesma recusa da troca de responsável.
+    service, casos, _, _, membros, usuarios, uow, admin, projeto, _ = contexto
+    casos.obter_por_id.return_value = _caso_do_projeto(projeto)
+    usuarios.obter_por_id.return_value = None
+
+    with pytest.raises(ConflictException, match="usuários ativos do time"):
+        await service.atualizar(admin, uuid4(), AtualizarCasoTesteRequest(dev_fix_id=uuid4()))
+
+    uow.commit.assert_not_awaited()
+
+
+async def test_dev_nao_escolhe_dev_fix_nem_no_proprio_caso(contexto):
+    # Spec 072, CA-14 (falha).
+    service, casos, _, _, _, _, uow, _, projeto, time = contexto
+    dev_id = uuid4()
+    dev = UsuarioAutenticado(
+        dev_id,
+        projeto.unidade_id,
+        "USUARIO_PADRAO",
+        permissoes=frozenset({"test_cases.consultar"}),
+        time_ids=(time.id,),
+    )
+    casos.obter_por_id.return_value = _caso_do_projeto(projeto, responsavel_id=dev_id)
+
+    with pytest.raises(ForbiddenException):
+        await service.atualizar(dev, uuid4(), AtualizarCasoTesteRequest(dev_fix_id=dev_id))
+
+    uow.commit.assert_not_awaited()
+
+
 async def test_gestor_altera_situation_e_status(contexto):
     service, casos, _, _, membros, _, uow, admin, projeto, _ = contexto
     caso = CasoTeste(

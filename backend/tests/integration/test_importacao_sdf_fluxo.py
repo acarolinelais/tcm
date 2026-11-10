@@ -1,5 +1,5 @@
 import os
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -15,6 +15,7 @@ from src.infrastructure.data.auditoria import ContextoAuditoriaImpl
 from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
 from src.infrastructure.data.models.execucao_sdf_model import ExecucaoSdfModel
 from src.infrastructure.data.models.importacao_sdf_model import ImportacaoSdfModel
+from src.infrastructure.data.models.importacao_sdf_status_model import ImportacaoSdfStatusModel
 from src.infrastructure.data.models.modelo_dispositivo_model import ModeloDispositivoModel
 from src.infrastructure.data.unit_of_work import UnitOfWorkImpl
 from src.infrastructure.repositories.caso_teste_repository import CasoTesteRepositoryImpl
@@ -335,3 +336,68 @@ async def test_desfazer_libera_o_sdf_id_e_a_anterior_vira_a_ultima(cenario):
 
     assert ultima.id == primeira.importacao_id
     assert de_novo.importacao_id != segunda.importacao_id
+
+
+async def _mudar(cenario, caso_id, **valores):
+    # Pelo UPDATE, para a auditoria por trigger (ADR 0044) registrar a mudança de Status.
+    await cenario.session.execute(
+        update(CasoTesteModel).where(CasoTesteModel.id == caso_id).values(**valores)
+    )
+    await cenario.session.flush()
+
+
+async def _escolher_dev_fix(cenario, caso_id):
+    agora = datetime.now(UTC).replace(tzinfo=None)
+    await _mudar(cenario, caso_id, dev_fix_id=cenario.bia, dev_fix_em=agora)
+
+
+async def _importar_pass(cenario, caso_id, sdf_id):
+    """O S25 já passou; o relatório traz PASS no S26 e fecha Keyboard_000001 em Done."""
+    await cenario.importar(
+        caso_id, f"{sdf_id}-S25", datetime(2026, 10, 20, 9), {cenario.s25: "PASS"}
+    )
+    importacao, _ = _servicos(cenario.session)
+    conteudo = relatorio([("Keyboard_000001.py", "PASS", "", "Keyboard_A_OneUI95.ts")])
+    await importacao.importar(
+        _gerente(cenario), cenario.projeto_id, f"{sdf_id}_0_Test_1_Detail.xlsx", conteudo
+    )
+    status = ImportacaoSdfStatusModel
+    return (
+        await cenario.session.execute(
+            select(status.status_aplicado, status.concluiu_correcao).where(
+                status.caso_teste_id == caso_id
+            )
+        )
+    ).one()
+
+
+@pytest.mark.asyncio
+async def test_dev_fix_e_volta_a_validacao_concluem_a_correcao(cenario):
+    # Spec 072, CA-15.
+    caso = cenario.casos[0]
+    await _mudar(cenario, caso, status="InFixes")
+    await _escolher_dev_fix(cenario, caso)
+    await _mudar(cenario, caso, status="InValidation")
+
+    assert await _importar_pass(cenario, caso, "888888-000001") == ("Done", True)
+
+
+@pytest.mark.asyncio
+async def test_sem_dev_fix_o_done_nao_conclui(cenario):
+    # Spec 072, CA-16 (falha).
+    caso = cenario.casos[0]
+    await _mudar(cenario, caso, status="InFixes")
+    await _mudar(cenario, caso, status="InValidation")
+
+    assert await _importar_pass(cenario, caso, "888888-000002") == ("Done", False)
+
+
+@pytest.mark.asyncio
+async def test_dev_fix_escolhido_com_o_caso_ja_em_validacao_nao_conclui(cenario):
+    # Spec 072, CA-17 (falha): o caso não passou por uma correção depois do Dev Fix.
+    caso = cenario.casos[0]
+    await _mudar(cenario, caso, status="InFixes")
+    await _mudar(cenario, caso, status="InValidation")
+    await _escolher_dev_fix(cenario, caso)
+
+    assert await _importar_pass(cenario, caso, "888888-000003") == ("Done", False)

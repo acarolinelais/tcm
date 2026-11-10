@@ -64,7 +64,7 @@ class CasoTesteServiceImpl:
         }
     )
     # A Category é métrica do time: só a gestão altera.
-    CAMPOS_GESTAO = CAMPOS_RESPONSAVEL | {"category", "responsavel_id", "backup_id"}
+    CAMPOS_GESTAO = CAMPOS_RESPONSAVEL | {"category", "responsavel_id", "backup_id", "dev_fix_id"}
     # Colunas do Kanban na ordem do ciclo (spec 037, RN-02): In Fixes antes de Done.
     ORDEM_KANBAN = (
         StatusCasoTeste.TO_DO,
@@ -368,6 +368,11 @@ class CasoTesteServiceImpl:
                 )
             await self._garantir_membro(time, responsavel_id)
             await self._garantir_membro(time, backup_id)
+        if "dev_fix_id" in campos_enviados:
+            # Spec 072, RN-17: mesma validação do responsável; pode ser o próprio responsável.
+            if request.dev_fix_id is not None:
+                await self._garantir_membro(time, request.dev_fix_id)
+            caso.definir_dev_fix(request.dev_fix_id)
         caso.atualizar_gerenciamento(
             responsavel_id,
             backup_id,

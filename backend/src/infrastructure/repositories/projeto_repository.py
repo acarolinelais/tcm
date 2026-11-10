@@ -54,9 +54,11 @@ class ProjetoRepositoryImpl(RepositoryBaseImpl[Projeto, ProjetoModel]):
                 CasoTesteModel.unidade_id == unidade_id,
                 CasoTesteModel.projeto_id == ProjetoModel.id,
                 CasoTesteModel.ativo.is_(True),
+                # Spec 072, RN-15: o Dev Fix também chega ao projeto pelo seletor.
                 or_(
                     CasoTesteModel.responsavel_id == usuario_id,
                     CasoTesteModel.backup_id == usuario_id,
+                    CasoTesteModel.dev_fix_id == usuario_id,
                 ),
             )
             .exists()

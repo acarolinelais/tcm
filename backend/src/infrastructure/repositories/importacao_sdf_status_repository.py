@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.caso_teste import StatusCasoTeste
 from src.domain.entities.importacao_sdf_status import ImportacaoSdfStatus
+from src.domain.queries.auditoria import OrigemAuditoria
 from src.infrastructure.data.models.importacao_sdf_status_model import ImportacaoSdfStatusModel
 
 # O `>=` vale porque a auditoria grava com clock_timestamp(), depois do now() que preencheu o
@@ -29,6 +30,38 @@ _REVERTIVEIS = text(
 )
 
 
+# Spec 072, RN-08: o caso entrou em In Validation depois do Dev Fix e da última correção
+# concluída. O `dev_fix_em` é UTC sem fuso; o `created_at` da importação usa o fuso da sessão.
+# A volta de uma importação desfeita não é uma correção.
+_ENTROU_EM_VALIDACAO = text(
+    """
+    SELECT EXISTS (
+        SELECT 1
+        FROM auditoria_alteracoes a
+        WHERE a.unidade_id = :unidade_id
+          AND a.table_name = 'casos_teste'
+          AND a.row_id = :caso_id
+          AND a.operation = 'UPDATE'
+          AND 'status' = ANY (a.changed_fields)
+          AND a.new_values ->> 'status' = :em_validacao
+          AND a.origem IS DISTINCT FROM :desfeita
+          AND a.created_at > GREATEST(
+              CAST(:dev_fix_em AS TIMESTAMP) AT TIME ZONE 'UTC',
+              (
+                  SELECT CAST(max(i.created_at) AS TIMESTAMPTZ)
+                  FROM importacoes_sdf_status s
+                  JOIN importacoes_sdf i ON i.id = s.importacao_sdf_id
+                  WHERE s.unidade_id = :unidade_id
+                    AND s.caso_teste_id = :caso_id
+                    AND s.concluiu_correcao
+                    AND i.ativo
+              )
+          )
+    )
+    """
+)
+
+
 class ImportacaoSdfStatusRepositoryImpl:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
@@ -41,8 +74,25 @@ class ImportacaoSdfStatusRepositoryImpl:
                 importacao_sdf_id=entity.importacao_sdf_id,
                 caso_teste_id=entity.caso_teste_id,
                 status_aplicado=entity.status_aplicado.value,
+                concluiu_correcao=entity.concluiu_correcao,
             )
         )
+
+    async def entrou_em_validacao_depois_do_dev_fix(
+        self, unidade_id: UUID, caso_teste_id: UUID, dev_fix_em: datetime
+    ) -> bool:
+        return (
+            await self.session.execute(
+                _ENTROU_EM_VALIDACAO,
+                {
+                    "unidade_id": unidade_id,
+                    "caso_id": caso_teste_id,
+                    "dev_fix_em": dev_fix_em,
+                    "em_validacao": StatusCasoTeste.IN_VALIDATION.value,
+                    "desfeita": OrigemAuditoria.IMPORTACAO_SDF_DESFEITA.value,
+                },
+            )
+        ).scalar_one()
 
     async def listar_revertiveis(
         self, unidade_id: UUID, importacao_sdf_id: UUID, importado_em: datetime

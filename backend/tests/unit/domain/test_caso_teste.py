@@ -489,3 +489,31 @@ def test_atualizacoes_nao_recebem_os_textos():
             procedure="outro",
         )
     assert caso.procedure == "1. Messages"
+
+
+def test_definir_dev_fix_nao_muda_status_nem_responsavel():
+    # Spec 072, RN-17 e RN-18: o Dev Fix pode ser o próprio responsável.
+    caso = criar_caso(StatusCasoTeste.IN_FIXES)
+    responsavel = caso.responsavel_id
+
+    caso.definir_dev_fix(responsavel)
+
+    assert (caso.dev_fix_id, caso.status, caso.responsavel_id) == (
+        responsavel,
+        StatusCasoTeste.IN_FIXES,
+        responsavel,
+    )
+    assert caso.dev_fix_em is not None
+
+
+def test_repetir_o_dev_fix_mantem_a_data_e_remover_apaga_os_dois():
+    caso = criar_caso()
+    dev = uuid4()
+    caso.definir_dev_fix(dev)
+    desde = caso.dev_fix_em
+
+    caso.definir_dev_fix(dev)
+    assert caso.dev_fix_em == desde
+
+    caso.definir_dev_fix(None)
+    assert (caso.dev_fix_id, caso.dev_fix_em) == (None, None)

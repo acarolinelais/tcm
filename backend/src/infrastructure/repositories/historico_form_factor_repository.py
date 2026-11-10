@@ -3,7 +3,7 @@ from dataclasses import replace
 from datetime import date, datetime
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, and_, func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.common.paged_result import PagedResult
@@ -28,11 +28,8 @@ def _dia(fuso_horario: str):
     )
 
 
-def _resultados_validos(unidade_id: UUID, projeto_id: UUID | ColumnElement[UUID], *colunas):
+def _resultados_validos(unidade_id: UUID, projeto_id: UUID, *colunas):
     """Resultados ativos de execuções válidas do projeto, só dos modelos ativos dele.
-
-    `projeto_id` também aceita uma expressão correlacionada à execução (o projeto do caso dela),
-    para consultar vários projetos de uma vez, como faz o Bug Reports (spec 070).
 
     Execução válida: importada por uma importação SDF ativa do projeto, ou manual. É a mesma regra
     das tabelas de Form Factor do projeto (`ResultadoFormFactorRepositoryImpl`). O caso não entra
