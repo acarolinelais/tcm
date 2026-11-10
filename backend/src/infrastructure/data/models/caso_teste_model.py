@@ -22,6 +22,9 @@ class CasoTesteModel(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     responsavel_id: Mapped[UUID] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
     backup_id: Mapped[UUID | None] = mapped_column(ForeignKey("usuarios.id"))
+    # Spec 072: quem corrige as falhas do SDF, e desde quando (UTC sem fuso).
+    dev_fix_id: Mapped[UUID | None] = mapped_column(ForeignKey("usuarios.id"))
+    dev_fix_em: Mapped[datetime | None] = mapped_column()
     justificativa_exclusao: Mapped[str | None] = mapped_column(
         String(CasoTeste.JUSTIFICATIVA_EXCLUSAO_MAX_LENGTH)
     )

@@ -4,6 +4,7 @@ import { AppLayout } from "@/core/layout/AppLayout";
 import { LoginPage } from "@/core/auth/LoginPage";
 import { AlterarSenhaPage } from "@/core/auth/AlterarSenhaPage";
 import { auditoriaRoutes } from "@/modules/auditoria";
+import { bugReportsRoutes } from "@/modules/bug-reports";
 import { configuracoesRoutes } from "@/modules/configuracoes";
 import { documentacaoRoutes } from "@/modules/documentacao";
 import { modelosDispositivoRoutes } from "@/modules/modelos-dispositivo";
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
       ...setoresRoutes,
       ...timesRoutes,
       ...auditoriaRoutes,
+      ...bugReportsRoutes,
     ],
   },
 ]);

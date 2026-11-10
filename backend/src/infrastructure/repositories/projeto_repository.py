@@ -54,9 +54,11 @@ class ProjetoRepositoryImpl(RepositoryBaseImpl[Projeto, ProjetoModel]):
                 CasoTesteModel.unidade_id == unidade_id,
                 CasoTesteModel.projeto_id == ProjetoModel.id,
                 CasoTesteModel.ativo.is_(True),
+                # Spec 072, RN-15: o Dev Fix também chega ao projeto pelo seletor.
                 or_(
                     CasoTesteModel.responsavel_id == usuario_id,
                     CasoTesteModel.backup_id == usuario_id,
+                    CasoTesteModel.dev_fix_id == usuario_id,
                 ),
             )
             .exists()
@@ -228,6 +230,8 @@ class ProjetoRepositoryImpl(RepositoryBaseImpl[Projeto, ProjetoModel]):
         projeto.id = model.id
         projeto.ativo = model.ativo
         projeto.status = StatusProjeto(model.status)
+        projeto.data_planejada = model.data_planejada
+        projeto.planejamento_iniciado_em = model.planejamento_iniciado_em
         projeto.created_at = model.created_at
         projeto.updated_at = model.updated_at
         return projeto
@@ -241,6 +245,8 @@ class ProjetoRepositoryImpl(RepositoryBaseImpl[Projeto, ProjetoModel]):
             app=entity.app,
             one_ui=entity.one_ui,
             status=entity.status.value,
+            data_planejada=entity.data_planejada,
+            planejamento_iniciado_em=entity.planejamento_iniciado_em,
             ativo=entity.ativo,
             created_at=entity.created_at,
             updated_at=entity.updated_at,

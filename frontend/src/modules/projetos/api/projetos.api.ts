@@ -99,7 +99,10 @@ export const projetosApi = {
       : httpPatchBody<Projeto>(`/api/projetos/${id}/status`, { status });
   },
   atualizar(id: string, body: AtualizarProjetoInput) {
-    return useMock ? Promise.resolve(mockProjetosApi.atualizar(id, body)) : httpPut<Projeto>(`/api/projetos/${id}`, body);
+    if (useMock) return Promise.resolve(mockProjetosApi.atualizar(id, body));
+    // O fuso do navegador decide qual é o dia de hoje para a data planejada (spec 071).
+    const fuso = encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    return httpPut<Projeto>(`/api/projetos/${id}?fuso_horario=${fuso}`, body);
   },
   excluir(id: string) {
     return useMock ? Promise.resolve(mockProjetosApi.excluir(id)) : httpDelete<void>(`/api/projetos/${id}`);

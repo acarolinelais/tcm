@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 
-import { formatNumber } from "@/core/i18n/format";
+import { formatDate, formatNumber } from "@/core/i18n/format";
+import { lerDiaIso } from "@/shared/lib/utils";
 import { estadoDe, useOverviewTime, useProjetoEscolhido } from "../hooks/useOverviewGraficos";
 import { BarrasHorizontais } from "./graficos/BarrasHorizontais";
 import { BarrasVerticais } from "./graficos/BarrasVerticais";
@@ -19,8 +20,16 @@ export function OverviewKp() {
   const escolha = useProjetoEscolhido(time);
   const tentarTime = () => void time.refetch();
 
-  const burndown = escolha.projeto.data?.burndown ?? [];
-  const hoje = burndown.at(-1);
+  const projeto = escolha.projeto.data;
+  const burndown = projeto?.burndown ?? [];
+  // Com data planejada o gráfico vai até ela: hoje é o último dia que já tem executado.
+  const hoje = burndown.filter((ponto) => ponto.executado !== null).at(-1);
+  const plano = projeto?.dataPlanejada
+    ? t("burndownPlan", { date: formatDate(lerDiaIso(projeto.dataPlanejada)), rate: media(projeto.metaDiaria ?? 0) })
+    : t("burndownNoPlannedDate");
+  const resumoBurndown = !hoje || hoje.executado === null ? "" : hoje.planejado === null
+    ? t("burndownSummaryNoPlan", { executed: formatNumber(hoje.executado) })
+    : t("burndownSummary", { executed: formatNumber(hoje.executado), planned: media(hoje.planejado) });
   const criacao = (time.data?.criacaoPorDia ?? []).map((p) => ({ nome: p.projeto, valor: p.media }));
   const devs = (time.data?.concluidosPorDev ?? []).map((dev) => ({ nome: dev.nome, valor: dev.concluidos }));
   const doneProjetos = time.data?.donePorProjeto ?? [];
@@ -32,10 +41,11 @@ export function OverviewKp() {
       <SecaoDoProjeto escolha={escolha}>
         <GraficoCard
           titulo={t("burndownTitle")}
-          resumo={hoje ? t("burndownSummary", { executed: formatNumber(hoje.executado), planned: formatNumber(hoje.planejado) }) : ""}
-          estado={escolha.estado(burndown.every((ponto) => ponto.executado === 0 && ponto.planejado === 0))}
+          resumo={resumoBurndown}
+          estado={escolha.estado(!projeto?.dataPlanejada && burndown.every((ponto) => !ponto.executado))}
           onRetry={escolha.tentarDeNovo}
         >
+          <p className="text-xs text-body">{plano}</p>
           <BurndownChart titulo={t("burndownTitle")} pontos={burndown} />
         </GraficoCard>
         <PassRatePorModeloCard escolha={escolha} />

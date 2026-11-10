@@ -58,6 +58,8 @@ class AtualizarCasoTesteRequest(BaseModel):
     status: StatusCasoTeste | None = None
     responsavel_id: UUID | None = None
     backup_id: UUID | None = None
+    # Spec 072: enviar null remove o Dev Fix; omitir mantém.
+    dev_fix_id: UUID | None = None
     justificativa_exclusao: str | None = Field(
         default=None, max_length=CasoTeste.JUSTIFICATIVA_EXCLUSAO_MAX_LENGTH
     )
@@ -95,6 +97,7 @@ class CasoTesteResponse(BaseModel):
     status: StatusCasoTeste
     responsavel_id: UUID
     backup_id: UUID | None
+    dev_fix_id: UUID | None
     justificativa_exclusao: str | None
     # Spec 065: só leitura; os requests recusam os dois campos (extra="forbid").
     code_done_em: datetime | None
@@ -126,6 +129,7 @@ def to_response(caso: CasoTeste) -> CasoTesteResponse:
         status=caso.status,
         responsavel_id=caso.responsavel_id,
         backup_id=caso.backup_id,
+        dev_fix_id=caso.dev_fix_id,
         justificativa_exclusao=caso.justificativa_exclusao,
         code_done_em=timestamp_utc(caso.code_done_em),
         all_passed_em=timestamp_utc(caso.all_passed_em),

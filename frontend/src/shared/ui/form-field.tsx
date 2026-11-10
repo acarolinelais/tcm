@@ -1,6 +1,11 @@
-import type { ReactNode, Ref } from "react";
-import { Description, FieldError, Input, Label, ListBox, Select, TextArea, TextField } from "@heroui/react";
+import { useId, useState, type ReactNode, type Ref } from "react";
+import { Button, Description, FieldError, Input, Label, ListBox, Popover, Select, TextArea, TextField } from "@heroui/react";
 import { useTranslation } from "react-i18next";
+
+import { formatDate } from "@/core/i18n/format";
+import { cn, formatarDiaIso, lerDiaIso } from "@/shared/lib/utils";
+import { Calendario } from "@/shared/ui/calendario";
+import { CalendarIcon } from "@/shared/ui/figma-icons";
 
 // Campos dos painéis da spec 022 sobre o HeroUI. O erro vem da tela (validação própria ou ProblemDetails).
 
@@ -111,3 +116,43 @@ export function SelectField({ label, error, description, isRequired, isDisabled,
   );
 }
 
+/** Dia (`AAAA-MM-DD`, vazio sem data) escolhido no calendário compartilhado, com Limpar e Hoje (spec 071). */
+export function DateInputField({ label, error, description, isRequired, isDisabled, value, onChange }: CampoBase & {
+  description?: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const { t } = useTranslation();
+  const id = useId();
+  const [aberto, setAberto] = useState(false);
+  const escolher = (dia: string) => { onChange(dia); setAberto(false); };
+  const ajuda = error ?? description;
+  return (
+    <div className="flex flex-col gap-2">
+      <span id={`${id}-rotulo`} className="text-[14px] font-medium text-body">{label}{isRequired ? " *" : ""}</span>
+      <Popover isOpen={aberto} onOpenChange={setAberto}>
+        <Button
+          variant="outline"
+          isDisabled={isDisabled}
+          aria-labelledby={`${id}-rotulo ${id}-valor`}
+          aria-describedby={ajuda ? `${id}-ajuda` : undefined}
+          aria-invalid={Boolean(error) || undefined}
+          className={cn("h-10 w-full justify-between rounded-xl border bg-surface px-3 text-[14px] font-normal shadow-none", error ? "border-danger" : "border-edge")}
+        >
+          <span id={`${id}-valor`} className={value ? "text-body" : "text-muted"}>{value ? formatDate(lerDiaIso(value), { dateStyle: "medium" }) : t("selectDate")}</span>
+          <CalendarIcon className="text-muted" />
+        </Button>
+        <Popover.Content placement="bottom start" className="p-1.5">
+          <Popover.Dialog aria-label={label} className="outline-none">
+            <Calendario modo="dia" valor={value} onEscolher={escolher} />
+            <div className="flex justify-between border-t border-separator px-1 pt-1.5">
+              <Button size="sm" variant="ghost" className="rounded-lg px-3" onPress={() => escolher("")}>{t("clear")}</Button>
+              <Button size="sm" variant="ghost" className="rounded-lg px-3 text-accent-text" onPress={() => escolher(formatarDiaIso(new Date()))}>{t("today")}</Button>
+            </div>
+          </Popover.Dialog>
+        </Popover.Content>
+      </Popover>
+      {ajuda ? <p id={`${id}-ajuda`} role={error ? "alert" : undefined} className={cn("text-[12px]", error ? "text-danger" : "text-muted")}>{ajuda}</p> : null}
+    </div>
+  );
+}

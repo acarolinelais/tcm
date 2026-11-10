@@ -97,6 +97,9 @@ class CasoTeste(EntidadeTenant):
         # Spec 065: datas gravadas pelo sistema, em UTC sem fuso; a reidratação as preenche.
         self.code_done_em: datetime | None = None
         self.all_passed_em: datetime | None = None
+        # Spec 072: quem corrige as falhas do SDF; `dev_fix_em` em UTC sem fuso.
+        self.dev_fix_id: UUID | None = None
+        self.dev_fix_em: datetime | None = None
         # Na reidratação o backup pode faltar: transferir_para_backup() o deixa vazio.
         self._validar_responsaveis(responsavel_id, backup_id, exigir_backup=exigir_backup)
 
@@ -136,18 +139,26 @@ class CasoTeste(EntidadeTenant):
         elif modelos_ids and all(resultados.get(modelo_id) == "PASS" for modelo_id in modelos_ids):
             self.status = StatusCasoTeste.DONE
 
-    def aplicar_resultado_sdf(self, tudo_pass: bool, fail_no_relatorio: bool) -> None:
-        """Status pelo relatório SDF importado (spec 066, RN-04 a RN-07).
+    def definir_dev_fix(self, usuario_id: UUID | None) -> None:
+        """Escolhe, troca ou remove o Dev Fix (spec 072, RN-17 e RN-18): Status e responsável
+        ficam como estão. Repetir o mesmo dev não muda a data."""
+        if usuario_id == self.dev_fix_id:
+            return
+        self.dev_fix_id = usuario_id
+        self.dev_fix_em = None if usuario_id is None else datetime.now(UTC).replace(tzinfo=None)
 
-        `tudo_pass`: o último resultado de cada device do projeto é PASS. `fail_no_relatorio`: o
-        resultado deste relatório é FAIL. Só um caso em validação muda de Status (RN-05); fora dela
-        o relatório grava o resultado no histórico e quem move o caso é uma pessoa.
+    def aplicar_resultado_sdf(self, sem_falha: bool, falha_no_relatorio: bool) -> None:
+        """Status pelo relatório SDF importado (specs 066 e 072).
+
+        `sem_falha`: o último resultado de cada device do projeto não é falha. Só um caso em
+        validação muda de Status (RN-05); fora dela o relatório grava o resultado no histórico e
+        quem move o caso é uma pessoa.
         """
         if self.status is not StatusCasoTeste.IN_VALIDATION:
             return
-        if tudo_pass:
+        if sem_falha:
             self.status = StatusCasoTeste.DONE
-        elif fail_no_relatorio:
+        elif falha_no_relatorio:
             self.status = StatusCasoTeste.IN_FIXES
 
     def desfazer_resultado_sdf(self, status_aplicado: StatusCasoTeste) -> bool:

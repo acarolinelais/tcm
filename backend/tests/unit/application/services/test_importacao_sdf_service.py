@@ -216,6 +216,74 @@ async def test_cada_caso_do_relatorio_segue_a_sua_regra_de_status(ctx):
     ]
 
 
+async def test_exception_e_none_levam_in_validation_para_in_fixes(ctx):
+    # Spec 072, CA-06: toda falha conta, não só FAIL. N/A e Check não são falha.
+    for tc_id in ("Keyboard_000001", "Keyboard_000002", "Keyboard_000003"):
+        ctx.status_por_tc[tc_id] = StatusCasoTeste.IN_VALIDATION
+    conteudo = relatorio(
+        [
+            ("Keyboard_000001.py", "EXCEPTION", "", "Keyboard_A_OneUI95.ts"),
+            ("Keyboard_000002.py", "None", "", "Keyboard_A_OneUI95.ts"),
+            ("Keyboard_000003.py", "Check", "", "Keyboard_A_OneUI95.ts"),
+        ]
+    )
+
+    await ctx.importar(conteudo=conteudo)
+
+    assert {tc_id: caso.status for tc_id, caso in ctx.casos.items()} == {
+        "Keyboard_000001": StatusCasoTeste.IN_FIXES,
+        "Keyboard_000002": StatusCasoTeste.IN_FIXES,
+        "Keyboard_000003": StatusCasoTeste.IN_VALIDATION,
+    }
+
+
+@pytest.mark.parametrize("voltou_a_validar", [True, False])
+async def test_done_com_dev_fix_marca_a_correcao_se_voltou_a_validar(ctx, voltou_a_validar):
+    # Spec 072, RN-08: CA-15 (voltou depois do Dev Fix) e CA-17 (já estava em validação).
+    ctx.status_por_tc["Keyboard_000001"] = StatusCasoTeste.IN_VALIDATION
+    casos = ctx.casos
+    ctx.caso_repo.listar_todos_aprovados.side_effect = lambda *_: {casos["Keyboard_000001"].id}
+    ctx.caso_repo.obter_por_projeto_tc_id.side_effect = _com_dev_fix(ctx)
+    ctx.status_repo.entrou_em_validacao_depois_do_dev_fix.return_value = voltou_a_validar
+    conteudo = relatorio([("Keyboard_000001.py", "PASS", "", "Keyboard_A_OneUI95.ts")])
+
+    await ctx.importar(conteudo=conteudo)
+
+    caso = casos["Keyboard_000001"]
+    ctx.status_repo.entrou_em_validacao_depois_do_dev_fix.assert_awaited_once_with(
+        ctx.usuario.unidade_id, caso.id, caso.dev_fix_em
+    )
+    guardado = ctx.status_repo.adicionar.await_args.args[0]
+    assert (guardado.status_aplicado, guardado.concluiu_correcao) == (
+        StatusCasoTeste.DONE,
+        voltou_a_validar,
+    )
+
+
+async def test_done_sem_dev_fix_nao_consulta_a_correcao(ctx):
+    # Spec 072, CA-16 (falha): sem Dev Fix não há correção para encerrar.
+    ctx.status_por_tc["Keyboard_000001"] = StatusCasoTeste.IN_VALIDATION
+    casos = ctx.casos
+    ctx.caso_repo.listar_todos_aprovados.side_effect = lambda *_: {casos["Keyboard_000001"].id}
+    conteudo = relatorio([("Keyboard_000001.py", "PASS", "", "Keyboard_A_OneUI95.ts")])
+
+    await ctx.importar(conteudo=conteudo)
+
+    ctx.status_repo.entrou_em_validacao_depois_do_dev_fix.assert_not_awaited()
+    assert ctx.status_repo.adicionar.await_args.args[0].concluiu_correcao is False
+
+
+def _com_dev_fix(ctx):
+    criar = ctx.caso_repo.obter_por_projeto_tc_id.side_effect
+
+    def caso(*args):
+        novo = criar(*args)
+        novo.definir_dev_fix(uuid4())
+        return novo
+
+    return caso
+
+
 async def test_relatorio_recusado_nao_muda_status(ctx):
     # Spec 066, CA-11 (falha).
     conteudo = relatorio(

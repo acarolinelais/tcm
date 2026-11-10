@@ -1,4 +1,5 @@
 import type { SVGProps } from "react";
+import { Bug } from "lucide-react";
 
 // Ícones da sidebar exportados do Figma (TCM, frames "Sidebar - Admin/Manager/KP/Dev", nodes 2216:614…).
 // Use no tamanho nativo do viewBox (SIDEBAR_ICON_SIZE): o traço de 1px do Figma engrossa se o ícone for ampliado.
@@ -34,6 +35,11 @@ export function TimelineIcon(props: IconProps) {
       <path d="M6.47437 7.73376L8.39797 8.24915" strokeLinecap="round" stroke="currentColor"/>
     </svg>
   );
+}
+
+// Spec 070: sem frame no Figma; o traço absoluto de 1px acompanha os demais.
+export function BugReportsIcon(props: IconProps) {
+  return <Bug size={14} strokeWidth={1} absoluteStrokeWidth aria-hidden="true" {...props} />;
 }
 
 // Spec 059: janela com lupa (docs/specs/059-redesign-general-results/figma/general-results-icon.svg).

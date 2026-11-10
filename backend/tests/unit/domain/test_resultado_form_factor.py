@@ -32,3 +32,13 @@ def test_descricao_acima_do_limite_levanta_erro():
 def test_criar_resultado_vazio_levanta_erro():
     with pytest.raises(ValueError, match="obrigatório"):
         ResultadoFormFactor(uuid4(), uuid4(), uuid4(), "  ")
+
+
+@pytest.mark.parametrize("resultado", ["FAIL", "EXCEPTION", "None", " fail ", "Timeout"])
+def test_eh_falha_para_tudo_que_nao_passa(resultado):
+    assert ResultadoFormFactor.eh_falha(resultado)
+
+
+@pytest.mark.parametrize("resultado", ["PASS", "N/A", "NA", "Check", " pass ", "n/a\t"])
+def test_eh_falha_falso_para_pass_na_e_check(resultado):
+    assert not ResultadoFormFactor.eh_falha(resultado)

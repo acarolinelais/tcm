@@ -50,6 +50,8 @@ export interface Projeto {
   status: StatusProjeto;
   modelos_dispositivo?: string[];
   modelos_ids?: string[];
+  /** Spec 071: AAAA-MM-DD, sem hora. */
+  data_planejada?: string | null;
   ativo: boolean;
   created_at: string | null;
   updated_at: string | null;
@@ -75,6 +77,8 @@ export interface CasoTeste {
   status: StatusCasoTeste;
   responsavel_id: string;
   backup_id: string | null;
+  /** Spec 072: quem corrige as falhas do SDF. A gestão escolhe em SDF Failures. */
+  dev_fix_id?: string | null;
   /** Motivo da exclusão (spec 026); só existe com o Status `Cancelled`. Ausente nos TCs antigos. */
   justificativa_exclusao?: string | null;
   /** Spec 065: primeira entrada em In Review e fechamento com PASS em todos os devices. Só o sistema grava. */
@@ -345,6 +349,8 @@ export interface AtualizarProjetoInput {
   one_ui: string;
   time_id: string;
   modelos_ids: string[];
+  /** Ausente mantém a data; null apaga (spec 071). */
+  data_planejada?: string | null;
 }
 
 export interface CriarCasoTesteInput {
@@ -365,6 +371,8 @@ export interface AtualizarCasoTesteInput {
   status?: StatusCasoTeste;
   responsavel_id?: string;
   backup_id?: string | null;
+  /** `null` remove o Dev Fix (spec 072). */
+  dev_fix_id?: string | null;
   /** Obrigatória junto com `status: "Cancelled"` (spec 026). */
   justificativa_exclusao?: string;
 }

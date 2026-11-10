@@ -1,7 +1,9 @@
+from datetime import date, timedelta
 from enum import StrEnum
 from uuid import UUID
 
 from src.domain.common.entidade_tenant import EntidadeTenant
+from src.domain.common.exceptions import InvalidInputException
 
 
 class StatusProjeto(StrEnum):
@@ -17,6 +19,8 @@ class Projeto(EntidadeTenant):
     APP_MAX_LENGTH = 100
     ONE_UI_MAX_LENGTH = 40
     STATUS_MAX_LENGTH = 20
+    # O burndown tem um ponto por dia até a data planejada: o limite segura o tamanho do gráfico.
+    DATA_PLANEJADA_MAX_DIAS = 730
 
     def __init__(
         self,
@@ -34,6 +38,8 @@ class Projeto(EntidadeTenant):
             nome or f"{self.app} {self.one_ui}", "Nome", self.NOME_MAX_LENGTH
         )
         self.status = StatusProjeto.CREATED
+        self.data_planejada: date | None = None
+        self.planejamento_iniciado_em: date | None = None
 
     def atualizar_status(self, status: StatusProjeto) -> None:
         self.status = StatusProjeto(status)
@@ -43,6 +49,18 @@ class Projeto(EntidadeTenant):
         self.app = self._validar_valor(app, "App", self.APP_MAX_LENGTH)
         self.one_ui = self._validar_valor(one_ui, "One UI", self.ONE_UI_MAX_LENGTH)
         self.time_id = time_id
+
+    def definir_data_planejada(self, data: date | None, hoje: date) -> None:
+        """Spec 071: definir ou mudar a data recomeça o planejamento hoje; `None` apaga os dois.
+        Mandar a mesma data não muda nada, nem quando ela já ficou no passado (RN-09)."""
+        if data == self.data_planejada:
+            return
+        if data is not None and data < hoje:
+            raise InvalidInputException("A data planejada não pode estar no passado.")
+        if data is not None and data > hoje + timedelta(days=self.DATA_PLANEJADA_MAX_DIAS):
+            raise InvalidInputException("A data planejada deve estar em até dois anos.")
+        self.data_planejada = data
+        self.planejamento_iniciado_em = None if data is None else hoje
 
     def desativar(self) -> None:
         self.ativo = False

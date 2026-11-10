@@ -3,7 +3,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
 import { toast } from "@/shared/lib/toast";
-import { SelectField, TextInputField } from "@/shared/ui/form-field";
+import { formatarDiaIso } from "@/shared/lib/utils";
+import { DateInputField, SelectField, TextInputField } from "@/shared/ui/form-field";
 import { MultiSelectCombobox } from "@/shared/ui/multi-select-combobox";
 import { DrawerFormActions, SideDrawer } from "@/shared/ui/side-drawer";
 import { projetosApi, type Projeto } from "../api/projetos.api";
@@ -14,7 +15,7 @@ interface OpcaoModelo {
   description?: string | null;
 }
 
-/** Painel de editar projeto: nome, app, One UI, time e modelos. Cada abertura começa com os dados salvos. */
+/** Painel de editar projeto: nome, app, One UI, time, modelos e data planejada. Cada abertura começa com os dados salvos. */
 export function EditarProjetoDrawer({ projeto, onFechar, times, nomeTime, opcoesModelos, carregandoModelos }: {
   projeto: Projeto | null;
   onFechar: () => void;
@@ -32,6 +33,7 @@ export function EditarProjetoDrawer({ projeto, onFechar, times, nomeTime, opcoes
   const [oneUi, setOneUi] = useState(projeto?.one_ui ?? "");
   const [timeId, setTimeId] = useState(projeto?.time_id ?? "");
   const [modelosIds, setModelosIds] = useState<string[]>(projeto?.modelos_ids ?? []);
+  const [dataPlanejada, setDataPlanejada] = useState(projeto?.data_planejada ?? "");
   // Reabrir o mesmo projeto depois de cancelar volta aos dados salvos; ao fechar, o conteúdo fica até a animação
   // de saída terminar.
   const [exibido, setExibido] = useState(projeto);
@@ -45,14 +47,19 @@ export function EditarProjetoDrawer({ projeto, onFechar, times, nomeTime, opcoes
       setOneUi(projeto.one_ui);
       setTimeId(projeto.time_id);
       setModelosIds(projeto.modelos_ids ?? []);
+      setDataPlanejada(projeto.data_planejada ?? "");
     }
   }
   const editar = useMutation({
-    mutationFn: () => projetosApi.atualizar(exibido!.id, { nome: nome.trim(), app: app.trim(), one_ui: oneUi.trim(), time_id: timeId, modelos_ids: modelosIds }),
+    mutationFn: () => projetosApi.atualizar(exibido!.id, { nome: nome.trim(), app: app.trim(), one_ui: oneUi.trim(), time_id: timeId, modelos_ids: modelosIds, ...(dataMudou ? { data_planejada: dataPlanejada || null } : {}) }),
     onSuccess: async () => { await client.invalidateQueries({ queryKey: ["projetos"] }); onFechar(); toast.success(t("projectUpdateSuccess")); },
     onError: () => toast.error(t("projectUpdateError")),
   });
-  const incompleto = !nome.trim() || !app.trim() || !oneUi.trim() || !timeId;
+  // A data que o projeto já tem continua valendo mesmo depois de passar (spec 071, RN-09).
+  // Só manda a data quando ela mudou: o cache da lista pode estar velho e desfazer a data que outra pessoa trocou.
+  const dataMudou = dataPlanejada !== (exibido?.data_planejada ?? "");
+  const dataNoPassado = Boolean(dataPlanejada) && dataMudou && dataPlanejada < formatarDiaIso(new Date());
+  const incompleto = !nome.trim() || !app.trim() || !oneUi.trim() || !timeId || dataNoPassado;
   // O time atual inativo continua visível e marcado, mas não pode ser escolhido de novo (como na RN-06).
   const opcoesTime = [
     ...(timeId && !times.some((time) => time.id === timeId) ? [{ value: timeId, label: nomeTime[timeId] ?? timeId, isDisabled: true }] : []),
@@ -82,6 +89,7 @@ export function EditarProjetoDrawer({ projeto, onFechar, times, nomeTime, opcoes
           emptyLabel={carregandoModelos ? t("loadingDeviceModels") : t("noDeviceModels")}
           removeLabel={(name) => t("removeSelectedModel", { defaultValue: "Remover {{name}}", name })}
         />
+        <DateInputField label={t("plannedDate")} value={dataPlanejada} onChange={setDataPlanejada} description={t("plannedDateHint")} error={dataNoPassado ? t("plannedDatePast") : undefined} />
       </div>
     </SideDrawer>
   );

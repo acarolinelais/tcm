@@ -9,6 +9,7 @@ describe("rótulos da auditoria", () => {
       const t = i18n.getFixedT(idioma);
       expect(rotuloCampoAuditoria("difficulty", t), idioma).toBe(t("difficulty"));
       expect(rotuloCampoAuditoria("criacao", t), idioma).toBe(t("auditCreatedRecord"));
+      expect(rotuloCampoAuditoria("dev_fix_id", t), idioma).toBe("Dev Fix");
       expect(valorAuditoria("difficulty", "High", t), idioma).toBe(t("difficultyHigh"));
       expect(valorAuditoria("automation_level", "1", t), idioma).toBe(t("automationLevel1"));
     }

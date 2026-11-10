@@ -7,7 +7,10 @@ from uuid import UUID
 from src.domain.queries.registro_auditoria import RegistroAuditoria
 
 # Colunas que mudam sem ser escolha de ninguém: ficam fora do histórico (038) e da auditoria (052).
-CAMPOS_OCULTOS = frozenset({"id", "unidade_id", "projeto_id", "ativo", "created_at", "updated_at"})
+# `dev_fix_em` (spec 072) muda junto com o Dev Fix, que já aparece.
+CAMPOS_OCULTOS = frozenset(
+    {"id", "unidade_id", "projeto_id", "ativo", "created_at", "updated_at", "dev_fix_em"}
+)
 
 
 class AcaoAuditoria(StrEnum):

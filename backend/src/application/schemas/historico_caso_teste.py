@@ -9,7 +9,7 @@ from src.application.schemas.caso_teste import timestamp_utc
 from src.domain.queries.auditoria import CAMPOS_OCULTOS
 from src.domain.queries.registro_auditoria import RegistroAuditoria
 
-CAMPOS_DE_USUARIO = frozenset({"responsavel_id", "backup_id"})
+CAMPOS_DE_USUARIO = frozenset({"responsavel_id", "backup_id", "dev_fix_id"})
 
 
 class AlteracaoCasoTesteResponse(BaseModel):
@@ -27,7 +27,7 @@ class HistoricoCasoTesteResponse(BaseModel):
 
 
 def ids_de_usuarios(registros: Sequence[RegistroAuditoria]) -> set[UUID]:
-    """Responsável e Backup ficam gravados como id; a resposta mostra o nome."""
+    """Responsável, Backup e Dev Fix ficam gravados como id; a resposta mostra o nome."""
     ids: set[UUID] = set()
     for registro in registros:
         for campo in CAMPOS_DE_USUARIO.intersection(registro.changed_fields):

@@ -54,6 +54,16 @@ from src.domain.queries.historico_form_factor import FiltrosCasoHistorico
 LIMITE_DATAS_RESULTADOS_GERAIS = 5  # ADR 0046
 
 
+def exigir_consulta_execucoes(usuario_atual: UsuarioAutenticado) -> None:
+    """General Results, execuções de um caso e Bug Reports: os quatro perfis, cada um no seu
+    escopo."""
+    if (
+        usuario_atual.perfil_codigo not in {"ADMIN_UNIDADE", "GERENTE", "KP", "USUARIO_PADRAO"}
+        or "form_factor.consultar" not in usuario_atual.permissoes
+    ):
+        raise ForbiddenException("Você não tem permissão para consultar as execuções.")
+
+
 class FormFactorServiceImpl:
     def __init__(
         self,
@@ -95,7 +105,7 @@ class FormFactorServiceImpl:
         associados_a_mim: bool = False,
     ) -> HistoricoProjetoResponse:
         """Resultados Gerais de um projeto (specs 032, 033 e 059): página de casos e até 5 datas."""
-        self._exigir_consulta_execucoes(usuario_atual)
+        exigir_consulta_execucoes(usuario_atual)
         if dia is not None and semana is not None:
             raise InvalidInputException("Escolha um dia ou uma semana, não os dois.")
         fuso_horario_valido(fuso_horario)
@@ -141,7 +151,7 @@ class FormFactorServiceImpl:
         self, usuario_atual: UsuarioAutenticado, caso_teste_id: UUID, fuso_horario: str = "UTC"
     ) -> ResumoExecucoesResponse:
         """Todas as execuções de um caso, por dia e modelo (spec 032, RN-13)."""
-        self._exigir_consulta_execucoes(usuario_atual)
+        exigir_consulta_execucoes(usuario_atual)
         fuso_horario_valido(fuso_horario)
         caso = await self._historico_repo.obter_caso(usuario_atual.unidade_id, caso_teste_id)
         if caso is None:
@@ -157,15 +167,6 @@ class FormFactorServiceImpl:
             usuario_atual.unidade_id, projeto.id, [caso.caso_teste_id], fuso_horario
         )
         return to_resumo_response(caso, modelos, linhas)
-
-    @staticmethod
-    def _exigir_consulta_execucoes(usuario_atual: UsuarioAutenticado) -> None:
-        """General Results e execuções de um caso: os quatro perfis, cada um no seu escopo."""
-        if (
-            usuario_atual.perfil_codigo not in {"ADMIN_UNIDADE", "GERENTE", "KP", "USUARIO_PADRAO"}
-            or "form_factor.consultar" not in usuario_atual.permissoes
-        ):
-            raise ForbiddenException("Você não tem permissão para consultar as execuções.")
 
     async def _obter_projeto_ativo_no_escopo(
         self, usuario_atual: UsuarioAutenticado, projeto_id: UUID
