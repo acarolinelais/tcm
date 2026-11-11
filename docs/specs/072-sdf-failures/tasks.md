@@ -110,9 +110,6 @@
 
 ## Backlog
 
-- **Pass Rate da Overview com a regra de falha.** `overview_repository.py` conta só `resultado == "PASS"`, sem
-  ignorar maiúsculas e espaços e sem N/A e Check. A spec 072 não fala do Pass Rate; decidir se ele passa a usar
-  `ResultadoFormFactor.NAO_FALHA` (achado da simplify, Fase 1).
 - **Índice em `importacoes_sdf_status(caso_teste_id)`.** A checagem de correção concluída e o corte das falhas
   filtram por caso nessa tabela, que não tem índice na coluna. Na escala atual não pesa; entra numa migration se a
   tabela crescer (achado da simplify, Fase 2).
@@ -134,8 +131,6 @@
 - **Relógio do `dev_fix_em`.** A data vem do relógio da API, e a auditoria usa o do Postgres. No deploy atual os
   dois rodam no mesmo servidor (ADR 0049); se o banco for para outra máquina, a checagem de correção concluída
   passa a depender da sincronia dos relógios. Derivar a data do Dev Fix da própria auditoria resolve (code-review).
-- **Uma consulta por caso na importação.** A checagem de correção concluída roda por caso que vai a Done com Dev
-  Fix. Um relatório que fecha centenas desses casos faz centenas de consultas na mesma transação; uma consulta só
-  por `caso_ids`, como a `listar_todos_aprovados`, resolve (code-review).
-- **`%` e `_` nos filtros de texto.** Os filtros de Dev Owner e Dev Fix passam o texto direto para o `ILIKE`, como
-  o filtro de responsável que já existia; `%` e `_` viram curingas (code-review).
+- **Regra de falha em SQL num helper só.** `upper(trim(resultado)) IN NAO_FALHA` está escrita em
+  `bug_report_repository.py`, `caso_teste_repository.py` (`_aprovados`) e `overview_repository.py` (`_passou`).
+  Um helper de coluna em `infrastructure/data` serviria aos três (simplify, backlog da 072).

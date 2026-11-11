@@ -414,6 +414,24 @@ async def test_pass_rate_usa_so_a_rodada_mais_recente(cenario):
 
 
 @pytest.mark.asyncio
+async def test_pass_rate_conta_na_check_e_caixa_como_aprovado(cenario):
+    # Spec 072, RN-01: a mesma regra de falha do SDF Failures.
+    rodada, _ = await cenario.rodada(
+        await cenario.caso("Clock_001"), "SDF-0", datetime(2025, 10, 1, tzinfo=UTC)
+    )
+    for i, resultado in enumerate(("N/A", " check ", "pass", "EXCEPTION", "FAIL")):
+        await _execucao_na_rodada(
+            cenario, rodada, await cenario.caso(f"Clock_2{i:02}"), {cenario.s26: resultado}
+        )
+
+    pass_rate = await OverviewRepositoryImpl(cenario.session).pass_rate_ultima_rodada(
+        cenario.unidade_id, cenario.projeto_id
+    )
+
+    assert [(m.modelo, m.aprovados) for m in pass_rate.modelos] == [("SAMSUNG S26", 3)]
+
+
+@pytest.mark.asyncio
 async def test_falha_pass_rate_sem_rodada_e_nulo(cenario):
     await cenario.caso("Clock_001")
 

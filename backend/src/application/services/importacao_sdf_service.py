@@ -187,23 +187,31 @@ class ImportacaoSdfServiceImpl:
             for linha in relatorio.linhas
             if ResultadoFormFactor.eh_falha(linha.resultado)
         }
+        mudaram = []
         for tc_id, caso in casos.items():
             anterior = caso.status
             caso.aplicar_resultado_sdf(caso.id in aprovados, tc_id in com_falha)
             if caso.status is not anterior:
-                # Spec 072, RN-08: o Done só encerra a correção se o caso voltou à validação
-                # depois do Dev Fix.
-                concluiu = (
-                    caso.status is StatusCasoTeste.DONE
-                    and caso.dev_fix_em is not None
-                    and await self._status_repo.entrou_em_validacao_depois_do_dev_fix(
-                        unidade_id, caso.id, caso.dev_fix_em
-                    )
+                mudaram.append(caso)
+        # Spec 072, RN-08: o Done só encerra a correção se o caso voltou à validação depois do
+        # Dev Fix. A consulta roda antes do atualizar(), que grava o novo status.
+        fechando = [
+            caso.id
+            for caso in mudaram
+            if caso.status is StatusCasoTeste.DONE and caso.dev_fix_em is not None
+        ]
+        concluiram = (
+            await self._status_repo.entraram_em_validacao_depois_do_dev_fix(unidade_id, fechando)
+            if fechando
+            else set()
+        )
+        for caso in mudaram:
+            await self._caso_repo.atualizar(caso)
+            await self._status_repo.adicionar(
+                ImportacaoSdfStatus(
+                    unidade_id, importacao.id, caso.id, caso.status, caso.id in concluiram
                 )
-                await self._caso_repo.atualizar(caso)
-                await self._status_repo.adicionar(
-                    ImportacaoSdfStatus(unidade_id, importacao.id, caso.id, caso.status, concluiu)
-                )
+            )
         # Spec 065: o relatório pode fechar o caso em todos os devices. Depois do atualizar(), que
         # grava o caso inteiro e apagaria a data gravada por este UPDATE.
         await self._caso_repo.marcar_todos_aprovados(unidade_id, projeto.id, caso_ids)

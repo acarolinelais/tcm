@@ -244,14 +244,16 @@ async def test_done_com_dev_fix_marca_a_correcao_se_voltou_a_validar(ctx, voltou
     casos = ctx.casos
     ctx.caso_repo.listar_todos_aprovados.side_effect = lambda *_: {casos["Keyboard_000001"].id}
     ctx.caso_repo.obter_por_projeto_tc_id.side_effect = _com_dev_fix(ctx)
-    ctx.status_repo.entrou_em_validacao_depois_do_dev_fix.return_value = voltou_a_validar
+    ctx.status_repo.entraram_em_validacao_depois_do_dev_fix.side_effect = lambda _, ids: (
+        set(ids) if voltou_a_validar else set()
+    )
     conteudo = relatorio([("Keyboard_000001.py", "PASS", "", "Keyboard_A_OneUI95.ts")])
 
     await ctx.importar(conteudo=conteudo)
 
     caso = casos["Keyboard_000001"]
-    ctx.status_repo.entrou_em_validacao_depois_do_dev_fix.assert_awaited_once_with(
-        ctx.usuario.unidade_id, caso.id, caso.dev_fix_em
+    ctx.status_repo.entraram_em_validacao_depois_do_dev_fix.assert_awaited_once_with(
+        ctx.usuario.unidade_id, [caso.id]
     )
     guardado = ctx.status_repo.adicionar.await_args.args[0]
     assert (guardado.status_aplicado, guardado.concluiu_correcao) == (
@@ -269,7 +271,7 @@ async def test_done_sem_dev_fix_nao_consulta_a_correcao(ctx):
 
     await ctx.importar(conteudo=conteudo)
 
-    ctx.status_repo.entrou_em_validacao_depois_do_dev_fix.assert_not_awaited()
+    ctx.status_repo.entraram_em_validacao_depois_do_dev_fix.assert_not_awaited()
     assert ctx.status_repo.adicionar.await_args.args[0].concluiu_correcao is False
 
 
