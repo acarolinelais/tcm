@@ -383,6 +383,8 @@ export const CODIGOS_ERRO_PLANILHA = [
   "app_ausente", "one_ui_ausente", "valor_obrigatorio", "valor_invalido", "tc_id_duplicado",
   "pessoa_nao_encontrada", "pessoa_ambigua", "pessoa_fora_do_time", "responsavel_igual_backup",
   "texto_muito_longo",
+  // Planned date do projeto na planilha (spec 075).
+  "data_planejada_invalida", "data_planejada_fora_do_intervalo", "data_planejada_divergente",
   // Relatório SDF no formato novo (spec 060).
   "sdf_nome_sem_id", "sdf_formato_invalido", "sdf_data_invalida", "sdf_one_ui_invalido",
   "sdf_sem_resultados", "sdf_tc_fora_do_projeto", "sdf_device_fora_do_projeto", "sdf_one_ui_diferente", "sdf_id_repetido",

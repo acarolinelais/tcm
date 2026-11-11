@@ -114,7 +114,7 @@ async def test_importar_planilha_inicial_envia_formulario_e_arquivo(api_client):
     app.dependency_overrides[get_importacao_projeto_service] = dependency_override(service)
 
     response = await api_client.post(
-        "/api/projetos/importar",
+        "/api/projetos/importar?fuso_horario=America/Sao_Paulo",
         data={"time_id": str(time_id), "modelos_ids": str(modelo_id)},
         files={
             "arquivo": (
@@ -131,6 +131,8 @@ async def test_importar_planilha_inicial_envia_formulario_e_arquivo(api_client):
     assert chamada.args[0] == usuario
     assert chamada.args[1].modelos_ids == [modelo_id]
     assert chamada.args[2] == b"planilha"
+    # Spec 075: o "hoje" da Planned date é o do fuso de quem importa.
+    assert chamada.args[3] == "America/Sao_Paulo"
 
 
 async def test_planilha_inicial_invalida_retorna_problem_details_422(api_client):

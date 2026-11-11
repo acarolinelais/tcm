@@ -43,7 +43,7 @@ describe("APIs de projetos", () => {
     const file = new File(["planilha"], "casos.xlsx");
     await projetosApi.importar(file, "time-1", ["model-1", "model-2"]);
     const [url, init] = vi.mocked(fetch).mock.calls[0];
-    expect(url).toBe("/api/projetos/importar");
+    expect(url).toBe(`/api/projetos/importar?fuso_horario=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`);
     expect(init?.method).toBe("POST");
     expect(init?.body).toBeInstanceOf(FormData);
     expect((init?.body as FormData).get("arquivo")).toBe(file);

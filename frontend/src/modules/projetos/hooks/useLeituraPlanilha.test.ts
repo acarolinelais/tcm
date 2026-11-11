@@ -15,7 +15,7 @@ interface LeituraControlada {
 }
 
 const leituras: LeituraControlada[] = [];
-const previa = (app: string): PlanilhaProjeto => ({ app, one_ui: "9.5", casos: [], totalLinhas: 1, colunas: {} as PlanilhaProjeto["colunas"] });
+const previa = (app: string): PlanilhaProjeto => ({ app, one_ui: "9.5", casos: [], totalLinhas: 1, colunas: {} as PlanilhaProjeto["colunas"], data_planejada: null });
 const xlsx = (nome = "cases.xlsx", tamanho = 10) => new File(["x".repeat(tamanho)], nome);
 
 async function terminar(acao: () => void) {

@@ -891,7 +891,7 @@ export const mockProjetosApi = {
     const nomeApp = planilha.app || app?.trim() || "";
     const versao = planilha.one_ui || oneUi?.trim() || "";
     const now = new Date().toISOString();
-    const projeto: Projeto = { id: id("mock-project"), unidade_id: db.unidade.id, time_id: time.id, app: nomeApp, one_ui: versao, nome: `${nomeApp} ${versao}`, status: "Created", ativo: true, created_at: now, updated_at: now };
+    const projeto: Projeto = { id: id("mock-project"), unidade_id: db.unidade.id, time_id: time.id, app: nomeApp, one_ui: versao, nome: `${nomeApp} ${versao}`, status: "Created", ativo: true, created_at: now, updated_at: now, data_planejada: planilha.data_planejada };
     const casos: Database["casosTeste"] = atribuidos.map(({ caso, responsavelId, backupId }) => ({ id: id("mock-test-case"), unidade_id: db.unidade.id, projeto_id: projeto.id, tc_id: caso.tc_id, category: caso.category, difficulty: caso.difficulty, automation_level: caso.automation_level, situation: caso.situation, status: "To-Do", responsavel_id: responsavelId, backup_id: backupId, ativo: true, created_at: now, updated_at: now, title: caso.title, precondition: caso.precondition, procedure: caso.procedure, expected_result: caso.expected_result }));
     db.projetos.unshift(projeto);
     modelIds.forEach((modelId) => db.projetoModelos.push({ projeto_id: projeto.id, modelo_dispositivo_id: modelId }));
@@ -981,7 +981,8 @@ export const mockCasosTesteApi = {
       && item.unidade_id === db.unidade.id
       && (!filtros.associadosAMim || item.responsavel_id === user.id || item.backup_id === user.id)
       // Semana da End date (spec 065, RN-10): a finalização de tudo, sem depender do Status.
-      && (!filtros.semana || (Boolean(item.all_passed_em) && semanaIso(item.all_passed_em!) === filtros.semana))
+      // Spec 075: a semana é a da End date, a primeira entrada em In Review.
+      && (!filtros.semana || (Boolean(item.code_done_em) && semanaIso(item.code_done_em!) === filtros.semana))
       && (!filtros.responsavelIds?.length || filtros.responsavelIds.includes(item.responsavel_id)));
     // Igual à API: os casos em que o usuário é o responsável principal vêm primeiro.
     const prioridade = (item: (typeof casosDoProjeto)[number]) => (item.responsavel_id === user.id ? 0 : 1);

@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@heroui/react";
 import { ChevronDown } from "lucide-react";
 
-import { formatNumber } from "@/core/i18n/format";
-import { cn } from "@/shared/lib/utils";
+import { formatDate, formatNumber } from "@/core/i18n/format";
+import { cn, lerDiaIso } from "@/shared/lib/utils";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
 import { DataTablePagination } from "@/shared/ui/data-table-pagination";
@@ -38,7 +38,11 @@ export function PreviaPlanilha({ previa }: { previa: PlanilhaProjeto }) {
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2 px-1">
         <div>
           <h2 className="text-base font-medium leading-6 text-body">{t("spreadsheetPreview")}</h2>
-          <p className="mt-0.5 text-[13px] text-muted">{t("project")}: {previa.app} {previa.one_ui}</p>
+          <p className="mt-0.5 text-[13px] text-muted">
+            {t("project")}: {previa.app} {previa.one_ui}
+            {/* Spec 075: a data planejada lida da planilha, para o KP conferir antes de criar. */}
+            {previa.data_planejada && <> · {t("plannedDate")}: {formatDate(lerDiaIso(previa.data_planejada), { dateStyle: "medium" })}</>}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-[13px] tabular-nums text-muted">{t("testCaseCount", { count: previa.casos.length, countLabel: formatNumber(previa.casos.length) })}</span>
