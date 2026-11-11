@@ -89,7 +89,7 @@ describe("AlterarSenhaPage", () => {
     await user.type(novaSenha(), "segredo");
 
     await user.click(screen.getByRole("button", { name: /English/ }));
-    await user.click(screen.getByRole("menuitem", { name: "Portuguese" }));
+    await user.click(screen.getByRole("menuitem", { name: "Português" }));
 
     expect(await screen.findByRole("heading", { name: "Crie sua senha" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nova senha")).toHaveValue("segredo");

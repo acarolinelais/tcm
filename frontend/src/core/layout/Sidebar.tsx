@@ -37,9 +37,7 @@ export function Sidebar({
 }) {
   const { t } = useTranslation();
   const location = useLocation();
-  const estaNaAdmin = location.pathname.startsWith("/admin/");
-  const [adminAberto, setAdminAberto] = useState(estaNaAdmin);
-  useEffect(() => setAdminAberto(estaNaAdmin), [estaNaAdmin]);
+  const kp = perfil.perfil_codigo === "KP";
   const itens = [
     { to: "/overview", label: t("overview"), Icon: OverviewIcon },
     { to: "/board", label: t("board"), Icon: BoardIcon },
@@ -53,6 +51,10 @@ export function Sidebar({
     itens.push({ to: "/projetos", label: t(perfil.perfil_codigo === "USUARIO_PADRAO" ? "projectsNav" : "myProjects"), Icon: ProjectsIcon });
   }
   const admin = perfil.perfil_codigo === "ADMIN_UNIDADE";
+  const mostrarTeams = !admin && perfil.permissoes.includes("times.consultar") && (perfil.perfil_codigo === "GERENTE"
+    ? perfil.setores_gerenciados.length > 0 || perfil.times.length > 0
+    : (kp || perfil.perfil_codigo === "USUARIO_PADRAO") && perfil.times.length > 0);
+  const mostrarUsers = (perfil.perfil_codigo === "GERENTE" || kp) && perfil.permissoes.includes("usuarios.consultar");
   // Administration agrupa as telas de cadastro; cada item respeita sua permissão específica.
   const itensAdmin = [
     ...(admin ? [
@@ -62,8 +64,14 @@ export function Sidebar({
       ["/admin/perfis", t("profiles"), ProfilesIcon],
       ["/admin/auditoria", t("audit"), AuditIcon],
     ] as const : []),
+    ...(kp && mostrarUsers ? [["/usuarios", t("users"), UsersIcon] as const] : []),
+    ...(kp && mostrarTeams ? [["/times", t("teams"), TeamsIcon] as const] : []),
     ...(perfil.permissoes.includes("modelos_dispositivo.gerenciar") ? [["/admin/modelos-dispositivo", t("deviceModels"), DeviceIcon] as const] : []),
   ];
+  // Abre sozinho na tela de um dos seus itens, inclusive o Teams e o Users do KP, que ficam fora de /admin (spec 074).
+  const estaNaAdmin = itensAdmin.some(([to]) => location.pathname === to || location.pathname.startsWith(`${to}/`));
+  const [adminAberto, setAdminAberto] = useState(estaNaAdmin);
+  useEffect(() => setAdminAberto(estaNaAdmin), [estaNaAdmin]);
   // Suporte aparece para todos os perfis (frames "Sidebar - Admin/Manager/KP/Dev" do Figma).
   const itensSuporte = [
     ["/documentation", t("documentation"), DocumentationIcon],
@@ -144,7 +152,7 @@ export function Sidebar({
             </div>
           </>
         )}
-        {perfil.perfil_codigo !== "ADMIN_UNIDADE" && ((perfil.perfil_codigo === "GERENTE" && perfil.permissoes.includes("times.consultar") && (perfil.setores_gerenciados.length > 0 || perfil.times.length > 0)) || ((perfil.perfil_codigo === "KP" || perfil.perfil_codigo === "USUARIO_PADRAO") && perfil.permissoes.includes("times.consultar") && perfil.times.length > 0)) && (
+        {mostrarTeams && !kp && (
           <NavLink to="/times" aria-label={recolhida ? t("teams") : undefined} className={({ isActive }) => classesDoItem({ ativo: isActive, recolhida })}>
             {({ isActive }) => <>
               <span className="flex w-4 shrink-0 justify-center"><TeamsIcon aria-hidden="true" className={`${isActive ? "text-accent-soft-foreground" : "text-body"}`} /></span>
@@ -153,7 +161,7 @@ export function Sidebar({
             </>}
           </NavLink>
         )}
-        {(perfil.perfil_codigo === "GERENTE" || perfil.perfil_codigo === "KP") && perfil.permissoes.includes("usuarios.consultar") && (
+        {mostrarUsers && !kp && (
           <NavLink to="/usuarios" aria-label={recolhida ? t("users") : undefined} className={({ isActive }) => classesDoItem({ ativo: isActive, recolhida })}>
             {({ isActive }) => <><span className="flex w-4 shrink-0 justify-center"><UsersIcon aria-hidden="true" className={`${isActive ? "text-accent-soft-foreground" : "text-body"}`} /></span><span aria-hidden={recolhida} className={`${transicaoRotulo} ${larguraRotulo}`}>{t("users")}</span>{recolhida && <TooltipRotulo titulo={t("users")} />}</>}
           </NavLink>
