@@ -6,6 +6,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.caso_teste import StatusCasoTeste
+from src.domain.entities.resultado_form_factor import ResultadoFormFactor
 from src.domain.queries.resumo_overview import (
     Andamento,
     ConcluidosDev,
@@ -42,6 +43,11 @@ _auditoria = table(
     column("changed_fields", ARRAY(Text)),
     column("created_at"),
 )
+
+
+def _passou(resultado):
+    # Spec 072, RN-01: a mesma regra de falha do SDF Failures e do Done (N/A e Check não reprovam).
+    return func.upper(func.trim(resultado)).in_(ResultadoFormFactor.NAO_FALHA)
 
 
 _status_novo = _auditoria.c.new_values["status"].astext
@@ -245,7 +251,7 @@ class OverviewRepositoryImpl:
             await self._session.execute(
                 select(
                     ultima_rodada.c.projeto_id,
-                    func.count().filter(ResultadoFormFactorModel.resultado == "PASS"),
+                    func.count().filter(_passou(ResultadoFormFactorModel.resultado)),
                     func.count(),
                 )
                 .select_from(ResultadoFormFactorModel)
@@ -383,7 +389,7 @@ class OverviewRepositoryImpl:
             select(
                 ModeloDispositivoModel.id,
                 ModeloDispositivoModel.nome,
-                func.count().filter(resultado == "PASS"),
+                func.count().filter(_passou(resultado)),
                 func.count(),
             )
             .select_from(ResultadoFormFactorModel)

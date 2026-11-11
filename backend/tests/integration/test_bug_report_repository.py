@@ -15,6 +15,7 @@ from src.infrastructure.data.models.execucao_sdf_model import ExecucaoSdfModel
 from src.infrastructure.data.models.importacao_sdf_model import ImportacaoSdfModel
 from src.infrastructure.data.models.projeto_model import ProjetoModel
 from src.infrastructure.data.models.resultado_form_factor_model import ResultadoFormFactorModel
+from src.infrastructure.data.models.usuario_model import UsuarioModel
 from src.infrastructure.repositories.bug_report_repository import BugReportRepositoryImpl
 from src.infrastructure.repositories.importacao_sdf_status_repository import (
     ImportacaoSdfStatusRepositoryImpl,
@@ -210,6 +211,27 @@ async def test_filtros_de_projeto_device_dia_dev_fix_e_dono(cenario):
     assert [f.modelo_nome for f in do_s25.items[0].falhas] == ["SAMSUNG S25"]
     assert [f.data_execucao for f in do_dia_6.items[0].falhas] == [DIA_6]
     assert do_dia_6.items[0].dev_fix_id == cenario.ana
+
+
+@pytest.mark.asyncio
+async def test_filtros_de_texto_tratam_porcento_e_sublinhado_como_texto(cenario):
+    caso = await cenario.caso("Clock_000020", responsavel_id=cenario.bia)
+    await cenario.importar(caso, "SDF-5", DIA_5, {cenario.s26: "FAIL"})
+    await cenario.session.execute(
+        update(CasoTesteModel).where(CasoTesteModel.id == caso).values(dev_fix_id=cenario.ana)
+    )
+    for id_, user_id in ((cenario.ana, "ana.silva"), (cenario.bia, "bia.souza")):
+        await cenario.session.execute(
+            update(UsuarioModel).where(UsuarioModel.id == id_).values(user_id=user_id)
+        )
+
+    achou = await _listar(cenario, dev_fix="ANA", responsavel="bia")
+    curinga_porcento = await _listar(cenario, dev_fix="%")
+    curinga_sublinhado = await _listar(cenario, responsavel="b_a")
+
+    assert achou.total_count == 1
+    # Sem o escape, "%" casaria com qualquer Dev Fix e "b_a" com "bia".
+    assert (curinga_porcento.total_count, curinga_sublinhado.total_count) == (0, 0)
 
 
 @pytest.mark.asyncio

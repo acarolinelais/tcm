@@ -127,9 +127,11 @@ class BugReportRepositoryImpl:
                 ResultadoFormFactorModel.modelo_dispositivo_id == filtros.modelo_dispositivo_id
             )
         if filtros.responsavel and filtros.responsavel.strip():
-            condicoes.append(UsuarioModel.user_id.ilike(f"%{filtros.responsavel.strip()}%"))
+            condicoes.append(
+                UsuarioModel.user_id.icontains(filtros.responsavel.strip(), autoescape=True)
+            )
         if filtros.dev_fix and filtros.dev_fix.strip():
-            condicoes.append(_DEV_FIX.user_id.ilike(f"%{filtros.dev_fix.strip()}%"))
+            condicoes.append(_DEV_FIX.user_id.icontains(filtros.dev_fix.strip(), autoescape=True))
         condicoes.extend(_periodo(filtros.inicio, filtros.fim))
         return (
             _resultados_validos(
