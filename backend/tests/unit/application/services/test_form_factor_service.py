@@ -241,6 +241,9 @@ async def test_registrar_resultado_fail_atualiza_status_e_salva_atomicamente():
     assert response.rodada_id == rodada_id and response.sdf_id == "SDF"
     assert caso.status is StatusCasoTeste.IN_FIXES
     assert execucao_repo.atualizar.await_count == 1
+    # Spec 073: a falha abre a tentativa 1, e a execução fica nela.
+    assert caso.tentativa_correcao == 1
+    assert execucao_repo.atualizar.await_args.args[0].tentativa_correcao == 1
     assert caso_repo.atualizar.await_args.args[0] is caso
     resultado_repo.adicionar.assert_awaited_once()
     # Spec 065, CA-09: o registro na rodada confere a finalização de tudo do caso.

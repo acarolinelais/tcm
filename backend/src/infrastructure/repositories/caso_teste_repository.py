@@ -316,6 +316,8 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
         caso.all_passed_em = model.all_passed_em
         caso.dev_fix_id = model.dev_fix_id
         caso.dev_fix_em = model.dev_fix_em
+        caso.tentativa_correcao = model.tentativa_correcao
+        caso.correcao_em_revisao_em = model.correcao_em_revisao_em
         caso.ativo = model.ativo
         caso.created_at = model.created_at
         caso.updated_at = model.updated_at
@@ -345,6 +347,8 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             all_passed_em=entity.all_passed_em,
             dev_fix_id=entity.dev_fix_id,
             dev_fix_em=entity.dev_fix_em,
+            tentativa_correcao=entity.tentativa_correcao,
+            correcao_em_revisao_em=entity.correcao_em_revisao_em,
             ativo=entity.ativo,
             created_at=entity.created_at,
             updated_at=entity.updated_at,

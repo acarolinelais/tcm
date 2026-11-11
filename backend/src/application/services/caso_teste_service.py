@@ -300,6 +300,21 @@ class CasoTesteServiceImpl:
         caso_transferido = await self._caso_repo.obter_por_id(usuario_atual.unidade_id, caso_id)
         return to_response(caso_transferido or caso)
 
+    async def mudar_status_da_correcao(
+        self, usuario_atual: UsuarioAutenticado, caso_id: UUID, status: StatusCasoTeste
+    ) -> CasoTesteResponse:
+        """Spec 073, RN-11: o corretor (Dev Fix ou, sem ele, o responsável) e a gestão do time
+        levam o caso pelos Status da correção; os outros não."""
+        caso, time = await self._obter_caso_visivel(usuario_atual, caso_id)
+        corretor = caso.dev_fix_id or caso.responsavel_id
+        if corretor != usuario_atual.id and not self._pode_gerenciar(usuario_atual, time):
+            raise ForbiddenException("Só quem corrige o Test Case pode mudar o Status da correção.")
+        caso.mudar_status_da_correcao(status)
+        await self._caso_repo.atualizar(caso)
+        await self._uow.commit()
+        caso_atualizado = await self._caso_repo.obter_por_id(usuario_atual.unidade_id, caso_id)
+        return to_response(caso_atualizado or caso)
+
     async def listar_pull_requests(
         self, usuario_atual: UsuarioAutenticado, caso_id: UUID
     ) -> LinksPullRequestResponse:

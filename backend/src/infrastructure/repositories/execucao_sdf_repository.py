@@ -148,6 +148,7 @@ class ExecucaoSdfRepositoryImpl(RepositoryBaseImpl[ExecucaoSdf, ExecucaoSdfModel
             model.resultados_registrados,
         )
         execucao.id = model.id
+        execucao.tentativa_correcao = model.tentativa_correcao
         execucao.ativo = model.ativo
         execucao.created_at = model.created_at
         execucao.updated_at = model.updated_at
@@ -165,6 +166,7 @@ class ExecucaoSdfRepositoryImpl(RepositoryBaseImpl[ExecucaoSdf, ExecucaoSdfModel
             origem=entity.origem,
             rodada_id=entity.rodada_id,
             resultados_registrados=entity.resultados_registrados,
+            tentativa_correcao=entity.tentativa_correcao,
             ativo=entity.ativo,
             created_at=entity.created_at,
             updated_at=entity.updated_at,

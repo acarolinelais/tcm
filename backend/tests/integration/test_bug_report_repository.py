@@ -269,3 +269,88 @@ async def test_dev_ve_dono_backup_e_dev_fix(cenario):
 
     assert {linha.caso_teste_id for linha in bia.items} == {da_bia, backup_bia, fix_da_bia}
     assert outro_time.total_count == 0
+
+
+async def _em_correcao(cenario, tc_id, *, status="InFixes", tentativa=1, dev_fix=None):
+    caso = await cenario.caso(tc_id)
+    await cenario.importar(caso, f"SDF-{tc_id}", DIA_5, {cenario.s26: "FAIL"})
+    await cenario.session.execute(
+        update(CasoTesteModel)
+        .where(CasoTesteModel.id == caso)
+        .values(status=status, tentativa_correcao=tentativa, dev_fix_id=dev_fix)
+    )
+    return caso
+
+
+async def _my_fixes(cenario, pessoa, **filtros):
+    return await BugReportRepositoryImpl(cenario.session).listar_casos_com_falhas(
+        cenario.unidade_id,
+        EscopoOverview(),
+        FiltrosBugReport(projeto_id=cenario.projeto_id, corretor_id=pessoa, **filtros),
+        1,
+        20,
+    )
+
+
+# Spec 073: a My Fixes é a SDF Failures do corretor, só com os casos em correção.
+@pytest.mark.asyncio
+async def test_caso_em_correcao_sem_dev_fix_aparece_para_o_responsavel(cenario):
+    # CA-01: a responsável (ana) é a corretora enquanto não há Dev Fix.
+    caso = await _em_correcao(cenario, "Clock_000001")
+
+    resultado = await _my_fixes(cenario, cenario.ana)
+
+    assert [linha.caso_teste_id for linha in resultado.items] == [caso]
+    assert resultado.items[0].tentativa_correcao == 1
+
+
+@pytest.mark.asyncio
+async def test_com_dev_fix_o_caso_sai_do_responsavel_e_vai_para_o_dev_fix(cenario):
+    # CA-02 e CA-07.
+    caso = await _em_correcao(cenario, "Clock_000001", dev_fix=cenario.bia)
+
+    assert (await _my_fixes(cenario, cenario.ana)).items == []
+    assert [linha.caso_teste_id for linha in (await _my_fixes(cenario, cenario.bia)).items] == [
+        caso
+    ]
+
+
+@pytest.mark.asyncio
+async def test_done_ou_sem_tentativa_nao_esta_em_correcao(cenario):
+    # CA-05: Done sai; um caso com falha mas que nunca voltou para In Fixes também não entra.
+    await _em_correcao(cenario, "Clock_000001", status="Done")
+    await _em_correcao(cenario, "Clock_000002", status="InProgress", tentativa=0)
+
+    assert (await _my_fixes(cenario, cenario.ana)).items == []
+
+
+@pytest.mark.asyncio
+async def test_ordem_do_fluxo_e_filtro_por_status(cenario):
+    # RN-13: In Fixes primeiro, depois In Progress, In Review e In Validation.
+    validacao = await _em_correcao(cenario, "Clock_000001", status="InValidation")
+    fixes = await _em_correcao(cenario, "Clock_000002", status="InFixes")
+    revisao = await _em_correcao(cenario, "Clock_000003", status="InReview")
+
+    todos = await _my_fixes(cenario, cenario.ana)
+    so_revisao = await _my_fixes(cenario, cenario.ana, status=("InReview",))
+
+    assert [linha.caso_teste_id for linha in todos.items] == [fixes, revisao, validacao]
+    assert [linha.caso_teste_id for linha in so_revisao.items] == [revisao]
+
+
+@pytest.mark.asyncio
+async def test_reincidentes_mostra_so_a_partir_da_segunda_tentativa(cenario):
+    # CA-11, na SDF Failures (sem corretor).
+    await _em_correcao(cenario, "Clock_000001", tentativa=1)
+    segunda = await _em_correcao(cenario, "Clock_000002", tentativa=2)
+
+    resultado = await BugReportRepositoryImpl(cenario.session).listar_casos_com_falhas(
+        cenario.unidade_id,
+        EscopoOverview(),
+        FiltrosBugReport(projeto_id=cenario.projeto_id, reincidentes=True),
+        1,
+        20,
+    )
+
+    assert [linha.caso_teste_id for linha in resultado.items] == [segunda]
+    assert resultado.items[0].tentativa_correcao == 2

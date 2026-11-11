@@ -280,6 +280,7 @@ class FormFactorServiceImpl:
             projeto.one_ui,
             origem="MANUAL",
         )
+        execucao.tentativa_correcao = caso.tentativa_correcao
         try:
             await self._execucao_repo.adicionar(execucao)
             for modelo_id, valor in request.resultados.items():
@@ -433,6 +434,8 @@ class FormFactorServiceImpl:
             await self._contexto_auditoria.definir_origem("form_factor")
         caso.registrar_resultado_form_factor(request.resultados, modelos_ids)
         execucao.resultados_registrados = True
+        # Spec 073: a execução fica na tentativa de correção em que o caso ficou.
+        execucao.tentativa_correcao = caso.tentativa_correcao
         data_reportada = execucao.data_reportada
         try:
             await self._caso_repo.atualizar(caso)

@@ -39,6 +39,14 @@ describe("APIs de projetos", () => {
     expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/status", expect.objectContaining({ method: "PATCH", body: JSON.stringify({ status: "InProgress" }) }));
   });
 
+  it("a My Fixes manda os Status repetidos e só os filtros preenchidos (spec 073)", async () => {
+    await casosTesteApi.listarMyFixes("clock", 1, 20, { status: ["InFixes", "InReview"], responsavel: " " });
+    const url = new URL(String(vi.mocked(fetch).mock.calls[0][0]), "http://x");
+    expect(url.pathname).toBe("/api/bug-reports/my-fixes");
+    expect(url.searchParams.getAll("status")).toEqual(["InFixes", "InReview"]);
+    expect(url.searchParams.has("responsavel")).toBe(false);
+  });
+
   it("envia a planilha inicial como multipart com time e modelos", async () => {
     const file = new File(["planilha"], "casos.xlsx");
     await projetosApi.importar(file, "time-1", ["model-1", "model-2"]);
