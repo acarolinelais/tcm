@@ -34,7 +34,7 @@ describe("LanguageSelector", () => {
     renderComQueryClient(<><LanguageSelector /><LanguageReactiveText /></>);
     expect(screen.getByText("New user")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /English/ }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Portuguese" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Português" }));
 
     await waitFor(() => expect(i18n.resolvedLanguage).toBe("pt-BR"));
     expect(screen.getByText("Novo usuário")).toBeInTheDocument();
@@ -47,14 +47,14 @@ describe("LanguageSelector", () => {
     const gatilho = screen.getByRole("button", { name: /English/ });
     expect(gatilho.querySelectorAll("svg")).toHaveLength(1); // só a seta; o ícone de idioma sai
     fireEvent.click(gatilho);
-    expect(screen.getByRole("menuitem", { name: "Portuguese" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Português" })).toBeInTheDocument();
   });
 
   it("saves authenticated selections in the account", async () => {
     vi.mocked(atualizarIdiomaPreferido).mockResolvedValue({ idioma_preferido: "ko", cor_avatar: "azul" });
     renderComQueryClient(<LanguageSelector perfil={{ idioma_preferido: "en" } as never} />);
     fireEvent.click(screen.getByRole("button", { name: /English/ }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Korean" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "한국어" }));
 
     await waitFor(() => expect(atualizarIdiomaPreferido).toHaveBeenCalledWith("ko"));
     expect(i18n.resolvedLanguage).toBe("ko");
@@ -69,7 +69,7 @@ describe("LanguageSelector", () => {
     vi.mocked(atualizarIdiomaPreferido).mockImplementation(() => new Promise((_, reject) => { falhar = () => reject(new Error("500")); }));
     render(<QueryClientProvider client={queryClient}><LanguageSelector perfil={{ idioma_preferido: "en" } as never} /></QueryClientProvider>);
     fireEvent.click(screen.getByRole("button", { name: /English/ }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Korean" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "한국어" }));
     await waitFor(() => expect(atualizarIdiomaPreferido).toHaveBeenCalledWith("ko"));
 
     queryClient.setQueryData<PerfilAtual>(key, (atual) => atual && { ...atual, cor_avatar: "verde" });

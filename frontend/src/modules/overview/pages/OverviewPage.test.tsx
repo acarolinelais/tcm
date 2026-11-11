@@ -45,9 +45,22 @@ it("sem casos no escopo mostra o estado vazio em vez de zeros", async () => {
   vi.mocked(overviewApi.obter).mockResolvedValue({ ...dados, total: 0, concluidos: 0, emAndamento: 0, aFazer: 0, atribuidos: 0 });
   abrir();
 
-  expect(await screen.findByRole("heading", { name: "No Test Cases to show yet" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { level: 2, name: "No Test Cases to show yet" })).toBeInTheDocument();
   expect(screen.queryByText("0 TCs")).not.toBeInTheDocument();
   expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  // Spec 074 (CA-01): o título e a frase de apoio no topo, como nas outras páginas vazias.
+  expect(screen.getByRole("heading", { level: 1, name: "Overview" })).toBeInTheDocument();
+  expect(screen.getByText("The numbers and charts of the projects in your scope.")).toBeInTheDocument();
+});
+
+it("com casos no escopo não mostra o título da página vazia (spec 074, CA-02)", async () => {
+  vi.mocked(overviewApi.obter).mockResolvedValue(dados);
+  perfil = { ...perfil, perfil_codigo: null as unknown as string };
+  abrir();
+
+  expect(await screen.findByRole("heading", { level: 2, name: /Ana/ })).toBeInTheDocument();
+  expect(screen.queryByRole("heading", { level: 1, name: "Overview" })).not.toBeInTheDocument();
+  expect(screen.queryByText("The numbers and charts of the projects in your scope.")).not.toBeInTheDocument();
 });
 
 it("com erro na API mostra a mensagem e permite tentar de novo", async () => {

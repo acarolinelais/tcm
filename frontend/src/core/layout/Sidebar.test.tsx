@@ -85,6 +85,47 @@ describe("Sidebar project navigation", () => {
     expect(screen.getByRole("link", { name: "Device models" })).toBeInTheDocument();
   });
 
+  describe("KP com Teams e Users dentro de Administration (spec 074)", () => {
+    const kp: PerfilAtual = { ...perfil, perfil_codigo: "KP", permissoes: ["times.consultar", "usuarios.consultar"], times: [{ id: "time-1", nome: "Produto" }] };
+    const emRota = (rota: string, atual: PerfilAtual) => render(<MemoryRouter initialEntries={[rota]}><Sidebar perfil={atual} recolhida={false} onToggle={() => undefined} /></MemoryRouter>);
+
+    it("CA-03: Teams e Users ficam dentro de Administration, não soltos", async () => {
+      const user = userEvent.setup();
+      renderSidebar(kp);
+      expect(screen.queryByRole("link", { name: "Teams" })).not.toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Administration" }));
+      expect(screen.getByRole("link", { name: "Teams" })).toHaveAttribute("href", "/times");
+      expect(screen.getByRole("link", { name: "Users" })).toHaveAttribute("href", "/usuarios");
+    });
+
+    it("CA-04: em Teams ou em Users, Administration abre com o item ativo", () => {
+      for (const [rota, nome] of [["/times", "Teams"], ["/times/time-1", "Teams"], ["/usuarios", "Users"]] as const) {
+        const { unmount } = emRota(rota, kp);
+        expect(screen.getByRole("button", { name: "Administration" })).toHaveAttribute("aria-expanded", "true");
+        expect(screen.getByRole("link", { name: nome })).toHaveAttribute("aria-current", "page");
+        unmount();
+      }
+    });
+
+    it("CA-05 (falha): sem time não mostra Teams; sem permissão de usuários não mostra Users", () => {
+      emRota("/times", { ...kp, times: [], permissoes: ["times.consultar"] });
+      expect(screen.queryByRole("link", { name: "Teams", hidden: true })).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Users", hidden: true })).not.toBeInTheDocument();
+    });
+
+    it("CA-06 (falha): sem nenhum item, Administration não aparece", () => {
+      renderSidebar({ ...kp, permissoes: [], times: [] });
+      expect(screen.queryByRole("button", { name: "Administration" })).not.toBeInTheDocument();
+    });
+
+    it("CA-07: o gerente continua com Teams e Users soltos", () => {
+      renderSidebar({ ...kp, perfil_codigo: "GERENTE" });
+      expect(screen.queryByRole("button", { name: "Administration" })).not.toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Teams" })).toHaveAttribute("href", "/times");
+      expect(screen.getByRole("link", { name: "Users" })).toHaveAttribute("href", "/usuarios");
+    });
+  });
+
   it("esconde Administration de gerente e dev sem a permissão do catálogo", () => {
     for (const outro of [{ perfil_codigo: "GERENTE", permissoes: ["projetos.gerenciar"] }, { perfil_codigo: "USUARIO_PADRAO", permissoes: ["projetos.consultar"] }]) {
       const { unmount } = renderSidebar({ ...perfil, ...outro });

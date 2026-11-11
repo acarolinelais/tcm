@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import { Skeleton } from "@heroui/react";
 import { ErroComRetry } from "@/shared/ui/erro-com-retry";
 import { EstadoVazio } from "@/shared/ui/estado-vazio";
-import { PageCard } from "@/shared/ui/page-card";
+import { PageCard, PageDescription, PageTitle } from "@/shared/ui/page-card";
 
 // Com o React.lazy, o Recharts só é baixado na Overview (ADR 0051).
 const OverviewKp = lazy(() => import("../components/OverviewKp").then((m) => ({ default: m.OverviewKp })));
@@ -53,11 +53,16 @@ export function OverviewPage() {
     );
   }
 
-  // Sem casos no escopo: explica em vez de mostrar zeros soltos (spec 039, RN-05).
+  // Sem casos no escopo: explica em vez de mostrar zeros soltos (spec 039, RN-05), com o título e a frase de apoio
+  // no topo, como as outras páginas vazias (spec 074, RN-01).
   if (data.total === 0) {
     return (
       <PageCard>
-        <EstadoVazio tituloDaPagina className="m-auto" titulo={t("overviewEmpty")} dica={t("overviewEmptyHint")} />
+        <header className="mb-5 shrink-0">
+          <PageTitle>{t("overview")}</PageTitle>
+          <PageDescription>{t("overviewHint")}</PageDescription>
+        </header>
+        <EstadoVazio className="m-auto" titulo={t("overviewEmpty")} dica={t("overviewEmptyHint")} />
       </PageCard>
     );
   }
