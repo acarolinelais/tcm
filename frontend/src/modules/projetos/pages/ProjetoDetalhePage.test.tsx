@@ -66,11 +66,11 @@ describe("ProjetoDetalhePage", () => {
     ]);
   });
 
-  it("mostra só as abas Test Cases e Form Factor", async () => {
+  it("mostra as abas Test Cases, Form Factor e My Fixes (spec 073, RN-07)", async () => {
     renderPage({ ...perfil, permissoes: [...perfil.permissoes, "form_factor.consultar"] });
 
     expect(await screen.findByRole("tab", { name: "Test Cases", selected: true })).toBeInTheDocument();
-    expect(screen.getAllByRole("tab").map((aba) => aba.textContent)).toEqual(["Test Cases", "Form Factor"]);
+    expect(screen.getAllByRole("tab").map((aba) => aba.textContent)).toEqual(["Test Cases", "Form Factor", "My Fixes"]);
   });
 
   it("mostra o Code done e, na End date, a data em que passou em todos os devices, sem depender do Status (spec 065)", async () => {

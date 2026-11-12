@@ -51,6 +51,8 @@ class ExecucaoSdf(EntidadeTenant):
         self.one_ui = self._validar_texto(one_ui, "One UI", self.ONE_UI_MAX_LENGTH)
         self.origem = origem
         self.resultados_registrados = resultados_registrados
+        # Spec 073: a tentativa de correção do caso depois de aplicar o resultado desta execução.
+        self.tentativa_correcao: int | None = None
 
     @staticmethod
     def _validar_texto(valor: str, campo: str, limite: int) -> str:

@@ -17,3 +17,11 @@ class BugReportService(Protocol):
         semana: str | None = None,
         fuso_horario: str = "UTC",
     ) -> PagedResult[CasoComFalhasResponse]: ...
+
+    async def listar_my_fixes(
+        self,
+        usuario_atual: UsuarioAutenticado,
+        filtros: FiltrosBugReport,
+        page: int,
+        page_size: int,
+    ) -> PagedResult[CasoComFalhasResponse]: ...

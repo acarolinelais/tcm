@@ -7,6 +7,7 @@ from src.application.schemas.caso_teste import (
     AtualizarCasoTesteRequest,
     CasoTesteDetalheResponse,
     CasoTesteResponse,
+    MudarStatusDaCorrecaoRequest,
 )
 from src.application.schemas.historico_caso_teste import HistoricoCasoTesteResponse
 from src.application.schemas.link_pull_request import (
@@ -16,6 +17,7 @@ from src.application.schemas.link_pull_request import (
 )
 from src.application.services.interfaces.caso_teste_service import CasoTesteService
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
+from src.domain.entities.caso_teste import StatusCasoTeste
 
 router = APIRouter(prefix="/api/test-cases", tags=["test-cases"])
 
@@ -55,6 +57,18 @@ async def transferir_para_backup(
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
     return await service.transferir_para_backup(usuario_atual, caso_id)
+
+
+@router.patch("/{caso_id}/correcao", response_model=CasoTesteResponse)
+async def mudar_status_da_correcao(
+    caso_id: UUID,
+    request: MudarStatusDaCorrecaoRequest,
+    service: CasoTesteService = Depends(get_caso_teste_service),
+    usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
+):
+    return await service.mudar_status_da_correcao(
+        usuario_atual, caso_id, StatusCasoTeste(request.status)
+    )
 
 
 @router.get("/{caso_id}/pull-requests", response_model=LinksPullRequestResponse)

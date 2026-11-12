@@ -22,6 +22,7 @@ Na interface em português, estes termos ficam em inglês. Todo o resto é tradu
 | Pull Requests | Painel do caso |
 | Automation Level | Coluna do caso |
 | SDF Failures | Página das falhas do SDF (spec 072) |
+| My Fixes | Aba de correções do projeto (spec 073) |
 | SDF Result | Resultado da execução |
 | Pass Rate | Gráficos da Overview |
 | Dev Fix, Dev Owner | SDF Failures (spec 072) |

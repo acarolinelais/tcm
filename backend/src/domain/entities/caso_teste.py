@@ -3,6 +3,7 @@ from enum import IntEnum, StrEnum
 from uuid import UUID
 
 from src.domain.common.entidade_tenant import EntidadeTenant
+from src.domain.common.exceptions import ConflictException, InvalidInputException
 
 
 class CategoriaCasoTeste(StrEnum):
@@ -43,6 +44,15 @@ class StatusCasoTeste(StrEnum):
     DONE = "Done"
     IN_FIXES = "InFixes"
     CANCELLED = "Cancelled"
+
+
+# Spec 073: os Status em que um caso anda pela correção, na ordem do fluxo.
+STATUS_DA_CORRECAO = (
+    StatusCasoTeste.IN_FIXES,
+    StatusCasoTeste.IN_PROGRESS,
+    StatusCasoTeste.IN_REVIEW,
+    StatusCasoTeste.IN_VALIDATION,
+)
 
 
 class CasoTeste(EntidadeTenant):
@@ -100,6 +110,10 @@ class CasoTeste(EntidadeTenant):
         # Spec 072: quem corrige as falhas do SDF; `dev_fix_em` em UTC sem fuso.
         self.dev_fix_id: UUID | None = None
         self.dev_fix_em: datetime | None = None
+        # Spec 073: quantas vezes o caso voltou de In Validation para In Fixes, e quando a tentativa
+        # atual entrou em In Review (UTC sem fuso).
+        self.tentativa_correcao = 0
+        self.correcao_em_revisao_em: datetime | None = None
         # Na reidratação o backup pode faltar: transferir_para_backup() o deixa vazio.
         self._validar_responsaveis(responsavel_id, backup_id, exigir_backup=exigir_backup)
 
@@ -135,9 +149,9 @@ class CasoTeste(EntidadeTenant):
         if self.status is not StatusCasoTeste.IN_VALIDATION:
             return
         if any(resultado == "FAIL" for resultado in resultados.values()):
-            self.status = StatusCasoTeste.IN_FIXES
+            self._aplicar_status(StatusCasoTeste.IN_FIXES)
         elif modelos_ids and all(resultados.get(modelo_id) == "PASS" for modelo_id in modelos_ids):
-            self.status = StatusCasoTeste.DONE
+            self._aplicar_status(StatusCasoTeste.DONE)
 
     def definir_dev_fix(self, usuario_id: UUID | None) -> None:
         """Escolhe, troca ou remove o Dev Fix (spec 072, RN-17 e RN-18): Status e responsável
@@ -157,16 +171,35 @@ class CasoTeste(EntidadeTenant):
         if self.status is not StatusCasoTeste.IN_VALIDATION:
             return
         if sem_falha:
-            self.status = StatusCasoTeste.DONE
+            self._aplicar_status(StatusCasoTeste.DONE)
         elif falha_no_relatorio:
-            self.status = StatusCasoTeste.IN_FIXES
+            self._aplicar_status(StatusCasoTeste.IN_FIXES)
 
     def desfazer_resultado_sdf(self, status_aplicado: StatusCasoTeste) -> bool:
         # Quem chama confere, pela auditoria, que ninguém moveu o caso depois da importação.
         if self.status is not status_aplicado:
             return False
+        # A volta para In Fixes que a importação abriu deixa de contar como tentativa (spec 073).
+        if status_aplicado is StatusCasoTeste.IN_FIXES and self.tentativa_correcao > 0:
+            self.tentativa_correcao -= 1
         self.status = StatusCasoTeste.IN_VALIDATION
         return True
+
+    def em_correcao(self) -> bool:
+        """Spec 073: o caso já voltou para In Fixes ao menos uma vez e ainda anda pela correção."""
+        return self.tentativa_correcao > 0 and self.status in STATUS_DA_CORRECAO
+
+    def mudar_status_da_correcao(self, status: StatusCasoTeste) -> None:
+        """Mudança de Status pela My Fixes (spec 073, RN-10 e CA-09): só os Status da correção."""
+        status = StatusCasoTeste(status)
+        if status not in STATUS_DA_CORRECAO:
+            raise InvalidInputException(
+                "Na correção, o Status só pode ser In Fixes, In Progress, In Review ou "
+                "In Validation."
+            )
+        if not self.em_correcao():
+            raise ConflictException("O Test Case não está em correção.")
+        self._mudar_status(status, None)
 
     def cancelar(self, justificativa_exclusao: str) -> None:
         self._mudar_status(StatusCasoTeste.CANCELLED, justificativa_exclusao)
@@ -185,13 +218,22 @@ class CasoTeste(EntidadeTenant):
             self.justificativa_exclusao = justificativa
         elif status is not StatusCasoTeste.CANCELLED:
             self.justificativa_exclusao = None
-        # Spec 065, RN-01 e RN-02: só a primeira entrada em In Review marca o fim do código.
-        if (
-            status is StatusCasoTeste.IN_REVIEW
-            and self.status is not StatusCasoTeste.IN_REVIEW
-            and self.code_done_em is None
-        ):
-            self.code_done_em = datetime.now(UTC).replace(tzinfo=None)
+        self._aplicar_status(status)
+
+    def _aplicar_status(self, status: StatusCasoTeste) -> None:
+        """Muda o Status e grava as datas e a tentativa que dependem dele (specs 065 e 073)."""
+        if status is StatusCasoTeste.IN_FIXES and self.status is not StatusCasoTeste.IN_FIXES:
+            if self.status is StatusCasoTeste.IN_VALIDATION:
+                self.tentativa_correcao += 1
+            self.correcao_em_revisao_em = None
+        elif status is StatusCasoTeste.IN_REVIEW and self.status is not StatusCasoTeste.IN_REVIEW:
+            agora = datetime.now(UTC).replace(tzinfo=None)
+            # Spec 065: só a primeira entrada em In Review marca o fim do código.
+            if self.code_done_em is None:
+                self.code_done_em = agora
+            # Spec 073: a primeira entrada em In Review da tentativa atual é a End Date da correção.
+            if self.tentativa_correcao > 0 and self.correcao_em_revisao_em is None:
+                self.correcao_em_revisao_em = agora
         self.status = status
 
     def atualizar_gerenciamento(
