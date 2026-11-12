@@ -198,7 +198,7 @@ class ImportacaoSdfServiceImpl:
         # Spec 073: cada execução fica na tentativa em que o caso ficou depois do relatório.
         for execucao, caso in execucoes:
             execucao.tentativa_correcao = caso.tentativa_correcao
-            await self._execucao_repo.atualizar(execucao)
+            await self._execucao_repo.definir_tentativa_correcao(execucao)
         # Spec 072, RN-08: o Done só encerra a correção se o caso voltou à validação depois do
         # Dev Fix. A consulta roda antes do atualizar(), que grava o novo status.
         fechando = [

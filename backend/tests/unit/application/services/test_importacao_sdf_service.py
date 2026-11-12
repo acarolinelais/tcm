@@ -251,7 +251,9 @@ async def test_execucao_grava_a_tentativa_de_correcao_que_o_resultado_produz(ctx
 
     await ctx.importar(conteudo=conteudo)
 
-    execucoes = [chamada.args[0] for chamada in ctx.execucoes.atualizar.await_args_list]
+    execucoes = [
+        chamada.args[0] for chamada in ctx.execucoes.definir_tentativa_correcao.await_args_list
+    ]
     por_caso = {ctx.casos[tc].id: tc for tc in ctx.casos}
     assert {por_caso[e.caso_teste_id]: e.tentativa_correcao for e in execucoes} == {
         "Keyboard_000001": 1,
