@@ -50,12 +50,13 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
         if responsavel_ids:
             filtros.append(CasoTesteModel.responsavel_id.in_(responsavel_ids))
         if data_final_inicio is not None and data_final_fim is not None:
-            # Semana da End date (spec 065, RN-10): a finalização de tudo, sem depender do Status.
+            # Semana da End date: desde a spec 075 é a primeira entrada em In Review
+            # (`code_done_em`), sem depender do Status.
             filtros.extend(
                 (
                     CasoTesteModel.ativo.is_(True),
-                    CasoTesteModel.all_passed_em >= data_final_inicio,
-                    CasoTesteModel.all_passed_em < data_final_fim,
+                    CasoTesteModel.code_done_em >= data_final_inicio,
+                    CasoTesteModel.code_done_em < data_final_fim,
                 )
             )
         if associado_usuario_id is not None:

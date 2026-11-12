@@ -1,3 +1,4 @@
+from datetime import UTC, date, datetime
 from io import BytesIO
 from unittest.mock import AsyncMock
 from uuid import uuid4
@@ -18,9 +19,10 @@ from src.domain.entities.time_membro import TimeMembro
 from src.domain.entities.usuario import Usuario
 
 
-def criar_arquivo(*linhas, category="A", niveis=None, textos=None):
+def criar_arquivo(*linhas, category="A", niveis=None, textos=None, planejada=None):
     """`niveis` acrescenta a coluna Automation Level, com um valor por linha; `textos` acrescenta
-    colunas de texto (spec 028), como {cabeçalho: [valor por linha]}."""
+    colunas de texto (spec 028), como {cabeçalho: [valor por linha]}; `planejada`, a coluna
+    Planned date (spec 075) com o mesmo valor em todas as linhas."""
     textos = textos or {}
     workbook = Workbook()
     worksheet = workbook.active
@@ -29,6 +31,8 @@ def criar_arquivo(*linhas, category="A", niveis=None, textos=None):
     if niveis is not None:
         cabecalho.append("Automation Level")
     cabecalho += list(textos)
+    if planejada is not None:
+        cabecalho.append("Planned date")
     worksheet.append(cabecalho)
     for indice, (tc_id, responsavel, backup) in enumerate(
         linhas or [("Clock_001", "dev@example.com", "backup@example.com")]
@@ -37,6 +41,8 @@ def criar_arquivo(*linhas, category="A", niveis=None, textos=None):
         if niveis is not None:
             linha.append(niveis[indice])
         linha += [valores[indice] for valores in textos.values()]
+        if planejada is not None:
+            linha.append(planejada)
         worksheet.append(linha)
     arquivo = BytesIO()
     workbook.save(arquivo)
@@ -91,6 +97,7 @@ def contexto():
         modelo_repo,
         vinculo_repo,
         uow,
+        agora=lambda: datetime(2026, 11, 11, 15, tzinfo=UTC),
     )
     request = ImportarProjetoPlanilhaRequest(time_id=time_id)
     return service, admin, request, projeto_repo, caso_repo, uow
@@ -290,3 +297,49 @@ async def test_texto_longo_nao_persiste_nada(contexto):
     projetos.adicionar.assert_not_awaited()
     casos.adicionar.assert_not_awaited()
     uow.commit.assert_not_awaited()
+
+
+# Spec 075: a Planned date da planilha vira a data planejada do projeto.
+async def test_planned_date_da_planilha_vira_a_data_planejada_do_projeto(contexto):
+    service, admin, request, projetos, _, uow = contexto
+
+    await service.importar(admin, request, criar_arquivo(planejada="19/12/2026"))
+
+    projeto = projetos.adicionar.call_args.args[0]
+    assert projeto.data_planejada == date(2026, 12, 19)
+    assert projeto.planejamento_iniciado_em == date(2026, 11, 11)
+    uow.commit.assert_awaited_once()
+
+
+async def test_sem_planned_date_o_projeto_nasce_sem_planejamento(contexto):
+    service, admin, request, projetos, _, _ = contexto
+
+    await service.importar(admin, request, criar_arquivo())
+
+    projeto = projetos.adicionar.call_args.args[0]
+    assert projeto.data_planejada is None
+    assert projeto.planejamento_iniciado_em is None
+
+
+async def test_planned_date_no_passado_nao_persiste_nada(contexto):
+    service, admin, request, projetos, casos, uow = contexto
+
+    with pytest.raises(PlanilhaProjetoInvalida) as erro:
+        await service.importar(admin, request, criar_arquivo(planejada="10/11/2026"))
+
+    assert [e.codigo for e in erro.value.erros] == ["data_planejada_fora_do_intervalo"]
+    projetos.adicionar.assert_not_awaited()
+    casos.adicionar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
+
+
+async def test_o_hoje_da_importacao_segue_o_fuso_de_quem_importa(contexto):
+    service, admin, request, projetos, _, _ = contexto
+    # 11/11 às 15h em UTC ainda é 11/11 em São Paulo; em Tóquio já é 12/11.
+    with pytest.raises(PlanilhaProjetoInvalida):
+        await service.importar(admin, request, criar_arquivo(planejada="11/11/2026"), "Asia/Tokyo")
+
+    await service.importar(
+        admin, request, criar_arquivo(planejada="11/11/2026"), "America/Sao_Paulo"
+    )
+    assert projetos.adicionar.call_args.args[0].planejamento_iniciado_em == date(2026, 11, 11)

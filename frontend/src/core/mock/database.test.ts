@@ -77,8 +77,9 @@ describe("base mock de projetos", () => {
     }
     const db = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
     for (const item of db.casosTeste) {
-      // Spec 065: a semana é a da finalização de tudo, com qualquer Status.
-      item.all_passed_em = item.tc_id === "Pendente" ? null : item.tc_id === "Anterior" ? "2026-03-16T12:00:00Z" : "2026-03-24T12:00:00Z";
+      // Spec 075: a semana Ã© a da End date (primeira entrada em In Review); a data de todos passaram nÃ£o conta.
+      item.all_passed_em = "2026-03-24T12:00:00Z";
+      item.code_done_em = item.tc_id === "Pendente" ? null : item.tc_id === "Anterior" ? "2026-03-16T12:00:00Z" : "2026-03-24T12:00:00Z";
       item.status = item.tc_id === "Principal" ? "InValidation" : "Done";
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
@@ -1053,6 +1054,23 @@ describe("conclusÃ£o de projeto no mock (spec 069)", () => {
 
     casosDoProjeto(projeto, (casos) => casos.forEach((caso) => { caso.ativo = true; caso.status = "InProgress"; }));
     expect(mockProjetosApi.atualizarStatus(projeto.id, "Canceled").status).toBe("Canceled");
+  });
+});
+
+describe("importaÃ§Ã£o com Planned date no modo mock (spec 075)", () => {
+  it("o projeto nasce com a data planejada da planilha", async () => {
+    entrar("admin@sdfmanager.com");
+    const data = new Date();
+    data.setDate(data.getDate() + 30);
+    const dia = `${String(data.getDate()).padStart(2, "0")}/${String(data.getMonth() + 1).padStart(2, "0")}/${data.getFullYear()}`;
+    const file = planilhaFile([
+      ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI", "Assignees", "Backup", "Planned date"],
+      ["Clock", "Clock_001", "Low", "A", "New", "9.5", "Daniel Oliveira", "Kaique Pereira", dia],
+    ]);
+
+    const result = await mockProjetosApi.importar(file, "mock-team-platform", []);
+
+    expect(result.projeto.data_planejada).toBe(dia.split("/").reverse().join("-"));
   });
 });
 

@@ -11,7 +11,7 @@ import { timesApi } from "@/modules/times/api/times.api";
 import { buscarTodasAsPaginas } from "@/shared/lib/exportar-planilha";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { toast } from "@/shared/lib/toast";
-import { formatarDiaIso } from "@/shared/lib/utils";
+import { formatarDiaIso, lerDiaIso } from "@/shared/lib/utils";
 import { AlertConfirm } from "@/shared/ui/alert-confirm";
 import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
 import { DataTableFilter, DataTableMultiFilter } from "@/shared/ui/data-table-filter";
@@ -55,14 +55,15 @@ const ROTULO_ABA: Record<Aba, string> = { cases: "testCasesTab", "form-factor": 
 // Valor do filtro de Backup para os casos sem backup.
 const SEM_BACKUP = "__sem_backup__";
 /** End Date do caso (spec 065, RN-10): quando passou em todos os devices, sem depender do Status. */
-const dataFinalDoCaso = (caso: CasoTeste) => caso.all_passed_em ?? null;
+// End date (spec 075): a primeira entrada em In Review, o antigo Code done da spec 065.
+const dataFinalDoCaso = (caso: CasoTeste) => caso.code_done_em ?? null;
 // Figma: data por extenso curta ("Mar 23, 2026").
 function rotuloDataFinal(caso: CasoTeste) {
   const endDate = dataFinalDoCaso(caso);
   return endDate ? formatDate(endDate, { dateStyle: "medium" }) : "—";
 }
 // Colunas de valores fechados filtram por vários valores ao mesmo tempo; TC ID (texto) e End date (dia) filtram por um.
-const FILTROS_CASO_VAZIOS = { tcId: "", status: [] as string[], situation: [] as string[], assignee: [] as string[], difficulty: [] as string[], category: [] as string[], automationLevel: [] as string[], codeDone: "", endDate: "", backup: [] as string[] };
+const FILTROS_CASO_VAZIOS = { tcId: "", status: [] as string[], situation: [] as string[], assignee: [] as string[], difficulty: [] as string[], category: [] as string[], automationLevel: [] as string[], endDate: "", backup: [] as string[] };
 
 export function ProjetoDetalhePage() {
   const { projetoId = "" } = useParams();
@@ -168,13 +169,13 @@ function ProjetoDetalhe() {
     return { membrosAtivos: ativos, opcoesAssignee, opcoesMembros: opcoesAssignee.map(({ value, label }) => ({ value, label })) };
   }, [membros.data]);
   const responsavelAtual = perfil.id;
+  const dataPlanejada = projeto.data?.data_planejada ? formatDate(lerDiaIso(projeto.data.data_planejada), { dateStyle: "medium" }) : null;
   const mostrarAcoes = podeGerenciarCasos || Boolean(casos.data?.items.some((item) => item.responsavel_id === responsavelAtual));
   // A lista vazia do Assignee é verdadeira para Boolean: conta só quando tem alguém escolhido.
   const temFiltrosCaso = Boolean(Object.values(filtrosCaso).some((valor) => Array.isArray(valor) ? valor.length > 0 : Boolean(valor)));
   const passaNosFiltrosCaso = (item: CasoTeste) => {
     const endDate = dataFinalDoCaso(item);
     const dataFinal = endDate ? formatarDiaIso(new Date(endDate)) : "";
-    const dataCodeDone = item.code_done_em ? formatarDiaIso(new Date(item.code_done_em)) : "";
     return item.tc_id.toLocaleLowerCase().includes(filtrosCaso.tcId.toLocaleLowerCase())
       && (!filtrosCaso.status.length || filtrosCaso.status.includes(item.status))
       && (!filtrosCaso.situation.length || filtrosCaso.situation.includes(item.situation))
@@ -182,7 +183,6 @@ function ProjetoDetalhe() {
       && (!filtrosCaso.difficulty.length || filtrosCaso.difficulty.includes(item.difficulty))
       && (!filtrosCaso.category.length || filtrosCaso.category.includes(item.category))
       && (!filtrosCaso.automationLevel.length || filtrosCaso.automationLevel.includes(String(item.automation_level ?? "")))
-      && (!filtrosCaso.codeDone || dataCodeDone === filtrosCaso.codeDone)
       && (!filtrosCaso.endDate || dataFinal === filtrosCaso.endDate)
       && (!filtrosCaso.backup.length || filtrosCaso.backup.includes(item.backup_id ?? SEM_BACKUP));
   };
@@ -278,16 +278,17 @@ function ProjetoDetalhe() {
       cell: (caso) => celulaEditavel(caso, "automation_level", t("automationLevel"), String(caso.automation_level ?? ""), opcoes.automacao, <span title={caso.automation_level ? rotuloAutomacao(caso) : undefined}>{caso.automation_level ?? "—"}</span>, podeEditarProprio(caso)),
     },
     {
-      // O rótulo "Dev done" é só visual: o dado continua sendo o `code_done_em` (spec 065).
-      id: "codeDone",
-      header: <DataTableFilter label={t("codeDone")} value={filtrosCaso.codeDone} onChange={(value) => alterarFiltroCaso("codeDone", value)} type="date" />,
-      cell: (caso) => <DataDoSistema valor={caso.code_done_em} />,
-    },
-    {
       id: "endDate",
       header: <DataTableFilter label={t("endDate")} value={filtrosCaso.endDate} onChange={(value) => alterarFiltroCaso("endDate", value)} type="date" />,
       exportar: { titulo: t("endDate"), valor: rotuloDataFinal },
       cell: (caso) => <DataDoSistema valor={dataFinalDoCaso(caso)} />,
+    },
+    {
+      // Spec 075: a data planejada é do projeto, igual em todas as linhas e editada só no formulário do projeto.
+      id: "plannedDate",
+      header: t("plannedDate"),
+      exportar: { titulo: t("plannedDate"), valor: () => dataPlanejada ?? "—" },
+      cell: () => <span className="block text-center">{dataPlanejada ?? "—"}</span>,
     },
     {
       id: "backup",

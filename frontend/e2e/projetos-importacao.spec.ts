@@ -24,7 +24,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("pagina a prévia e informa quantos Test Cases foram criados", async ({ page }) => {
-  await page.route("**/api/projetos/importar", async (route) => {
+  await page.route("**/api/projetos/importar?*", async (route) => {
     expect(route.request().method()).toBe("POST");
     expect(route.request().headers()["content-type"]).toContain("multipart/form-data");
     await route.fulfill({ json: { projeto: project, quantidade_casos: 45 } });
@@ -50,7 +50,7 @@ test("pagina a prévia e informa quantos Test Cases foram criados", async ({ pag
 
 test("mostra os problemas da planilha agrupados por linha e confere as pessoas no servidor", async ({ page }) => {
   let submitted = false;
-  await page.route("**/api/projetos/importar", (route) => {
+  await page.route("**/api/projetos/importar?*", (route) => {
     submitted = true;
     return route.fulfill({
       status: 422,
@@ -90,7 +90,7 @@ test("mostra os problemas da planilha agrupados por linha e confere as pessoas n
 });
 
 test("mostra os problemas de pessoas devolvidos pela API e não cria o projeto", async ({ page }) => {
-  await page.route("**/api/projetos/importar", (route) => route.fulfill({
+  await page.route("**/api/projetos/importar?*", (route) => route.fulfill({
     status: 422,
     contentType: "application/problem+json",
     body: JSON.stringify({
@@ -115,7 +115,7 @@ test("mostra os problemas de pessoas devolvidos pela API e não cria o projeto",
 });
 
 test("envia identificadores de usuário e bloqueia importação ambígua", async ({ page }) => {
-  await page.route("**/api/projetos/importar", (route) => route.fulfill({
+  await page.route("**/api/projetos/importar?*", (route) => route.fulfill({
     status: 422,
     contentType: "application/problem+json",
     body: JSON.stringify({
@@ -211,7 +211,7 @@ const casoModelo = (tcId: string, nivel: unknown) =>
   ["Clock", tcId, "Criar alarme", "App Clock instalado", "1. Abrir\n2. Tocar em Adicionar", "O alarme é criado", "Low", "A", nivel, "New", "9.5", "Gerente Ana", "Kaique Pereira"];
 
 test("importa a planilha no modelo atual e mostra o Automation Level de cada caso na prévia", async ({ page }) => {
-  await page.route("**/api/projetos/importar", (route) => route.fulfill({ json: { projeto: project, quantidade_casos: 3 } }));
+  await page.route("**/api/projetos/importar?*", (route) => route.fulfill({ json: { projeto: project, quantidade_casos: 3 } }));
 
   await abrirNovoProjeto(page);
   await escolher(page, planilha([casoModelo("Clock_001", 1), casoModelo("Clock_002", ""), casoModelo("Clock_003", "3.0")], cabecalhoModelo));
@@ -232,7 +232,7 @@ test("importa a planilha no modelo atual e mostra o Automation Level de cada cas
 
 test("recusa um Automation Level inválido na planilha, apontando a linha e a coluna, sem enviar nada", async ({ page }) => {
   let enviou = false;
-  await page.route("**/api/projetos/importar", (route) => { enviou = true; return route.fulfill({ json: { projeto: project, quantidade_casos: 2 } }); });
+  await page.route("**/api/projetos/importar?*", (route) => { enviou = true; return route.fulfill({ json: { projeto: project, quantidade_casos: 2 } }); });
 
   await abrirNovoProjeto(page);
   await escolher(page, planilha([casoModelo("Clock_001", 2), casoModelo("Clock_002", 4)], cabecalhoModelo));
@@ -249,7 +249,7 @@ test("detalhes: importa a planilha com os textos e lê o procedimento no painel 
   // A API é simulada: o detalhe devolve os textos da mesma linha que a planilha importa.
   const linha = casoModelo("Clock_001", 1);
   const [title, precondition, procedure, expected_result] = linha.slice(2, 6) as string[];
-  await page.route("**/api/projetos/importar", (route) => route.fulfill({ json: { projeto: project, quantidade_casos: 1 } }));
+  await page.route("**/api/projetos/importar?*", (route) => route.fulfill({ json: { projeto: project, quantidade_casos: 1 } }));
   await page.route(`**/api/projetos/${projectId}`, (route) => route.fulfill({ json: project }));
   await page.route(`**/api/projetos/${projectId}/test-cases?*`, (route) => route.fulfill({ json: { items: [caseItem], page: 1, page_size: 20, total_count: 1 } }));
   await page.route(`**/api/test-cases/${caseItem.id}`, (route) => route.fulfill({ json: { ...caseItem, title, precondition, procedure, expected_result } }));
@@ -281,7 +281,7 @@ test("detalhes: importa a planilha com os textos e lê o procedimento no painel 
 
 test("detalhes: recusa um Title acima de 500 caracteres, apontando a linha e a coluna, sem enviar nada", async ({ page }) => {
   let enviou = false;
-  await page.route("**/api/projetos/importar", (route) => { enviou = true; return route.fulfill({ json: { projeto: project, quantidade_casos: 1 } }); });
+  await page.route("**/api/projetos/importar?*", (route) => { enviou = true; return route.fulfill({ json: { projeto: project, quantidade_casos: 1 } }); });
   const longo = casoModelo("Clock_001", 1);
   longo[2] = "a".repeat(501);
 
@@ -291,5 +291,42 @@ test("detalhes: recusa um Title acima de 500 caracteres, apontando a linha e a c
   const alerta = alertaDaPlanilha(page);
   await expect(alerta.getByRole("heading", { name: "Linha 2" })).toBeVisible();
   await expect(alerta).toContainText("Coluna Title(English): o texto passa de 500 caracteres. Encurte o texto.");
+  expect(enviou).toBe(false);
+});
+
+// Spec 075: a Planned date da planilha é a data planejada do projeto.
+const daquiA = (dias: number) => {
+  const data = new Date();
+  data.setDate(data.getDate() + dias);
+  return `${String(data.getDate()).padStart(2, "0")}/${String(data.getMonth() + 1).padStart(2, "0")}/${data.getFullYear()}`;
+};
+const comPlannedDate = (...datas: string[]) => planilha(casos(datas.length).map((linha, indice) => [...linha, datas[indice]]), [...cabecalho, "Planned date"]);
+
+test("importa a planilha com Planned date, mostra a data na prévia e envia o fuso de quem importa", async ({ page }) => {
+  let url = "";
+  await page.route("**/api/projetos/importar?*", (route) => { url = route.request().url(); return route.fulfill({ json: { projeto: project, quantidade_casos: 2 } }); });
+
+  await abrirNovoProjeto(page);
+  await escolher(page, comPlannedDate(daquiA(30), daquiA(30)));
+
+  await expect(previaDe(page)).toContainText("Data planejada:");
+  await page.getByRole("button", { name: /Time$/ }).click();
+  await page.getByRole("option", { name: "Plataforma" }).click();
+  await page.getByRole("button", { name: "Criar projeto" }).click();
+
+  await expect(page.getByText("Planilha importada com sucesso: 2 Test Cases criados em Clock 9.5.")).toBeVisible();
+  expect(new URL(url).searchParams.get("fuso_horario")).toBeTruthy();
+});
+
+test("falha: recusa Planned date diferente entre as linhas, apontando a linha, sem enviar nada", async ({ page }) => {
+  let enviou = false;
+  await page.route("**/api/projetos/importar?*", (route) => { enviou = true; return route.fulfill({ json: { projeto: project, quantidade_casos: 2 } }); });
+
+  await abrirNovoProjeto(page);
+  await escolher(page, comPlannedDate(daquiA(30), daquiA(31)));
+
+  const alerta = alertaDaPlanilha(page);
+  await expect(alerta.getByRole("heading", { name: "Linha 3" })).toBeVisible();
+  await expect(alerta).toContainText("a data planejada é do projeto. Use a mesma data da linha 2.");
   expect(enviou).toBe(false);
 });

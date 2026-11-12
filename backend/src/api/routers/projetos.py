@@ -80,6 +80,7 @@ async def importar_projeto(
     arquivo: Annotated[UploadFile, File()],
     time_id: Annotated[UUID, Form()],
     modelos_ids: Annotated[list[UUID] | None, Form()] = None,
+    fuso_horario: str = Query("UTC", min_length=1, max_length=64),
     service: ImportacaoProjetoService = Depends(get_importacao_projeto_service),
     usuario_atual: UsuarioAutenticado = Depends(get_usuario_atual),
 ):
@@ -88,6 +89,7 @@ async def importar_projeto(
         usuario_atual,
         ImportarProjetoPlanilhaRequest(time_id=time_id, modelos_ids=modelos_ids or []),
         conteudo,
+        fuso_horario,
     )
 
 

@@ -73,24 +73,37 @@ describe("ProjetoDetalhePage", () => {
     expect(screen.getAllByRole("tab").map((aba) => aba.textContent)).toEqual(["Test Cases", "Form Factor", "My Fixes"]);
   });
 
-  it("mostra o Code done e, na End date, a data em que passou em todos os devices, sem depender do Status (spec 065)", async () => {
-    // Clock_001 ainda em To-Do mas com tudo PASS; Clock_002 em Done sem PASS em todos os devices.
+  it("mostra na End date a primeira entrada em In Review e a Planned date do projeto em cada linha (spec 075, CA-05 e CA-07)", async () => {
+    // A data em que todos os devices passaram não aparece mais, mesmo preenchida.
+    vi.mocked(projetosApi.obter).mockResolvedValue({ ...projeto, data_planejada: "2026-12-19" });
     vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [{ ...casos[0], code_done_em: "2026-11-01T13:30:00Z", all_passed_em: "2026-11-06T08:30:12Z" }, { ...casos[1], updated_at: "2026-11-02T10:00:00Z" }], page: 1, page_size: 20, total_count: 2 });
     renderPage();
 
     const linha = (await screen.findByRole("rowheader", { name: "Clock_001" })).closest("tr")!;
     const cabecalhos = screen.getAllByRole("columnheader").map((coluna) => coluna.textContent);
-    expect(cabecalhos).not.toContain("All passed");
+    expect(cabecalhos.some((texto) => /Dev done/.test(texto ?? ""))).toBe(false);
     const celula = (tr: Element, titulo: RegExp) => within(tr as HTMLElement).getAllByRole("gridcell")[cabecalhos.findIndex((texto) => titulo.test(texto ?? "")) - 1];
 
-    const codeDone = within(celula(linha, /^Dev done$/)).getByText(formatDate("2026-11-01T13:30:00Z", { dateStyle: "medium" }));
-    expect(codeDone.tagName).toBe("TIME");
-    expect(codeDone).toHaveAttribute("dateTime", "2026-11-01T13:30:00Z");
-    expect(codeDone).toHaveAttribute("title", formatDate("2026-11-01T13:30:00Z", { dateStyle: "medium", timeStyle: "short" }));
-    expect(celula(linha, /End date/)).toHaveTextContent(formatDate("2026-11-06T08:30:12Z", { dateStyle: "medium" }));
+    const endDate = within(celula(linha, /End date/)).getByText(formatDate("2026-11-01T13:30:00Z", { dateStyle: "medium" }));
+    expect(endDate.tagName).toBe("TIME");
+    expect(endDate).toHaveAttribute("title", formatDate("2026-11-01T13:30:00Z", { dateStyle: "medium", timeStyle: "short" }));
+    expect(linha).not.toHaveTextContent(formatDate("2026-11-06T08:30:12Z", { dateStyle: "medium" }));
+    const planejada = formatDate(new Date(2026, 11, 19), { dateStyle: "medium" });
+    expect(celula(linha, /^Planned date$/)).toHaveTextContent(planejada);
     const done = screen.getByRole("rowheader", { name: "Clock_002" }).closest("tr")!;
-    expect(celula(done, /^Dev done$/)).toHaveTextContent("—");
     expect(celula(done, /End date/)).toHaveTextContent("—");
+    expect(celula(done, /^Planned date$/)).toHaveTextContent(planejada);
+  });
+
+  it("sem data planejada no projeto, a Planned date mostra um traço e não é editável (spec 075, CA-07 e CA-08)", async () => {
+    renderPage({ ...perfil, perfil_codigo: "USUARIO_PADRAO" });
+
+    const linha = (await screen.findByRole("rowheader", { name: "Clock_001" })).closest("tr")!;
+    const cabecalhos = screen.getAllByRole("columnheader").map((coluna) => coluna.textContent);
+    const indice = cabecalhos.findIndex((texto) => /^Planned date$/.test(texto ?? "")) - 1;
+    const celula = within(linha).getAllByRole("gridcell")[indice];
+    expect(celula).toHaveTextContent("—");
+    expect(within(celula).queryByRole("button")).not.toBeInTheDocument();
   });
 
   it("link antigo da aba Kanban abre o Kanban do projeto no Board, com os filtros", async () => {
@@ -137,11 +150,11 @@ describe("ProjetoDetalhePage", () => {
     expect(casosTesteApi.listar).toHaveBeenCalledWith("project-1", 1, 100, { responsavelIds: undefined });
     const [colunas, itens] = vi.mocked(montarPlanilha).mock.calls[0];
     expect(itens).toEqual([...casos, excluido]);
-    expect(colunas.map((coluna) => coluna.titulo)).toEqual(["TC ID", "Status", "TC Situation", "Assignee", "Difficulty", "Category", "Automation Level", "End date", "Backup", "Notes"]);
-    expect(colunas.map((coluna) => coluna.valor(casos[0]))).toEqual(["Clock_001", "To-Do", "New", "daniel-id", "Low", "A", "—", "—", "kaique-id", "—"]);
+    expect(colunas.map((coluna) => coluna.titulo)).toEqual(["TC ID", "Status", "TC Situation", "Assignee", "Difficulty", "Category", "Automation Level", "End date", "Planned date", "Backup", "Notes"]);
+    expect(colunas.map((coluna) => coluna.valor(casos[0]))).toEqual(["Clock_001", "To-Do", "New", "daniel-id", "Low", "A", "—", "—", "—", "kaique-id", "—"]);
     expect(colunas.at(-1)!.valor(excluido)).toBe("Fora do escopo");
-    // Spec 065: a End date exportada é a da tela, pela finalização de tudo.
-    expect(colunas[7].valor({ ...casos[0], all_passed_em: "2026-11-06T08:30:12Z" })).toBe(formatDate("2026-11-06T08:30:12Z", { dateStyle: "medium" }));
+    // Spec 075 (CA-09): a End date exportada é a da tela, a primeira entrada em In Review.
+    expect(colunas[7].valor({ ...casos[0], code_done_em: "2026-11-06T08:30:12Z", all_passed_em: "2026-11-20T08:30:12Z" })).toBe(formatDate("2026-11-06T08:30:12Z", { dateStyle: "medium" }));
   });
 
   it("permite ao backup cancelar, sem liberar edição dos demais campos", async () => {
@@ -371,7 +384,7 @@ describe("ProjetoDetalhePage", () => {
     hoje.setHours(12, 0, 0, 0);
     const outroDia = new Date(hoje);
     outroDia.setDate(hoje.getDate() === 1 ? 2 : 1);
-    vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [casos[0], { ...casos[1], all_passed_em: hoje.toISOString() }], page: 1, page_size: 10, total_count: 2 });
+    vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [casos[0], { ...casos[1], code_done_em: hoje.toISOString() }], page: 1, page_size: 10, total_count: 2 });
     const user = userEvent.setup();
     renderPage();
     await screen.findByRole("row", { name: /Clock_002/ });
@@ -379,30 +392,6 @@ describe("ProjetoDetalhePage", () => {
       await user.click(screen.getByRole("button", { name: /Filter by End date/i }));
       const calendario = await screen.findByRole("dialog", { name: /End date/i });
       // O calendário (spec 050) usa o ordinal no rótulo do dia: "Friday, October 30th, 2026".
-      const dataPorExtenso = `${dia.toLocaleString("en-US", { month: "long" })} ${dia.getDate()}(st|nd|rd|th)?, ${dia.getFullYear()}`;
-      await user.click(within(calendario).getByRole("button", { name: new RegExp(dataPorExtenso) }));
-    };
-
-    await escolherDia(hoje);
-    expect(screen.getByRole("row", { name: /Clock_002/ })).toBeInTheDocument();
-    expect(screen.queryByRole("row", { name: /Clock_001/ })).not.toBeInTheDocument();
-
-    await escolherDia(outroDia);
-    expect(screen.queryByRole("row", { name: /Clock_002/ })).not.toBeInTheDocument();
-  });
-
-  it("filtra os casos pela data de Dev done escolhida no calendário", async () => {
-    const hoje = new Date();
-    hoje.setHours(12, 0, 0, 0);
-    const outroDia = new Date(hoje);
-    outroDia.setDate(hoje.getDate() === 1 ? 2 : 1);
-    vi.mocked(casosTesteApi.listar).mockResolvedValue({ items: [casos[0], { ...casos[1], code_done_em: hoje.toISOString() }], page: 1, page_size: 10, total_count: 2 });
-    const user = userEvent.setup();
-    renderPage();
-    await screen.findByRole("row", { name: /Clock_002/ });
-    const escolherDia = async (dia: Date) => {
-      await user.click(screen.getByRole("button", { name: /Filter by Dev done/i }));
-      const calendario = await screen.findByRole("dialog", { name: /Dev done/i });
       const dataPorExtenso = `${dia.toLocaleString("en-US", { month: "long" })} ${dia.getDate()}(st|nd|rd|th)?, ${dia.getFullYear()}`;
       await user.click(within(calendario).getByRole("button", { name: new RegExp(dataPorExtenso) }));
     };

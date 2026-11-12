@@ -1,3 +1,4 @@
+from datetime import date, datetime
 from io import BytesIO
 
 import pytest
@@ -470,3 +471,63 @@ def test_cabecalho_de_texto_com_espaco_antes_dos_parenteses_e_reconhecido():
     ).casos[0]
 
     assert caso.title == "Check Writing style"
+
+
+# Spec 075: Planned date do projeto na planilha.
+HOJE = date(2026, 11, 11)
+
+
+def gerar_planilha_com_data(*datas):
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.append([*CABECALHO, "Planned date"])
+    for indice, data in enumerate(datas, start=1):
+        worksheet.append([*linha_caso(f"Clock_{indice:03}"), data])
+    conteudo = BytesIO()
+    workbook.save(conteudo)
+    return conteudo.getvalue()
+
+
+def test_planned_date_em_celula_de_data_ou_texto_vira_a_data_do_projeto():
+    planilha = validar_planilha_projeto(
+        gerar_planilha_com_data(datetime(2026, 12, 19), "19/12/2026", None), HOJE
+    )
+
+    assert planilha.data_planejada == date(2026, 12, 19)
+
+
+def test_sem_a_coluna_planned_date_o_projeto_fica_sem_data():
+    planilha = validar_planilha_projeto(gerar_planilha([linha_caso()]), HOJE)
+
+    assert planilha.data_planejada is None
+
+
+def test_falha_planned_date_diferente_entre_linhas_aponta_a_linha():
+    erro = validar_com_erro_hoje(gerar_planilha_com_data("19/12/2026", "20/12/2026"))
+
+    assert [(e.linha, e.codigo, e.parametros) for e in erro.erros] == [
+        (3, "data_planejada_divergente", {"primeira_linha": 2})
+    ]
+
+
+@pytest.mark.parametrize(
+    ("valor", "codigo"),
+    [
+        ("amanhã", "data_planejada_invalida"),
+        ("31/02/2026", "data_planejada_invalida"),
+        ("10/11/2026", "data_planejada_fora_do_intervalo"),
+        ("12/11/2028", "data_planejada_fora_do_intervalo"),
+    ],
+)
+def test_falha_planned_date_invalida_no_passado_ou_a_mais_de_dois_anos(valor, codigo):
+    erro = validar_com_erro_hoje(gerar_planilha_com_data(valor))
+
+    assert [(e.linha, e.campo, e.codigo, e.parametros) for e in erro.erros] == [
+        (2, "planned date", codigo, None)
+    ]
+
+
+def validar_com_erro_hoje(conteudo):
+    with pytest.raises(PlanilhaProjetoInvalida) as erro:
+        validar_planilha_projeto(conteudo, HOJE)
+    return erro.value

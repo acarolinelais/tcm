@@ -95,7 +95,8 @@ export const projetosApi = {
     body.append("arquivo", arquivo);
     body.append("time_id", timeId);
     modelosIds.forEach((modelId) => body.append("modelos_ids", modelId));
-    return httpPostForm<ImportacaoProjeto>("/api/projetos/importar", body);
+    // O fuso do navegador decide qual é o dia de hoje para a Planned date da planilha (spec 075).
+    return httpPostForm<ImportacaoProjeto>(`/api/projetos/importar?fuso_horario=${encodeURIComponent(fusoHorario())}`, body);
   },
   atualizarStatus(id: string, status: StatusProjeto) {
     return useMock
