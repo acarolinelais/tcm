@@ -74,7 +74,21 @@ def test_data_da_f4_aceita_espacos_e_quebra_de_linha():
     assert converter_data_f4(datetime(2026, 10, 21, 18, 43)) == datetime(2026, 10, 21, 18, 43)
 
 
-@pytest.mark.parametrize("valor", [None, "", "21/10/2026 18:43", "amanhã", "2026/10/21 \n18:44:03"])
+@pytest.mark.parametrize(
+    ("valor", "esperado"),
+    [
+        ("2026/11/11", datetime(2026, 11, 11)),
+        ("2026/10/21 \n18:44:03", datetime(2026, 10, 21, 18, 44, 3)),
+        ("2026/10/21  \n6:43:35 PM", datetime(2026, 10, 21, 18, 43, 35)),
+    ],
+)
+def test_data_da_f4_no_formato_ano_mes_dia(valor, esperado):
+    assert converter_data_f4(valor) == esperado
+
+
+@pytest.mark.parametrize(
+    "valor", [None, "", "21/10/2026 18:43", "amanhã", "2026/21/10", "2026-11-11"]
+)
 def test_data_da_f4_invalida_vira_nula(valor):
     assert converter_data_f4(valor) is None
 

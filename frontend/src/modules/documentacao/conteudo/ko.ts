@@ -182,7 +182,7 @@ export const ko: Partial<Record<SlugGuia, ConteudoGuia>> = {
         itens: [
           "SDF ID: 파일 이름에서 첫 \"_\" 앞부분. 123456-789012_0_Test_1_Detail.xlsx라면 123456-789012입니다. SDF ID는 프로젝트마다 한 번만 쓸 수 있습니다.",
           "기기: C4 셀. 프로젝트의 기기 모델이어야 합니다.",
-          "실행 날짜: F4 셀(Start Time). 월/일/연도와 시각 형식으로, 예를 들어 10/21/2026 6:43:35 PM.",
+          "실행 날짜: F4 셀(Start Time). 연도/월/일 형식으로, 예를 들어 2026/11/11. 시각은 생략할 수 있습니다.",
           "결과: 7행에 헤더가 있는 표. Script Name에서 .py를 뺀 값이 TC ID, State가 결과이며, Description은 결과 상세에 나옵니다.",
           "One UI: Test File Path에서 가져옵니다(예: OneUI95는 9.5). 프로젝트의 버전과 같아야 합니다.",
           "HQ_precondition.py와 Setup.py 행은 건너뜁니다.",

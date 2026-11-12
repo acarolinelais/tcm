@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
+import { formatDate } from "@/core/i18n/format";
 import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import { toast } from "@/shared/lib/toast";
 import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
@@ -21,6 +22,9 @@ import { statusChipTons } from "../status/status-chip-estilos";
 import { FalhasDoCasoDrawer } from "./FalhasDoCasoDrawer";
 
 /** Spec 073: os casos que a pessoa tem para corrigir no projeto, com o Status da correção na linha. */
+// A planilha leva a data como a célula mostra, no idioma da tela (ADR 0042).
+const dataExportada = (valor?: string | null) => (valor ? formatDate(valor, { dateStyle: "medium" }) : "—");
+
 export function MyFixesTab({ projetoId }: { projetoId: string }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -64,8 +68,8 @@ export function MyFixesTab({ projetoId }: { projetoId: string }) {
       exportar: { titulo: t("devOwner"), valor: (caso) => caso.responsavel_identificador ?? "—" },
     },
     { id: "dev_fix", header: t("devFix"), cell: (caso) => caso.dev_fix_identificador ?? "—", exportar: { titulo: t("devFix"), valor: (caso) => caso.dev_fix_identificador ?? "—" } },
-    { id: "run_date", header: t("executionDate"), cell: (caso) => <DataDoSistema valor={caso.falhas[0]?.data_execucao} />, exportar: { titulo: t("executionDate"), valor: (caso) => caso.falhas[0]?.data_execucao ?? "—" } },
-    { id: "end_date", header: t("endDate"), cell: (caso) => <DataDoSistema valor={caso.correcao_em_revisao_em} />, exportar: { titulo: t("endDate"), valor: (caso) => caso.correcao_em_revisao_em ?? "—" } },
+    { id: "run_date", header: t("executionDate"), cell: (caso) => <DataDoSistema valor={caso.falhas[0]?.data_execucao} />, exportar: { titulo: t("executionDate"), valor: (caso) => dataExportada(caso.falhas[0]?.data_execucao) } },
+    { id: "end_date", header: t("endDate"), cell: (caso) => <DataDoSistema valor={caso.correcao_em_revisao_em} />, exportar: { titulo: t("endDate"), valor: (caso) => dataExportada(caso.correcao_em_revisao_em) } },
   ];
 
   const temFiltro = Boolean(filtros.status?.length || filtros.responsavel);

@@ -36,8 +36,9 @@ device e a descrição de cada caso.
 - RN-04: O **device** é a célula C4 (ex.: `SM-S948B`). Ele é comparado com o nome dos modelos associados ao
   projeto, ignorando maiúsculas, minúsculas e espaços nas pontas, como a importação já faz hoje. Um device que
   não está associado ao projeto recusa o arquivo inteiro.
-- RN-05: A **data da execução** é a célula F4 (Start Time), no formato mês/dia/ano com hora de 12 horas
-  (`10/21/2026 6:43:35 PM`). A célula pode vir com espaços a mais e uma quebra de linha entre a data e a hora, e
+- RN-05: A **data da execução** é a célula F4 (Start Time), no formato ano/mês/dia (`2026/11/11`), com hora de 12
+  ou 24 horas ou sem hora. O formato antigo, mês/dia/ano com hora de 12 horas (`10/21/2026 6:43:35 PM`), continua
+  aceito para relatórios já exportados. A célula pode vir com espaços a mais e uma quebra de linha entre a data e a hora, e
   o sistema aceita assim mesmo. Essa data é a que vira coluna na General Results. As datas de cada linha (colunas
   F e G) não são usadas.
 - RN-06: Os **resultados** ficam na tabela cujo cabeçalho está na linha 7, da linha 8 até a última linha
@@ -66,8 +67,8 @@ device e a descrição de cada caso.
   até a pessoa fechar. Os textos:
   - nome do arquivo sem SDF ID: "O nome do arquivo precisa começar pelo SDF ID seguido de "_" (ex.:
     123456-789012_0_Test_1_Detail.xlsx).";
-  - F4 sem data válida: "A célula F4 (Start Time) não tem uma data válida. Use mês/dia/ano e hora, como
-    10/21/2026 6:43:35 PM.";
+  - F4 sem data válida: "A célula F4 (Start Time) não tem uma data válida. Use ano/mês/dia, como
+    2026/11/11.";
   - Test File Path sem versão: "Linha N: o Test File Path precisa ter "OneUI" seguido da versão (ex.:
     Keyboard_A_OneUI95.ts).";
   - TC ID que não é do projeto: "Linha N: o TC ID 'X' não pertence ao projeto.";
