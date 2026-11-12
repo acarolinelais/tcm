@@ -2,6 +2,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import type { PerfilAtual } from "@/core/auth/api";
 import { ApiError } from "@/shared/api/problem-details";
 
+import type { FiltrosMyFixes } from "../model/projeto";
 import {
   casosTesteApi,
   formFactorApi,
@@ -234,4 +235,13 @@ function invalidarResultadosSdf(queryClient: ReturnType<typeof useQueryClient>, 
     queryClient.invalidateQueries({ queryKey: ["projetos", projetoId] }),
     queryClient.invalidateQueries({ queryKey: ["form-factor", "historico", projetoId] }),
   ]);
+}
+
+/** Spec 073: os casos em correção do projeto em que a pessoa é a corretora. */
+export function useMyFixes(projetoId: string, page: number, pageSize: number, filtros: FiltrosMyFixes) {
+  return useQuery({
+    queryKey: ["my-fixes", projetoId, page, pageSize, filtros],
+    queryFn: () => casosTesteApi.listarMyFixes(projetoId, page, pageSize, filtros),
+    placeholderData: (anterior) => anterior,
+  });
 }

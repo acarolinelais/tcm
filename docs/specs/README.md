@@ -99,6 +99,7 @@ sem paginação, também pagina ([ADR 0039](../adr/0039-resultados-gerais-com-pa
 | 070 | Bug Reports (falhas em aberto do SDF por caso e device, com motivo; KP troca o responsável pela linha) | Concluída (validação manual no navegador pendente) |
 | 071 | Data planejada do projeto (editada no projeto; o burndown planeja até ela e mostra a meta diária; sai a meta fixa de 2 por dia) | Concluída (validação manual no navegador pendente) |
 | 072 | SDF Failures (Bug Reports renomeada: toda falha do SDF fica até a correção, uma linha por caso com as falhas; Dev Fix escolhido pelo KP; N/A e Check fecham o caso em Done) | Concluída (validação manual no navegador pendente) |
+| 073 | Aba My Fixes e fluxo de correção (corretor pelo Dev Fix, tentativas com selo e filtro Reincidentes na SDF Failures) | Concluída (integração do backend no CI; e2e com API simulada) |
 | 074 | Padronização da interface (Overview vazia com título, Teams e Users do KP em Administration, glossário de termos em inglês e nomes dos idiomas; ADRs 0054 e 0055) | Concluída (e2e da Overview com API real pendente) |
 | 075 | End date e Planned date nos Test Cases (Planned date do projeto pela planilha; Code done vira End date; sai a data de todos os devices passaram) | Concluída (integração do backend no CI; e2e de importação com API simulada) |
 

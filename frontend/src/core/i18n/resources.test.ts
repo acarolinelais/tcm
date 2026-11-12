@@ -6,7 +6,7 @@ import { formatNumber } from "./format";
 import { NOME_COR_AVATAR } from "@/shared/lib/cor-avatar";
 
 // Termos que ficam em inglês na interface em português (ADR 0054).
-const GLOSSARIO = ["SDF Failures", "Automation Level", "Pull Requests", "Form Factor", "SDF Result", "Test Cases", "Test Case", "Pass Rate", "Dev Owner", "Dev Fix", "Backup", "Device", "Status", "App"];
+const GLOSSARIO = ["SDF Failures", "My Fixes", "Automation Level", "Pull Requests", "Form Factor", "SDF Result", "Test Cases", "Test Case", "Pass Rate", "Dev Owner", "Dev Fix", "Backup", "Device", "Status", "App"];
 // Palavras que se escrevem igual nos dois idiomas, e as siglas.
 const MESMA_GRAFIA = ["Manual", "TCs", "SDF", "API"];
 // Do mais longo ao mais curto: "Test Cases" sai antes de "Test Case".

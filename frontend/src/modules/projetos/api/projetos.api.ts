@@ -1,6 +1,7 @@
 import { httpDelete, httpGet, httpPatch, httpPatchBody, httpPost, httpPostForm, httpPut } from "@/core/api/http-client";
 import { useMock } from "@/core/config";
 import {
+  mockBugReportsApi,
   mockCasosTesteApi,
   mockFormFactorApi,
   mockModelosDispositivoApi,
@@ -11,6 +12,9 @@ import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 
 import type {
   AtualizarCasoTesteInput,
+  CasoComFalhas,
+  FiltrosMyFixes,
+  StatusDaCorrecao,
   AtualizarProjetoInput,
   CasoTeste,
   CasoTesteDetalhe,
@@ -142,6 +146,22 @@ export const casosTesteApi = {
     return useMock
       ? Promise.resolve(mockCasosTesteApi.atualizar(id, body))
       : httpPut<CasoTeste>(`/api/test-cases/${id}`, body);
+  },
+  /** Spec 073: os casos em correção do projeto em que a pessoa é a corretora. */
+  listarMyFixes(projetoId: string, page: number, pageSize: number, filtros: FiltrosMyFixes = {}) {
+    if (useMock) return Promise.resolve(mockBugReportsApi.listarMyFixes(projetoId, page, pageSize, filtros));
+    const responsavel = filtros.responsavel?.trim();
+    return httpGet<PagedResult<CasoComFalhas>>("/api/bug-reports/my-fixes", {
+      projeto_id: projetoId, page, page_size: pageSize,
+      ...(filtros.status?.length ? { status: filtros.status } : {}),
+      ...(responsavel ? { responsavel } : {}),
+    });
+  },
+  /** Spec 073: a mudança de Status pela My Fixes, só pelos Status da correção. */
+  mudarStatusDaCorrecao(id: string, status: StatusDaCorrecao) {
+    return useMock
+      ? Promise.resolve(mockCasosTesteApi.mudarStatusDaCorrecao(id, status))
+      : httpPatchBody<CasoTeste>(`/api/test-cases/${id}/correcao`, { status });
   },
   transferirParaBackup(id: string) {
     return useMock

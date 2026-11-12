@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from uuid import UUID
 
-from sqlalchemy import exists, func, select
+from sqlalchemy import exists, func, select, update
 from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -135,6 +135,18 @@ class ExecucaoSdfRepositoryImpl(RepositoryBaseImpl[ExecucaoSdf, ExecucaoSdfModel
             )
         ).scalar_one_or_none()
 
+    async def definir_tentativa_correcao(self, execucao: ExecucaoSdf) -> None:
+        # Só a coluna: a execução criada neste caso de uso não tem created_at na entidade, e o
+        # merge() do atualizar() o gravaria como NULL.
+        await self.session.execute(
+            update(ExecucaoSdfModel)
+            .where(
+                ExecucaoSdfModel.unidade_id == execucao.unidade_id,
+                ExecucaoSdfModel.id == execucao.id,
+            )
+            .values(tentativa_correcao=execucao.tentativa_correcao)
+        )
+
     def _to_entity(self, model: ExecucaoSdfModel) -> ExecucaoSdf:
         execucao = ExecucaoSdf(
             model.unidade_id,
@@ -148,6 +160,7 @@ class ExecucaoSdfRepositoryImpl(RepositoryBaseImpl[ExecucaoSdf, ExecucaoSdfModel
             model.resultados_registrados,
         )
         execucao.id = model.id
+        execucao.tentativa_correcao = model.tentativa_correcao
         execucao.ativo = model.ativo
         execucao.created_at = model.created_at
         execucao.updated_at = model.updated_at
@@ -165,6 +178,7 @@ class ExecucaoSdfRepositoryImpl(RepositoryBaseImpl[ExecucaoSdf, ExecucaoSdfModel
             origem=entity.origem,
             rodada_id=entity.rodada_id,
             resultados_registrados=entity.resultados_registrados,
+            tentativa_correcao=entity.tentativa_correcao,
             ativo=entity.ativo,
             created_at=entity.created_at,
             updated_at=entity.updated_at,

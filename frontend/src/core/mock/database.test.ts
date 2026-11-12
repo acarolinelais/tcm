@@ -3,7 +3,7 @@ import * as XLSX from "@e965/xlsx";
 
 import { ApiError } from "@/shared/api/problem-details";
 import { ORDEM_KANBAN, STATUS_CASO_TESTE } from "@/modules/projetos/model/projeto";
-import { mockAuditoriaApi, mockAuth, mockCasosTesteApi, mockFormFactorApi, mockModelosDispositivoApi, mockProjetosApi, mockTimesApi, mockUsuarioApi, resetMockDatabase } from "./database";
+import { mockAuditoriaApi, mockAuth, mockBugReportsApi, mockCasosTesteApi, mockFormFactorApi, mockModelosDispositivoApi, mockProjetosApi, mockTimesApi, mockUsuarioApi, resetMockDatabase } from "./database";
 
 const STORAGE_KEY = "sdf.mock.database.v1";
 
@@ -1071,5 +1071,44 @@ describe("importação com Planned date no modo mock (spec 075)", () => {
     const result = await mockProjetosApi.importar(file, "mock-team-platform", []);
 
     expect(result.projeto.data_planejada).toBe(dia.split("/").reverse().join("-"));
+  });
+});
+
+describe("correção no modo mock (spec 073)", () => {
+  function casoQueFalhou() {
+    entrar("kaique.pereira@example.com");
+    const project = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: ["mock-model-s27-ultra"] });
+    const caso = mockCasosTesteApi.criar(project.id, { tc_id: "Clock_001", category: "A", difficulty: "Low", situation: "New", responsavel_id: "mock-user-dev", backup_id: "mock-user-kp" });
+    mockCasosTesteApi.atualizar(caso.id, { status: "InValidation" });
+    const rodada = mockFormFactorApi.criarRodada(project.id, { sdf_id: "SDF-1" });
+    mockFormFactorApi.registrarResultadosRodada(project.id, rodada.id, caso.id, { resultados: { "mock-model-s27-ultra": "FAIL" } });
+    return { project, caso };
+  }
+
+  it("a falha em validação abre a tentativa 1 e o caso aparece na My Fixes do responsável", () => {
+    const { project, caso } = casoQueFalhou();
+
+    entrar("daniel.oliveira@example.com");
+    const lista = mockBugReportsApi.listarMyFixes(project.id, 1, 20);
+    expect(lista.items.map((item) => [item.tc_id, item.status, item.tentativa_correcao])).toEqual([["Clock_001", "InFixes", 1]]);
+    expect(lista.items[0].falhas[0].tentativa).toBe(1);
+
+    const revisado = mockCasosTesteApi.mudarStatusDaCorrecao(caso.id, "InReview");
+    expect(revisado.correcao_em_revisao_em).toBeTruthy();
+  });
+
+  it("falha: com Dev Fix de outra pessoa, o responsável não vê o caso nem muda o Status", () => {
+    const { project, caso } = casoQueFalhou();
+    mockCasosTesteApi.atualizar(caso.id, { dev_fix_id: "mock-user-kp" });
+
+    entrar("daniel.oliveira@example.com");
+    expect(mockBugReportsApi.listarMyFixes(project.id, 1, 20).items).toEqual([]);
+    expect(() => mockCasosTesteApi.mudarStatusDaCorrecao(caso.id, "InProgress")).toThrow();
+  });
+
+  it("falha: Status fora da correção é recusado", () => {
+    const { caso } = casoQueFalhou();
+
+    expect(() => mockCasosTesteApi.mudarStatusDaCorrecao(caso.id, "Done" as never)).toThrow();
   });
 });

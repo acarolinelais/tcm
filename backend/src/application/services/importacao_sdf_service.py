@@ -162,6 +162,7 @@ class ImportacaoSdfServiceImpl:
 
         importacao = ImportacaoSdf(unidade_id, projeto.id, usuario_atual.id)
         await self._importacao_repo.adicionar(importacao)
+        execucoes = []
         for linha in relatorio.linhas:
             execucao = ExecucaoSdf(
                 unidade_id,
@@ -171,6 +172,7 @@ class ImportacaoSdfServiceImpl:
                 relatorio.data_execucao,
                 linha.one_ui,
             )
+            execucoes.append((execucao, casos[linha.tc_id]))
             await self._execucao_repo.adicionar(execucao)
             await self._resultado_repo.adicionar(
                 ResultadoFormFactor(
@@ -193,6 +195,10 @@ class ImportacaoSdfServiceImpl:
             caso.aplicar_resultado_sdf(caso.id in aprovados, tc_id in com_falha)
             if caso.status is not anterior:
                 mudaram.append(caso)
+        # Spec 073: cada execução fica na tentativa em que o caso ficou depois do relatório.
+        for execucao, caso in execucoes:
+            execucao.tentativa_correcao = caso.tentativa_correcao
+            await self._execucao_repo.definir_tentativa_correcao(execucao)
         # Spec 072, RN-08: o Done só encerra a correção se o caso voltou à validação depois do
         # Dev Fix. A consulta roda antes do atualizar(), que grava o novo status.
         fechando = [

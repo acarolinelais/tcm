@@ -237,6 +237,32 @@ async def test_exception_e_none_levam_in_validation_para_in_fixes(ctx):
     }
 
 
+async def test_execucao_grava_a_tentativa_de_correcao_que_o_resultado_produz(ctx):
+    # Spec 073: a falha em validação abre a tentativa; fora da validação fica na tentativa atual.
+    ctx.status_por_tc["Keyboard_000001"] = StatusCasoTeste.IN_VALIDATION
+    ctx.status_por_tc["Keyboard_000002"] = StatusCasoTeste.IN_PROGRESS
+    conteudo = relatorio(
+        [
+            ("Keyboard_000001.py", "FAIL", "", "Keyboard_A_OneUI95.ts"),
+            ("Keyboard_000002.py", "FAIL", "", "Keyboard_A_OneUI95.ts"),
+            ("Keyboard_000003.py", "PASS", "", "Keyboard_A_OneUI95.ts"),
+        ]
+    )
+
+    await ctx.importar(conteudo=conteudo)
+
+    execucoes = [
+        chamada.args[0] for chamada in ctx.execucoes.definir_tentativa_correcao.await_args_list
+    ]
+    por_caso = {ctx.casos[tc].id: tc for tc in ctx.casos}
+    assert {por_caso[e.caso_teste_id]: e.tentativa_correcao for e in execucoes} == {
+        "Keyboard_000001": 1,
+        "Keyboard_000002": 0,
+        "Keyboard_000003": 0,
+    }
+    assert ctx.casos["Keyboard_000001"].tentativa_correcao == 1
+
+
 @pytest.mark.parametrize("voltou_a_validar", [True, False])
 async def test_done_com_dev_fix_marca_a_correcao_se_voltou_a_validar(ctx, voltou_a_validar):
     # Spec 072, RN-08: CA-15 (voltou depois do Dev Fix) e CA-17 (já estava em validação).

@@ -84,6 +84,9 @@ export interface CasoTeste {
   /** Spec 065: primeira entrada em In Review e fechamento com PASS em todos os devices. Só o sistema grava. */
   code_done_em?: string | null;
   all_passed_em?: string | null;
+  /** Spec 073: quantas vezes voltou de In Validation para In Fixes, e quando a tentativa atual entrou em In Review. */
+  tentativa_correcao?: number;
+  correcao_em_revisao_em?: string | null;
   ativo: boolean;
   created_at: string | null;
   updated_at: string | null;
@@ -409,4 +412,42 @@ export interface AlteracaoCasoTeste {
   usuario_perfil: string | null;
   origem: string;
   alterado_em: string;
+}
+
+/** Um resultado do SDF que é falha: tudo que não é PASS, N/A, NA ou Check (spec 072, RN-01). */
+export interface FalhaSdf {
+  modelo_dispositivo_id: string;
+  modelo_nome: string;
+  sdf_id: string | null;
+  resultado: string;
+  descricao: string | null;
+  data_execucao: string;
+  /** Spec 073: a tentativa de correção em que a falha entrou; nula nas falhas anteriores a ela. */
+  tentativa?: number | null;
+}
+
+/** Uma linha de SDF Failures: o caso e as falhas dele, da mais recente para a mais antiga. */
+export interface CasoComFalhas {
+  caso_teste_id: string;
+  tc_id: string;
+  status: StatusCasoTeste;
+  time_id: string;
+  responsavel_id: string;
+  responsavel_identificador: string | null;
+  backup_id: string | null;
+  dev_fix_id: string | null;
+  dev_fix_identificador: string | null;
+  falhas: FalhaSdf[];
+  /** Spec 073: a tentativa de correção do caso e quando a atual entrou em In Review. */
+  tentativa_correcao: number;
+  correcao_em_revisao_em: string | null;
+}
+
+/** Spec 073: os Status por onde a correção anda, na ordem do fluxo. */
+export const STATUS_DA_CORRECAO = ["InFixes", "InProgress", "InReview", "InValidation"] as const satisfies readonly StatusCasoTeste[];
+export type StatusDaCorrecao = (typeof STATUS_DA_CORRECAO)[number];
+
+export interface FiltrosMyFixes {
+  status?: StatusDaCorrecao[];
+  responsavel?: string;
 }

@@ -15,6 +15,7 @@ import { formatarDiaIso, lerDiaIso } from "@/shared/lib/utils";
 import { AlertConfirm } from "@/shared/ui/alert-confirm";
 import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
 import { DataTableFilter, DataTableMultiFilter } from "@/shared/ui/data-table-filter";
+import { DataDoSistema } from "@/shared/ui/data-do-sistema";
 import { DataTablePagination } from "@/shared/ui/data-table-pagination";
 import { TransferIcon } from "@/shared/ui/figma-icons";
 import { InlineSelect, type InlineSelectOption } from "@/shared/ui/inline-select";
@@ -32,6 +33,7 @@ import { ExcluirCasoTesteDialog } from "../components/casos-teste/ExcluirCasoTes
 import { JustificativaExclusaoDrawer } from "../components/casos-teste/JustificativaExclusaoDrawer";
 import { estadoCasosTeste } from "../components/casos-teste/estado-casos-teste";
 import { FormFactorManualDialog } from "../components/form-factor/FormFactorManualDialog";
+import { MyFixesTab } from "../components/my-fixes/MyFixesTab";
 import { HistoricoProjetoTabela } from "../components/resultados-gerais/HistoricoProjetoTabela";
 import { ResultadoExecucaoModal } from "../components/resultados-gerais/ResultadoExecucaoModal";
 import { ResumoExecucoesDrawer } from "../components/resultados-gerais/ResumoExecucoesDrawer";
@@ -48,8 +50,8 @@ import { DIFICULDADES_CASO_TESTE as dificuldades, OPCOES_CATEGORIA, NIVEIS_AUTOM
 type CampoInline = "category" | "difficulty" | "automation_level" | "situation" | "status" | "responsavel_id" | "backup_id";
 /** As células editam em texto; o Automation Level viaja como número (1, 2 ou 3). */
 const valorDoCampo = (campo: CampoInline, valor: string) => campo === "automation_level" ? Number(valor) : valor;
-type Aba = "cases" | "form-factor";
-const ROTULO_ABA: Record<Aba, string> = { cases: "testCasesTab", "form-factor": "formFactor" };
+type Aba = "cases" | "form-factor" | "my-fixes";
+const ROTULO_ABA: Record<Aba, string> = { cases: "testCasesTab", "form-factor": "formFactor", "my-fixes": "myFixes" };
 // Valor do filtro de Backup para os casos sem backup.
 const SEM_BACKUP = "__sem_backup__";
 /** End Date do caso (spec 065, RN-10): quando passou em todos os devices, sem depender do Status. */
@@ -59,11 +61,6 @@ const dataFinalDoCaso = (caso: CasoTeste) => caso.code_done_em ?? null;
 function rotuloDataFinal(caso: CasoTeste) {
   const endDate = dataFinalDoCaso(caso);
   return endDate ? formatDate(endDate, { dateStyle: "medium" }) : "—";
-}
-/** Spec 065: só o dia na célula; dia e hora no `title`. */
-function DataDoSistema({ valor }: { valor?: string | null }) {
-  if (!valor) return <span className="block text-center">—</span>;
-  return <time className="block text-center" dateTime={valor} title={formatDate(valor, { dateStyle: "medium", timeStyle: "short" })}>{formatDate(valor, { dateStyle: "medium" })}</time>;
 }
 // Colunas de valores fechados filtram por vários valores ao mesmo tempo; TC ID (texto) e End date (dia) filtram por um.
 const FILTROS_CASO_VAZIOS = { tcId: "", status: [] as string[], situation: [] as string[], assignee: [] as string[], difficulty: [] as string[], category: [] as string[], automationLevel: [] as string[], endDate: "", backup: [] as string[] };
@@ -110,7 +107,8 @@ function ProjetoDetalhe() {
   const perfilGestao = admin || ["GERENTE", "KP"].includes(perfil.perfil_codigo ?? "");
   const podeRegistrarResultado = admin || (["GERENTE", "KP", "USUARIO_PADRAO"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("form_factor.registrar"));
   const podeRegistrarLinha = (linha: CasoHistorico) => Boolean(linha.rodada_pendente_id) && (perfilGestao || linha.responsavel_id === perfil.id || linha.backup_id === perfil.id);
-  const abasDisponiveis: Aba[] = [...(podeConsultarCasos ? ["cases"] as const : []), ...(podeConsultarFormFactor ? ["form-factor"] as const : [])];
+  // Spec 073, RN-07: a My Fixes aparece para quem consulta os Test Cases do projeto, mesmo vazia.
+  const abasDisponiveis: Aba[] = [...(podeConsultarCasos ? ["cases"] as const : []), ...(podeConsultarFormFactor ? ["form-factor"] as const : []), ...(podeConsultarCasos ? ["my-fixes"] as const : [])];
   const abaDaUrl = parametros.get("aba") as Aba | null;
   const aba: Aba = abaDaUrl && abasDisponiveis.includes(abaDaUrl) ? abaDaUrl : podeConsultarCasos ? "cases" : "form-factor";
   const projeto = useProjeto(projetoId, perfil, podeConsultar);
@@ -343,7 +341,7 @@ function ProjetoDetalhe() {
         onSelectionChange={(chave) => trocarAba(chave as Aba)}
         // Filtro de data antes das ações; o botão de adicionar é sempre o último à direita.
         actions={<>
-          {aba !== "cases" && <WeekPickerHero label={t("week")} value={tabela.filtros.periodo ?? ""} onChange={(valor) => tabela.alterarFiltros({ ...tabela.filtros, periodo: valor || undefined })} />}
+          {aba === "form-factor" && <WeekPickerHero label={t("week")} value={tabela.filtros.periodo ?? ""} onChange={(valor) => tabela.alterarFiltros({ ...tabela.filtros, periodo: valor || undefined })} />}
           {aba === "cases" && podeGerenciarCasos && <HeroButton variant="primary" onPress={() => abrirCaso(null)}><Plus aria-hidden="true" absoluteStrokeWidth strokeWidth={1.5} className="size-4" />{t("newTestCase")}</HeroButton>}
         </>}
       >
@@ -360,6 +358,9 @@ function ProjetoDetalhe() {
         </PageTabPanel>}
         {podeConsultarFormFactor && <PageTabPanel id="form-factor" className="flex min-h-0 flex-1 flex-col p-0">
           <HistoricoProjetoTabela {...tabela.propsTabela} podeRegistrar={podeRegistrarResultado ? podeRegistrarLinha : undefined} onRegistrar={setLinhaManual} />
+        </PageTabPanel>}
+        {podeConsultarCasos && <PageTabPanel id="my-fixes" className="flex min-h-0 flex-1 flex-col p-0">
+          {aba === "my-fixes" && <MyFixesTab projetoId={projetoId} />}
         </PageTabPanel>}
       </PageTabs>
     )}

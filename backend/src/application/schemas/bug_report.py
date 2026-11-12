@@ -3,6 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from src.application.schemas.caso_teste import timestamp_utc
 from src.domain.queries.bug_report import CasoComFalhas, FalhaSdf
 
 
@@ -13,6 +14,8 @@ class FalhaSdfResponse(BaseModel):
     resultado: str
     descricao: str | None
     data_execucao: datetime
+    # Spec 073: tentativa de correção em que a falha entrou; nula nas anteriores.
+    tentativa: int | None = None
 
 
 class CasoComFalhasResponse(BaseModel):
@@ -26,6 +29,9 @@ class CasoComFalhasResponse(BaseModel):
     dev_fix_id: UUID | None
     dev_fix_identificador: str | None
     falhas: list[FalhaSdfResponse]
+    # Spec 073: tentativa de correção do caso e a End Date da tentativa atual (In Review).
+    tentativa_correcao: int = 0
+    correcao_em_revisao_em: datetime | None = None
 
 
 def _falha_to_response(falha: FalhaSdf) -> FalhaSdfResponse:
@@ -36,6 +42,7 @@ def _falha_to_response(falha: FalhaSdf) -> FalhaSdfResponse:
         resultado=falha.resultado,
         descricao=falha.descricao,
         data_execucao=falha.data_execucao,
+        tentativa=falha.tentativa,
     )
 
 
@@ -51,4 +58,6 @@ def to_response(caso: CasoComFalhas) -> CasoComFalhasResponse:
         dev_fix_id=caso.dev_fix_id,
         dev_fix_identificador=caso.dev_fix_identificador,
         falhas=[_falha_to_response(falha) for falha in caso.falhas],
+        tentativa_correcao=caso.tentativa_correcao,
+        correcao_em_revisao_em=timestamp_utc(caso.correcao_em_revisao_em),
     )

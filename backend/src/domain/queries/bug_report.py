@@ -13,6 +13,8 @@ class FalhaSdf:
     resultado: str
     descricao: str | None
     data_execucao: datetime
+    # Spec 073: a tentativa de correção em que a falha entrou; nula nas falhas anteriores a ela.
+    tentativa: int | None = None
 
 
 @dataclass(frozen=True)
@@ -29,6 +31,9 @@ class CasoComFalhas:
     dev_fix_id: UUID | None
     dev_fix_identificador: str | None
     falhas: tuple[FalhaSdf, ...]
+    # Spec 073: a tentativa de correção do caso e quando a atual entrou em In Review.
+    tentativa_correcao: int = 0
+    correcao_em_revisao_em: datetime | None = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -40,3 +45,8 @@ class FiltrosBugReport:
     # Dia ou semana da execução (RN-09), em UTC sem fuso, com o fim exclusivo.
     inicio: datetime | None = None
     fim: datetime | None = None
+    # Spec 073: só os casos a partir da segunda tentativa de correção (filtro Reincidentes).
+    reincidentes: bool = False
+    # Spec 073 (My Fixes): só os casos em correção desta pessoa, e filtro por Status.
+    corretor_id: UUID | None = None
+    status: tuple[str, ...] = ()
