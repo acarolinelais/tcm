@@ -37,7 +37,9 @@ config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"])
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # As migrations rodam na subida da API (ADR 0012): sem isto, os loggers da API e do uvicorn
+    # criados antes ficariam desligados.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # Modelos são importados aqui só para registrar as tabelas em Base.metadata antes do autogenerate.
 target_metadata = Base.metadata

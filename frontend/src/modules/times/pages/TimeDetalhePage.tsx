@@ -46,7 +46,9 @@ export function TimeDetalhePage({ modoAdmin = false }: { modoAdmin?: boolean }) 
     (perfil.perfil_codigo === "KP" && perfil.permissoes.includes("times.gerenciar") && membroDoTime)));
   const membros = useQuery({ queryKey: ["time-membros", timeId], queryFn: () => timesApi.membros(timeId), enabled: escopoPermitido });
   const usuariosDisponiveis = useQuery({ queryKey: ["times", "usuarios-disponiveis"], queryFn: timesApi.usuariosDisponiveis, enabled: podeGerenciarMembros });
-  const setores = useQuery({ queryKey: ["setores", "times"], queryFn: () => setoresApi.listar(1, 100), enabled: escopoPermitido });
+  // A API só lista setores para admin, gerente e KP; o nome do setor do time já vem em `setor_nome`.
+  const podeConsultarSetores = admin || (["GERENTE", "KP"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("setores.consultar"));
+  const setores = useQuery({ queryKey: ["setores", "times"], queryFn: () => setoresApi.listar(1, 100), enabled: escopoPermitido && podeConsultarSetores });
   const remover = useMutation({ mutationFn: (usuarioId: string) => timesApi.remover(timeId, usuarioId), onSuccess: async () => { await client.invalidateQueries({ queryKey: ["time-membros", timeId] }); setMembroParaRemover(null); toast.success(t("memberRemoved")); }, onError: () => toast.error(t("memberRemoveError")) });
 
   if ((modoAdmin && !admin) || !podeConsultar) return <p role="alert" className="p-6 text-sm">{t("permissionDenied")}</p>;

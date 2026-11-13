@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -66,6 +66,25 @@ describe("TimesPage", () => {
     expect(await screen.findByRole("button", { name: "View team Produto" })).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Actions for|Manage members/ })).not.toBeInTheDocument();
+  });
+
+  it("dev não consulta setores: a API recusaria, e o nome do setor já vem com o time", async () => {
+    api.listar.mockResolvedValue({ items: [{ ...time, setor_nome: "SVP" }], page: 1, page_size: 20, total_count: 1 });
+    renderPage({ ...gerente, id: "dev-1", perfil_codigo: "USUARIO_PADRAO", perfil: "Dev", times: [{ id: time.id, nome: time.nome }] });
+
+    expect(await screen.findByText("SVP")).toBeInTheDocument();
+    expect(setoresApi.listar).not.toHaveBeenCalled();
+  });
+
+  it("falha: KP sem setores.consultar também não consulta setores; com a permissão, consulta", async () => {
+    renderPage({ ...gerente, perfil_codigo: "KP", perfil: "KP" });
+    expect(await screen.findByText("Produto")).toBeInTheDocument();
+    expect(setoresApi.listar).not.toHaveBeenCalled();
+
+    cleanup();
+    renderPage({ ...gerente, perfil_codigo: "KP", perfil: "KP", permissoes: ["times.consultar", "setores.consultar"] });
+    expect(await screen.findByText("Produto")).toBeInTheDocument();
+    expect(setoresApi.listar).toHaveBeenCalled();
   });
 
   it("admin vê visualizar, gerenciar membros e inativar, com a destrutiva por último", async () => {

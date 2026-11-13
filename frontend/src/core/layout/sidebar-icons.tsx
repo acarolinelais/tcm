@@ -120,8 +120,8 @@ export function ProfilesIcon(props: IconProps) {
   return (
     <svg width="13" height="15" viewBox="0 0 13 15" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
       <path d="M12.4933 6.6329C12.4933 9.92398 10.104 13.0064 6.83989 13.9083C6.61779 13.9688 6.3755 13.9688 6.1534 13.9083C2.88922 13.0064 0.5 9.92398 0.5 6.6329V3.67832C0.5 3.12644 0.91728 2.50054 1.43551 2.2919L5.18425 0.757431C6.02553 0.41419 6.97449 0.41419 7.81577 0.757431L11.5645 2.2919C12.076 2.50054 12.5 3.12644 12.5 3.67832L12.4933 6.6329Z" strokeLinecap="round" strokeLinejoin="round" stroke="currentColor"/>
-      <path d="M6.49668 7.56167C7.2401 7.56167 7.84272 6.95905 7.84272 6.21563C7.84272 5.47223 7.2401 4.86958 6.49668 4.86958C5.75326 4.86958 5.15063 5.47223 5.15063 6.21563C5.15063 6.95905 5.75326 7.56167 6.49668 7.56167Z" stroke-miterlimit="10" strokeLinecap="round" strokeLinejoin="round" stroke="currentColor"/>
-      <path d="M6.49658 7.56168V9.58074" stroke-miterlimit="10" strokeLinecap="round" strokeLinejoin="round" stroke="currentColor"/>
+      <path d="M6.49668 7.56167C7.2401 7.56167 7.84272 6.95905 7.84272 6.21563C7.84272 5.47223 7.2401 4.86958 6.49668 4.86958C5.75326 4.86958 5.15063 5.47223 5.15063 6.21563C5.15063 6.95905 5.75326 7.56167 6.49668 7.56167Z" strokeMiterlimit="10" strokeLinecap="round" strokeLinejoin="round" stroke="currentColor"/>
+      <path d="M6.49658 7.56168V9.58074" strokeMiterlimit="10" strokeLinecap="round" strokeLinejoin="round" stroke="currentColor"/>
     </svg>
   );
 }

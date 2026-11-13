@@ -67,7 +67,8 @@ describe("TimeDetalhePage", () => {
   });
 
   it("mostra a visão geral do time com setor, status e membros, sem voltar no cabeçalho", async () => {
-    setoresApi.listar.mockResolvedValue({ items: [{ id: "setor-1", nome: "SVP", ativo: true }], page: 1, page_size: 100, total_count: 1 });
+    // O nome do setor vem com o time: o dev não tem acesso à lista de setores (a API responde 403).
+    api.listar.mockResolvedValue({ items: [{ ...time, setor_nome: "SVP" }], page: 1, page_size: 100, total_count: 1 });
     renderPage({ ...perfilBase, perfil_codigo: "USUARIO_PADRAO", perfil: "Dev", times: [{ id: time.id, nome: time.nome }] });
 
     expect(await screen.findByText("Team overview")).toBeInTheDocument();
@@ -76,6 +77,7 @@ describe("TimeDetalhePage", () => {
     expect(screen.getByText("Active")).toBeInTheDocument();
     expect(screen.getByText("1 team members")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Back to teams" })).not.toBeInTheDocument();
+    expect(setoresApi.listar).not.toHaveBeenCalled();
   });
 
   it("falha ao carregar os membros mostra o erro no lugar da lista", async () => {
