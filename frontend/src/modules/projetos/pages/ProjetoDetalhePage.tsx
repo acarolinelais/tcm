@@ -263,7 +263,7 @@ function ProjetoDetalhe() {
       id: "difficulty",
       header: <DataTableMultiFilter label={t("difficulty")} values={filtrosCaso.difficulty} onChange={(values) => alterarFiltroCaso("difficulty", values)} options={opcoes.dificuldade} />,
       exportar: { titulo: t("difficulty"), valor: rotuloDificuldade },
-      cell: (caso) => celulaEditavel(caso, "difficulty", t("difficulty"), caso.difficulty, opcoes.dificuldade, <span>{rotuloDificuldade(caso)}</span>, podeEditarProprio(caso)),
+      cell: (caso) => celulaEditavel(caso, "difficulty", t("difficulty"), caso.difficulty, opcoes.dificuldade, <span>{rotuloDificuldade(caso)}</span>, podeGerenciarCasos),
     },
     {
       id: "category",

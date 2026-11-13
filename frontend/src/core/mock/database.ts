@@ -1082,8 +1082,8 @@ export const mockCasosTesteApi = {
         writeDb(db);
         return testCase;
       }
-      const camposPermitidos = ["difficulty", "status", "situation", "automation_level", "justificativa_exclusao"];
-      if (Object.keys(input).some((field) => !camposPermitidos.includes(field))) throw new Error("O responsável só pode editar Status, TC Situation, Difficulty e Automation Level.");
+      const camposPermitidos = ["status", "situation", "automation_level", "justificativa_exclusao"];
+      if (Object.keys(input).some((field) => !camposPermitidos.includes(field))) throw new Error("O responsável só pode editar Status, TC Situation e Automation Level.");
       aplicarAtualizacaoCaso(testCase, input);
     }
     testCase.updated_at = new Date().toISOString();
@@ -1548,13 +1548,14 @@ export const mockBugReportsApi = {
   listar(projetoId: string, pageNumber: number, pageSize: number, filtros: FiltrosBugReport = {}): PagedResult<CasoComFalhas> {
     return page(casosComFalhasMock(projetoId, filtros), pageNumber, pageSize);
   },
-  /** Spec 073: os casos em correção em que a pessoa é a corretora (Dev Fix ou, sem ele, o responsável). */
+  /** Spec 073: os casos em correção. O dev vê os que ele corrige (Dev Fix ou, sem ele, o responsável); a gestão vê todos do escopo. */
   listarMyFixes(projetoId: string, pageNumber: number, pageSize: number, filtros: FiltrosMyFixes = {}): PagedResult<CasoComFalhas> {
     requireMockPermission("test_cases.consultar");
-    const { user } = mockProfile();
+    const { user, profile } = mockProfile();
+    const soDoCorretor = profile?.codigo === "USUARIO_PADRAO";
     const ordem = (status: string) => STATUS_DA_CORRECAO.indexOf(status as StatusDaCorrecao);
     const itens = casosComFalhasMock(projetoId, { responsavel: filtros.responsavel })
-      .filter((caso) => (caso.dev_fix_id ?? caso.responsavel_id) === user.id && caso.tentativa_correcao > 0 && ordem(caso.status) >= 0
+      .filter((caso) => (!soDoCorretor || (caso.dev_fix_id ?? caso.responsavel_id) === user.id) && caso.tentativa_correcao > 0 && ordem(caso.status) >= 0
         && (!filtros.status?.length || filtros.status.includes(caso.status as StatusDaCorrecao)))
       .sort((a, b) => ordem(a.status) - ordem(b.status));
     return page(itens, pageNumber, pageSize);

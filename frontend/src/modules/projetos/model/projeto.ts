@@ -7,6 +7,7 @@ export type StatusProjeto = "Created" | "To Do" | "InProgress" | "Completed" | "
 /** Chaves i18n dos rótulos do status do projeto. */
 export const ROTULO_STATUS_PROJETO: Record<StatusProjeto, string> = { Created: "projectCreated", "To Do": "toDo", InProgress: "inProgress", Completed: "completed", Canceled: "projectCanceled" };
 export const projetoEncerrado = (status: StatusProjeto) => status === "Completed" || status === "Canceled";
+export const temEncerrados = (lista: { status: StatusProjeto }[]) => lista.some((projeto) => projetoEncerrado(projeto.status));
 /** Tira os encerrados da lista, a não ser que o filtro esteja ligado; `manterId` fica sempre (o projeto aberto pelo link). */
 export const filtrarEncerrados = <T extends { id: string; status: StatusProjeto }>(lista: T[], comEncerrados: boolean, manterId?: string) =>
   comEncerrados ? lista : lista.filter((projeto) => projeto.id === manterId || !projetoEncerrado(projeto.status));

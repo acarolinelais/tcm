@@ -49,12 +49,16 @@ class BugReportServiceImpl:
         page: int,
         page_size: int,
     ) -> PagedResult[CasoComFalhasResponse]:
-        """Spec 073: os casos em correção do projeto em que a pessoa é a corretora (RN-08). A aba
-        fica no projeto, para quem consulta os Test Cases dele; o escopo é o da SDF Failures."""
+        """Spec 073: os casos em correção do projeto. O dev vê os que ele corrige (RN-08); admin,
+        gerente e KP, que não corrigem casos, veem todos os do escopo deles (o da SDF Failures)."""
         if not usuario_atual.pode("test_cases.consultar"):
             raise ForbiddenException("Você não tem permissão para consultar Test Cases.")
+        corretor_id = usuario_atual.id if escopo_do_usuario(usuario_atual).pessoa_id else None
         return await self._listar(
-            usuario_atual, replace(filtros, corretor_id=usuario_atual.id), page, page_size
+            usuario_atual,
+            replace(filtros, em_correcao=True, corretor_id=corretor_id),
+            page,
+            page_size,
         )
 
     async def _listar(

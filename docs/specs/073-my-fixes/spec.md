@@ -47,8 +47,10 @@ da tentativa.
 **Aba My Fixes**
 - RN-07: A página do projeto ganha a aba My Fixes, ao lado de Test Cases e Form Factor, para todos os perfis que
   veem o projeto.
-- RN-08: A aba lista os casos do projeto em que a pessoa é o corretor e que estão em correção: com falha na SDF
+- RN-08: Para o dev, a aba lista os casos do projeto em que ele é o corretor e que estão em correção: com falha na SDF
   Failures e com Status In Fixes, In Progress, In Review ou In Validation. Done, Excluded e Cancelled não aparecem.
+  Admin, gerente e KP não corrigem casos, então veem todos os casos em correção do projeto, dentro do escopo deles
+  (o mesmo da SDF Failures); sem isso a aba ficaria sempre vazia para eles (ajuste de 2026-11-13).
 - RN-09: Colunas: TC ID, Status, Dev Owner, Dev Fix, Run Date e End Date. A Run Date é a da falha mais recente. A End
   Date é o dia em que a tentativa atual entrou em In Review; vazia até isso acontecer.
 - RN-10: O Status na linha só oferece In Fixes, In Progress, In Review e In Validation, na ordem do fluxo. Um caso

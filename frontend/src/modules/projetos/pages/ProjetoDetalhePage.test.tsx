@@ -345,7 +345,7 @@ describe("ProjetoDetalhePage", () => {
     expect(screen.queryByRole("button", { name: /New Test Case/i })).not.toBeInTheDocument();
     const proprioCaso = screen.getByRole("row", { name: /Clock_001/ });
     const casoAlheio = screen.getByRole("row", { name: /Clock_002/ });
-    expect(within(proprioCaso).getByRole("button", { name: /Difficulty Clock_001/ })).toBeInTheDocument();
+    expect(within(proprioCaso).queryByRole("button", { name: /Difficulty Clock_001/ })).not.toBeInTheDocument();
     expect(within(proprioCaso).queryByRole("button", { name: /Category Clock_001/ })).not.toBeInTheDocument();
     expect(within(proprioCaso).getByText("A")).toBeInTheDocument();
     expect(within(proprioCaso).getByText("daniel-id")).toBeInTheDocument();
@@ -438,14 +438,12 @@ describe("ProjetoDetalhePage", () => {
     await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { category: "C" }));
   });
 
-  it("permite ao responsável atualizar dificuldade, status e TC Situation só do próprio caso", async () => {
+  it("permite ao responsável atualizar status e TC Situation só do próprio caso, sem a Difficulty", async () => {
     const user = userEvent.setup();
     renderPage();
     const proprioCaso = await screen.findByRole("row", { name: /Clock_001/ });
 
-    await user.click(within(proprioCaso).getByRole("button", { name: /Difficulty Clock_001/ }));
-    await user.click(await screen.findByRole("option", { name: "High" }));
-    await waitFor(() => expect(casosTesteApi.atualizar).toHaveBeenCalledWith("case-1", { difficulty: "High" }));
+    expect(within(proprioCaso).queryByRole("button", { name: /Difficulty Clock_001/ })).not.toBeInTheDocument();
 
     await user.click(within(proprioCaso).getByRole("button", { name: /Status Clock_001/ }));
     await user.click(await screen.findByRole("option", { name: "In Progress" }));

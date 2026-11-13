@@ -40,7 +40,7 @@
   - o resultado é o chip de hoje (`ResultadoFormFactor`) dentro de um botão; ele abre o `ResultadoExecucaoModal`
     (HeroUI `Modal`, com TC ID, device e data no título, SDF ID e origem no corpo e só o botão Fechar);
   - o Resumo de execuções é o `ResumoExecucoesDrawer` (`SideDrawer`), com o ID do tester no topo e uma grade de
-    devices × datas em ordem cronológica, cujos resultados abrem o mesmo modal.
+    datas × devices em ordem cronológica, cujos resultados abrem o mesmo modal.
 - **Limpeza:** saem os endpoints `GET /api/form-factor/general` e `/general/results`, os métodos do repositório e do
   service que só eles usam, os schemas `FormFactorGlobal*`, o `FormFactorGlobalTabela.tsx`, os hooks
   `useFormFactorGlobal`/`useFormFactorResultadosGlobais`, os métodos do `formFactorApi` e do mock, e o parâmetro

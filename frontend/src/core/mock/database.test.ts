@@ -242,7 +242,8 @@ describe("base mock de projetos", () => {
     expect(testCase).toMatchObject({ situation: "Without Changes", status: "To-Do" });
 
     entrar("daniel.oliveira@example.com");
-    expect(mockCasosTesteApi.atualizar(testCase.id, { status: "InProgress", difficulty: "Medium" })).toMatchObject({ status: "InProgress", difficulty: "Medium" });
+    expect(mockCasosTesteApi.atualizar(testCase.id, { status: "InProgress" })).toMatchObject({ status: "InProgress", difficulty: "Low" });
+    expect(() => mockCasosTesteApi.atualizar(testCase.id, { difficulty: "Medium" })).toThrow(/só pode editar/);
     expect(mockCasosTesteApi.atualizar(testCase.id, { situation: "New Step" })).toMatchObject({ situation: "New Step" });
     expect(() => mockCasosTesteApi.atualizar(testCase.id, { responsavel_id: "mock-user-kp" })).toThrow(/só pode editar/);
     expect(mockCasosTesteApi.transferirParaBackup(testCase.id)).toMatchObject({ responsavel_id: "mock-user-kp", backup_id: "mock-user-dev" });
@@ -1095,6 +1096,13 @@ describe("correção no modo mock (spec 073)", () => {
 
     const revisado = mockCasosTesteApi.mudarStatusDaCorrecao(caso.id, "InReview");
     expect(revisado.correcao_em_revisao_em).toBeTruthy();
+  });
+
+  it("a gestão vê na My Fixes os casos em correção de todos, sem ser a corretora", () => {
+    const { project } = casoQueFalhou();
+
+    entrar("admin@sdfmanager.com");
+    expect(mockBugReportsApi.listarMyFixes(project.id, 1, 20).items.map((item) => item.tc_id)).toEqual(["Clock_001"]);
   });
 
   it("falha: com Dev Fix de outra pessoa, o responsável não vê o caso nem muda o Status", () => {

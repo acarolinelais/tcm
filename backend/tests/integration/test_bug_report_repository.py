@@ -286,7 +286,9 @@ async def _my_fixes(cenario, pessoa, **filtros):
     return await BugReportRepositoryImpl(cenario.session).listar_casos_com_falhas(
         cenario.unidade_id,
         EscopoOverview(),
-        FiltrosBugReport(projeto_id=cenario.projeto_id, corretor_id=pessoa, **filtros),
+        FiltrosBugReport(
+            projeto_id=cenario.projeto_id, em_correcao=True, corretor_id=pessoa, **filtros
+        ),
         1,
         20,
     )
@@ -322,6 +324,27 @@ async def test_done_ou_sem_tentativa_nao_esta_em_correcao(cenario):
     await _em_correcao(cenario, "Clock_000002", status="InProgress", tentativa=0)
 
     assert (await _my_fixes(cenario, cenario.ana)).items == []
+
+
+@pytest.mark.asyncio
+async def test_gestao_ve_os_casos_em_correcao_de_todos_do_escopo(cenario):
+    # Sem corretor_id (admin, gerente e KP não corrigem casos), entram os casos de qualquer pessoa,
+    # mas só os em correção.
+    da_ana = await _em_correcao(cenario, "Clock_000001")
+    da_bia = await _em_correcao(cenario, "Clock_000002", dev_fix=cenario.bia)
+    await _em_correcao(cenario, "Clock_000003", status="Done")
+
+    todos = await _my_fixes(cenario, None)
+    outro_time = await BugReportRepositoryImpl(cenario.session).listar_casos_com_falhas(
+        cenario.unidade_id,
+        EscopoOverview(time_ids=(uuid4(),)),
+        FiltrosBugReport(projeto_id=cenario.projeto_id, em_correcao=True),
+        1,
+        20,
+    )
+
+    assert {linha.caso_teste_id for linha in todos.items} == {da_ana, da_bia}
+    assert outro_time.total_count == 0
 
 
 @pytest.mark.asyncio

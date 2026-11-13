@@ -310,14 +310,14 @@ describe("ResultadosGeraisPage", () => {
     expect(within(await screen.findByRole("dialog")).queryByText("Description")).not.toBeInTheDocument();
   });
 
-  it("o histórico da linha mostra o tester e a grade devices × datas, com as duas execuções do dia (CA-18)", async () => {
+  it("o histórico da linha mostra o tester e a grade datas × devices, com as duas execuções do dia (CA-18)", async () => {
     const user = userEvent.setup();
     renderPage(dev);
 
     await user.click(within(linha("Clock_001")).getByRole("button", { name: "View execution history Clock_001" }));
     const painel = await screen.findByRole("dialog");
     expect(within(painel).getByText("ANA-001")).toBeInTheDocument();
-    expect(within(painel).getAllByRole("columnheader").map((cabecalho) => cabecalho.textContent)).toEqual(["Device", formatarDia(DIA), formatarDia("2026-10-09")]);
+    expect(within(painel).getAllByRole("columnheader").map((cabecalho) => cabecalho.textContent)).toEqual(["Date", "SM-S26", "SM-S27"]);
     const rotulo = (valor: string) => `${valor} on SM-S26, ${formatarDia(DIA)}`;
     expect(within(painel).getByRole("button", { name: rotulo("FAIL") })).toBeInTheDocument();
     await user.click(within(painel).getByRole("button", { name: rotulo("PASS") }));
