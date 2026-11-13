@@ -13,6 +13,8 @@ import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 import type {
   AtualizarCasoTesteInput,
   CasoComFalhas,
+  CorrecaoConcluida,
+  FiltrosCorrecoesConcluidas,
   FiltrosMyFixes,
   StatusDaCorrecao,
   AtualizarProjetoInput,
@@ -155,6 +157,16 @@ export const casosTesteApi = {
       projeto_id: projetoId, page, page_size: pageSize,
       ...(filtros.status?.length ? { status: filtros.status } : {}),
       ...(responsavel ? { responsavel } : {}),
+    });
+  },
+  /** Spec 076: as tentativas de correção fechadas do projeto, com o escopo da My Fixes. */
+  listarCorrecoesConcluidas(projetoId: string, page: number, pageSize: number, filtros: FiltrosCorrecoesConcluidas = {}) {
+    if (useMock) return Promise.resolve(mockBugReportsApi.listarCorrecoesConcluidas(projetoId, page, pageSize, filtros));
+    const { periodo, ...outros } = filtros;
+    return httpGet<PagedResult<CorrecaoConcluida>>("/api/bug-reports/my-fixes/concluidas", {
+      projeto_id: projetoId, page, page_size: pageSize, ...outros,
+      ...(periodo ? { [periodo.includes("-W") ? "semana" : "dia"]: periodo } : {}),
+      fuso_horario: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
   },
   /** Spec 073: a mudança de Status pela My Fixes, só pelos Status da correção. */

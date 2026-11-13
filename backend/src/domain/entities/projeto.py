@@ -22,6 +22,11 @@ class Projeto(EntidadeTenant):
     # O burndown tem um ponto por dia até a data planejada: o limite segura o tamanho do gráfico.
     DATA_PLANEJADA_MAX_DIAS = 730
 
+    @property
+    def encerrado(self) -> bool:
+        """Concluído ou cancelado (spec 069)."""
+        return self.status in {StatusProjeto.COMPLETED, StatusProjeto.CANCELED}
+
     def __init__(
         self,
         unidade_id: UUID,

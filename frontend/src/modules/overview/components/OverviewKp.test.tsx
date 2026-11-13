@@ -123,6 +123,13 @@ it("falha: ao trocar para um projeto sem nada concluído, a frase deixa de conta
   vi.mocked(Math.random).mockRestore();
 });
 
+it("o KP também vê as correções por dev (spec 076, CA-13)", async () => {
+  vi.mocked(overviewApi.obterTime).mockResolvedValue({ ...time, correcoesPorDev: [{ usuarioId: "u1", nome: "Ana", corrigidas: 1, falharamDeNovo: 0, mediaDias: 2 }] });
+  abrir();
+
+  expect(await within(await cartao("Fixes per developer")).findByText("Ana: 1 fixed, 0 failed again, 2 days on average")).toBeInTheDocument();
+});
+
 it("trocar de projeto refaz o burndown e o Pass Rate com o projeto escolhido (CA-02)", async () => {
   const user = userEvent.setup();
   abrir();

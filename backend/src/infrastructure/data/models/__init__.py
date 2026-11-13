@@ -1,5 +1,6 @@
 from src.infrastructure.data.models.auth_sessao_model import AuthSessaoModel
 from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
+from src.infrastructure.data.models.correcao_model import CorrecaoModel
 from src.infrastructure.data.models.execucao_sdf_model import ExecucaoSdfModel
 from src.infrastructure.data.models.importacao_sdf_model import ImportacaoSdfModel
 from src.infrastructure.data.models.importacao_sdf_status_model import ImportacaoSdfStatusModel
@@ -16,6 +17,7 @@ from src.infrastructure.data.models.setor_gerente_model import SetorGerenteModel
 __all__ = [
     "AuthSessaoModel",
     "CasoTesteModel",
+    "CorrecaoModel",
     "ImportacaoSdfModel",
     "ImportacaoSdfStatusModel",
     "ExecucaoSdfModel",

@@ -6,10 +6,12 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.caso_teste import StatusCasoTeste
+from src.domain.entities.correcao import ResultadoCorrecao
 from src.domain.entities.resultado_form_factor import ResultadoFormFactor
 from src.domain.queries.resumo_overview import (
     Andamento,
     ConcluidosDev,
+    CorrecoesDev,
     EscopoOverview,
     PassRate,
     PassRateModelo,
@@ -20,6 +22,7 @@ from src.domain.queries.resumo_overview import (
     ResumoTime,
 )
 from src.infrastructure.data.models.caso_teste_model import CasoTesteModel
+from src.infrastructure.data.models.correcao_model import CorrecaoModel
 from src.infrastructure.data.models.execucao_sdf_model import ExecucaoSdfModel
 from src.infrastructure.data.models.modelo_dispositivo_model import ModeloDispositivoModel
 from src.infrastructure.data.models.perfil_model import PerfilModel
@@ -30,6 +33,7 @@ from src.infrastructure.data.models.setor_model import SetorModel
 from src.infrastructure.data.models.time_membro_model import TimeMembroModel
 from src.infrastructure.data.models.time_model import TimeModel
 from src.infrastructure.data.models.usuario_model import UsuarioModel
+from src.infrastructure.repositories.correcao_repository import dias_ate_corrigir
 
 # Escrita só pelos triggers (ADR 0044): aqui basta a forma da tabela para a leitura.
 _auditoria = table(
@@ -306,7 +310,39 @@ class OverviewRepositoryImpl:
             select(semana.label("semana"), func.count()).group_by("semana")
         )
 
+        # Spec 076, RN-16: tentativas fechadas na janela, por quem era o corretor.
+        corrigida = CorrecaoModel.resultado == ResultadoCorrecao.CORRIGIDA.value
+        falhou = CorrecaoModel.resultado == ResultadoCorrecao.FALHOU_DE_NOVO.value
+        por_corretor = await self._session.execute(
+            select(
+                UsuarioModel.id,
+                UsuarioModel.nome,
+                func.count().filter(corrigida),
+                func.count().filter(falhou),
+                func.avg(dias_ate_corrigir(fuso_horario)).filter(corrigida),
+            )
+            .select_from(CorrecaoModel)
+            .join(CasoTesteModel, CasoTesteModel.id == CorrecaoModel.caso_teste_id)
+            .join(ProjetoModel, ProjetoModel.id == CasoTesteModel.projeto_id)
+            .join(UsuarioModel, UsuarioModel.id == CorrecaoModel.corretor_id)
+            .where(
+                *projetos_filtros,
+                CorrecaoModel.unidade_id == unidade_id,
+                CorrecaoModel.ativo.is_(True),
+                CorrecaoModel.fechada_em >= desde_dia,
+                # As encerradas não entram no gráfico.
+                or_(corrigida, falhou),
+                CasoTesteModel.ativo.is_(True),
+            )
+            .group_by(UsuarioModel.id, UsuarioModel.nome)
+            .order_by(UsuarioModel.nome)
+        )
+
         return ResumoTime(
+            correcoes_por_dev=[
+                CorrecoesDev(id, nome, feitas, de_novo, float(media) if media is not None else None)
+                for id, nome, feitas, de_novo, media in por_corretor
+            ],
             projetos=[ProjetoOverview(*linha) for linha in projetos],
             criados_por_projeto={linha.projeto_id: linha.criados for linha in por_projeto},
             concluidos_por_dev=[ConcluidosDev(*linha) for linha in por_dev],

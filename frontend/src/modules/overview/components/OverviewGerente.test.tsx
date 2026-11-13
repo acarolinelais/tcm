@@ -72,6 +72,26 @@ it("falha: sem In Fixes, o retrabalho mostra o próprio vazio e os outros gráfi
   expect(within(await cartao("Pass Rate by project")).getByText("Alarm 2.0 80%.")).toBeInTheDocument();
 });
 
+it("mostra as correções por dev com o resumo em texto (spec 076, CA-13)", async () => {
+  vi.mocked(overviewApi.obterTime).mockResolvedValue({
+    ...time,
+    correcoesPorDev: [
+      { usuarioId: "u1", nome: "Ana", corrigidas: 2, falharamDeNovo: 1, mediaDias: 3 },
+      { usuarioId: "u2", nome: "Bia", corrigidas: 0, falharamDeNovo: 1, mediaDias: null },
+    ],
+  });
+  abrir();
+
+  expect(await within(await cartao("Fixes per developer")).findByText("Ana: 2 fixed, 1 failed again, 3 days on average and Bia: 0 fixed, 1 failed again")).toBeInTheDocument();
+});
+
+it("falha: sem correções fechadas no período, o cartão fica vazio e os outros continuam (spec 076, CA-14)", async () => {
+  abrir();
+
+  expect(await within(await cartao("Fixes per developer")).findByText("Nothing to show yet")).toBeInTheDocument();
+  expect(await cartao("Rework (In Fixes)")).toBeInTheDocument();
+});
+
 it("falha: projeto sem rodada mostra o Pass Rate por modelo vazio (CA-10)", async () => {
   vi.mocked(overviewApi.obterProjeto).mockResolvedValue({ dataPlanejada: null, metaDiaria: null, burndown: [], passRate: null });
   abrir();

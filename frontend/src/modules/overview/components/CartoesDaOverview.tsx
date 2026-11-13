@@ -81,6 +81,25 @@ export function PassRatePorProjetoCard({ time, className }: { time: ConsultaDoTi
   );
 }
 
+/** Spec 076, RN-16: tentativas fechadas por corretor nos últimos 30 dias, com a média de dias das corrigidas. */
+export function CorrecoesPorDevCard({ time }: { time: ConsultaDoTime }) {
+  // Ocupa a linha inteira: fecha a grade de dois sem um cartão sozinho.
+  const { t } = useTranslation();
+  const dados = time.data?.correcoesPorDev ?? [];
+  const resumo = formatList(dados.map((dev) => t(dev.mediaDias === null ? "fixesItemNoAverage" : "fixesItem", {
+    name: dev.nome, fixed: formatNumber(dev.corrigidas), again: formatNumber(dev.falharamDeNovo),
+    days: formatNumber(dev.mediaDias ?? 0, { maximumFractionDigits: 1 }),
+  })));
+  return (
+    <GraficoCard className="lg:col-span-2" titulo={t("fixesByDevTitle")} resumo={resumo} estado={estadoDe(time, !dados.length)} onRetry={() => void time.refetch()}>
+      <BarrasEmpilhadas titulo={t("fixesByDevTitle")} dados={dados} series={[
+        { chave: "corrigidas", nome: t("fixResult.corrigida"), cor: "var(--status-done-icon)" },
+        { chave: "falharamDeNovo", nome: t("fixResult.falhou_de_novo"), cor: "var(--status-fixes-icon)" },
+      ]} />
+    </GraficoCard>
+  );
+}
+
 /** Andamento por time ou por setor (spec 064, RN-02 e RN-08). */
 export function AndamentoCard({ titulo, dados, time }: { titulo: string; dados: Andamento[]; time: ConsultaDoTime }) {
   const { t } = useTranslation();

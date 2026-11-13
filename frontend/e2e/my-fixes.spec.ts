@@ -60,3 +60,36 @@ test("falha: quem não corrige o caso recebe a recusa da API", async ({ page }) 
 
   await expect(page.getByText("Só quem corrige o Test Case pode mudar o Status da correção.")).toBeVisible();
 });
+
+// Spec 076: a visão Concluídas, uma linha por tentativa de correção fechada.
+const concluida = {
+  id: "correcao-1", caso_teste_id: caseItem.id, tc_id: caseItem.tc_id, tentativa: 2, origem: "regressao", corretor_id: "ana", corretor_identificador: "ana.s",
+  falha_em: "2026-11-10T18:00:00Z", em_revisao_em: "2026-11-12T15:00:00Z", fechada_em: "2026-11-14T09:00:00Z", resultado: "corrigida", dias_ate_corrigir: 4,
+};
+
+test("a gestão abre as Concluídas, vê a correção fechada e filtra pelo resultado", async ({ page }) => {
+  await setupProjectSession(page);
+  await simularMyFixes(page);
+  const pedidos: URL[] = [];
+  await page.route("**/api/bug-reports/my-fixes/concluidas?*", (route) => {
+    const url = new URL(route.request().url());
+    pedidos.push(url);
+    const itens = url.searchParams.get("resultado") ? [] : [concluida];
+    return route.fulfill({ json: { items: itens, page: 1, page_size: 20, total_count: itens.length } });
+  });
+
+  await page.goto(`/projetos/${projectId}?aba=my-fixes`);
+  await page.getByRole("button", { name: "Concluídas" }).click();
+
+  const linha = page.getByRole("row", { name: new RegExp(caseItem.tc_id) });
+  await expect(linha).toContainText("ana.s");
+  await expect(linha).toContainText("Regressão");
+  await expect(linha).toContainText("Corrigida");
+
+  await page.getByRole("button", { name: "Filtrar por Resultado" }).click();
+  await page.getByRole("option", { name: "Falhou de novo" }).click();
+
+  await expect(page.getByText("Nenhum resultado")).toBeVisible();
+  expect(pedidos.at(-1)?.searchParams.get("resultado")).toBe("falhou_de_novo");
+  expect(pedidos.at(-1)?.searchParams.get("projeto_id")).toBe(projectId);
+});

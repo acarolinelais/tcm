@@ -175,14 +175,29 @@ class CasoTeste(EntidadeTenant):
         elif falha_no_relatorio:
             self._aplicar_status(StatusCasoTeste.IN_FIXES)
 
-    def desfazer_resultado_sdf(self, status_aplicado: StatusCasoTeste) -> bool:
+    def reabrir_por_regressao(self) -> bool:
+        """Spec 076, RN-01: uma falha do SDF num caso Done reabre a correção numa nova tentativa.
+
+        Só o incremento fica fora do `_aplicar_status`: a gestão mover um caso Done para In Fixes na
+        mão não abre tentativa.
+        """
+        if self.status is not StatusCasoTeste.DONE:
+            return False
+        self.tentativa_correcao += 1
+        self._aplicar_status(StatusCasoTeste.IN_FIXES)
+        return True
+
+    def desfazer_resultado_sdf(
+        self, status_aplicado: StatusCasoTeste, status_anterior: StatusCasoTeste | None = None
+    ) -> bool:
         # Quem chama confere, pela auditoria, que ninguém moveu o caso depois da importação.
         if self.status is not status_aplicado:
             return False
         # A volta para In Fixes que a importação abriu deixa de contar como tentativa (spec 073).
         if status_aplicado is StatusCasoTeste.IN_FIXES and self.tentativa_correcao > 0:
             self.tentativa_correcao -= 1
-        self.status = StatusCasoTeste.IN_VALIDATION
+        # Importações anteriores à spec 076 não guardam o Status anterior: era sempre In Validation.
+        self.status = status_anterior or StatusCasoTeste.IN_VALIDATION
         return True
 
     def em_correcao(self) -> bool:

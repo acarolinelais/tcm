@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from datetime import date
+from datetime import UTC, date, datetime
 from uuid import UUID
 
 from src.application.schemas.caso_teste import (
@@ -28,6 +28,7 @@ from src.application.schemas.link_pull_request import (
 )
 from src.application.schemas.link_pull_request import to_response as link_to_response
 from src.application.schemas.timeline import TimelineResponse, to_timeline_response
+from src.application.services.registro_de_correcoes import EstadoDoCaso, RegistroDeCorrecoes
 from src.application.validators.semana import (
     fuso_horario_valido,
     intervalo_periodo,
@@ -91,7 +92,9 @@ class CasoTesteServiceImpl:
         link_repo: LinkPullRequestRepository,
         uow: UnitOfWork,
         historico_repo: HistoricoCasoTesteRepository | None = None,
+        registro_correcoes: RegistroDeCorrecoes | None = None,
     ) -> None:
+        self._registro_correcoes = registro_correcoes
         self._caso_repo = caso_repo
         self._projeto_repo = projeto_repo
         self._time_repo = time_repo
@@ -249,6 +252,7 @@ class CasoTesteServiceImpl:
         request: AtualizarCasoTesteRequest,
     ) -> CasoTesteResponse:
         caso, time = await self._obter_caso_visivel(usuario_atual, caso_id)
+        antes = RegistroDeCorrecoes.antes(caso)
         campos_enviados = request.model_fields_set
         eh_gestor = self._pode_gerenciar(usuario_atual, time)
         if eh_gestor:
@@ -267,6 +271,7 @@ class CasoTesteServiceImpl:
                     raise ForbiddenException("Você só pode editar Test Cases atribuídos a você.")
                 caso.cancelar(request.justificativa_exclusao)
                 await self._caso_repo.atualizar(caso)
+                await self._registrar_correcao(caso, antes)
                 await self._uow.commit()
                 caso_atualizado = await self._caso_repo.obter_por_id(
                     usuario_atual.unidade_id, caso_id
@@ -285,6 +290,7 @@ class CasoTesteServiceImpl:
                 justificativa_exclusao=request.justificativa_exclusao,
             )
         await self._caso_repo.atualizar(caso)
+        await self._registrar_correcao(caso, antes)
         await self._uow.commit()
         caso_atualizado = await self._caso_repo.obter_por_id(usuario_atual.unidade_id, caso_id)
         return to_response(caso_atualizado or caso)
@@ -313,8 +319,10 @@ class CasoTesteServiceImpl:
         corretor = caso.dev_fix_id or caso.responsavel_id
         if corretor != usuario_atual.id and not self._pode_gerenciar(usuario_atual, time):
             raise ForbiddenException("Só quem corrige o Test Case pode mudar o Status da correção.")
+        antes = RegistroDeCorrecoes.antes(caso)
         caso.mudar_status_da_correcao(status)
         await self._caso_repo.atualizar(caso)
+        await self._registrar_correcao(caso, antes)
         await self._uow.commit()
         caso_atualizado = await self._caso_repo.obter_por_id(usuario_atual.unidade_id, caso_id)
         return to_response(caso_atualizado or caso)
@@ -366,6 +374,12 @@ class CasoTesteServiceImpl:
             raise NotFoundException("Test Case não encontrado.")
         _, time = await self._obter_projeto_visivel(usuario_atual, caso.projeto_id)
         return caso, time
+
+    async def _registrar_correcao(self, caso: CasoTeste, antes: EstadoDoCaso) -> None:
+        # Mudança manual: a tentativa fecha agora, em UTC sem fuso, como as datas do SDF.
+        if self._registro_correcoes is not None:
+            agora = datetime.now(UTC).replace(tzinfo=None)
+            await self._registro_correcoes.registrar(caso, antes, agora)
 
     async def _atualizar_como_gestor(
         self,

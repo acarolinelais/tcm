@@ -452,3 +452,31 @@ export interface FiltrosMyFixes {
   status?: StatusDaCorrecao[];
   responsavel?: string;
 }
+
+/** Spec 076: como uma tentativa de correção fechou. */
+export const RESULTADOS_DA_CORRECAO = ["corrigida", "falhou_de_novo", "encerrada"] as const;
+export type ResultadoDaCorrecao = (typeof RESULTADOS_DA_CORRECAO)[number];
+
+/** Spec 076: uma tentativa de correção fechada, como a visão Concluídas da My Fixes mostra. */
+export interface CorrecaoConcluida {
+  id: string;
+  caso_teste_id: string;
+  tc_id: string;
+  tentativa: number;
+  origem: "validacao" | "regressao";
+  corretor_id: string | null;
+  corretor_identificador: string | null;
+  /** As três datas vêm em UTC, como o backend conta o dia, o filtro de período e os dias até corrigir. */
+  falha_em: string;
+  em_revisao_em: string | null;
+  fechada_em: string;
+  resultado: ResultadoDaCorrecao;
+  dias_ate_corrigir: number;
+}
+
+export interface FiltrosCorrecoesConcluidas {
+  corretor_id?: string;
+  resultado?: ResultadoDaCorrecao;
+  /** `AAAA-MM-DD` (dia) ou `AAAA-Www` (semana), pelo dia em que a tentativa fechou. */
+  periodo?: string;
+}
