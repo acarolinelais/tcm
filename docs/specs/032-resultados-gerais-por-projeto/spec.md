@@ -128,6 +128,6 @@ Nenhuma. Decisões de 2026-10-28:
   propõe um ADR para a exceção.
 - Janela do resultado com **só o botão Fechar** (RN-09); a aba usa o **nome do projeto** (RN-01); sem atalho
   para a página do projeto.
-- Resumo de execuções em **grade** devices × datas, com o detalhe ao clicar (RN-13).
+- Resumo de execuções em **grade** datas × devices, com o detalhe ao clicar (RN-13).
 - Busca e filtro por device: casos com ao menos uma execução daquele modelo; modelo padrão sem execução: o
   primeiro do projeto (RN-04 e RN-10).

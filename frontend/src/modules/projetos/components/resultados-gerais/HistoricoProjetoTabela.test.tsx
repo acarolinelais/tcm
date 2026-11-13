@@ -77,6 +77,17 @@ describe("HistoricoProjetoTabela", () => {
     expect(within(linha).getByRole("button", { name: "Show all devices of Clock_001" })).toHaveAttribute("aria-expanded", "false");
   });
 
+  it("com o filtro de Form Factor, a linha mostra só o device escolhido, sem a seta de abrir", () => {
+    renderizar({ filtros: { modeloDispositivoId: "s24" }, temFiltros: true });
+
+    const linha = screen.getByRole("row", { name: /Clock_001/ });
+    expect(within(linha).getByText("S24 Ultra")).toBeInTheDocument();
+    expect(within(linha).queryByText("S26 Ultra")).not.toBeInTheDocument();
+    expect(within(linha).getByText("SDF-24")).toBeInTheDocument();
+    expect(within(linha).getByRole("button", { name: `FAIL on S24 Ultra, ${formatarDia("2026-10-10")}` })).toBeInTheDocument();
+    expect(within(linha).queryByRole("button", { name: "Show all devices of Clock_001" })).not.toBeInTheDocument();
+  });
+
   it("aberta, a linha mostra os quatro devices, cada um com o seu SDF ID e os seus resultados (CA-14)", () => {
     renderizar({ expandidos: new Set(["id-Clock_001"]) });
 

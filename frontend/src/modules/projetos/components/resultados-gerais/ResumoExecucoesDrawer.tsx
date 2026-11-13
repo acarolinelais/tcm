@@ -21,8 +21,9 @@ interface Props {
 }
 
 /**
- * Resumo de execuções (spec 032, RN-13): grade de todos os devices × todas as datas do caso. A tabela mostra só 5
- * datas; aqui estão todas, da mais nova à esquerda, como na tabela, e as antigas ficam rolando para o lado (spec 060).
+ * Resumo de execuções (spec 032, RN-13): grade de todas as datas × todos os devices do caso. A tabela mostra só 5
+ * datas; aqui estão todas, uma por linha, da mais nova para a mais antiga, e o painel rola para baixo. Os devices,
+ * que são poucos, ficam nas colunas.
  */
 export function ResumoExecucoesDrawer({ caso, perfil, onFechar, onAbrirResultado }: Props) {
   const { t } = useTranslation();
@@ -43,17 +44,17 @@ export function ResumoExecucoesDrawer({ caso, perfil, onFechar, onAbrirResultado
       <table className="w-max min-w-full border-collapse text-[14px] leading-5 text-body">
         <caption className="sr-only">{t("executionSummary")} {dados.tc_id}</caption>
         <thead>
-          <tr className="border-b border-separator">
-            <th scope="col" className="sticky left-0 bg-surface py-2 pe-4 text-start font-medium text-muted">{t("device")}</th>
-            {datas.map((dia) => <th key={dia} scope="col" className="whitespace-nowrap px-2 py-2 text-start font-medium text-muted">{formatarDia(dia)}</th>)}
+          <tr className="border-b border-surface-tertiary">
+            <th scope="col" className="sticky left-0 bg-overlay py-2 pe-4 text-start font-medium text-muted">{t("date")}</th>
+            {dados.modelos.map((modelo) => <th key={modelo.id} scope="col" className="whitespace-nowrap px-2 py-2 text-start font-medium text-muted">{modelo.nome}</th>)}
           </tr>
         </thead>
         <tbody>
-          {dados.modelos.map((modelo) => <tr key={modelo.id} className="border-b border-separator">
-            <th scope="row" className="sticky left-0 whitespace-nowrap bg-surface py-2 pe-4 text-start font-normal">{modelo.nome}</th>
-            {datas.map((dia) => {
+          {datas.map((dia) => <tr key={dia} className="border-b border-surface-tertiary">
+            <th scope="row" className="sticky left-0 whitespace-nowrap bg-overlay py-2 pe-4 text-start align-top font-normal">{formatarDia(dia)}</th>
+            {dados.modelos.map((modelo) => {
               const execucoes = dados.resultados[dia]?.[modelo.id] ?? [];
-              return <td key={dia} className="px-2 py-2 align-top">
+              return <td key={modelo.id} className="px-2 py-2 align-top">
                 {execucoes.length
                   ? <div className="flex flex-col items-start gap-2">
                     {execucoes.map((execucao) => <ResultadoBotao
