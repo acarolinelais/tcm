@@ -78,6 +78,8 @@ export function CabecalhoDoProjeto({ time, selecao }: { time: UseQueryResult<Ove
   return (
     <CabecalhoDaOverview
       selecao={selecao}
+      // A saudação conta o mesmo projeto dos cards; sem projeto escolhido, vale o escopo do perfil.
+      progresso={time.isLoading ? null : contagem && { total: contagem.total, concluidos: contagem.concluidos }}
       rotuloDosCards={t("overviewProjectCards")}
       cards={[
         { icone: ClipboardCheck, rotulo: t("completed"), valor: contagem?.concluidos ?? 0 },

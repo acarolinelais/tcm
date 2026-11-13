@@ -112,7 +112,7 @@ it("o admin vê o próprio cabeçalho, sem o cartão de topo dos outros perfis (
   abrir();
 
   expect(await screen.findByRole("heading", { level: 2, name: /Ana/ }, { timeout: 5000 })).toBeInTheDocument();
-  expect(screen.getByText("Don't give up, 6 test cases to go!")).toBeInTheDocument();
+  expect(await screen.findByText("Don't give up, 6 test cases to go!")).toBeInTheDocument();
   expect(screen.getByRole("region", { name: "Progress by sector" })).toBeInTheDocument();
 });
 

@@ -48,6 +48,8 @@ escopo, no mesmo visual da spec 063.
   e, abaixo, um seletor de projeto. Embaixo do seletor, três cards mostram o projeto escolhido: Completed
   (`Done`), In Progress (`In Progress`, `In Review`, `In Validation` e `In Fixes`) e All (total, sem `Excluded`).
   Os gráficos do admin continuam com a unidade inteira. Sem nada a fazer, a frase diz que está tudo pronto.
+  Ajuste de 2026-11-13: a frase passa a contar o projeto escolhido, como os cards; sem projeto escolhido,
+  vale o escopo do perfil. Contar a unidade inteira ao lado dos cards de um projeto confundia ("faltam 2" com 1 aberto).
   Ampliado no mesmo dia para todos os perfis, cada um com o seu escopo: gerente e KP têm o mesmo seletor e os
   mesmos cards, com o geral do projeto escolhido (o seletor também troca o burndown e o Pass Rate por modelo); o
   dev tem o seletor quando é o responsável principal em dois ou mais projetos (com um só, vê o nome do projeto) e
@@ -73,7 +75,8 @@ escopo, no mesmo visual da spec 063.
 - **CA-08:** Dado dois setores com um projeto cada, quando o admin abre o Pass Rate por projeto, então vê os dois
   projetos, cada um com a porcentagem da sua rodada mais recente.
 - **CA-12:** Dado uma unidade com 400 Test Cases, 57 em `Done`, e o projeto Clock com 230 (26 `Done` e 16 em
-  andamento), quando o admin abre a Overview com o Clock escolhido, então vê "only 343 test cases left" e os
+  andamento), quando o admin abre a Overview com o Clock escolhido, então vê "204 test cases to go" (ajuste de
+  2026-11-13, RN-12; antes, os 343 da unidade) e os
   cards 26, 16 e 230.
 - **CA-13:** Dado dois projetos, quando o admin escolhe o segundo, então os três cards passam a mostrar só ele.
 - **CA-09 (falha):** Dado nenhum Test Case em `In Fixes` no escopo, quando o gerente abre a Overview, então o
