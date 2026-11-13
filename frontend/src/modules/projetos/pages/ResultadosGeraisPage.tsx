@@ -12,7 +12,7 @@ import { PageCard, PageTitle } from "@/shared/ui/page-card";
 import { PageTabPanel, PageTabs } from "@/shared/ui/page-tabs";
 import { WeekPickerHero } from "@/shared/ui/week-picker-hero";
 import { useProjetosSeletor } from "../hooks/useProjetos";
-import { filtrarEncerrados, projetoEncerrado } from "../model/projeto";
+import { filtrarEncerrados, projetoEncerrado, temEncerrados } from "../model/projeto";
 import { AcoesGerenciaFormFactor } from "../components/form-factor/AcoesGerenciaFormFactor";
 import { HistoricoProjetoTabela } from "../components/resultados-gerais/HistoricoProjetoTabela";
 import { ResultadoExecucaoModal } from "../components/resultados-gerais/ResultadoExecucaoModal";
@@ -99,7 +99,7 @@ export function ResultadosGeraisPage() {
   if (!projetoAberto) {
     return <PageCard>
       {cabecalho}
-      <div className="flex justify-end"><FiltroEncerrados ligado={comEncerrados} onChange={alternarEncerrados} /></div>
+      <div className="flex justify-end"><FiltroEncerrados existem={temEncerrados(todos)} ligado={comEncerrados} onChange={alternarEncerrados} /></div>
       <EstadoVazio className="m-auto" titulo={t("noOpenProjects")} dica={t("noOpenProjectsHint")} />
     </PageCard>;
   }
@@ -123,7 +123,7 @@ export function ResultadosGeraisPage() {
       onSelectionChange={trocarProjeto}
       actions={<>
         {/* Vindo do estado vazio, a pílula é outra: o foco passa para ela. */}
-        <FiltroEncerrados ligado={comEncerrados} onChange={alternarEncerrados} autoFocus={comEncerrados} />
+        <FiltroEncerrados existem={temEncerrados(todos)} ligado={comEncerrados} onChange={alternarEncerrados} autoFocus={comEncerrados} />
         <WeekPickerHero permitirDia label={t("dayOrWeek")} value={filtros.periodo ?? ""} onChange={(valor) => alterarFiltros({ ...filtros, periodo: valor || undefined })} />
         {/* Pílula cinza na altura do filtro de dia ou semana ao lado (design da spec 059). */}
         {tabela.temFiltros && <Button variant="ghost" onPress={tabela.limparFiltros} className="rounded-full bg-panel px-4 font-medium text-body shadow-none transition-[background-color,transform] duration-100 ease-out hover:bg-default data-[pressed]:scale-[0.97] motion-reduce:transition-none motion-reduce:data-[pressed]:scale-100 dark:text-muted">{t("clearFilters")}</Button>}

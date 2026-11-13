@@ -10,7 +10,7 @@ import { ProjetoSwitcher } from "../components/ProjetoSwitcher";
 import { KanbanBoard } from "../components/kanban/KanbanBoard";
 import { useKanban } from "../hooks/useKanban";
 import { useNavegacaoBoard, useProjeto } from "../hooks/useProjetos";
-import { filtrarEncerrados, perfilGerenciaCasos, projetoEncerrado } from "../model/projeto";
+import { filtrarEncerrados, perfilGerenciaCasos, projetoEncerrado, temEncerrados } from "../model/projeto";
 import { salvarUltimoProjetoBoard } from "../utils/ultimo-projeto-board";
 
 /** Kanban do projeto aberto pelo Board (spec 037, RN-12): só o quadro, sem as abas da tela do projeto. Cabeçalho do protótipo na spec 056. */
@@ -61,7 +61,7 @@ export function BoardKanbanPage() {
               faixa={
                 <div className="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-2">
                   <ProjetoSwitcher comoTitulo={false} projetoId={projetoId} nome={projeto.data.app} projetos={projetosDoBoard} destino={(id) => `/board/${id}`} />
-                  <FiltroEncerrados ligado={comEncerrados} onChange={alternarEncerrados} />
+                  <FiltroEncerrados existem={temEncerrados(todosDoBoard)} ligado={comEncerrados} onChange={alternarEncerrados} />
                 </div>
               }
             />

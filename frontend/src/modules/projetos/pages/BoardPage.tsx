@@ -13,7 +13,7 @@ import { PageCard, PageTitle } from "@/shared/ui/page-card";
 import { TagChip } from "@/shared/ui/tag-chip";
 import { statusProjetoTons } from "../components/status/status-projeto-estilos";
 import { useNavegacaoBoard } from "../hooks/useProjetos";
-import { filtrarEncerrados, projetoEncerrado, ROTULO_STATUS_PROJETO, type NavegacaoBoard } from "../model/projeto";
+import { filtrarEncerrados, projetoEncerrado, temEncerrados, ROTULO_STATUS_PROJETO, type NavegacaoBoard } from "../model/projeto";
 import { lerUltimoProjetoBoard } from "../utils/ultimo-projeto-board";
 
 type Time = NavegacaoBoard["setores"][number]["times"][number];
@@ -31,7 +31,8 @@ export function BoardPage() {
   const navegacao = useNavegacaoBoard(perfil);
   const [busca, setBusca] = useState("");
   const [comEncerrados, setComEncerrados] = useState(false);
-  const filtro = <FiltroEncerrados ligado={comEncerrados} onChange={setComEncerrados} />;
+  const todosOsProjetos = navegacao.data?.setores.flatMap((setor) => setor.times.flatMap((time) => time.projetos)) ?? [];
+  const filtro = <FiltroEncerrados existem={temEncerrados(todosOsProjetos)} ligado={comEncerrados} onChange={setComEncerrados} />;
 
   if (navegacao.isLoading) return <BoardCard><Aviso>{t("loading")}</Aviso></BoardCard>;
   if (navegacao.isError || !navegacao.data) {
