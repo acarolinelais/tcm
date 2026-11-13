@@ -64,6 +64,7 @@ export interface OverviewTimeResponse {
   andamento_por_setor: AndamentoResponse[];
   em_correcao_por_projeto: { projeto_id: string; projeto: string; em_correcao: number }[];
   pass_rate_por_projeto: { projeto_id: string; projeto: string; aprovados: number; total: number }[];
+  correcoes_por_dev?: { usuario_id: string; nome: string; corrigidas: number; falharam_de_novo: number; media_dias: number | null }[];
 }
 
 export interface OverviewTime {
@@ -78,6 +79,8 @@ export interface OverviewTime {
   andamentoPorSetor: Andamento[];
   /** Só projetos com algum Test Case em In Fixes. */
   emCorrecaoPorProjeto: { projetoId: string; projeto: string; emCorrecao: number }[];
+  /** Spec 076: tentativas fechadas por corretor nos últimos 30 dias; `mediaDias` só das corrigidas. */
+  correcoesPorDev?: CorrecoesDev[];
   /** Só projetos com rodada de Form Factor; a rodada mais recente de cada um. */
   passRatePorProjeto: { projetoId: string; projeto: string; aprovados: number; total: number }[];
 }
@@ -136,4 +139,12 @@ export interface OverviewPessoal {
   entregasPorSemana: PontoSemana[];
   /** Em ordem alfabética; o seletor do cabeçalho aparece com dois ou mais. */
   projetos: ProjetoPessoal[];
+}
+
+export interface CorrecoesDev {
+  usuarioId: string;
+  nome: string;
+  corrigidas: number;
+  falharamDeNovo: number;
+  mediaDias: number | null;
 }

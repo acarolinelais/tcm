@@ -10,7 +10,7 @@ import type { CasoComFalhas, FalhaSdf } from "../../model/projeto";
 import { agruparPorTentativa } from "./agrupar-por-tentativa";
 import { MyFixesTab } from "./MyFixesTab";
 
-vi.mock("../../api/projetos.api", () => ({ casosTesteApi: { listarMyFixes: vi.fn(), mudarStatusDaCorrecao: vi.fn() } }));
+vi.mock("../../api/projetos.api", () => ({ casosTesteApi: { listarMyFixes: vi.fn(), mudarStatusDaCorrecao: vi.fn(), listarCorrecoesConcluidas: vi.fn() } }));
 
 const falha = (data: string, tentativa: number | null, extra: Partial<FalhaSdf> = {}): FalhaSdf => ({
   modelo_dispositivo_id: "s26", modelo_nome: "S26 Ultra", sdf_id: "SDF-1", resultado: "FAIL", descricao: null, data_execucao: data, tentativa, ...extra,
@@ -74,5 +74,17 @@ describe("MyFixesTab (spec 073)", () => {
   it("agrupa da tentativa mais nova para a mais antiga e conta as falhas antigas e as de antes da correção na 1", () => {
     const falhas = [...caso.falhas, falha("2026-10-20T09:00:00Z", 0)];
     expect(agruparPorTentativa(falhas).map(([tentativa, grupo]) => [tentativa, grupo.length])).toEqual([[2, 1], [1, 3]]);
+  });
+
+  it("a pílula Completed troca para as correções concluídas (spec 076, RN-12)", async () => {
+    vi.mocked(casosTesteApi.listarCorrecoesConcluidas).mockResolvedValue({ items: [], page: 1, page_size: 20, total_count: 0 });
+    const user = userEvent.setup();
+    renderTab();
+    await screen.findAllByRole("row", { name: /Clock_01/ });
+
+    await user.click(screen.getByRole("button", { name: "Completed" }));
+
+    expect(await screen.findByText("No completed fixes")).toBeInTheDocument();
+    expect(casosTesteApi.listarCorrecoesConcluidas).toHaveBeenCalledWith("clock", 1, 20, {});
   });
 });

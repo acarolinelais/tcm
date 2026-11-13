@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { formatNumber } from "@/core/i18n/format";
 import { estadoDe, useOverviewTime, useProjetoEscolhido } from "../hooks/useOverviewGraficos";
 import { CabecalhoDoProjeto } from "./CabecalhoDaOverview";
-import { AndamentoCard, ConcluidosPorSemanaCard, PassRatePorModeloCard, PassRatePorProjetoCard } from "./CartoesDaOverview";
+import { AndamentoCard, ConcluidosPorSemanaCard, CorrecoesPorDevCard, PassRatePorModeloCard, PassRatePorProjetoCard } from "./CartoesDaOverview";
 import { BarrasHorizontais } from "./graficos/BarrasHorizontais";
 import { parte, porcentagem, resumoDeBarras } from "./graficos/estilo";
 import { GraficoCard } from "./graficos/GraficoCard";
@@ -30,6 +30,7 @@ export function OverviewGerente() {
       <div className="grid gap-4 lg:grid-cols-2">
         <AndamentoCard titulo={t("progressByTeamTitle")} dados={time.data?.andamentoPorTime ?? []} time={time} />
         <ConcluidosPorSemanaCard time={time} />
+        <CorrecoesPorDevCard time={time} />
         <GraficoCard
           titulo={t("reworkTitle")}
           resumo={t("listSummary", { list: resumoDeBarras(retrabalho) })}

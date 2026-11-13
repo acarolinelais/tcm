@@ -70,12 +70,13 @@ export const en: Record<SlugGuia, ConteudoGuia> = {
       {
         titulo: "When the system moves it for you",
         paragrafos: [
-          "Only a case in In Validation moves by itself, when results arrive from an SDF report or a test round:",
+          "A case in In Validation moves by itself when results arrive from an SDF report or a test round:",
         ],
         itens: [
           "the latest result of every device is PASS: the case goes to Done;",
           "the result that just arrived is FAIL: the case goes to In Fixes;",
           "anything else, such as one device still without a result: the case stays in In Validation.",
+          "a Done case gets a FAIL in an SDF report: the case goes back to In Fixes in a new attempt, with the same fixer. This only happens when the FAIL is the latest result of that device and the project is not closed.",
         ],
       },
       {

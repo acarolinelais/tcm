@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { History } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
@@ -10,6 +11,7 @@ import { DataTableFilter, DataTableMultiFilter } from "@/shared/ui/data-table-fi
 import { DataTablePagination } from "@/shared/ui/data-table-pagination";
 import { DataDoSistema } from "@/shared/ui/data-do-sistema";
 import { estadoDaTabela } from "@/shared/ui/data-table-state";
+import { FiltroPilula } from "@/shared/ui/filtro-pilula";
 import { InlineSelect } from "@/shared/ui/inline-select";
 import { SeloTentativa } from "@/shared/ui/selo-tentativa";
 import { TagChip } from "@/shared/ui/tag-chip";
@@ -19,20 +21,23 @@ import { useMyFixes } from "../../hooks/useProjetos";
 import { ROTULO_STATUS, STATUS_DA_CORRECAO, type CasoComFalhas, type FiltrosMyFixes, type StatusDaCorrecao } from "../../model/projeto";
 import { TcIdBotao } from "../casos-teste/TcIdBotao";
 import { statusChipTons } from "../status/status-chip-estilos";
+import { CorrecoesConcluidas } from "./CorrecoesConcluidas";
 import { FalhasDoCasoDrawer } from "./FalhasDoCasoDrawer";
 
 /** Spec 073: os casos que a pessoa tem para corrigir no projeto, com o Status da correção na linha. */
 // A planilha leva a data como a célula mostra, no idioma da tela (ADR 0042).
 const dataExportada = (valor?: string | null) => (valor ? formatDate(valor, { dateStyle: "medium" }) : "—");
 
-export function MyFixesTab({ projetoId }: { projetoId: string }) {
+export function MyFixesTab({ projetoId, opcoesCorretor }: { projetoId: string; opcoesCorretor?: { value: string; label: string }[] }) {
+  // Spec 076, RN-12: Em correção é o padrão; a pílula troca para as tentativas já fechadas.
+  const [concluidas, setConcluidas] = useState(false);
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [pagina, setPagina] = useState(1);
   const [tamanho, setTamanho] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const [filtros, setFiltros] = useState<FiltrosMyFixes>({});
   const [casoAberto, setCasoAberto] = useState<CasoComFalhas | null>(null);
-  const casos = useMyFixes(projetoId, pagina, tamanho, filtros);
+  const casos = useMyFixes(projetoId, pagina, tamanho, filtros, !concluidas);
   const mudarStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: StatusDaCorrecao }) => casosTesteApi.mudarStatusDaCorrecao(id, status),
     onSuccess: () => Promise.all(["my-fixes", "bug-reports", "projetos"].map((chave) => queryClient.invalidateQueries({ queryKey: [chave] }))),
@@ -86,7 +91,11 @@ export function MyFixesTab({ projetoId }: { projetoId: string }) {
     filtered: { title: t("noBugReportsResults"), hint: t("noBugReportsResultsHint") },
   });
 
+  const escolha = <FiltroPilula ligado={concluidas} onChange={setConcluidas} icone={<History aria-hidden="true" className="size-4" strokeWidth={1.75} />} rotulo={t("completedFixes")} />;
+  if (concluidas) return <CorrecoesConcluidas projetoId={projetoId} opcoesCorretor={opcoesCorretor} escolha={escolha} />;
+
   return <>
+    <div className="mb-3 flex">{escolha}</div>
     <DataTable
       aria-label={t("myFixes")}
       columns={colunas}

@@ -13,7 +13,7 @@ from src.infrastructure.data.models.importacao_sdf_status_model import Importaca
 # created_at da importação; os dois usam o fuso da sessão.
 _REVERTIVEIS = text(
     """
-    SELECT s.id, s.caso_teste_id, s.status_aplicado
+    SELECT s.id, s.caso_teste_id, s.status_aplicado, s.status_anterior
     FROM importacoes_sdf_status s
     WHERE s.unidade_id = :unidade_id
       AND s.importacao_sdf_id = :importacao_id
@@ -81,6 +81,7 @@ class ImportacaoSdfStatusRepositoryImpl:
                 caso_teste_id=entity.caso_teste_id,
                 status_aplicado=entity.status_aplicado.value,
                 concluiu_correcao=entity.concluiu_correcao,
+                status_anterior=entity.status_anterior.value if entity.status_anterior else None,
             )
         )
 
@@ -110,9 +111,13 @@ class ImportacaoSdfStatusRepositoryImpl:
             },
         )
         resultado = []
-        for id_, caso_teste_id, status in linhas:
+        for id_, caso_teste_id, status, anterior in linhas:
             item = ImportacaoSdfStatus(
-                unidade_id, importacao_sdf_id, caso_teste_id, StatusCasoTeste(status)
+                unidade_id,
+                importacao_sdf_id,
+                caso_teste_id,
+                StatusCasoTeste(status),
+                status_anterior=StatusCasoTeste(anterior) if anterior else None,
             )
             item.id = id_
             resultado.append(item)

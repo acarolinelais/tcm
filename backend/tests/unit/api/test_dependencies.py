@@ -62,3 +62,25 @@ async def test_identidade_kp_usa_apenas_vinculos_ativos_da_unidade(time_ids, mon
     consulta_vinculos = str(session.execute.call_args_list[1].args[0]).lower()
     assert "time_membros.ativo is true" in consulta_vinculos
     assert "times.ativo is true" in consulta_vinculos
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "fabrica", ["get_importacao_sdf_service", "get_caso_teste_service", "get_form_factor_service"]
+)
+async def test_servicos_que_mudam_o_status_recebem_o_registro_de_correcoes(fabrica):
+    # Spec 076: um serviço sem o registro deixaria a tentativa de correção aberta para sempre.
+    from src.api import dependencies
+
+    servico = await getattr(dependencies, fabrica)(session=MagicMock())
+
+    assert servico._registro_correcoes is not None
+
+
+@pytest.mark.asyncio
+async def test_falha_bug_reports_sem_repositorio_de_correcoes_nao_lista_concluidas():
+    from src.api import dependencies
+
+    servico = await dependencies.get_bug_report_service(session=MagicMock())
+
+    assert servico._correcao_repo is not None

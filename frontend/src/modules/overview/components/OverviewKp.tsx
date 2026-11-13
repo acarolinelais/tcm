@@ -9,7 +9,7 @@ import { BurndownChart } from "./graficos/BurndownChart";
 import { parte, porcentagem, resumoDeBarras } from "./graficos/estilo";
 import { GraficoCard } from "./graficos/GraficoCard";
 import { CabecalhoDoProjeto } from "./CabecalhoDaOverview";
-import { ConcluidosPorSemanaCard, PassRatePorModeloCard, SecaoDoProjeto } from "./CartoesDaOverview";
+import { ConcluidosPorSemanaCard, CorrecoesPorDevCard, PassRatePorModeloCard, SecaoDoProjeto } from "./CartoesDaOverview";
 
 const media = (valor: number) => formatNumber(valor, { maximumFractionDigits: 1 });
 
@@ -73,6 +73,7 @@ export function OverviewKp() {
         >
           <BarrasVerticais titulo={t("doneByProjectTitle")} dados={done} formatar={porcentagem} maximo={100} />
         </GraficoCard>
+        <CorrecoesPorDevCard time={time} />
       </div>
     </div>
   );

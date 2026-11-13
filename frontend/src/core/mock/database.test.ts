@@ -1120,3 +1120,40 @@ describe("correção no modo mock (spec 073)", () => {
     expect(() => mockCasosTesteApi.mudarStatusDaCorrecao(caso.id, "Done" as never)).toThrow();
   });
 });
+
+
+describe("correções concluídas no modo mock (spec 076)", () => {
+  function corrigido() {
+    entrar("kaique.pereira@example.com");
+    const project = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: ["mock-model-s27-ultra"] });
+    const caso = mockCasosTesteApi.criar(project.id, { tc_id: "Clock_001", category: "A", difficulty: "Low", situation: "New", responsavel_id: "mock-user-dev", backup_id: "mock-user-kp" });
+    mockCasosTesteApi.atualizar(caso.id, { status: "InValidation" });
+    const primeira = mockFormFactorApi.criarRodada(project.id, { sdf_id: "SDF-1" });
+    mockFormFactorApi.registrarResultadosRodada(project.id, primeira.id, caso.id, { resultados: { "mock-model-s27-ultra": "FAIL" } });
+    mockCasosTesteApi.mudarStatusDaCorrecao(caso.id, "InReview");
+    mockCasosTesteApi.mudarStatusDaCorrecao(caso.id, "InValidation");
+    const segunda = mockFormFactorApi.criarRodada(project.id, { sdf_id: "SDF-2" });
+    mockFormFactorApi.registrarResultadosRodada(project.id, segunda.id, caso.id, { resultados: { "mock-model-s27-ultra": "PASS" } });
+    return { project, caso };
+  }
+
+  it("a correção que passa aparece em Concluídas do corretor, corrigida", () => {
+    const { project } = corrigido();
+
+    entrar("daniel.oliveira@example.com");
+    const lista = mockBugReportsApi.listarCorrecoesConcluidas(project.id, 1, 20);
+    expect(lista.items.map((item) => [item.tc_id, item.tentativa, item.resultado, item.origem])).toEqual([["Clock_001", 1, "corrigida", "validacao"]]);
+    expect(lista.items[0].em_revisao_em).toBeTruthy();
+    expect(lista.items[0].dias_ate_corrigir).toBe(0);
+  });
+
+  it("falha: o dev não vê as concluídas de outro corretor; a gestão vê e filtra por resultado", () => {
+    const { project } = corrigido();
+
+    entrar("kaique.pereira@example.com");
+    expect(mockBugReportsApi.listarCorrecoesConcluidas(project.id, 1, 20, { resultado: "falhou_de_novo" }).items).toEqual([]);
+    expect(mockBugReportsApi.listarCorrecoesConcluidas(project.id, 1, 20).items).toHaveLength(1);
+    entrar("ana.souza@example.com");
+    expect(mockBugReportsApi.listarCorrecoesConcluidas(project.id, 1, 20).items).toEqual([]);
+  });
+});

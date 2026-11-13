@@ -71,12 +71,13 @@ export const ptBR: Partial<Record<SlugGuia, ConteudoGuia>> = {
       {
         titulo: "Quando o sistema move sozinho",
         paragrafos: [
-          "Só um caso Em validação se move sozinho, quando chegam resultados de um relatório SDF ou de uma rodada de testes:",
+          "Um caso Em validação se move sozinho quando chegam resultados de um relatório SDF ou de uma rodada de testes:",
         ],
         itens: [
           "o resultado mais recente de cada device é PASS: o caso vai para Concluído;",
           "o resultado que acabou de chegar é FAIL: o caso vai para Em correção;",
           "qualquer outra situação, como um device ainda sem resultado: o caso continua Em validação.",
+          "um caso Concluído recebe FAIL num relatório SDF: o caso volta para Em correção numa nova tentativa, com o mesmo corretor. Só vale quando o FAIL é o resultado mais recente daquele device e o projeto não está encerrado.",
         ],
       },
       {

@@ -7,6 +7,7 @@ from src.application.schemas.overview import (
     AndamentoResponse,
     ConcluidosDevResponse,
     ConcluidosSemanaResponse,
+    CorrecoesDevResponse,
     CriacaoProjetoResponse,
     DoneProjetoResponse,
     EmCorrecaoProjetoResponse,
@@ -186,6 +187,16 @@ class OverviewServiceImpl:
                     media=resumo.criados_por_projeto.get(p.id, 0) / DIAS,
                 )
                 for p in projetos
+            ],
+            correcoes_por_dev=[
+                CorrecoesDevResponse(
+                    usuario_id=dev.usuario_id,
+                    nome=dev.nome,
+                    corrigidas=dev.corrigidas,
+                    falharam_de_novo=dev.falharam_de_novo,
+                    media_dias=dev.media_dias,
+                )
+                for dev in resumo.correcoes_por_dev
             ],
             concluidos_por_dev=[
                 ConcluidosDevResponse(

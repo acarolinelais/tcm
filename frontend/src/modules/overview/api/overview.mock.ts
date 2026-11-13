@@ -64,6 +64,10 @@ export const overviewTimeMock: OverviewTime = {
     { projetoId: "mock-projeto-alarm", projeto: "Alarm 2.0", aprovados: 30, total: 40 },
     { projetoId: "mock-projeto-clock", projeto: "Clock 9.5", aprovados: 41, total: 60 },
   ],
+  correcoesPorDev: [
+    { usuarioId: "mock-user-dev", nome: "Daniel Oliveira", corrigidas: 4, falharamDeNovo: 1, mediaDias: 2.5 },
+    { usuarioId: "mock-user-standard", nome: "Ana Souza", corrigidas: 2, falharamDeNovo: 0, mediaDias: 1 },
+  ],
 };
 
 // Burndown clássico da spec 071: o planejamento começou há 16 dias e termina daqui a 14; o executado para hoje.

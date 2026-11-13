@@ -102,3 +102,36 @@ def test_falha_caso_que_nunca_falhou_no_sdf_nao_esta_em_correcao():
     with pytest.raises(ConflictException):
         caso.mudar_status_da_correcao(S.IN_REVIEW)
     assert caso.status is S.IN_PROGRESS
+
+
+# Spec 076: regressão em caso Done.
+def test_regressao_em_done_reabre_em_in_fixes_na_tentativa_seguinte():
+    # CA-01 e CA-02.
+    caso = criar_caso(S.DONE)
+    caso.tentativa_correcao = 1
+    caso.correcao_em_revisao_em = datetime(2026, 11, 5)
+
+    assert caso.reabrir_por_regressao() is True
+    assert caso.status is S.IN_FIXES
+    assert caso.tentativa_correcao == 2
+    assert caso.correcao_em_revisao_em is None
+    assert caso.em_correcao()
+
+
+@pytest.mark.parametrize("status", [s for s in S if s is not S.DONE])
+def test_falha_regressao_so_reabre_caso_done(status):
+    # CA-05 (Cancelled) e os outros Status: quem não está em Done segue a regra da spec 066.
+    textos = {"justificativa_exclusao": "Depende de hardware"} if status is S.CANCELLED else {}
+    caso = criar_caso(status, **textos)
+
+    assert caso.reabrir_por_regressao() is False
+    assert caso.status is status
+    assert caso.tentativa_correcao == 0
+
+
+def test_mover_done_para_in_fixes_na_mao_nao_abre_tentativa():
+    caso = criar_caso(S.DONE)
+
+    caso.atualizar_campos_do_responsavel(S.IN_FIXES, caso.category, caso.difficulty)
+
+    assert caso.tentativa_correcao == 0

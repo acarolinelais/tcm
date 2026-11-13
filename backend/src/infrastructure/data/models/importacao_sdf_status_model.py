@@ -23,6 +23,8 @@ class ImportacaoSdfStatusModel(Base):
     )
     caso_teste_id: Mapped[UUID] = mapped_column(ForeignKey("casos_teste.id"), nullable=False)
     status_aplicado: Mapped[str] = mapped_column(String(20), nullable=False)
+    # Spec 076, RN-06: nulo nas importações antigas, que sempre partiam de In Validation.
+    status_anterior: Mapped[str | None] = mapped_column(String(20), nullable=True)
     # Spec 072, RN-08: o Done desta importação encerrou a correção do Dev Fix.
     concluiu_correcao: Mapped[bool] = mapped_column(
         default=False, server_default="false", nullable=False

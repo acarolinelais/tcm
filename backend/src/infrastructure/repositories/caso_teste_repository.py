@@ -179,6 +179,30 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             for modelo, nome, cor in linhas
         )
 
+    async def ultima_execucao_no_device(
+        self,
+        unidade_id: UUID,
+        projeto_id: UUID,
+        caso_ids: Sequence[UUID],
+        modelo_dispositivo_id: UUID,
+    ) -> dict[UUID, datetime]:
+        if not caso_ids:
+            return {}
+        linhas = await self.session.execute(
+            _resultados_validos(
+                unidade_id,
+                projeto_id,
+                ExecucaoSdfModel.caso_teste_id,
+                func.max(ExecucaoSdfModel.data_reportada),
+            )
+            .where(
+                ExecucaoSdfModel.caso_teste_id.in_(caso_ids),
+                ResultadoFormFactorModel.modelo_dispositivo_id == modelo_dispositivo_id,
+            )
+            .group_by(ExecucaoSdfModel.caso_teste_id)
+        )
+        return dict(linhas.tuples().all())
+
     async def listar_todos_aprovados(
         self, unidade_id: UUID, projeto_id: UUID, caso_ids: Sequence[UUID]
     ) -> set[UUID]:

@@ -360,7 +360,7 @@ function ProjetoDetalhe() {
           <HistoricoProjetoTabela {...tabela.propsTabela} podeRegistrar={podeRegistrarResultado ? podeRegistrarLinha : undefined} onRegistrar={setLinhaManual} />
         </PageTabPanel>}
         {podeConsultarCasos && <PageTabPanel id="my-fixes" className="flex min-h-0 flex-1 flex-col p-0">
-          {aba === "my-fixes" && <MyFixesTab projetoId={projetoId} />}
+          {aba === "my-fixes" && <MyFixesTab projetoId={projetoId} opcoesCorretor={dev ? undefined : opcoesMembros} />}
         </PageTabPanel>}
       </PageTabs>
     )}

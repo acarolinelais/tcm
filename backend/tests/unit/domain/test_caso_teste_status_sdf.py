@@ -74,3 +74,13 @@ def test_falha_desfazer_nao_mexe_no_caso_movido_depois():
 
     assert caso.desfazer_resultado_sdf(S.DONE) is False
     assert caso.status is S.IN_PROGRESS
+
+
+def test_desfazer_a_regressao_devolve_o_caso_para_done():
+    # Spec 076, CA-06.
+    caso = criar_caso(S.DONE)
+    caso.reabrir_por_regressao()
+
+    assert caso.desfazer_resultado_sdf(S.IN_FIXES, S.DONE) is True
+    assert caso.status is S.DONE
+    assert caso.tentativa_correcao == 0

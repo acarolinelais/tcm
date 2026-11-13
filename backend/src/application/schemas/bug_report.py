@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from src.application.schemas.caso_teste import timestamp_utc
 from src.domain.queries.bug_report import CasoComFalhas, FalhaSdf
+from src.domain.queries.correcao_concluida import CorrecaoConcluida
 
 
 class FalhaSdfResponse(BaseModel):
@@ -60,4 +61,39 @@ def to_response(caso: CasoComFalhas) -> CasoComFalhasResponse:
         falhas=[_falha_to_response(falha) for falha in caso.falhas],
         tentativa_correcao=caso.tentativa_correcao,
         correcao_em_revisao_em=timestamp_utc(caso.correcao_em_revisao_em),
+    )
+
+
+class CorrecaoConcluidaResponse(BaseModel):
+    """Uma linha da visão Concluídas da My Fixes (spec 076, RN-14)."""
+
+    id: UUID
+    caso_teste_id: UUID
+    tc_id: str
+    tentativa: int
+    origem: str
+    corretor_id: UUID | None
+    corretor_identificador: str | None
+    falha_em: datetime
+    em_revisao_em: datetime | None
+    fechada_em: datetime
+    resultado: str
+    dias_ate_corrigir: int
+
+
+def to_correcao_concluida_response(correcao: CorrecaoConcluida) -> CorrecaoConcluidaResponse:
+    return CorrecaoConcluidaResponse(
+        id=correcao.id,
+        caso_teste_id=correcao.caso_teste_id,
+        tc_id=correcao.tc_id,
+        tentativa=correcao.tentativa,
+        origem=correcao.origem,
+        corretor_id=correcao.corretor_id,
+        corretor_identificador=correcao.corretor_identificador,
+        falha_em=timestamp_utc(correcao.falha_em),
+        # As três são UTC sem fuso no banco, como o dia, o filtro e os dias contados as tratam.
+        em_revisao_em=timestamp_utc(correcao.em_revisao_em),
+        fechada_em=timestamp_utc(correcao.fechada_em),
+        resultado=correcao.resultado,
+        dias_ate_corrigir=correcao.dias_ate_corrigir,
     )
