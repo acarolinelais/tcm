@@ -2,6 +2,7 @@ from datetime import datetime
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
+import pytest
 from src.api.dependencies import get_bug_report_service, get_caso_teste_service, get_usuario_atual
 from src.application.services.bug_report_service import BugReportServiceImpl
 from src.domain.common.exceptions import ConflictException, ForbiddenException
@@ -49,8 +50,28 @@ async def test_my_fixes_lista_os_casos_do_corretor_com_a_tentativa(api_client):
     assert caso["correcao_em_revisao_em"] == "2026-11-06T10:00:00Z"
     filtros = repo.listar_casos_com_falhas.await_args.args[2]
     assert filtros == FiltrosBugReport(
-        projeto_id=projeto_id, status=("InFixes", "InReview"), corretor_id=dev.id
+        projeto_id=projeto_id, status=("InFixes", "InReview"), em_correcao=True, corretor_id=dev.id
     )
+
+
+@pytest.mark.parametrize("perfil", ["KP", "GERENTE", "ADMIN_UNIDADE"])
+async def test_my_fixes_da_gestao_lista_todos_os_casos_em_correcao_do_escopo(api_client, perfil):
+    # Quem gerencia não é corretor de nenhum caso: o filtro por pessoa não vale para ele.
+    gestor = UsuarioAutenticado(uuid4(), uuid4(), perfil, permissoes=CONSULTAR,
+                                time_ids=(uuid4(),))  # fmt: skip
+    projeto_id = uuid4()
+    repo = AsyncMock()
+    repo.listar_casos_com_falhas.return_value = PagedResult([], 1, 20, 0)
+    _override(get_usuario_atual, gestor)
+    _override(get_bug_report_service, BugReportServiceImpl(repo))
+
+    response = await api_client.get(
+        "/api/bug-reports/my-fixes", params={"projeto_id": str(projeto_id)}
+    )
+
+    assert response.status_code == 200
+    filtros = repo.listar_casos_com_falhas.await_args.args[2]
+    assert (filtros.em_correcao, filtros.corretor_id) == (True, None)
 
 
 async def test_falha_my_fixes_com_status_fora_da_correcao_retorna_422(api_client):

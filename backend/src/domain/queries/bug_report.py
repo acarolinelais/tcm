@@ -47,6 +47,8 @@ class FiltrosBugReport:
     fim: datetime | None = None
     # Spec 073: só os casos a partir da segunda tentativa de correção (filtro Reincidentes).
     reincidentes: bool = False
-    # Spec 073 (My Fixes): só os casos em correção desta pessoa, e filtro por Status.
+    # Spec 073 (My Fixes): só os casos em correção (na ordem do fluxo), e filtro por Status.
+    em_correcao: bool = False
+    # Com `em_correcao`, só os casos desta pessoa como corretora (o dev); a gestão fica sem ele.
     corretor_id: UUID | None = None
     status: tuple[str, ...] = ()

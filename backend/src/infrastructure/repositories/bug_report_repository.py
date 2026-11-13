@@ -52,9 +52,7 @@ class BugReportRepositoryImpl:
         # RN-14: a linha mais nova é a do caso com a falha mais recente. Na My Fixes (spec 073,
         # RN-13), antes vem a ordem do fluxo da correção.
         ordem_do_status = (
-            (case(_ORDEM_DA_CORRECAO, value=falhas.c.status),)
-            if filtros.corretor_id is not None
-            else ()
+            (case(_ORDEM_DA_CORRECAO, value=falhas.c.status),) if filtros.em_correcao else ()
         )
         ids = (
             (
@@ -145,15 +143,18 @@ class BugReportRepositoryImpl:
             condicoes.append(_DEV_FIX.user_id.icontains(filtros.dev_fix.strip(), autoescape=True))
         if filtros.reincidentes:
             condicoes.append(CasoTesteModel.tentativa_correcao >= 2)
-        if filtros.corretor_id is not None:
-            # Spec 073, RN-04 e RN-08: o corretor é o Dev Fix ou, sem ele, o responsável.
+        if filtros.em_correcao:
             condicoes.extend(
                 (
-                    func.coalesce(CasoTesteModel.dev_fix_id, CasoTesteModel.responsavel_id)
-                    == filtros.corretor_id,
                     CasoTesteModel.tentativa_correcao > 0,
                     CasoTesteModel.status.in_(_ORDEM_DA_CORRECAO),
                 )
+            )
+        if filtros.corretor_id is not None:
+            # Spec 073, RN-04 e RN-08: o corretor é o Dev Fix ou, sem ele, o responsável.
+            condicoes.append(
+                func.coalesce(CasoTesteModel.dev_fix_id, CasoTesteModel.responsavel_id)
+                == filtros.corretor_id
             )
         if filtros.status:
             condicoes.append(CasoTesteModel.status.in_(filtros.status))

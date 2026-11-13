@@ -333,19 +333,51 @@ async def test_atualizar_caso_proprio_permite_campos_do_responsavel(contexto):
         responsavel,
         caso.id,
         AtualizarCasoTesteRequest(
-            difficulty=DificuldadeCasoTeste.MEDIUM,
             status=StatusCasoTeste.IN_PROGRESS,
             situation=SituacaoCasoTeste.NEW_STEP,
         ),
     )
 
     assert resposta.category is CategoriaCasoTeste.A
-    assert resposta.difficulty is DificuldadeCasoTeste.MEDIUM
+    assert resposta.difficulty is DificuldadeCasoTeste.LOW
     assert resposta.status is StatusCasoTeste.IN_PROGRESS
     assert resposta.situation is SituacaoCasoTeste.NEW_STEP
     assert resposta.created_at == caso.created_at
     casos.atualizar.assert_awaited_once_with(caso)
     uow.commit.assert_awaited_once()
+
+
+async def test_responsavel_nao_altera_a_difficulty_do_proprio_caso(contexto):
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    responsavel = UsuarioAutenticado(
+        uuid4(),
+        admin.unidade_id,
+        "USUARIO_PADRAO",
+        permissoes=frozenset({"test_cases.consultar"}),
+        time_ids=(time.id,),
+    )
+    caso = CasoTeste(
+        admin.unidade_id,
+        projeto.id,
+        "Clock_001",
+        CategoriaCasoTeste.A,
+        DificuldadeCasoTeste.LOW,
+        responsavel.id,
+        uuid4(),
+        SituacaoCasoTeste.NEW,
+    )
+    casos.obter_por_id.return_value = caso
+
+    with pytest.raises(ForbiddenException, match="Status, TC Situation e Automation Level"):
+        await service.atualizar(
+            responsavel,
+            caso.id,
+            AtualizarCasoTesteRequest(difficulty=DificuldadeCasoTeste.HIGH),
+        )
+
+    assert caso.difficulty is DificuldadeCasoTeste.LOW
+    casos.atualizar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
 
 
 def _usuario_do_time(admin, time):
