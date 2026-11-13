@@ -1,3 +1,5 @@
+import logging
+
 import httpx
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -50,6 +52,10 @@ def _build_app() -> FastAPI:
     @app.get("/nao-autenticado")
     async def nao_autenticado():
         raise CredenciaisInvalidasException("Credenciais inválidas.")
+
+    @app.get("/inesperado")
+    async def inesperado():
+        raise RuntimeError("conexão com o banco caiu")
 
     return app
 
@@ -122,3 +128,22 @@ async def test_credenciais_invalidas_retorna_401():
     resposta = await _get("/nao-autenticado")
     assert resposta.status_code == 401
     assert resposta.headers["content-type"] == "application/problem+json"
+
+
+async def test_erro_inesperado_retorna_500_e_registra_a_excecao(caplog):
+    with caplog.at_level(logging.ERROR, logger="src.api.error_handling.handlers"):
+        resposta = await _get("/inesperado")
+
+    assert resposta.status_code == 500
+    assert "banco" not in resposta.text
+    registro = next(r for r in caplog.records if r.name == "src.api.error_handling.handlers")
+    assert "GET /inesperado" in registro.getMessage()
+    assert isinstance(registro.exc_info[1], RuntimeError)
+
+
+async def test_falha_erro_tratado_nao_registra_erro(caplog):
+    with caplog.at_level(logging.ERROR, logger="src.api.error_handling.handlers"):
+        resposta = await _get("/nao-encontrado")
+
+    assert resposta.status_code == 404
+    assert not [r for r in caplog.records if r.name == "src.api.error_handling.handlers"]
