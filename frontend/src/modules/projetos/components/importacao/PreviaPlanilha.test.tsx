@@ -10,8 +10,9 @@ function previa(total: number): PlanilhaProjeto {
   return {
     app: "Clock",
     one_ui: "9.5",
+    data_planejada: null,
     totalLinhas: total,
-    colunas: { app: "App", "tc id": "TC ID", difficulty: "Difficulty", category: "Category", "tc situation": "TC Situation", "one ui": "One UI", assignees: "Assignees", backup: "Backup", "automation level": "Automation Level",
+    colunas: { app: "App", "tc id": "TC ID", difficulty: "Difficulty", category: "Category", "tc situation": "TC Situation", "one ui": "One UI", assignees: "Assignees", backup: "Backup", "automation level": "Automation Level", "planned date": "Planned date",
       "title(english)": "Title(English)", "test precondition(english)": "Test Precondition(English)", "test procedure(english)": "Test Procedure(English)", "expected result(english)": "Expected Result(English)" },
     casos: Array.from({ length: total }, (_, index) => ({
       linha: index + 2, tc_id: `Clock_${String(index + 1).padStart(4, "0")}`, category: "A", difficulty: "Low",
@@ -41,6 +42,14 @@ describe("PreviaPlanilha", () => {
     expect(screen.queryByText("Clock_0001")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Previous page" }));
     expect(screen.getByText("Clock_0001")).toBeInTheDocument();
+  });
+
+  it("mostra a Planned date lida da planilha só quando ela existe (spec 075)", () => {
+    const { rerender } = render(<PreviaPlanilha previa={{ ...previa(1), data_planejada: "2026-12-19" }} />);
+    expect(screen.getByText(/Planned date: Dec 19, 2026/)).toBeInTheDocument();
+
+    rerender(<PreviaPlanilha previa={previa(1)} />);
+    expect(screen.queryByText(/Planned date/)).not.toBeInTheDocument();
   });
 
   it("mostra TC Situation e não mostra Status", () => {

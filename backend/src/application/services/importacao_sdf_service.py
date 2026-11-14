@@ -6,6 +6,7 @@ from src.application.schemas.importacao_sdf import (
     ImportarRelatorioSdfResponse,
     UltimaImportacaoSdfResponse,
 )
+from src.application.services.registro_de_correcoes import RegistroDeCorrecoes
 from src.application.validators.importacao_projeto import ErroImportacaoPlanilha
 from src.application.validators.relatorio_sdf import RelatorioSdfInvalido, ler_relatorio_sdf
 from src.domain.common.exceptions import (
@@ -58,7 +59,9 @@ class ImportacaoSdfServiceImpl:
         rodada_repo: RodadaFormFactorRepository,
         status_repo: ImportacaoSdfStatusRepository,
         contexto_auditoria: ContextoAuditoria | None = None,
+        registro_correcoes: RegistroDeCorrecoes | None = None,
     ) -> None:
+        self._registro_correcoes = registro_correcoes
         self._status_repo = status_repo
         self._rodada_repo = rodada_repo
         self._contexto_auditoria = contexto_auditoria
@@ -160,8 +163,14 @@ class ImportacaoSdfServiceImpl:
         if erros:
             raise RelatorioSdfInvalido(tuple(erros))
 
+        caso_ids = [caso.id for caso in casos.values()]
+        # Spec 076, RN-02: lido antes de gravar as execuções deste relatório.
+        ultimas = await self._caso_repo.ultima_execucao_no_device(
+            unidade_id, projeto.id, caso_ids, modelo.id
+        )
         importacao = ImportacaoSdf(unidade_id, projeto.id, usuario_atual.id)
         await self._importacao_repo.adicionar(importacao)
+        execucoes = []
         for linha in relatorio.linhas:
             execucao = ExecucaoSdf(
                 unidade_id,
@@ -171,13 +180,13 @@ class ImportacaoSdfServiceImpl:
                 relatorio.data_execucao,
                 linha.one_ui,
             )
+            execucoes.append((execucao, casos[linha.tc_id]))
             await self._execucao_repo.adicionar(execucao)
             await self._resultado_repo.adicionar(
                 ResultadoFormFactor(
                     unidade_id, execucao.id, modelo.id, linha.resultado, linha.descricao
                 )
             )
-        caso_ids = [caso.id for caso in casos.values()]
         # Spec 066: o Status segue os resultados, e a mudança entra no histórico como Form Factor.
         if self._contexto_auditoria is not None:
             await self._contexto_auditoria.definir_origem(OrigemAuditoria.FORM_FACTOR)
@@ -187,22 +196,49 @@ class ImportacaoSdfServiceImpl:
             for linha in relatorio.linhas
             if ResultadoFormFactor.eh_falha(linha.resultado)
         }
+        # Spec 076, RN-04: projeto encerrado não reabre casos.
+        encerrado = projeto.encerrado
+        mudaram = []
         for tc_id, caso in casos.items():
-            anterior = caso.status
+            antes = RegistroDeCorrecoes.antes(caso)
+            mais_recente = caso.id not in ultimas or relatorio.data_execucao >= ultimas[caso.id]
+            # Spec 076, RN-01 e RN-02: a falha mais recente do device reabre o caso Done.
+            if tc_id in com_falha and mais_recente and not encerrado:
+                caso.reabrir_por_regressao()
             caso.aplicar_resultado_sdf(caso.id in aprovados, tc_id in com_falha)
-            if caso.status is not anterior:
-                # Spec 072, RN-08: o Done só encerra a correção se o caso voltou à validação
-                # depois do Dev Fix.
-                concluiu = (
-                    caso.status is StatusCasoTeste.DONE
-                    and caso.dev_fix_em is not None
-                    and await self._status_repo.entrou_em_validacao_depois_do_dev_fix(
-                        unidade_id, caso.id, caso.dev_fix_em
-                    )
+            if caso.status is not antes.status:
+                mudaram.append((caso, antes))
+        # Spec 073: cada execução fica na tentativa em que o caso ficou depois do relatório.
+        for execucao, caso in execucoes:
+            execucao.tentativa_correcao = caso.tentativa_correcao
+            await self._execucao_repo.definir_tentativa_correcao(execucao)
+        # Spec 072, RN-08: o Done só encerra a correção se o caso voltou à validação depois do
+        # Dev Fix. A consulta roda antes do atualizar(), que grava o novo status.
+        fechando = [
+            caso.id
+            for caso, _ in mudaram
+            if caso.status is StatusCasoTeste.DONE and caso.dev_fix_em is not None
+        ]
+        concluiram = (
+            await self._status_repo.entraram_em_validacao_depois_do_dev_fix(unidade_id, fechando)
+            if fechando
+            else set()
+        )
+        for caso, antes in mudaram:
+            await self._caso_repo.atualizar(caso)
+            await self._status_repo.adicionar(
+                ImportacaoSdfStatus(
+                    unidade_id,
+                    importacao.id,
+                    caso.id,
+                    caso.status,
+                    caso.id in concluiram,
+                    status_anterior=antes.status,
                 )
-                await self._caso_repo.atualizar(caso)
-                await self._status_repo.adicionar(
-                    ImportacaoSdfStatus(unidade_id, importacao.id, caso.id, caso.status, concluiu)
+            )
+            if self._registro_correcoes is not None:
+                await self._registro_correcoes.registrar(
+                    caso, antes, relatorio.data_execucao, importacao.id
                 )
         # Spec 065: o relatório pode fechar o caso em todos os devices. Depois do atualizar(), que
         # grava o caso inteiro e apagaria a data gravada por este UPDATE.
@@ -245,19 +281,23 @@ class ImportacaoSdfServiceImpl:
             await self._contexto_auditoria.definir_origem(OrigemAuditoria.IMPORTACAO_SDF_DESFEITA)
         importacao.desfazer(usuario_atual.id)
         await self._importacao_repo.atualizar(importacao)
-        revertidos = 0
+        revertidos = set()
         for item in revertiveis:
             caso = await self._caso_repo.obter_por_id(unidade_id, item.caso_teste_id)
-            if caso is not None and caso.desfazer_resultado_sdf(item.status_aplicado):
+            if caso is not None and caso.desfazer_resultado_sdf(
+                item.status_aplicado, item.status_anterior
+            ):
                 await self._caso_repo.atualizar(caso)
-                revertidos += 1
+                revertidos.add(caso.id)
+        if self._registro_correcoes is not None:
+            await self._registro_correcoes.desfazer(unidade_id, importacao.id, revertidos)
         # Depois do atualizar(), que grava o caso inteiro e apagaria a End date recalculada.
         execucoes = await self._execucao_repo.listar_por_importacao(unidade_id, importacao.id)
         caso_ids = list({execucao.caso_teste_id for execucao in execucoes})
         await self._caso_repo.limpar_todos_aprovados(unidade_id, caso_ids)
         await self._caso_repo.marcar_todos_aprovados(unidade_id, projeto.id, caso_ids)
         await self._uow.commit()
-        return DesfazerImportacaoSdfResponse(casos_revertidos=revertidos)
+        return DesfazerImportacaoSdfResponse(casos_revertidos=len(revertidos))
 
     async def _projeto_para_importar(
         self, usuario_atual: UsuarioAutenticado, projeto_id: UUID

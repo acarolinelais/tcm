@@ -8,7 +8,13 @@ import type { UsuarioFiltros } from "@/modules/usuarios/api/usuario.api";
 import {
   type AtualizarCasoTesteInput,
   type AtualizarProjetoInput,
+  STATUS_DA_CORRECAO,
   type CasoTeste,
+  type CorrecaoConcluida,
+  type FiltrosCorrecoesConcluidas,
+  type FiltrosMyFixes,
+  type StatusCasoTeste,
+  type StatusDaCorrecao,
   type CasoTesteDetalhe,
   type TextosCasoTeste,
   type CriarCasoTesteInput,
@@ -64,6 +70,8 @@ interface ResultadoFormFactorMock {
   resultado: string;
   data_reportada: string;
   origem?: "SDF" | "MANUAL";
+  /** Spec 073: a tentativa de correção do caso quando o resultado entrou. */
+  tentativa?: number | null;
 }
 
 /** Link de PR (spec 030): a remoção é lógica, como na API. */
@@ -99,6 +107,8 @@ interface Database {
   execucoesFormFactor: ExecucaoFormFactorMock[];
   importacoesSdf: { importacao_id: string; projeto_id: string; importado_em: string }[];
   linksPullRequest: LinkPullRequestMock[];
+  /** Spec 076: as tentativas de correção; opcional nas bases mock anteriores. */
+  correcoes?: CorrecaoMock[];
   idiomaPorUsuario: Record<string, PerfilAtual["idioma_preferido"]>;
   corAvatarPorUsuario?: Record<string, CorAvatar>; // opcional: bases mock anteriores à spec 036
   senhasAlteradas: string[];
@@ -891,7 +901,7 @@ export const mockProjetosApi = {
     const nomeApp = planilha.app || app?.trim() || "";
     const versao = planilha.one_ui || oneUi?.trim() || "";
     const now = new Date().toISOString();
-    const projeto: Projeto = { id: id("mock-project"), unidade_id: db.unidade.id, time_id: time.id, app: nomeApp, one_ui: versao, nome: `${nomeApp} ${versao}`, status: "Created", ativo: true, created_at: now, updated_at: now };
+    const projeto: Projeto = { id: id("mock-project"), unidade_id: db.unidade.id, time_id: time.id, app: nomeApp, one_ui: versao, nome: `${nomeApp} ${versao}`, status: "Created", ativo: true, created_at: now, updated_at: now, data_planejada: planilha.data_planejada };
     const casos: Database["casosTeste"] = atribuidos.map(({ caso, responsavelId, backupId }) => ({ id: id("mock-test-case"), unidade_id: db.unidade.id, projeto_id: projeto.id, tc_id: caso.tc_id, category: caso.category, difficulty: caso.difficulty, automation_level: caso.automation_level, situation: caso.situation, status: "To-Do", responsavel_id: responsavelId, backup_id: backupId, ativo: true, created_at: now, updated_at: now, title: caso.title, precondition: caso.precondition, procedure: caso.procedure, expected_result: caso.expected_result }));
     db.projetos.unshift(projeto);
     modelIds.forEach((modelId) => db.projetoModelos.push({ projeto_id: projeto.id, modelo_dispositivo_id: modelId }));
@@ -981,7 +991,8 @@ export const mockCasosTesteApi = {
       && item.unidade_id === db.unidade.id
       && (!filtros.associadosAMim || item.responsavel_id === user.id || item.backup_id === user.id)
       // Semana da End date (spec 065, RN-10): a finalização de tudo, sem depender do Status.
-      && (!filtros.semana || (Boolean(item.all_passed_em) && semanaIso(item.all_passed_em!) === filtros.semana))
+      // Spec 075: a semana é a da End date, a primeira entrada em In Review.
+      && (!filtros.semana || (Boolean(item.code_done_em) && semanaIso(item.code_done_em!) === filtros.semana))
       && (!filtros.responsavelIds?.length || filtros.responsavelIds.includes(item.responsavel_id)));
     // Igual à API: os casos em que o usuário é o responsável principal vêm primeiro.
     const prioridade = (item: (typeof casosDoProjeto)[number]) => (item.responsavel_id === user.id ? 0 : 1);
@@ -1063,22 +1074,38 @@ export const mockCasosTesteApi = {
     validarJustificativaExclusao(input);
     if (profile?.codigo === "ADMIN_UNIDADE" || profile?.codigo === "GERENTE" || profile?.codigo === "KP") {
       if (!canManageMockProject(project, "test_cases.gerenciar")) throw new Error("O projeto está fora do seu escopo.");
-      aplicarAtualizacaoCaso(testCase, input);
+      aplicarAtualizacaoCaso(testCase, input, db);
     } else {
       if (!profile?.permissoes.includes("test_cases.consultar") || (testCase.responsavel_id !== user.id && testCase.backup_id !== user.id)) {
         throw new Error("Você só pode editar Test Cases atribuídos a você.");
       }
       if (testCase.responsavel_id !== user.id) {
         if (Object.keys(input).some((field) => field !== "status" && field !== "justificativa_exclusao") || input.status !== "Cancelled") throw new Error("O Backup só pode cancelar o Test Case atribuído.");
-        aplicarAtualizacaoCaso(testCase, input);
+        aplicarAtualizacaoCaso(testCase, input, db);
         testCase.updated_at = new Date().toISOString();
         writeDb(db);
         return testCase;
       }
-      const camposPermitidos = ["difficulty", "status", "situation", "automation_level", "justificativa_exclusao"];
-      if (Object.keys(input).some((field) => !camposPermitidos.includes(field))) throw new Error("O responsável só pode editar Status, TC Situation, Difficulty e Automation Level.");
-      aplicarAtualizacaoCaso(testCase, input);
+      const camposPermitidos = ["status", "situation", "automation_level", "justificativa_exclusao"];
+      if (Object.keys(input).some((field) => !camposPermitidos.includes(field))) throw new Error("O responsável só pode editar Status, TC Situation e Automation Level.");
+      aplicarAtualizacaoCaso(testCase, input, db);
     }
+    testCase.updated_at = new Date().toISOString();
+    writeDb(db);
+    return testCase;
+  },
+  /** Spec 073: só o corretor (Dev Fix ou, sem ele, o responsável) e a gestão, e só pelos Status da correção. */
+  mudarStatusDaCorrecao(caseId: string, status: StatusDaCorrecao) {
+    const { db, user, profile } = mockProfile();
+    requireMockPermission("test_cases.consultar");
+    const { testCase, project } = getMockCase(db, caseId);
+    // Como a API: a gestão só nos times do seu escopo (test_cases.gerenciar), o corretor no próprio caso.
+    const team = db.times.find((item) => item.id === project.time_id);
+    const gestor = Boolean(team) && profile?.permissoes.includes("test_cases.gerenciar") && canManageMockTeam(db, user.id, profile?.codigo, team!);
+    if (!gestor && (testCase.dev_fix_id ?? testCase.responsavel_id) !== user.id) throw problema(403, "Acesso negado.", "Só quem corrige o Test Case pode mudar o Status da correção.");
+    if (!STATUS_DA_CORRECAO.includes(status)) throw problema(422, "Dados inválidos.", "Na correção, o Status só pode ser In Fixes, In Progress, In Review ou In Validation.");
+    if (!(testCase.tentativa_correcao ?? 0) || !STATUS_DA_CORRECAO.includes(testCase.status as StatusDaCorrecao)) throw problema(409, "Conflito.", "O Test Case não está em correção.");
+    aplicarStatusMock(testCase, status, db);
     testCase.updated_at = new Date().toISOString();
     writeDb(db);
     return testCase;
@@ -1110,11 +1137,46 @@ function validarJustificativaExclusao(input: AtualizarCasoTesteInput) {
   if (!excluindo && justificativa) throw new Error("A justificativa só pode ser enviada ao excluir o Test Case.");
 }
 
+/** Como o `_aplicar_status` da entidade: o Status e as datas e a tentativa que dependem dele (specs 065 e 073). */
+function aplicarStatusMock(testCase: CasoTeste, status: StatusCasoTeste, db?: Database) {
+  const agora = new Date().toISOString();
+  const antes = { status: testCase.status, tentativa: testCase.tentativa_correcao ?? 0, revisao: testCase.correcao_em_revisao_em ?? null, corretor: testCase.dev_fix_id ?? testCase.responsavel_id };
+  if (status === "InFixes" && testCase.status !== "InFixes") {
+    if (testCase.status === "InValidation") testCase.tentativa_correcao = (testCase.tentativa_correcao ?? 0) + 1;
+    testCase.correcao_em_revisao_em = null;
+  } else if (status === "InReview" && testCase.status !== "InReview") {
+    if (!testCase.code_done_em) testCase.code_done_em = agora;
+    if ((testCase.tentativa_correcao ?? 0) > 0 && !testCase.correcao_em_revisao_em) testCase.correcao_em_revisao_em = agora;
+  }
+  testCase.status = status;
+  if (db) registrarCorrecaoMock(db, testCase, antes, agora);
+}
+
+interface CorrecaoMock extends Omit<CorrecaoConcluida, "tc_id" | "corretor_identificador" | "dias_ate_corrigir" | "fechada_em" | "resultado"> {
+  fechada_em: string | null;
+  resultado: CorrecaoConcluida["resultado"] | null;
+}
+
+/** Como o `RegistroDeCorrecoes` da API (spec 076): abre, fecha como falhou de novo, corrigida ou encerrada. */
+function registrarCorrecaoMock(db: Database, testCase: CasoTeste, antes: { status: StatusCasoTeste; tentativa: number; revisao: string | null; corretor: string }, quando: string) {
+  db.correcoes ??= [];
+  const aberta = db.correcoes.find((item) => item.caso_teste_id === testCase.id && !item.resultado);
+  const fechar = (resultado: CorrecaoConcluida["resultado"]) => {
+    if (!aberta) return;
+    Object.assign(aberta, { resultado, fechada_em: quando, corretor_id: antes.corretor, em_revisao_em: antes.revisao ?? aberta.em_revisao_em });
+  };
+  const tentativa = testCase.tentativa_correcao ?? 0;
+  if (tentativa > antes.tentativa) {
+    if (antes.tentativa > 0) fechar("falhou_de_novo");
+    db.correcoes.push({ id: id("mock-correcao"), caso_teste_id: testCase.id, tentativa, origem: antes.status === "Done" ? "regressao" : "validacao", corretor_id: null, falha_em: quando, em_revisao_em: null, fechada_em: null, resultado: null });
+  } else if (testCase.status !== antes.status && testCase.status === "Done") fechar("corrigida");
+  else if (testCase.status !== antes.status && testCase.status === "Cancelled") fechar("encerrada");
+}
+
 /** Entrar em Cancelled grava a justificativa; sair a apaga; continuar mantém a atual (como a entidade da API). */
-function aplicarAtualizacaoCaso(testCase: CasoTeste, { justificativa_exclusao, ...campos }: AtualizarCasoTesteInput) {
+function aplicarAtualizacaoCaso(testCase: CasoTeste, { justificativa_exclusao, status, ...campos }: AtualizarCasoTesteInput, db?: Database) {
   const estavaExcluido = testCase.status === "Cancelled";
-  // Spec 065, como a entidade da API: só a primeira entrada em In Review grava o Code done.
-  if (campos.status === "InReview" && testCase.status !== "InReview" && !testCase.code_done_em) testCase.code_done_em = new Date().toISOString();
+  if (status) aplicarStatusMock(testCase, status, db);
   Object.assign(testCase, campos);
   if (testCase.status !== "Cancelled") testCase.justificativa_exclusao = null;
   else if (!estavaExcluido) testCase.justificativa_exclusao = justificativa_exclusao?.trim() ?? null;
@@ -1220,7 +1282,7 @@ function execucoesMockDoProjeto(db: Database, project: Projeto) {
   const execucoes = db.formFactor.flatMap((item, ordem) => {
     const testCase = casos.find((caso) => caso.id === item.caso_teste_id || (!item.caso_teste_id && caso.tc_id === item.tc_id));
     if (!testCase || !linked.has(item.modelo_dispositivo_id)) return [];
-    const execucao: ExecucaoNaData & { caso_teste_id: string; modelo_dispositivo_id: string; dia: string; ordem: number } = {
+    const execucao: ExecucaoNaData & { caso_teste_id: string; modelo_dispositivo_id: string; dia: string; ordem: number; tentativa: number | null } = {
       caso_teste_id: testCase.id,
       modelo_dispositivo_id: item.modelo_dispositivo_id,
       dia: formatarDiaIso(new Date(item.data_reportada)), // dia local, como a API no fuso de quem consulta
@@ -1229,6 +1291,7 @@ function execucoesMockDoProjeto(db: Database, project: Projeto) {
       sdf_id: item.sdf_id,
       origem: item.origem ?? "SDF",
       data_reportada: item.data_reportada,
+      tentativa: item.tentativa ?? null,
       ordem,
     };
     return [execucao];
@@ -1442,9 +1505,11 @@ export const mockFormFactorApi = {
     const values = Object.values(input.resultados);
     // Como na API: só um TC em validação muda de Status; os resultados ficam no histórico.
     if (testCase.status === "InValidation") {
-      if (values.includes("FAIL")) testCase.status = "InFixes";
-      else if (linked.size > 0 && [...linked].every((modelId) => input.resultados[modelId] === "PASS")) testCase.status = "Done";
+      if (values.includes("FAIL")) aplicarStatusMock(testCase, "InFixes", db);
+      else if (linked.size > 0 && [...linked].every((modelId) => input.resultados[modelId] === "PASS")) aplicarStatusMock(testCase, "Done", db);
     }
+    // Spec 073: os resultados ficam na tentativa em que o caso ficou.
+    db.formFactor.filter((item) => item.execucao_id === execucao.execucao_id).forEach((item) => { item.tentativa = testCase.tentativa_correcao ?? 0; });
     testCase.updated_at = new Date().toISOString();
     execucao.resultados_registrados = true;
     writeDb(db);
@@ -1507,15 +1572,52 @@ const NAO_FALHA = new Set(["PASS", "N/A", "NA", "CHECK"]);
 
 /** Spec 072: um item por caso, com todas as falhas do SDF (tudo que não é PASS, N/A, NA ou Check). */
 export const mockBugReportsApi = {
-  // shortcut: o mock não guarda a correção concluída (RN-08) e as falhas não saem da lista; evoluir se o modo mock passar a simular a importação do SDF com Dev Fix.
   listar(projetoId: string, pageNumber: number, pageSize: number, filtros: FiltrosBugReport = {}): PagedResult<CasoComFalhas> {
+    return page(casosComFalhasMock(projetoId, filtros), pageNumber, pageSize);
+  },
+  /** Spec 073: os casos em correção. O dev vê os que ele corrige (Dev Fix ou, sem ele, o responsável); a gestão vê todos do escopo. */
+  listarMyFixes(projetoId: string, pageNumber: number, pageSize: number, filtros: FiltrosMyFixes = {}): PagedResult<CasoComFalhas> {
+    requireMockPermission("test_cases.consultar");
+    const { user, profile } = mockProfile();
+    const soDoCorretor = profile?.codigo === "USUARIO_PADRAO";
+    const ordem = (status: string) => STATUS_DA_CORRECAO.indexOf(status as StatusDaCorrecao);
+    const itens = casosComFalhasMock(projetoId, { responsavel: filtros.responsavel })
+      .filter((caso) => (!soDoCorretor || (caso.dev_fix_id ?? caso.responsavel_id) === user.id) && caso.tentativa_correcao > 0 && ordem(caso.status) >= 0
+        && (!filtros.status?.length || filtros.status.includes(caso.status as StatusDaCorrecao)))
+      .sort((a, b) => ordem(a.status) - ordem(b.status));
+    return page(itens, pageNumber, pageSize);
+  },
+  /** Spec 076: as tentativas fechadas do projeto; o dev vê só as em que era o corretor (RN-13). */
+  listarCorrecoesConcluidas(projetoId: string, pageNumber: number, pageSize: number, filtros: FiltrosCorrecoesConcluidas = {}): PagedResult<CorrecaoConcluida> {
+    requireMockPermission("test_cases.consultar");
+    const { db, user, profile } = mockProfile();
+    const soDoCorretor = profile?.codigo === "USUARIO_PADRAO";
+    // Como a API, que conta o dia no fuso de quem consulta.
+    const dia = diaLocal;
+    const itens = (db.correcoes ?? []).flatMap((correcao): CorrecaoConcluida[] => {
+      const testCase = db.casosTeste.find((item) => item.id === correcao.caso_teste_id && item.projeto_id === projetoId && item.ativo);
+      if (!testCase || !correcao.resultado || !correcao.fechada_em) return [];
+      if (soDoCorretor && correcao.corretor_id !== user.id) return [];
+      if (filtros.corretor_id && correcao.corretor_id !== filtros.corretor_id) return [];
+      if (filtros.resultado && correcao.resultado !== filtros.resultado) return [];
+      if (!noPeriodoMock(dia(correcao.fechada_em), filtros.periodo)) return [];
+      const dias = Math.round((Date.parse(dia(correcao.fechada_em)) - Date.parse(dia(correcao.falha_em))) / 86_400_000);
+      return [{ ...correcao, fechada_em: correcao.fechada_em, resultado: correcao.resultado, tc_id: testCase.tc_id,
+        corretor_identificador: db.usuarios.find((usuario) => usuario.id === correcao.corretor_id)?.user_id ?? null, dias_ate_corrigir: dias }];
+    }).sort((a, b) => b.fechada_em.localeCompare(a.fechada_em) || b.tentativa - a.tentativa);
+    return page(itens, pageNumber, pageSize);
+  },
+};
+
+// shortcut: o mock não guarda a correção concluída (RN-08) e as falhas não saem da lista; evoluir se o modo mock passar a simular a importação do SDF com Dev Fix.
+function casosComFalhasMock(projetoId: string, filtros: FiltrosBugReport): CasoComFalhas[] {
     const { db, user, profile } = mockProfile();
     const project = projetosMockResultadosGerais(db).find((item) => item.id === projetoId && !projetoEncerrado(item.status));
-    if (!project) return page<CasoComFalhas>([], pageNumber, pageSize);
+    if (!project) return [];
     const pessoal = profile?.codigo === "USUARIO_PADRAO";
     const { modelos, casos, execucoes } = execucoesMockDoProjeto(db, project);
     const identificador = (id?: string | null) => db.usuarios.find((usuario) => usuario.id === id)?.user_id ?? null;
-    const itens = casos.flatMap((testCase): CasoComFalhas[] => {
+    return casos.flatMap((testCase): CasoComFalhas[] => {
       if (testCase.status === "Cancelled") return [];
       if (pessoal && ![testCase.responsavel_id, testCase.backup_id, testCase.dev_fix_id].includes(user.id)) return [];
       const dono = identificador(testCase.responsavel_id);
@@ -1530,15 +1632,15 @@ export const mockBugReportsApi = {
         .map((item) => ({
           modelo_dispositivo_id: item.modelo_dispositivo_id,
           modelo_nome: modelos.find((modelo) => modelo.id === item.modelo_dispositivo_id)?.nome ?? "",
-          sdf_id: item.sdf_id, resultado: item.resultado, descricao: null, data_execucao: item.data_reportada,
+          sdf_id: item.sdf_id, resultado: item.resultado, descricao: null, data_execucao: item.data_reportada, tentativa: item.tentativa,
         }));
       if (!falhas.length) return [];
       return [{
         caso_teste_id: testCase.id, tc_id: testCase.tc_id, status: testCase.status, time_id: project.time_id,
         responsavel_id: testCase.responsavel_id, responsavel_identificador: dono, backup_id: testCase.backup_id,
         dev_fix_id: testCase.dev_fix_id ?? null, dev_fix_identificador: devFix, falhas,
+        tentativa_correcao: testCase.tentativa_correcao ?? 0, correcao_em_revisao_em: testCase.correcao_em_revisao_em ?? null,
       }];
-    }).sort((a, b) => b.falhas[0].data_execucao.localeCompare(a.falhas[0].data_execucao) || a.tc_id.localeCompare(b.tc_id));
-    return page(itens, pageNumber, pageSize);
-  },
-};
+    }).filter((caso) => !filtros.reincidentes || caso.tentativa_correcao >= 2)
+      .sort((a, b) => b.falhas[0].data_execucao.localeCompare(a.falhas[0].data_execucao) || a.tc_id.localeCompare(b.tc_id));
+}

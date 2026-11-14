@@ -69,15 +69,27 @@ def sdf_id_do_nome(nome_arquivo: str | None) -> str | None:
     return nome.split("_", 1)[0].strip() or None
 
 
+# O SDF exporta ano/mês/dia, com ou sem hora; mês/dia/ano com hora de 12 horas é o formato dos
+# relatórios antigos. Começar pelo ano impede que um formato seja lido como o outro.
+_FORMATOS_DATA_F4 = (
+    "%Y/%m/%d %I:%M:%S %p",
+    "%Y/%m/%d %H:%M:%S",
+    "%Y/%m/%d",
+    "%m/%d/%Y %I:%M:%S %p",
+)
+
+
 def converter_data_f4(valor: object) -> datetime | None:
-    """Start Time da F4: mês/dia/ano com hora de 12 horas, com espaços e quebra de linha a mais."""
+    """Start Time da F4, com espaços e quebra de linha a mais."""
     if isinstance(valor, datetime):
         return valor
     texto = " ".join(_texto(valor).split())
-    try:
-        return datetime.strptime(texto, "%m/%d/%Y %I:%M:%S %p")
-    except ValueError:
-        return None
+    for formato in _FORMATOS_DATA_F4:
+        try:
+            return datetime.strptime(texto, formato)
+        except ValueError:
+            continue
+    return None
 
 
 def one_ui_do_caminho(caminho: object) -> str | None:
@@ -198,7 +210,7 @@ def ler_relatorio_sdf(nome_arquivo: str | None, conteudo: bytes) -> RelatorioSdf
                 None,
                 "f4",
                 "A célula F4 (Start Time) não tem uma data válida. "
-                "Use mês/dia/ano e hora, como 10/21/2026 6:43:35 PM.",
+                "Use ano/mês/dia, como 2026/11/11.",
                 "sdf_data_invalida",
                 coluna="F4",
                 valor=" ".join(_texto(bruta).split()),

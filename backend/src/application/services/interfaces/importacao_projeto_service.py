@@ -13,4 +13,5 @@ class ImportacaoProjetoService(Protocol):
         usuario_atual: UsuarioAutenticado,
         request: ImportarProjetoPlanilhaRequest,
         conteudo: bytes,
+        fuso_horario: str = "UTC",
     ) -> ImportarProjetoPlanilhaResponse: ...

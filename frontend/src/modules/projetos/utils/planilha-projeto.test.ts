@@ -128,7 +128,7 @@ describe("Automation Level na leitura da planilha (spec 027)", () => {
   it("expõe os cabeçalhos do modelo exatamente na ordem da planilha atual", () => {
     expect([...CABECALHOS_MODELO_PLANILHA]).toEqual([
       "App", "TC ID", "Title(English)", "Test Precondition(English)", "Test Procedure(English)", "Expected Result(English)",
-      "Difficulty", "Category", "Automation Level", "TC Situation", "One UI", "Assignees", "Backup",
+      "Difficulty", "Category", "Automation Level", "TC Situation", "One UI", "Assignees", "Backup", "Planned date",
     ]);
     expect(Object.keys(EXEMPLO_MODELO_PLANILHA)).toEqual([...CABECALHOS_MODELO_PLANILHA]);
   });
@@ -280,5 +280,56 @@ describe("Textos do Test Case na leitura da planilha (spec 028)", () => {
       { linha: 2, coluna: "Expected Result(English)", codigo: "texto_muito_longo", parametros: { maximo: 10_000 } },
       { linha: 3, coluna: "Category", codigo: "valor_invalido", parametros: { esperados: ["A", "B", "C"] } },
     ]);
+  });
+});
+
+// Spec 075: a Planned date do projeto, com as mesmas regras do validador do backend.
+describe("Planned date na planilha", () => {
+  const diaDaqui = (dias: number) => { const data = new Date(); data.setHours(12, 0, 0, 0); data.setDate(data.getDate() + dias); return data; };
+  const iso = (data: Date) => `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-${String(data.getDate()).padStart(2, "0")}`;
+  const br = (data: Date) => iso(data).split("-").reverse().join("/");
+  const comData = (...datas: unknown[]) => [[...headers, "Planned date"], ...datas.map((data, indice) => [...linha(`Clock_00${indice + 1}`), data])];
+
+  it("lê a célula de data e o texto dd/mm/aaaa como a mesma data do projeto, ignorando linhas vazias", async () => {
+    const data = diaDaqui(30);
+    const planilha = await lerPlanilhaProjeto(planilhaFile(comData(data, br(data), "")));
+
+    expect(planilha.data_planejada).toBe(iso(data));
+  });
+
+  it("sem a coluna, o projeto fica sem data planejada", async () => {
+    const planilha = await lerPlanilhaProjeto(planilhaFile([headers, linha("Clock_001")]));
+
+    expect(planilha.data_planejada).toBeNull();
+  });
+
+  it("falha: datas diferentes entre as linhas apontam a linha da primeira", async () => {
+    const erro = await erros(comData(br(diaDaqui(30)), br(diaDaqui(31))));
+
+    expect(erro.errors).toEqual([{ codigo: "data_planejada_divergente", linha: 3, coluna: "Planned date", valor: br(diaDaqui(31)), parametros: { primeira_linha: 2 } }]);
+  });
+
+  it.each([
+    ["amanhã", "data_planejada_invalida"], ["31/02/2026", "data_planejada_invalida"],
+    [br(diaDaqui(-1)), "data_planejada_fora_do_intervalo"], [br(diaDaqui(731)), "data_planejada_fora_do_intervalo"],
+  ])("falha: %s não é uma data planejada aceita (%s)", async (valor, codigo) => {
+    const erro = await erros(comData(valor));
+
+    expect(erro.errors.map(({ codigo: lido, linha: numero, coluna }) => ({ codigo: lido, numero, coluna }))).toEqual([{ codigo, numero: 2, coluna: "Planned date" }]);
+  });
+
+  it("lê a célula de data certa quando a aba não começa em A1", async () => {
+    const data = diaDaqui(30);
+    const workbook = XLSX.utils.book_new();
+    // Coluna A vazia: a área usada da aba começa em B1.
+    const linhas = comData(data, data);
+    const aba: XLSX.WorkSheet = {};
+    XLSX.utils.sheet_add_aoa(aba, linhas, { origin: "B1" });
+    // Como o Excel grava quando a coluna A fica vazia: a área usada começa em B1.
+    aba["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 1 }, e: { r: linhas.length - 1, c: linhas[0].length } });
+    XLSX.utils.book_append_sheet(workbook, aba, "Test Cases");
+    const arquivo = new File([XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as BlobPart], "deslocada.xlsx");
+
+    expect((await lerPlanilhaProjeto(arquivo)).data_planejada).toBe(iso(data));
   });
 });

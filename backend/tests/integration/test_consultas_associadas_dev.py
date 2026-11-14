@@ -324,7 +324,7 @@ async def test_casos_filtram_semana_antes_da_paginacao_e_respeitam_limites(conte
     projeto = await c.projeto()
     inicio, fim = datetime(2026, 3, 23, 4), datetime(2026, 3, 30, 4)
     dentro = []
-    # A semana é a da End date (spec 065): a finalização de tudo, com qualquer Status.
+    # A semana é a da End date (spec 075): a primeira entrada em In Review, com qualquer Status.
     for indice, (status, data) in enumerate(
         [
             ("Done", inicio),
@@ -341,7 +341,9 @@ async def test_casos_filtram_semana_antes_da_paginacao_e_respeitam_limites(conte
             .values(
                 tc_id=f"Clock_{indice}",
                 status=status,
-                all_passed_em=data,
+                code_done_em=data,
+                # A data de todos passaram não conta mais para a semana.
+                all_passed_em=inicio,
                 updated_at=inicio,
             )
         )
@@ -354,7 +356,7 @@ async def test_casos_filtram_semana_antes_da_paginacao_e_respeitam_limites(conte
         .where(CasoTesteModel.id == colega.id)
         .values(
             status="Done",
-            all_passed_em=inicio,
+            code_done_em=inicio,
         )
     )
     paginas = [

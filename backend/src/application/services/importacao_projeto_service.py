@@ -1,4 +1,6 @@
 import unicodedata
+from collections.abc import Callable
+from datetime import UTC, datetime
 from uuid import UUID
 
 from src.application.schemas.importacao_projeto import (
@@ -13,6 +15,7 @@ from src.application.validators.importacao_projeto import (
     PlanilhaProjetoInvalida,
     validar_planilha_projeto,
 )
+from src.application.validators.semana import fuso_horario_valido
 from src.domain.common.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
 from src.domain.entities.caso_teste import CasoTeste
@@ -42,6 +45,7 @@ class ImportacaoProjetoServiceImpl:
         modelo_repo: ModeloDispositivoRepository,
         projeto_modelo_repo: ProjetoModeloRepository,
         uow: UnitOfWork,
+        agora: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         self._projeto_repo = projeto_repo
         self._caso_repo = caso_repo
@@ -51,12 +55,14 @@ class ImportacaoProjetoServiceImpl:
         self._modelo_repo = modelo_repo
         self._projeto_modelo_repo = projeto_modelo_repo
         self._uow = uow
+        self._agora = agora
 
     async def importar(
         self,
         usuario_atual: UsuarioAutenticado,
         request: ImportarProjetoPlanilhaRequest,
         conteudo: bytes,
+        fuso_horario: str = "UTC",
     ) -> ImportarProjetoPlanilhaResponse:
         if not usuario_atual.eh_administrador and (
             usuario_atual.perfil_codigo not in {"GERENTE", "KP"}
@@ -80,7 +86,9 @@ class ImportacaoProjetoServiceImpl:
 
         # Os problemas das células e os de pessoas voltam juntos, numa única resposta (ADR 0033).
         try:
-            planilha = validar_planilha_projeto(conteudo)
+            # O "hoje" é o de quem importa, como na edição do projeto (spec 071, RN-09).
+            hoje = self._agora().astimezone(fuso_horario_valido(fuso_horario)).date()
+            planilha = validar_planilha_projeto(conteudo, hoje)
             erros: list[ErroImportacaoPlanilha] = []
             pessoas = [PessoasDaLinha(c.linha, c.responsavel, c.backup) for c in planilha.casos]
             colunas, total_linhas = planilha.colunas, planilha.total_linhas
@@ -153,6 +161,8 @@ class ImportacaoProjetoServiceImpl:
             raise PlanilhaProjetoInvalida(tuple(erros), total_linhas)
 
         projeto = Projeto(usuario_atual.unidade_id, time.id, planilha.app, planilha.one_ui)
+        # Spec 075: a Planned date da planilha é a data planejada do projeto, que começa hoje.
+        projeto.definir_data_planejada(planilha.data_planejada, hoje)
         casos = []
         for linha in planilha.casos:
             responsavel_id, backup_id = atribuicoes[linha.linha]

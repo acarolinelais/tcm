@@ -3,7 +3,7 @@ import * as XLSX from "@e965/xlsx";
 
 import { ApiError } from "@/shared/api/problem-details";
 import { ORDEM_KANBAN, STATUS_CASO_TESTE } from "@/modules/projetos/model/projeto";
-import { mockAuditoriaApi, mockAuth, mockCasosTesteApi, mockFormFactorApi, mockModelosDispositivoApi, mockProjetosApi, mockTimesApi, mockUsuarioApi, resetMockDatabase } from "./database";
+import { mockAuditoriaApi, mockAuth, mockBugReportsApi, mockCasosTesteApi, mockFormFactorApi, mockModelosDispositivoApi, mockProjetosApi, mockTimesApi, mockUsuarioApi, resetMockDatabase } from "./database";
 
 const STORAGE_KEY = "sdf.mock.database.v1";
 
@@ -77,8 +77,9 @@ describe("base mock de projetos", () => {
     }
     const db = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
     for (const item of db.casosTeste) {
-      // Spec 065: a semana � a da finaliza��o de tudo, com qualquer Status.
-      item.all_passed_em = item.tc_id === "Pendente" ? null : item.tc_id === "Anterior" ? "2026-03-16T12:00:00Z" : "2026-03-24T12:00:00Z";
+      // Spec 075: a semana é a da End date (primeira entrada em In Review); a data de todos passaram não conta.
+      item.all_passed_em = "2026-03-24T12:00:00Z";
+      item.code_done_em = item.tc_id === "Pendente" ? null : item.tc_id === "Anterior" ? "2026-03-16T12:00:00Z" : "2026-03-24T12:00:00Z";
       item.status = item.tc_id === "Principal" ? "InValidation" : "Done";
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
@@ -241,7 +242,8 @@ describe("base mock de projetos", () => {
     expect(testCase).toMatchObject({ situation: "Without Changes", status: "To-Do" });
 
     entrar("daniel.oliveira@example.com");
-    expect(mockCasosTesteApi.atualizar(testCase.id, { status: "InProgress", difficulty: "Medium" })).toMatchObject({ status: "InProgress", difficulty: "Medium" });
+    expect(mockCasosTesteApi.atualizar(testCase.id, { status: "InProgress" })).toMatchObject({ status: "InProgress", difficulty: "Low" });
+    expect(() => mockCasosTesteApi.atualizar(testCase.id, { difficulty: "Medium" })).toThrow(/só pode editar/);
     expect(mockCasosTesteApi.atualizar(testCase.id, { situation: "New Step" })).toMatchObject({ situation: "New Step" });
     expect(() => mockCasosTesteApi.atualizar(testCase.id, { responsavel_id: "mock-user-kp" })).toThrow(/só pode editar/);
     expect(mockCasosTesteApi.transferirParaBackup(testCase.id)).toMatchObject({ responsavel_id: "mock-user-kp", backup_id: "mock-user-dev" });
@@ -1053,5 +1055,105 @@ describe("conclusão de projeto no mock (spec 069)", () => {
 
     casosDoProjeto(projeto, (casos) => casos.forEach((caso) => { caso.ativo = true; caso.status = "InProgress"; }));
     expect(mockProjetosApi.atualizarStatus(projeto.id, "Canceled").status).toBe("Canceled");
+  });
+});
+
+describe("importação com Planned date no modo mock (spec 075)", () => {
+  it("o projeto nasce com a data planejada da planilha", async () => {
+    entrar("admin@sdfmanager.com");
+    const data = new Date();
+    data.setDate(data.getDate() + 30);
+    const dia = `${String(data.getDate()).padStart(2, "0")}/${String(data.getMonth() + 1).padStart(2, "0")}/${data.getFullYear()}`;
+    const file = planilhaFile([
+      ["App", "TC ID", "Difficulty", "Category", "TC Situation", "One UI", "Assignees", "Backup", "Planned date"],
+      ["Clock", "Clock_001", "Low", "A", "New", "9.5", "Daniel Oliveira", "Kaique Pereira", dia],
+    ]);
+
+    const result = await mockProjetosApi.importar(file, "mock-team-platform", []);
+
+    expect(result.projeto.data_planejada).toBe(dia.split("/").reverse().join("-"));
+  });
+});
+
+describe("correção no modo mock (spec 073)", () => {
+  function casoQueFalhou() {
+    entrar("kaique.pereira@example.com");
+    const project = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: ["mock-model-s27-ultra"] });
+    const caso = mockCasosTesteApi.criar(project.id, { tc_id: "Clock_001", category: "A", difficulty: "Low", situation: "New", responsavel_id: "mock-user-dev", backup_id: "mock-user-kp" });
+    mockCasosTesteApi.atualizar(caso.id, { status: "InValidation" });
+    const rodada = mockFormFactorApi.criarRodada(project.id, { sdf_id: "SDF-1" });
+    mockFormFactorApi.registrarResultadosRodada(project.id, rodada.id, caso.id, { resultados: { "mock-model-s27-ultra": "FAIL" } });
+    return { project, caso };
+  }
+
+  it("a falha em validação abre a tentativa 1 e o caso aparece na My Fixes do responsável", () => {
+    const { project, caso } = casoQueFalhou();
+
+    entrar("daniel.oliveira@example.com");
+    const lista = mockBugReportsApi.listarMyFixes(project.id, 1, 20);
+    expect(lista.items.map((item) => [item.tc_id, item.status, item.tentativa_correcao])).toEqual([["Clock_001", "InFixes", 1]]);
+    expect(lista.items[0].falhas[0].tentativa).toBe(1);
+
+    const revisado = mockCasosTesteApi.mudarStatusDaCorrecao(caso.id, "InReview");
+    expect(revisado.correcao_em_revisao_em).toBeTruthy();
+  });
+
+  it("a gestão vê na My Fixes os casos em correção de todos, sem ser a corretora", () => {
+    const { project } = casoQueFalhou();
+
+    entrar("admin@sdfmanager.com");
+    expect(mockBugReportsApi.listarMyFixes(project.id, 1, 20).items.map((item) => item.tc_id)).toEqual(["Clock_001"]);
+  });
+
+  it("falha: com Dev Fix de outra pessoa, o responsável não vê o caso nem muda o Status", () => {
+    const { project, caso } = casoQueFalhou();
+    mockCasosTesteApi.atualizar(caso.id, { dev_fix_id: "mock-user-kp" });
+
+    entrar("daniel.oliveira@example.com");
+    expect(mockBugReportsApi.listarMyFixes(project.id, 1, 20).items).toEqual([]);
+    expect(() => mockCasosTesteApi.mudarStatusDaCorrecao(caso.id, "InProgress")).toThrow();
+  });
+
+  it("falha: Status fora da correção é recusado", () => {
+    const { caso } = casoQueFalhou();
+
+    expect(() => mockCasosTesteApi.mudarStatusDaCorrecao(caso.id, "Done" as never)).toThrow();
+  });
+});
+
+
+describe("correções concluídas no modo mock (spec 076)", () => {
+  function corrigido() {
+    entrar("kaique.pereira@example.com");
+    const project = mockProjetosApi.criar({ time_id: "mock-team-platform", app: "Clock", one_ui: "9.5", modelos_ids: ["mock-model-s27-ultra"] });
+    const caso = mockCasosTesteApi.criar(project.id, { tc_id: "Clock_001", category: "A", difficulty: "Low", situation: "New", responsavel_id: "mock-user-dev", backup_id: "mock-user-kp" });
+    mockCasosTesteApi.atualizar(caso.id, { status: "InValidation" });
+    const primeira = mockFormFactorApi.criarRodada(project.id, { sdf_id: "SDF-1" });
+    mockFormFactorApi.registrarResultadosRodada(project.id, primeira.id, caso.id, { resultados: { "mock-model-s27-ultra": "FAIL" } });
+    mockCasosTesteApi.mudarStatusDaCorrecao(caso.id, "InReview");
+    mockCasosTesteApi.mudarStatusDaCorrecao(caso.id, "InValidation");
+    const segunda = mockFormFactorApi.criarRodada(project.id, { sdf_id: "SDF-2" });
+    mockFormFactorApi.registrarResultadosRodada(project.id, segunda.id, caso.id, { resultados: { "mock-model-s27-ultra": "PASS" } });
+    return { project, caso };
+  }
+
+  it("a correção que passa aparece em Concluídas do corretor, corrigida", () => {
+    const { project } = corrigido();
+
+    entrar("daniel.oliveira@example.com");
+    const lista = mockBugReportsApi.listarCorrecoesConcluidas(project.id, 1, 20);
+    expect(lista.items.map((item) => [item.tc_id, item.tentativa, item.resultado, item.origem])).toEqual([["Clock_001", 1, "corrigida", "validacao"]]);
+    expect(lista.items[0].em_revisao_em).toBeTruthy();
+    expect(lista.items[0].dias_ate_corrigir).toBe(0);
+  });
+
+  it("falha: o dev não vê as concluídas de outro corretor; a gestão vê e filtra por resultado", () => {
+    const { project } = corrigido();
+
+    entrar("kaique.pereira@example.com");
+    expect(mockBugReportsApi.listarCorrecoesConcluidas(project.id, 1, 20, { resultado: "falhou_de_novo" }).items).toEqual([]);
+    expect(mockBugReportsApi.listarCorrecoesConcluidas(project.id, 1, 20).items).toHaveLength(1);
+    entrar("ana.souza@example.com");
+    expect(mockBugReportsApi.listarCorrecoesConcluidas(project.id, 1, 20).items).toEqual([]);
   });
 });

@@ -71,12 +71,13 @@ export const ptBR: Partial<Record<SlugGuia, ConteudoGuia>> = {
       {
         titulo: "Quando o sistema move sozinho",
         paragrafos: [
-          "Só um caso Em validação se move sozinho, quando chegam resultados de um relatório SDF ou de uma rodada de testes:",
+          "Um caso Em validação se move sozinho quando chegam resultados de um relatório SDF ou de uma rodada de testes:",
         ],
         itens: [
           "o resultado mais recente de cada device é PASS: o caso vai para Concluído;",
           "o resultado que acabou de chegar é FAIL: o caso vai para Em correção;",
           "qualquer outra situação, como um device ainda sem resultado: o caso continua Em validação.",
+          "um caso Concluído recebe FAIL num relatório SDF: o caso volta para Em correção numa nova tentativa, com o mesmo corretor. Só vale quando o FAIL é o resultado mais recente daquele device e o projeto não está encerrado.",
         ],
       },
       {
@@ -182,7 +183,7 @@ export const ptBR: Partial<Record<SlugGuia, ConteudoGuia>> = {
         itens: [
           "SDF ID: o nome do arquivo até o primeiro \"_\". 123456-789012_0_Test_1_Detail.xlsx dá 123456-789012. Cada SDF ID pode ser usado uma vez por projeto.",
           "Device: a célula C4. Precisa ser um modelo de dispositivo do projeto.",
-          "Data da execução: a célula F4 (Start Time), em mês/dia/ano e hora, como 10/21/2026 6:43:35 PM.",
+          "Data da execução: a célula F4 (Start Time), em ano/mês/dia, como 2026/11/11. A hora é opcional.",
           "Resultados: a tabela com o cabeçalho na linha 7. O Script Name sem .py é o TC ID, o State é o resultado e a Description aparece no detalhe do resultado.",
           "One UI: vem do Test File Path, como OneUI95 para 9.5. Precisa ser a do projeto.",
           "As linhas de HQ_precondition.py e Setup.py são ignoradas.",

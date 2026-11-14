@@ -1,11 +1,11 @@
 from uuid import UUID
 
-from sqlalchemy import func, not_, or_, select
+from sqlalchemy import case, func, not_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from src.domain.common.paged_result import PagedResult
-from src.domain.entities.caso_teste import StatusCasoTeste
+from src.domain.entities.caso_teste import STATUS_DA_CORRECAO, StatusCasoTeste
 from src.domain.entities.projeto import StatusProjeto
 from src.domain.entities.resultado_form_factor import ResultadoFormFactor
 from src.domain.queries.bug_report import CasoComFalhas, FalhaSdf, FiltrosBugReport
@@ -26,6 +26,8 @@ from src.infrastructure.repositories.historico_form_factor_repository import (
 
 _DEV_FIX = aliased(UsuarioModel)
 _CAMPOS_FALHA = tuple(FalhaSdf.__dataclass_fields__)
+# Spec 073, RN-13: a My Fixes segue a ordem do fluxo da correção (In Fixes primeiro).
+_ORDEM_DA_CORRECAO = {status.value: ordem for ordem, status in enumerate(STATUS_DA_CORRECAO)}
 
 
 class BugReportRepositoryImpl:
@@ -41,15 +43,22 @@ class BugReportRepositoryImpl:
         page_size: int,
     ) -> PagedResult[CasoComFalhas]:
         falhas = self._falhas_visiveis(unidade_id, escopo, filtros)
-        casos = select(falhas.c.caso_teste_id).group_by(falhas.c.caso_teste_id, falhas.c.tc_id)
+        casos = select(falhas.c.caso_teste_id).group_by(
+            falhas.c.caso_teste_id, falhas.c.tc_id, falhas.c.status
+        )
         total = (
             await self.session.execute(select(func.count()).select_from(casos.subquery()))
         ).scalar_one()
-        # RN-14: a linha mais nova é a do caso com a falha mais recente.
+        # RN-14: a linha mais nova é a do caso com a falha mais recente. Na My Fixes (spec 073,
+        # RN-13), antes vem a ordem do fluxo da correção.
+        ordem_do_status = (
+            (case(_ORDEM_DA_CORRECAO, value=falhas.c.status),) if filtros.em_correcao else ()
+        )
         ids = (
             (
                 await self.session.execute(
                     casos.order_by(
+                        *ordem_do_status,
                         func.max(falhas.c.data_execucao).desc(),
                         falhas.c.tc_id,
                         falhas.c.caso_teste_id,
@@ -127,9 +136,28 @@ class BugReportRepositoryImpl:
                 ResultadoFormFactorModel.modelo_dispositivo_id == filtros.modelo_dispositivo_id
             )
         if filtros.responsavel and filtros.responsavel.strip():
-            condicoes.append(UsuarioModel.user_id.ilike(f"%{filtros.responsavel.strip()}%"))
+            condicoes.append(
+                UsuarioModel.user_id.icontains(filtros.responsavel.strip(), autoescape=True)
+            )
         if filtros.dev_fix and filtros.dev_fix.strip():
-            condicoes.append(_DEV_FIX.user_id.ilike(f"%{filtros.dev_fix.strip()}%"))
+            condicoes.append(_DEV_FIX.user_id.icontains(filtros.dev_fix.strip(), autoescape=True))
+        if filtros.reincidentes:
+            condicoes.append(CasoTesteModel.tentativa_correcao >= 2)
+        if filtros.em_correcao:
+            condicoes.extend(
+                (
+                    CasoTesteModel.tentativa_correcao > 0,
+                    CasoTesteModel.status.in_(_ORDEM_DA_CORRECAO),
+                )
+            )
+        if filtros.corretor_id is not None:
+            # Spec 073, RN-04 e RN-08: o corretor é o Dev Fix ou, sem ele, o responsável.
+            condicoes.append(
+                func.coalesce(CasoTesteModel.dev_fix_id, CasoTesteModel.responsavel_id)
+                == filtros.corretor_id
+            )
+        if filtros.status:
+            condicoes.append(CasoTesteModel.status.in_(filtros.status))
         condicoes.extend(_periodo(filtros.inicio, filtros.fim))
         return (
             _resultados_validos(
@@ -150,6 +178,9 @@ class BugReportRepositoryImpl:
                 ResultadoFormFactorModel.resultado,
                 ResultadoFormFactorModel.descricao,
                 ExecucaoSdfModel.data_reportada.label("data_execucao"),
+                ExecucaoSdfModel.tentativa_correcao.label("tentativa"),
+                CasoTesteModel.tentativa_correcao,
+                CasoTesteModel.correcao_em_revisao_em,
                 _ordem_de_gravacao().label("gravacao"),
             )
             .join(CasoTesteModel, CasoTesteModel.id == ExecucaoSdfModel.caso_teste_id)
@@ -179,4 +210,6 @@ def _caso(linhas: list) -> CasoComFalhas:
         dev_fix_id=primeira.dev_fix_id,
         dev_fix_identificador=primeira.dev_fix_identificador,
         falhas=tuple(FalhaSdf(*(linha._mapping[c] for c in _CAMPOS_FALHA)) for linha in linhas),
+        tentativa_correcao=primeira.tentativa_correcao,
+        correcao_em_revisao_em=primeira.correcao_em_revisao_em,
     )

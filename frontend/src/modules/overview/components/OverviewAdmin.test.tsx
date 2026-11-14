@@ -42,11 +42,12 @@ beforeEach(() => {
   vi.mocked(overviewApi.obterTime).mockResolvedValue(time);
 });
 
-it("saúda pelo primeiro nome, diz quanto falta na unidade e mostra os cards do primeiro projeto (CA-12)", async () => {
+it("saúda pelo primeiro nome, diz quanto falta no projeto escolhido e mostra os cards dele (CA-12)", async () => {
   abrir();
 
   expect(await screen.findByRole("heading", { level: 2, name: /Caroline/ })).toBeInTheDocument();
-  expect(await screen.findByText("Don't give up, 343 test cases to go!")).toBeInTheDocument();
+  // Clock 9.5: 230 casos, 26 em Done. A unidade inteira daria 343.
+  expect(await screen.findByText("Don't give up, 204 test cases to go!")).toBeInTheDocument();
   const cards = await screen.findByRole("region", { name: "Test Cases of the chosen project" });
   expect(within(cards).getByText("26 TCs")).toBeInTheDocument();
   expect(within(cards).getByText("16 TCs")).toBeInTheDocument();
@@ -66,8 +67,8 @@ it("trocar de projeto troca os três cards (CA-13)", async () => {
   expect(within(cards).getByText("170 TCs")).toBeInTheDocument();
 });
 
-it("sem nada por fazer, a frase diz que está tudo pronto", async () => {
-  vi.mocked(overviewApi.obter).mockResolvedValue({ ...resumo, concluidos: 400 });
+it("falha: com o projeto escolhido concluído, a frase diz que está tudo pronto mesmo com a unidade em aberto", async () => {
+  vi.mocked(overviewApi.obterTime).mockResolvedValue({ ...time, donePorProjeto: [{ ...time.donePorProjeto[0], concluidos: 230, emAndamento: 0 }, time.donePorProjeto[1]] });
   abrir();
 
   expect(await screen.findByText("Everything is done. Great job!")).toBeInTheDocument();

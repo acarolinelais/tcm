@@ -25,6 +25,9 @@ class CasoTesteModel(Base):
     # Spec 072: quem corrige as falhas do SDF, e desde quando (UTC sem fuso).
     dev_fix_id: Mapped[UUID | None] = mapped_column(ForeignKey("usuarios.id"))
     dev_fix_em: Mapped[datetime | None] = mapped_column()
+    # Spec 073: tentativa de correção e quando a tentativa atual entrou em In Review (UTC sem fuso).
+    tentativa_correcao: Mapped[int] = mapped_column(default=0, server_default="0", nullable=False)
+    correcao_em_revisao_em: Mapped[datetime | None] = mapped_column()
     justificativa_exclusao: Mapped[str | None] = mapped_column(
         String(CasoTeste.JUSTIFICATIVA_EXCLUSAO_MAX_LENGTH)
     )

@@ -39,6 +39,14 @@ class ConcluidosDevResponse(BaseModel):
     concluidos: int
 
 
+class CorrecoesDevResponse(BaseModel):
+    usuario_id: UUID
+    nome: str
+    corrigidas: int
+    falharam_de_novo: int
+    media_dias: float | None
+
+
 class ConcluidosSemanaResponse(BaseModel):
     semana: str  # Segunda-feira, AAAA-MM-DD, no fuso pedido.
     concluidos: int
@@ -84,6 +92,8 @@ class OverviewTimeResponse(BaseModel):
     andamento_por_setor: list[AndamentoResponse]
     em_correcao_por_projeto: list[EmCorrecaoProjetoResponse]  # Só projetos com 1 ou mais.
     pass_rate_por_projeto: list[PassRateProjetoResponse]  # Só projetos com rodada.
+    # Spec 076: KP e gerente; só quem fechou tentativas nos últimos 30 dias.
+    correcoes_por_dev: list[CorrecoesDevResponse] = []
 
 
 # Spec 063: projeto escolhido (burndown e Pass Rate) e visão pessoal.

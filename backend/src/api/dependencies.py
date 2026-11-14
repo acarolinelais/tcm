@@ -16,6 +16,7 @@ from src.application.services.importacao_sdf_service import ImportacaoSdfService
 from src.application.services.modelo_dispositivo_service import ModeloDispositivoServiceImpl
 from src.application.services.overview_service import OverviewServiceImpl
 from src.application.services.projeto_service import ProjetoServiceImpl
+from src.application.services.registro_de_correcoes import RegistroDeCorrecoes
 from src.application.services.setor_service import SetorServiceImpl
 from src.application.services.time_service import TimeServiceImpl
 from src.application.services.usuario_service import UsuarioServiceImpl
@@ -40,6 +41,7 @@ from src.infrastructure.data.unit_of_work import UnitOfWorkImpl
 from src.infrastructure.repositories.auditoria_repository import AuditoriaRepositoryImpl
 from src.infrastructure.repositories.bug_report_repository import BugReportRepositoryImpl
 from src.infrastructure.repositories.caso_teste_repository import CasoTesteRepositoryImpl
+from src.infrastructure.repositories.correcao_repository import CorrecaoRepositoryImpl
 from src.infrastructure.repositories.execucao_sdf_repository import ExecucaoSdfRepositoryImpl
 from src.infrastructure.repositories.historico_caso_teste_repository import (
     HistoricoCasoTesteRepositoryImpl,
@@ -277,6 +279,7 @@ async def get_caso_teste_service(
         LinkPullRequestRepositoryImpl(session),
         UnitOfWorkImpl(session),
         HistoricoCasoTesteRepositoryImpl(session),
+        RegistroDeCorrecoes(CorrecaoRepositoryImpl(session)),
     )
 
 
@@ -289,7 +292,7 @@ async def get_auditoria_service(
 async def get_bug_report_service(
     session: AsyncSession = Depends(get_session),
 ) -> BugReportServiceImpl:
-    return BugReportServiceImpl(BugReportRepositoryImpl(session))
+    return BugReportServiceImpl(BugReportRepositoryImpl(session), CorrecaoRepositoryImpl(session))
 
 
 async def get_overview_service(
@@ -339,6 +342,7 @@ async def get_importacao_sdf_service(
         RodadaFormFactorRepositoryImpl(session),
         ImportacaoSdfStatusRepositoryImpl(session),
         ContextoAuditoriaImpl(session),
+        RegistroDeCorrecoes(CorrecaoRepositoryImpl(session)),
     )
 
 
@@ -356,4 +360,5 @@ async def get_form_factor_service(
         RodadaFormFactorRepositoryImpl(session),
         HistoricoFormFactorRepositoryImpl(session),
         ContextoAuditoriaImpl(session),
+        RegistroDeCorrecoes(CorrecaoRepositoryImpl(session)),
     )

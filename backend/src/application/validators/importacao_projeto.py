@@ -1,5 +1,6 @@
 import re
 from dataclasses import dataclass
+from datetime import date, datetime, timedelta
 from io import BytesIO
 from zipfile import BadZipFile
 
@@ -12,6 +13,7 @@ from src.domain.entities.caso_teste import (
     NivelAutomacaoCasoTeste,
     SituacaoCasoTeste,
 )
+from src.domain.entities.projeto import Projeto
 
 # Cabeçalho normalizado → nome exibido nas mensagens quando a coluna não existe na planilha.
 CABECALHOS_OBRIGATORIOS = {
@@ -44,6 +46,7 @@ TEXTOS_CASO_TESTE = {
 # Colunas que podem faltar na planilha: ausente equivale a célula vazia, sem erro.
 CABECALHOS_OPCIONAIS = {
     "automation level": "Automation Level",
+    "planned date": "Planned date",
     **{nome: exibido for nome, (exibido, _, _) in TEXTOS_CASO_TESTE.items()},
 }
 
@@ -55,6 +58,10 @@ TRECHO_TEXTO_LONGO = 40
 # regra do navegador (planilha-projeto.ts): a prévia e a importação não podem divergir. [0-9] e não
 # \d porque, em str, \d casa dígitos de outros alfabetos ("２") que o JavaScript recusa.
 _NIVEL_AUTOMACAO = re.compile(r"[0-9]+(\.0+)?")
+
+# Planned date em texto (spec 075): dia/mês/ano, como a tabela mostra. A célula de data do Excel
+# chega como datetime e não passa por aqui.
+_DATA_TEXTO = re.compile(r"([0-9]{1,2})/([0-9]{1,2})/([0-9]{4})")
 
 # Valor normalizado → opção, montado uma vez para não refazer a cada linha.
 _OPCOES = {
@@ -123,6 +130,8 @@ class PlanilhaProjetoValidada:
     total_linhas: int
     # Cabeçalho normalizado → texto como está na planilha, para as mensagens do service.
     colunas: dict[str, str]
+    # Spec 075: a data planejada do projeto, a mesma em todas as linhas preenchidas.
+    data_planejada: date | None = None
 
 
 def _erro_geral(
@@ -131,7 +140,8 @@ def _erro_geral(
     return ErroImportacaoPlanilha(None, campo, mensagem, codigo, coluna)
 
 
-def validar_planilha_projeto(conteudo: bytes) -> PlanilhaProjetoValidada:
+def validar_planilha_projeto(conteudo: bytes, hoje: date | None = None) -> PlanilhaProjetoValidada:
+    """`hoje`: o dia de quem importa, para o intervalo da Planned date (spec 071, RN-09)."""
     try:
         workbook = load_workbook(BytesIO(conteudo), read_only=True, data_only=True)
         planilha = workbook.active
@@ -243,6 +253,37 @@ def validar_planilha_projeto(conteudo: bytes) -> PlanilhaProjetoValidada:
             return None
         return valor or None
 
+    limite = hoje + timedelta(days=Projeto.DATA_PLANEJADA_MAX_DIAS) if hoje else None
+
+    def data_planejada(numero, valor):
+        if not _texto(valor):
+            return None
+        data = _ler_data(valor)
+        if data is None:
+            erros.append(
+                erro_linha(
+                    numero,
+                    "planned date",
+                    "data_planejada_invalida",
+                    "Use uma data no formato dd/mm/aaaa.",
+                    _texto(valor),
+                )
+            )
+            return None
+        if hoje and limite and not hoje <= data <= limite:
+            erros.append(
+                erro_linha(
+                    numero,
+                    "planned date",
+                    "data_planejada_fora_do_intervalo",
+                    "A data planejada deve estar entre hoje e daqui a dois anos.",
+                    data.strftime("%d/%m/%Y"),
+                )
+            )
+            return None
+        return data
+
+    planejada: tuple[int, date] | None = None  # (primeira linha, data)
     valores_app: list[str] = []
     valores_one_ui: list[str] = []
     casos: list[LinhaCasoTesteImportada] = []
@@ -284,6 +325,22 @@ def validar_planilha_projeto(conteudo: bytes) -> PlanilhaProjetoValidada:
         difficulty = opcao(numero_linha, "difficulty", campos["difficulty"], DificuldadeCasoTeste)
         situation = opcao(numero_linha, "tc situation", campos["tc situation"], SituacaoCasoTeste)
         automation_level = nivel_automacao(numero_linha, campos.get("automation level", ""))
+        if "planned date" in mapa_cabecalhos:
+            indice = mapa_cabecalhos["planned date"]
+            data = data_planejada(numero_linha, valores[indice] if indice < len(valores) else None)
+            if data is not None and planejada is None:
+                planejada = (numero_linha, data)
+            elif data is not None and data != planejada[1]:
+                erros.append(
+                    erro_linha(
+                        numero_linha,
+                        "planned date",
+                        "data_planejada_divergente",
+                        "A Planned date é do projeto: use a mesma data em todas as linhas.",
+                        data.strftime("%d/%m/%Y"),
+                        primeira_linha=planejada[0],
+                    )
+                )
         textos = {
             campo: texto(numero_linha, nome, maximo)
             for nome, (_, campo, maximo) in TEXTOS_CASO_TESTE.items()
@@ -338,7 +395,12 @@ def validar_planilha_projeto(conteudo: bytes) -> PlanilhaProjetoValidada:
     if erros:
         raise PlanilhaProjetoInvalida(tuple(erros), total_linhas, tuple(pessoas), colunas)
     return PlanilhaProjetoValidada(
-        valores_app[0], valores_one_ui[0], tuple(casos), total_linhas, colunas
+        valores_app[0],
+        valores_one_ui[0],
+        tuple(casos),
+        total_linhas,
+        colunas,
+        planejada[1] if planejada else None,
     )
 
 
@@ -346,6 +408,21 @@ def _normalizar_cabecalho(valor: object) -> str:
     normalizado = " ".join(str(valor).strip().casefold().replace("_", " ").split())
     # "Title (English)" e "Title(English)" são a mesma coluna: espaço junto de parêntese não conta.
     return re.sub(r"\s*([()])\s*", r"\1", normalizado)
+
+
+def _ler_data(valor: object) -> date | None:
+    if isinstance(valor, datetime):
+        return valor.date()
+    if isinstance(valor, date):
+        return valor
+    encontrada = _DATA_TEXTO.fullmatch(_texto(valor))
+    if encontrada is None:
+        return None
+    dia, mes, ano = (int(parte) for parte in encontrada.groups())
+    try:
+        return date(ano, mes, dia)
+    except ValueError:
+        return None
 
 
 def _texto(valor: object) -> str:

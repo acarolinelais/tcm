@@ -333,19 +333,51 @@ async def test_atualizar_caso_proprio_permite_campos_do_responsavel(contexto):
         responsavel,
         caso.id,
         AtualizarCasoTesteRequest(
-            difficulty=DificuldadeCasoTeste.MEDIUM,
             status=StatusCasoTeste.IN_PROGRESS,
             situation=SituacaoCasoTeste.NEW_STEP,
         ),
     )
 
     assert resposta.category is CategoriaCasoTeste.A
-    assert resposta.difficulty is DificuldadeCasoTeste.MEDIUM
+    assert resposta.difficulty is DificuldadeCasoTeste.LOW
     assert resposta.status is StatusCasoTeste.IN_PROGRESS
     assert resposta.situation is SituacaoCasoTeste.NEW_STEP
     assert resposta.created_at == caso.created_at
     casos.atualizar.assert_awaited_once_with(caso)
     uow.commit.assert_awaited_once()
+
+
+async def test_responsavel_nao_altera_a_difficulty_do_proprio_caso(contexto):
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    responsavel = UsuarioAutenticado(
+        uuid4(),
+        admin.unidade_id,
+        "USUARIO_PADRAO",
+        permissoes=frozenset({"test_cases.consultar"}),
+        time_ids=(time.id,),
+    )
+    caso = CasoTeste(
+        admin.unidade_id,
+        projeto.id,
+        "Clock_001",
+        CategoriaCasoTeste.A,
+        DificuldadeCasoTeste.LOW,
+        responsavel.id,
+        uuid4(),
+        SituacaoCasoTeste.NEW,
+    )
+    casos.obter_por_id.return_value = caso
+
+    with pytest.raises(ForbiddenException, match="Status, TC Situation e Automation Level"):
+        await service.atualizar(
+            responsavel,
+            caso.id,
+            AtualizarCasoTesteRequest(difficulty=DificuldadeCasoTeste.HIGH),
+        )
+
+    assert caso.difficulty is DificuldadeCasoTeste.LOW
+    casos.atualizar.assert_not_awaited()
+    uow.commit.assert_not_awaited()
 
 
 def _usuario_do_time(admin, time):
@@ -1337,4 +1369,57 @@ async def test_kp_de_outro_time_nao_altera_category(contexto):
         )
 
     assert caso.category is CategoriaCasoTeste.A
+    uow.commit.assert_not_awaited()
+
+
+# Spec 073: mudança de Status pela My Fixes.
+def _caso_em_correcao(admin, projeto, responsavel_id, dev_fix_id=None):
+    caso = _caso_de(admin, projeto, responsavel_id)
+    caso.status = StatusCasoTeste.IN_VALIDATION
+    caso.aplicar_resultado_sdf(sem_falha=False, falha_no_relatorio=True)
+    caso.dev_fix_id = dev_fix_id
+    return caso
+
+
+@pytest.mark.parametrize("quem", ["dev_fix", "responsavel_sem_dev_fix", "gestao"])
+async def test_corretor_e_gestao_mudam_o_status_da_correcao(contexto, quem):
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    dev = _usuario_do_time(admin, time)
+    if quem == "dev_fix":
+        caso = _caso_em_correcao(admin, projeto, uuid4(), dev_fix_id=dev.id)
+    elif quem == "responsavel_sem_dev_fix":
+        caso = _caso_em_correcao(admin, projeto, dev.id)
+    else:
+        caso, dev = _caso_em_correcao(admin, projeto, uuid4(), dev_fix_id=uuid4()), admin
+    casos.obter_por_id.return_value = caso
+
+    resposta = await service.mudar_status_da_correcao(dev, caso.id, StatusCasoTeste.IN_PROGRESS)
+
+    assert resposta.status == StatusCasoTeste.IN_PROGRESS.value
+    casos.atualizar.assert_awaited_once_with(caso)
+    uow.commit.assert_awaited_once()
+
+
+async def test_falha_responsavel_com_outro_dev_fix_nao_muda_o_status_da_correcao(contexto):
+    # CA-08: com Dev Fix, o responsável deixa de ser o corretor.
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    dev = _usuario_do_time(admin, time)
+    caso = _caso_em_correcao(admin, projeto, dev.id, dev_fix_id=uuid4())
+    casos.obter_por_id.return_value = caso
+
+    with pytest.raises(ForbiddenException):
+        await service.mudar_status_da_correcao(dev, caso.id, StatusCasoTeste.IN_PROGRESS)
+
+    assert caso.status is StatusCasoTeste.IN_FIXES
+    uow.commit.assert_not_awaited()
+
+
+async def test_falha_caso_fora_da_correcao_e_conflito(contexto):
+    service, casos, _, _, _, _, uow, admin, projeto, time = contexto
+    dev = _usuario_do_time(admin, time)
+    casos.obter_por_id.return_value = (caso := _caso_de(admin, projeto, dev.id))
+
+    with pytest.raises(ConflictException):
+        await service.mudar_status_da_correcao(dev, caso.id, StatusCasoTeste.IN_REVIEW)
+
     uow.commit.assert_not_awaited()

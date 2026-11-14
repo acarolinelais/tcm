@@ -46,7 +46,9 @@ export function TimesPage({ modoAdmin = false }: { modoAdmin?: boolean }) {
   const [timeParaInativar, setTimeParaInativar] = useState<Time | null>(null);
   const [usuarioId, setUsuarioId] = useState("");
   const [membroParaRemover, setMembroParaRemover] = useState<string | null>(null);
-  const setores = useQuery({ queryKey: ["setores", "times"], queryFn: () => setoresApi.listar(1, 100), enabled: podeVer });
+  // A API só lista setores para admin, gerente e KP; o nome do setor do time já vem em `setor_nome`.
+  const podeConsultarSetores = admin || (["GERENTE", "KP"].includes(perfil.perfil_codigo ?? "") && perfil.permissoes.includes("setores.consultar"));
+  const setores = useQuery({ queryKey: ["setores", "times"], queryFn: () => setoresApi.listar(1, 100), enabled: podeVer && podeConsultarSetores });
   const setoresAtivos = (setores.data?.items ?? []).filter((setor) => setor.ativo);
   const setorUnicoGerenciado = !admin && ehGerenteComEscopo && setoresAtivos.length === 1 ? setoresAtivos[0] : undefined;
   const times = useQuery({ queryKey: ["times", pagina, tamanho, filtros], queryFn: () => timesApi.listar(pagina, tamanho, filtros), enabled: podeVer });

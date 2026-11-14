@@ -41,6 +41,16 @@ class CasoTesteRepository(RepositoryBase[CasoTeste], Protocol):
         self, unidade_id: UUID, projeto_id: UUID
     ) -> tuple[CasoTesteComResponsavel, ...]: ...
 
+    async def ultima_execucao_no_device(
+        self,
+        unidade_id: UUID,
+        projeto_id: UUID,
+        caso_ids: Sequence[UUID],
+        modelo_dispositivo_id: UUID,
+    ) -> dict[UUID, datetime]:
+        """Data da execução válida mais recente de cada caso naquele device (spec 076, RN-02)."""
+        ...
+
     async def listar_todos_aprovados(
         self, unidade_id: UUID, projeto_id: UUID, caso_ids: Sequence[UUID]
     ) -> set[UUID]: ...

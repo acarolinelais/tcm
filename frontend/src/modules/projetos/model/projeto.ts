@@ -7,6 +7,7 @@ export type StatusProjeto = "Created" | "To Do" | "InProgress" | "Completed" | "
 /** Chaves i18n dos rótulos do status do projeto. */
 export const ROTULO_STATUS_PROJETO: Record<StatusProjeto, string> = { Created: "projectCreated", "To Do": "toDo", InProgress: "inProgress", Completed: "completed", Canceled: "projectCanceled" };
 export const projetoEncerrado = (status: StatusProjeto) => status === "Completed" || status === "Canceled";
+export const temEncerrados = (lista: { status: StatusProjeto }[]) => lista.some((projeto) => projetoEncerrado(projeto.status));
 /** Tira os encerrados da lista, a não ser que o filtro esteja ligado; `manterId` fica sempre (o projeto aberto pelo link). */
 export const filtrarEncerrados = <T extends { id: string; status: StatusProjeto }>(lista: T[], comEncerrados: boolean, manterId?: string) =>
   comEncerrados ? lista : lista.filter((projeto) => projeto.id === manterId || !projetoEncerrado(projeto.status));
@@ -84,6 +85,9 @@ export interface CasoTeste {
   /** Spec 065: primeira entrada em In Review e fechamento com PASS em todos os devices. Só o sistema grava. */
   code_done_em?: string | null;
   all_passed_em?: string | null;
+  /** Spec 073: quantas vezes voltou de In Validation para In Fixes, e quando a tentativa atual entrou em In Review. */
+  tentativa_correcao?: number;
+  correcao_em_revisao_em?: string | null;
   ativo: boolean;
   created_at: string | null;
   updated_at: string | null;
@@ -383,6 +387,8 @@ export const CODIGOS_ERRO_PLANILHA = [
   "app_ausente", "one_ui_ausente", "valor_obrigatorio", "valor_invalido", "tc_id_duplicado",
   "pessoa_nao_encontrada", "pessoa_ambigua", "pessoa_fora_do_time", "responsavel_igual_backup",
   "texto_muito_longo",
+  // Planned date do projeto na planilha (spec 075).
+  "data_planejada_invalida", "data_planejada_fora_do_intervalo", "data_planejada_divergente",
   // Relatório SDF no formato novo (spec 060).
   "sdf_nome_sem_id", "sdf_formato_invalido", "sdf_data_invalida", "sdf_one_ui_invalido",
   "sdf_sem_resultados", "sdf_tc_fora_do_projeto", "sdf_device_fora_do_projeto", "sdf_one_ui_diferente", "sdf_id_repetido",
@@ -407,4 +413,70 @@ export interface AlteracaoCasoTeste {
   usuario_perfil: string | null;
   origem: string;
   alterado_em: string;
+}
+
+/** Um resultado do SDF que é falha: tudo que não é PASS, N/A, NA ou Check (spec 072, RN-01). */
+export interface FalhaSdf {
+  modelo_dispositivo_id: string;
+  modelo_nome: string;
+  sdf_id: string | null;
+  resultado: string;
+  descricao: string | null;
+  data_execucao: string;
+  /** Spec 073: a tentativa de correção em que a falha entrou; nula nas falhas anteriores a ela. */
+  tentativa?: number | null;
+}
+
+/** Uma linha de SDF Failures: o caso e as falhas dele, da mais recente para a mais antiga. */
+export interface CasoComFalhas {
+  caso_teste_id: string;
+  tc_id: string;
+  status: StatusCasoTeste;
+  time_id: string;
+  responsavel_id: string;
+  responsavel_identificador: string | null;
+  backup_id: string | null;
+  dev_fix_id: string | null;
+  dev_fix_identificador: string | null;
+  falhas: FalhaSdf[];
+  /** Spec 073: a tentativa de correção do caso e quando a atual entrou em In Review. */
+  tentativa_correcao: number;
+  correcao_em_revisao_em: string | null;
+}
+
+/** Spec 073: os Status por onde a correção anda, na ordem do fluxo. */
+export const STATUS_DA_CORRECAO = ["InFixes", "InProgress", "InReview", "InValidation"] as const satisfies readonly StatusCasoTeste[];
+export type StatusDaCorrecao = (typeof STATUS_DA_CORRECAO)[number];
+
+export interface FiltrosMyFixes {
+  status?: StatusDaCorrecao[];
+  responsavel?: string;
+}
+
+/** Spec 076: como uma tentativa de correção fechou. */
+export const RESULTADOS_DA_CORRECAO = ["corrigida", "falhou_de_novo", "encerrada"] as const;
+export type ResultadoDaCorrecao = (typeof RESULTADOS_DA_CORRECAO)[number];
+
+/** Spec 076: uma tentativa de correção fechada, como a visão Concluídas da My Fixes mostra. */
+export interface CorrecaoConcluida {
+  id: string;
+  caso_teste_id: string;
+  tc_id: string;
+  tentativa: number;
+  origem: "validacao" | "regressao";
+  corretor_id: string | null;
+  corretor_identificador: string | null;
+  /** As três datas vêm em UTC, como o backend conta o dia, o filtro de período e os dias até corrigir. */
+  falha_em: string;
+  em_revisao_em: string | null;
+  fechada_em: string;
+  resultado: ResultadoDaCorrecao;
+  dias_ate_corrigir: number;
+}
+
+export interface FiltrosCorrecoesConcluidas {
+  corretor_id?: string;
+  resultado?: ResultadoDaCorrecao;
+  /** `AAAA-MM-DD` (dia) ou `AAAA-Www` (semana), pelo dia em que a tentativa fechou. */
+  periodo?: string;
 }

@@ -2,6 +2,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import type { PerfilAtual } from "@/core/auth/api";
 import { ApiError } from "@/shared/api/problem-details";
 
+import type { FiltrosCorrecoesConcluidas, FiltrosMyFixes } from "../model/projeto";
 import {
   casosTesteApi,
   formFactorApi,
@@ -234,4 +235,23 @@ function invalidarResultadosSdf(queryClient: ReturnType<typeof useQueryClient>, 
     queryClient.invalidateQueries({ queryKey: ["projetos", projetoId] }),
     queryClient.invalidateQueries({ queryKey: ["form-factor", "historico", projetoId] }),
   ]);
+}
+
+/** Spec 076: as tentativas de correção fechadas do projeto (visão Concluídas da My Fixes). */
+export function useCorrecoesConcluidas(projetoId: string, page: number, pageSize: number, filtros: FiltrosCorrecoesConcluidas) {
+  return useQuery({
+    queryKey: ["my-fixes", "concluidas", projetoId, page, pageSize, filtros],
+    queryFn: () => casosTesteApi.listarCorrecoesConcluidas(projetoId, page, pageSize, filtros),
+    placeholderData: (anterior) => anterior,
+  });
+}
+
+/** Spec 073: os casos em correção do projeto em que a pessoa é a corretora. */
+export function useMyFixes(projetoId: string, page: number, pageSize: number, filtros: FiltrosMyFixes, enabled = true) {
+  return useQuery({
+    queryKey: ["my-fixes", projetoId, page, pageSize, filtros],
+    queryFn: () => casosTesteApi.listarMyFixes(projetoId, page, pageSize, filtros),
+    enabled,
+    placeholderData: (anterior) => anterior,
+  });
 }

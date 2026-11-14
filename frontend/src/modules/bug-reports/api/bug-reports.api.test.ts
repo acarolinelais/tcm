@@ -32,6 +32,11 @@ describe("bugReportsApi", () => {
     expect(semana.has("dia")).toBe(false);
   });
 
+  it("reincidentes vai como true (spec 073)", async () => {
+    await bugReportsApi.listar("clock", 1, 20, { reincidentes: true });
+    expect(new URL(String(vi.mocked(fetch).mock.calls[0][0]), "http://x").searchParams.get("reincidentes")).toBe("true");
+  });
+
   it("falha: um 403 da API vira ApiError com o status", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ type: "about:blank", title: "Proibido", status: 403 }), { status: 403 }));
 

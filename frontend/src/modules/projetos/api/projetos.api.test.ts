@@ -39,11 +39,29 @@ describe("APIs de projetos", () => {
     expect(fetch).toHaveBeenLastCalledWith("/api/projetos/project-1/status", expect.objectContaining({ method: "PATCH", body: JSON.stringify({ status: "InProgress" }) }));
   });
 
+  it("a My Fixes manda os Status repetidos e só os filtros preenchidos (spec 073)", async () => {
+    await casosTesteApi.listarMyFixes("clock", 1, 20, { status: ["InFixes", "InReview"], responsavel: " " });
+    const url = new URL(String(vi.mocked(fetch).mock.calls[0][0]), "http://x");
+    expect(url.pathname).toBe("/api/bug-reports/my-fixes");
+    expect(url.searchParams.getAll("status")).toEqual(["InFixes", "InReview"]);
+    expect(url.searchParams.has("responsavel")).toBe(false);
+  });
+
+  it("as Concluídas mandam a semana, o corretor e o fuso, sem filtro vazio (spec 076)", async () => {
+    await casosTesteApi.listarCorrecoesConcluidas("clock", 2, 20, { periodo: "2026-W46", corretor_id: "ana" });
+    const url = new URL(String(vi.mocked(fetch).mock.calls[0][0]), "http://x");
+    expect(url.pathname).toBe("/api/bug-reports/my-fixes/concluidas");
+    expect(Object.fromEntries(url.searchParams)).toMatchObject({ projeto_id: "clock", page: "2", semana: "2026-W46", corretor_id: "ana" });
+    expect(url.searchParams.has("dia")).toBe(false);
+    expect(url.searchParams.has("resultado")).toBe(false);
+    expect(url.searchParams.get("fuso_horario")).toBeTruthy();
+  });
+
   it("envia a planilha inicial como multipart com time e modelos", async () => {
     const file = new File(["planilha"], "casos.xlsx");
     await projetosApi.importar(file, "time-1", ["model-1", "model-2"]);
     const [url, init] = vi.mocked(fetch).mock.calls[0];
-    expect(url).toBe("/api/projetos/importar");
+    expect(url).toBe(`/api/projetos/importar?fuso_horario=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`);
     expect(init?.method).toBe("POST");
     expect(init?.body).toBeInstanceOf(FormData);
     expect((init?.body as FormData).get("arquivo")).toBe(file);

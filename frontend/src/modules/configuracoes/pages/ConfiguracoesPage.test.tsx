@@ -35,7 +35,7 @@ describe("ConfiguracoesPage", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Settings" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Language" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /English/ }));
-    expect(screen.getByRole("menuitem", { name: /Português|Portuguese/ })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Português" })).toBeInTheDocument();
   });
 
   it("mostra a cor do avatar abaixo do idioma, com a cor da conta marcada", async () => {

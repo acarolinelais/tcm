@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { Button } from "@heroui/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, MessageSquareText } from "lucide-react";
+import { ChevronRight, MessageSquareText, RotateCcw } from "lucide-react";
 import { useOutletContext, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
@@ -24,6 +24,8 @@ import { DataTable, type DataTableColumn } from "@/shared/ui/data-table";
 import { DataTableFilter } from "@/shared/ui/data-table-filter";
 import { DataTablePagination } from "@/shared/ui/data-table-pagination";
 import { estadoDaTabela } from "@/shared/ui/data-table-state";
+import { FiltroPilula } from "@/shared/ui/filtro-pilula";
+import { SeloTentativa } from "@/shared/ui/selo-tentativa";
 import { ErroComRetry } from "@/shared/ui/erro-com-retry";
 import { EstadoVazio } from "@/shared/ui/estado-vazio";
 import { InlineSelect } from "@/shared/ui/inline-select";
@@ -139,7 +141,7 @@ export function BugReportsPage() {
       isRowHeader: true,
       className: topo,
       header: t("tcId"),
-      cell: (caso) => <Linha><TcIdBotao caso={{ id: caso.caso_teste_id, tc_id: caso.tc_id }} onAbrir={setCasoAberto} /></Linha>,
+      cell: (caso) => <Linha><span className="flex min-w-0 items-center gap-2"><TcIdBotao caso={{ id: caso.caso_teste_id, tc_id: caso.tc_id }} onAbrir={setCasoAberto} /><SeloTentativa tentativa={caso.tentativa_correcao} /></span></Linha>,
       exportar: { titulo: t("tcId"), valor: (caso) => caso.tc_id },
     },
     {
@@ -230,7 +232,10 @@ export function BugReportsPage() {
     {cabecalho}
     <div className="mb-5 flex shrink-0 flex-wrap items-center gap-3 border-b border-separator pb-5">
       <div className="min-w-0"><ProjetoSwitcher comoTitulo={false} projetoId={projetoAberto.id} nome={projetoAberto.app} projetos={projetos} buscavel onEscolher={trocarProjeto} /></div>
-      <div className="ml-auto">
+      <div className="ml-auto flex flex-wrap items-center gap-3">
+        {/* Spec 073, RN-15: só os casos a partir da segunda tentativa, para o KP decidir se realoca. */}
+        <FiltroPilula ligado={Boolean(filtros.reincidentes)} onChange={(ligado) => { setPagina(1); setFiltros({ ...filtros, reincidentes: ligado || undefined }); }}
+          icone={<RotateCcw aria-hidden="true" className="size-4" strokeWidth={1.75} />} rotulo={t("recurringFailures")} />
         <WeekPickerHero permitirDia label={t("dayOrWeek")} value={filtros.periodo ?? ""} onChange={filtrar("periodo")} />
       </div>
     </div>

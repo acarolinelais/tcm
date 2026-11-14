@@ -19,6 +19,7 @@ from src.application.schemas.link_pull_request import (
 from src.application.schemas.timeline import TimelineResponse
 from src.domain.common.paged_result import PagedResult
 from src.domain.common.usuario_autenticado import UsuarioAutenticado
+from src.domain.entities.caso_teste import StatusCasoTeste
 
 
 class CasoTesteService(Protocol):
@@ -73,6 +74,10 @@ class CasoTesteService(Protocol):
 
     async def transferir_para_backup(
         self, usuario_atual: UsuarioAutenticado, caso_id: UUID
+    ) -> CasoTesteResponse: ...
+
+    async def mudar_status_da_correcao(
+        self, usuario_atual: UsuarioAutenticado, caso_id: UUID, status: StatusCasoTeste
     ) -> CasoTesteResponse: ...
 
     async def listar_pull_requests(

@@ -70,12 +70,13 @@ export const en: Record<SlugGuia, ConteudoGuia> = {
       {
         titulo: "When the system moves it for you",
         paragrafos: [
-          "Only a case in In Validation moves by itself, when results arrive from an SDF report or a test round:",
+          "A case in In Validation moves by itself when results arrive from an SDF report or a test round:",
         ],
         itens: [
           "the latest result of every device is PASS: the case goes to Done;",
           "the result that just arrived is FAIL: the case goes to In Fixes;",
           "anything else, such as one device still without a result: the case stays in In Validation.",
+          "a Done case gets a FAIL in an SDF report: the case goes back to In Fixes in a new attempt, with the same fixer. This only happens when the FAIL is the latest result of that device and the project is not closed.",
         ],
       },
       {
@@ -180,7 +181,7 @@ export const en: Record<SlugGuia, ConteudoGuia> = {
         itens: [
           "SDF ID: the file name up to the first \"_\". 123456-789012_0_Test_1_Detail.xlsx gives 123456-789012. Each SDF ID can be used once per project.",
           "Device: cell C4. It must be a device model of the project.",
-          "Run date: cell F4 (Start Time), as month/day/year and time, like 10/21/2026 6:43:35 PM.",
+          "Run date: cell F4 (Start Time), as year/month/day, like 2026/11/11. The time is optional.",
           "Results: the table with headers on row 7. Script Name without .py is the TC ID, State is the result and Description is shown in the result details.",
           "One UI: taken from Test File Path, as in OneUI95 for 9.5. It must match the project.",
           "Rows for HQ_precondition.py and Setup.py are skipped.",

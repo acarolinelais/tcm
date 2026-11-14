@@ -65,3 +65,5 @@ Formato MADR enxuto ([template.md](template.md)). Para criar um novo, use a skil
 | [0051](0051-recharts-para-graficos.md) | Recharts para os gráficos do frontend | Aceito |
 | [0052](0052-dois-tamanhos-de-botao.md) | Dois tamanhos de botão, os do HeroUI | Proposto |
 | [0053](0053-posicao-do-botao-de-adicionar-e-do-filtro-de-data.md) | Posição do botão de adicionar e do filtro de data | Proposto |
+| [0054](0054-termos-em-ingles-na-interface-em-portugues.md) | Termos em inglês na interface em português | Aceito |
+| [0055](0055-nome-do-idioma-no-proprio-idioma.md) | Nome do idioma no próprio idioma | Aceito |

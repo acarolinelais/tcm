@@ -37,6 +37,17 @@ class ConcluidosDev:
 
 
 @dataclass(frozen=True)
+class CorrecoesDev:
+    """Spec 076, RN-16: tentativas fechadas por corretor nos últimos 30 dias."""
+
+    usuario_id: UUID
+    nome: str
+    corrigidas: int
+    falharam_de_novo: int
+    media_dias: float | None  # Só das corrigidas; nula sem nenhuma.
+
+
+@dataclass(frozen=True)
 class Andamento:
     """Test Cases de um time ou setor por etapa (spec 064, RN-02 e RN-08)."""
 
@@ -65,6 +76,7 @@ class ResumoTime:
     em_andamento_por_projeto: dict[UUID, int] = field(default_factory=dict)
     # Projeto → (PASS, total) da rodada mais recente; projeto sem rodada não aparece.
     pass_rate_por_projeto: dict[UUID, tuple[int, int]] = field(default_factory=dict)
+    correcoes_por_dev: list[CorrecoesDev] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

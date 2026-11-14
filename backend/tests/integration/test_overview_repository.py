@@ -7,6 +7,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from src.domain.entities.correcao import Correcao, OrigemCorrecao, ResultadoCorrecao
 from src.domain.entities.execucao_sdf import ExecucaoSdf
 from src.domain.queries.resumo_overview import EscopoOverview, ResumoPessoal, ResumoTime
 from src.infrastructure.data.auditoria import usuario_auditoria
@@ -16,6 +17,7 @@ from src.infrastructure.data.models.projeto_model import ProjetoModel
 from src.infrastructure.data.models.time_membro_model import TimeMembroModel
 from src.infrastructure.data.models.time_model import TimeModel
 from src.infrastructure.data.models.usuario_model import UsuarioModel
+from src.infrastructure.repositories.correcao_repository import CorrecaoRepositoryImpl
 from src.infrastructure.repositories.execucao_sdf_repository import ExecucaoSdfRepositoryImpl
 from src.infrastructure.repositories.overview_repository import OverviewRepositoryImpl
 from tests.integration.test_resultado_form_factor_repository import _Cenario
@@ -414,6 +416,24 @@ async def test_pass_rate_usa_so_a_rodada_mais_recente(cenario):
 
 
 @pytest.mark.asyncio
+async def test_pass_rate_conta_na_check_e_caixa_como_aprovado(cenario):
+    # Spec 072, RN-01: a mesma regra de falha do SDF Failures.
+    rodada, _ = await cenario.rodada(
+        await cenario.caso("Clock_001"), "SDF-0", datetime(2025, 10, 1, tzinfo=UTC)
+    )
+    for i, resultado in enumerate(("N/A", " check ", "pass", "EXCEPTION", "FAIL")):
+        await _execucao_na_rodada(
+            cenario, rodada, await cenario.caso(f"Clock_2{i:02}"), {cenario.s26: resultado}
+        )
+
+    pass_rate = await OverviewRepositoryImpl(cenario.session).pass_rate_ultima_rodada(
+        cenario.unidade_id, cenario.projeto_id
+    )
+
+    assert [(m.modelo, m.aprovados) for m in pass_rate.modelos] == [("SAMSUNG S26", 3)]
+
+
+@pytest.mark.asyncio
 async def test_falha_pass_rate_sem_rodada_e_nulo(cenario):
     await cenario.caso("Clock_001")
 
@@ -586,3 +606,45 @@ async def test_falha_resumir_time_de_outro_time_nao_mostra_andamento_nem_pass_ra
 
     assert resumo.andamento_por_time == resumo.andamento_por_setor == []
     assert resumo.em_correcao_por_projeto == resumo.pass_rate_por_projeto == {}
+
+
+async def _correcao(cenario, caso_id, corretor, resultado, falha_em, fechada_em, tentativa=1):
+    correcao = Correcao(cenario.unidade_id, caso_id, tentativa, OrigemCorrecao.VALIDACAO, falha_em)
+    correcao.fechar(ResultadoCorrecao(resultado), fechada_em, corretor, None)
+    await CorrecaoRepositoryImpl(cenario.session).adicionar(correcao)
+
+
+@pytest.mark.asyncio
+async def test_resumir_time_correcoes_por_dev(cenario):
+    # Spec 076, CA-13: Ana corrigiu duas (2 e 4 dias) e uma falhou de novo; Bia, uma em 1 dia.
+    um, dois, tres = [await cenario.caso(f"Clock_00{n}") for n in (1, 2, 3)]
+    recente = DESDE.replace(tzinfo=None) + timedelta(days=5)
+    await _correcao(cenario, um, cenario.ana, "corrigida", recente, recente + timedelta(days=2))
+    await _correcao(cenario, dois, cenario.ana, "corrigida", recente, recente + timedelta(days=4))
+    await _correcao(cenario, tres, cenario.ana, "falhou_de_novo", recente, recente)
+    await _correcao(
+        cenario, tres, cenario.bia, "corrigida", recente, recente + timedelta(days=1), 2
+    )
+    await cenario.session.flush()
+
+    resumo = await _resumir_time(cenario)
+
+    assert [
+        (dev.nome, dev.corrigidas, dev.falharam_de_novo, dev.media_dias)
+        for dev in resumo.correcoes_por_dev
+    ] == [("Ana", 2, 1, 3.0), ("Bia", 1, 0, 1.0)]
+
+
+@pytest.mark.asyncio
+async def test_falha_correcoes_antes_da_janela_ou_encerradas_nao_contam(cenario):
+    # CA-14: sem tentativa fechada nos últimos 30 dias, o gráfico fica vazio.
+    caso = await cenario.caso("Clock_001")
+    desde = DESDE.replace(tzinfo=None)
+    antes = desde - timedelta(days=1)
+    await _correcao(cenario, caso, cenario.ana, "corrigida", antes, antes)
+    await _correcao(cenario, caso, cenario.bia, "encerrada", desde, desde + timedelta(days=1), 2)
+    await cenario.session.flush()
+
+    resumo = await _resumir_time(cenario)
+
+    assert resumo.correcoes_por_dev == []

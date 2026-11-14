@@ -1,6 +1,7 @@
 import { httpDelete, httpGet, httpPatch, httpPatchBody, httpPost, httpPostForm, httpPut } from "@/core/api/http-client";
 import { useMock } from "@/core/config";
 import {
+  mockBugReportsApi,
   mockCasosTesteApi,
   mockFormFactorApi,
   mockModelosDispositivoApi,
@@ -11,6 +12,11 @@ import { DEFAULT_TABLE_PAGE_SIZE } from "@/shared/lib/paginacao";
 
 import type {
   AtualizarCasoTesteInput,
+  CasoComFalhas,
+  CorrecaoConcluida,
+  FiltrosCorrecoesConcluidas,
+  FiltrosMyFixes,
+  StatusDaCorrecao,
   AtualizarProjetoInput,
   CasoTeste,
   CasoTesteDetalhe,
@@ -91,7 +97,8 @@ export const projetosApi = {
     body.append("arquivo", arquivo);
     body.append("time_id", timeId);
     modelosIds.forEach((modelId) => body.append("modelos_ids", modelId));
-    return httpPostForm<ImportacaoProjeto>("/api/projetos/importar", body);
+    // O fuso do navegador decide qual é o dia de hoje para a Planned date da planilha (spec 075).
+    return httpPostForm<ImportacaoProjeto>(`/api/projetos/importar?fuso_horario=${encodeURIComponent(fusoHorario())}`, body);
   },
   atualizarStatus(id: string, status: StatusProjeto) {
     return useMock
@@ -141,6 +148,32 @@ export const casosTesteApi = {
     return useMock
       ? Promise.resolve(mockCasosTesteApi.atualizar(id, body))
       : httpPut<CasoTeste>(`/api/test-cases/${id}`, body);
+  },
+  /** Spec 073: os casos em correção do projeto em que a pessoa é a corretora. */
+  listarMyFixes(projetoId: string, page: number, pageSize: number, filtros: FiltrosMyFixes = {}) {
+    if (useMock) return Promise.resolve(mockBugReportsApi.listarMyFixes(projetoId, page, pageSize, filtros));
+    const responsavel = filtros.responsavel?.trim();
+    return httpGet<PagedResult<CasoComFalhas>>("/api/bug-reports/my-fixes", {
+      projeto_id: projetoId, page, page_size: pageSize,
+      ...(filtros.status?.length ? { status: filtros.status } : {}),
+      ...(responsavel ? { responsavel } : {}),
+    });
+  },
+  /** Spec 076: as tentativas de correção fechadas do projeto, com o escopo da My Fixes. */
+  listarCorrecoesConcluidas(projetoId: string, page: number, pageSize: number, filtros: FiltrosCorrecoesConcluidas = {}) {
+    if (useMock) return Promise.resolve(mockBugReportsApi.listarCorrecoesConcluidas(projetoId, page, pageSize, filtros));
+    const { periodo, ...outros } = filtros;
+    return httpGet<PagedResult<CorrecaoConcluida>>("/api/bug-reports/my-fixes/concluidas", {
+      projeto_id: projetoId, page, page_size: pageSize, ...outros,
+      ...(periodo ? { [periodo.includes("-W") ? "semana" : "dia"]: periodo } : {}),
+      fuso_horario: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    });
+  },
+  /** Spec 073: a mudança de Status pela My Fixes, só pelos Status da correção. */
+  mudarStatusDaCorrecao(id: string, status: StatusDaCorrecao) {
+    return useMock
+      ? Promise.resolve(mockCasosTesteApi.mudarStatusDaCorrecao(id, status))
+      : httpPatchBody<CasoTeste>(`/api/test-cases/${id}/correcao`, { status });
   },
   transferirParaBackup(id: string) {
     return useMock

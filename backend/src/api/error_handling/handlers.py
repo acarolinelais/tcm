@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -15,6 +17,7 @@ from src.domain.common.exceptions import (
 )
 
 MEDIA_TYPE = "application/problem+json"
+logger = logging.getLogger(__name__)
 
 
 def _response(problem: ProblemDetails) -> JSONResponse:
@@ -118,6 +121,8 @@ async def handle_invalid_credentials(
 
 
 async def handle_unexpected(request: Request, exc: Exception) -> JSONResponse:
+    # A resposta não expõe o erro; sem este registro, o 500 não deixa rastro em lugar nenhum.
+    logger.exception("Erro inesperado em %s %s", request.method, request.url.path, exc_info=exc)
     problem = ProblemDetails(title="Erro interno.", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     return _response(problem)
 

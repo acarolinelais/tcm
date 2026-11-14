@@ -22,6 +22,7 @@ from src.application.schemas.form_factor_historico import (
     to_historico_response,
     to_resumo_response,
 )
+from src.application.services.registro_de_correcoes import RegistroDeCorrecoes
 from src.application.validators.semana import fuso_horario_valido, intervalo_dia
 from src.application.validators.semana import intervalo_semana_iso as _intervalo_semana_iso
 from src.domain.common.exceptions import (
@@ -77,7 +78,9 @@ class FormFactorServiceImpl:
         rodada_repo: RodadaFormFactorRepository | None = None,
         historico_repo: HistoricoFormFactorRepository | None = None,
         contexto_auditoria: ContextoAuditoria | None = None,
+        registro_correcoes: RegistroDeCorrecoes | None = None,
     ) -> None:
+        self._registro_correcoes = registro_correcoes
         self._projeto_repo = projeto_repo
         self._time_repo = time_repo
         self._resultado_repo = resultado_repo
@@ -280,6 +283,7 @@ class FormFactorServiceImpl:
             projeto.one_ui,
             origem="MANUAL",
         )
+        execucao.tentativa_correcao = caso.tentativa_correcao
         try:
             await self._execucao_repo.adicionar(execucao)
             for modelo_id, valor in request.resultados.items():
@@ -431,12 +435,17 @@ class FormFactorServiceImpl:
         # (spec 038, RN-04).
         if self._contexto_auditoria is not None:
             await self._contexto_auditoria.definir_origem("form_factor")
+        antes = RegistroDeCorrecoes.antes(caso)
         caso.registrar_resultado_form_factor(request.resultados, modelos_ids)
         execucao.resultados_registrados = True
+        # Spec 073: a execução fica na tentativa de correção em que o caso ficou.
+        execucao.tentativa_correcao = caso.tentativa_correcao
         data_reportada = execucao.data_reportada
         try:
             await self._caso_repo.atualizar(caso)
             await self._execucao_repo.atualizar(execucao)
+            if self._registro_correcoes is not None:
+                await self._registro_correcoes.registrar(caso, antes, data_reportada)
             for modelo_id, valor in request.resultados.items():
                 await self._resultado_repo.adicionar(
                     ResultadoFormFactor(usuario_atual.unidade_id, execucao.id, modelo_id, valor)

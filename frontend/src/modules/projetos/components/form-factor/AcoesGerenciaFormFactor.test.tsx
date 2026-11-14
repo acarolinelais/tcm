@@ -99,7 +99,7 @@ describe("AcoesGerenciaFormFactor", () => {
     expect(opcoes?.timeout).toBe(0);
     render(<>{opcoes?.description}</>);
     expect(screen.getAllByRole("listitem").map((item) => item.textContent)).toEqual([
-      "Cell F4 (Start Time) doesn't have a valid date. Use month/day/year and time, like 10/21/2026 6:43:35 PM.",
+      "Cell F4 (Start Time) doesn't have a valid date. Use year/month/day, like 2026/11/11.",
       'Row 9: TC ID "Keyboard_000099" isn\'t in this project.',
     ]);
   });

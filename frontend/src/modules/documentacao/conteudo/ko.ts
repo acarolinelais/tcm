@@ -71,12 +71,13 @@ export const ko: Partial<Record<SlugGuia, ConteudoGuia>> = {
       {
         titulo: "시스템이 자동으로 옮길 때",
         paragrafos: [
-          "SDF 보고서나 테스트 라운드에서 결과가 들어오면, 검증 중인 케이스만 자동으로 옮겨집니다.",
+          "SDF 보고서나 테스트 라운드에서 결과가 들어오면 검증 중인 케이스가 자동으로 옮겨집니다.",
         ],
         itens: [
           "모든 기기의 최신 결과가 PASS: 완료로 갑니다.",
           "방금 들어온 결과가 FAIL: 수정 중으로 갑니다.",
           "그 밖의 경우, 예를 들어 아직 결과가 없는 기기가 있으면: 검증 중에 그대로 있습니다.",
+          "완료된 케이스가 SDF 보고서에서 FAIL을 받으면: 같은 수정 담당자에게 새 시도로 수정 중으로 돌아갑니다. FAIL이 해당 기기의 최신 결과이고 프로젝트가 종료되지 않은 경우에만 해당합니다.",
         ],
       },
       {
@@ -182,7 +183,7 @@ export const ko: Partial<Record<SlugGuia, ConteudoGuia>> = {
         itens: [
           "SDF ID: 파일 이름에서 첫 \"_\" 앞부분. 123456-789012_0_Test_1_Detail.xlsx라면 123456-789012입니다. SDF ID는 프로젝트마다 한 번만 쓸 수 있습니다.",
           "기기: C4 셀. 프로젝트의 기기 모델이어야 합니다.",
-          "실행 날짜: F4 셀(Start Time). 월/일/연도와 시각 형식으로, 예를 들어 10/21/2026 6:43:35 PM.",
+          "실행 날짜: F4 셀(Start Time). 연도/월/일 형식으로, 예를 들어 2026/11/11. 시각은 생략할 수 있습니다.",
           "결과: 7행에 헤더가 있는 표. Script Name에서 .py를 뺀 값이 TC ID, State가 결과이며, Description은 결과 상세에 나옵니다.",
           "One UI: Test File Path에서 가져옵니다(예: OneUI95는 9.5). 프로젝트의 버전과 같아야 합니다.",
           "HQ_precondition.py와 Setup.py 행은 건너뜁니다.",

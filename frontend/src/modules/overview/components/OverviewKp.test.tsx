@@ -100,6 +100,36 @@ it("falha: sem data planejada, o burndown avisa e não tem planejado (spec 071, 
   expect(within(card).getByText("19 Test Cases still open today.")).toBeInTheDocument();
 });
 
+it("a frase de quanto falta conta o projeto escolhido, como os cards", async () => {
+  vi.spyOn(Math, "random").mockReturnValue(0);
+  abrir();
+
+  // Alarm 2.0: 4 de 9 concluídos; o total dos dois projetos daria 8.
+  expect(await screen.findByText("Don't give up, 5 test cases to go!")).toBeInTheDocument();
+  vi.mocked(Math.random).mockRestore();
+});
+
+it("falha: ao trocar para um projeto sem nada concluído, a frase deixa de contar o anterior", async () => {
+  vi.spyOn(Math, "random").mockReturnValue(0);
+  const user = userEvent.setup();
+  abrir();
+  await screen.findByText("Don't give up, 5 test cases to go!");
+
+  await user.click(screen.getByRole("button", { name: "Alarm 2.0" }));
+  await user.click(await screen.findByRole("menuitemradio", { name: "Clock 9.5" }));
+
+  expect(await screen.findByText("Your test cases are ready!")).toBeInTheDocument();
+  expect(screen.queryByText(/5 test cases to go/)).not.toBeInTheDocument();
+  vi.mocked(Math.random).mockRestore();
+});
+
+it("o KP também vê as correções por dev (spec 076, CA-13)", async () => {
+  vi.mocked(overviewApi.obterTime).mockResolvedValue({ ...time, correcoesPorDev: [{ usuarioId: "u1", nome: "Ana", corrigidas: 1, falharamDeNovo: 0, mediaDias: 2 }] });
+  abrir();
+
+  expect(await within(await cartao("Fixes per developer")).findByText("Ana: 1 fixed, 0 failed again, 2 days on average")).toBeInTheDocument();
+});
+
 it("trocar de projeto refaz o burndown e o Pass Rate com o projeto escolhido (CA-02)", async () => {
   const user = userEvent.setup();
   abrir();

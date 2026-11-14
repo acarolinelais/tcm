@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, field_validator, model_validator
@@ -45,6 +45,16 @@ class CriarCasoTesteRequest(BaseModel):
         if not tc_id:
             raise ValueError("TC ID é obrigatório.")
         return tc_id
+
+
+# Spec 073: os Status da correção, na API (filtro da My Fixes e a mudança de Status pela aba).
+StatusDaCorrecao = Literal["InFixes", "InProgress", "InReview", "InValidation"]
+
+
+class MudarStatusDaCorrecaoRequest(BaseModel):
+    """Spec 073: a My Fixes só leva o caso pelos Status da correção (RN-10)."""
+
+    status: StatusDaCorrecao
 
 
 class AtualizarCasoTesteRequest(BaseModel):

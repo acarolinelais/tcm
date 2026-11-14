@@ -199,7 +199,7 @@ test("falha: o relatório com dois problemas mostra os dois no toast, no idioma 
   // Os dois problemas no mesmo aviso, na ordem da API e traduzidos (o texto da API é outro).
   const aviso = page.getByText("Não foi possível importar o relatório SDF.").locator("xpath=ancestor::*[.//ul][1]");
   await expect(aviso.locator("li")).toHaveText([
-    "A célula F4 (Start Time) não tem uma data válida. Use mês/dia/ano e hora, como 10/21/2026 6:43:35 PM.",
+    "A célula F4 (Start Time) não tem uma data válida. Use ano/mês/dia, como 2026/11/11.",
     'Linha 9: O TC ID "Keyboard_000099" não é deste projeto.',
   ]);
 });

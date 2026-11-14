@@ -323,12 +323,14 @@ describe("ProjetosPage", () => {
     const [cabecalho, exemplo] = XLSX.utils.sheet_to_json<string[]>(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
     expect(cabecalho).toEqual([
       "App", "TC ID", "Title(English)", "Test Precondition(English)", "Test Procedure(English)", "Expected Result(English)",
-      "Difficulty", "Category", "Automation Level", "TC Situation", "One UI", "Assignees", "Backup",
+      "Difficulty", "Category", "Automation Level", "TC Situation", "One UI", "Assignees", "Backup", "Planned date",
     ]);
     expect(cabecalho).not.toContain("Status");
     expect(exemplo).toHaveLength(cabecalho.length);
     expect(exemplo[cabecalho.indexOf("TC Situation")]).toBe("New");
     expect(String(exemplo[cabecalho.indexOf("Automation Level")])).toBe("1");
+    // Spec 075: a Planned date de exemplo é uma data válida, no formato que a leitura aceita.
+    expect(String(exemplo[cabecalho.indexOf("Planned date")])).toMatch(/^[0-9]{2}\/[0-9]{2}\/[0-9]{4}$/);
     // O modelo baixado volta a ser lido sem erro quando as pessoas são preenchidas (cabeçalho e exemplo andam juntos).
     const arquivo = new File([bytes], "modelo.xlsx");
     await expect(lerPlanilhaProjeto(arquivo)).resolves.toMatchObject({ app: "Clock", one_ui: "9.5", totalLinhas: 1 });

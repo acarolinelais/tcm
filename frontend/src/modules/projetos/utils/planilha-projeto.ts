@@ -1,5 +1,7 @@
 import { CATEGORIAS_CASO_TESTE, DIFICULDADES_CASO_TESTE, MAX_TEXTO_CASO_TESTE, MAX_TITLE_CASO_TESTE, NIVEIS_AUTOMACAO_CASO_TESTE, SITUACOES_CASO_TESTE, type CategoriaCasoTeste, type DificuldadeCasoTeste, type ErroPlanilha, type NivelAutomacaoCasoTeste, type SituacaoCasoTeste, type TextosCasoTeste } from "../model/projeto";
 
+import { formatarDiaIso } from "@/shared/lib/utils";
+
 type ExcelWorkbook = import("@e965/xlsx").WorkBook;
 
 export interface CasoTestePlanilha extends TextosCasoTeste {
@@ -16,7 +18,7 @@ export interface CasoTestePlanilha extends TextosCasoTeste {
 type CabecalhoObrigatorio = "app" | "tc id" | "difficulty" | "category" | "tc situation" | "one ui" | "assignees" | "backup";
 /** Colunas que podem faltar: ausente equivale a célula vazia, sem erro. */
 type CabecalhoTexto = "title(english)" | "test precondition(english)" | "test procedure(english)" | "expected result(english)";
-type CabecalhoOpcional = "automation level" | CabecalhoTexto;
+type CabecalhoOpcional = "automation level" | "planned date" | CabecalhoTexto;
 type CabecalhoLido = CabecalhoObrigatorio | CabecalhoOpcional;
 
 export interface PlanilhaProjeto {
@@ -26,6 +28,8 @@ export interface PlanilhaProjeto {
   totalLinhas: number;
   /** Cabeçalho normalizado → texto como está na planilha, para as mensagens. */
   colunas: Record<CabecalhoLido, string>;
+  /** Spec 075: a data planejada do projeto (`AAAA-MM-DD`), a mesma em todas as linhas preenchidas. */
+  data_planejada: string | null;
 }
 
 export interface PessoasDaLinha {
@@ -58,6 +62,7 @@ const textosCasoTeste: Record<CabecalhoTexto, { exibido: string; campo: keyof Te
 };
 const cabecalhosOpcionais: Record<CabecalhoOpcional, string> = {
   "automation level": "Automation Level",
+  "planned date": "Planned date",
   ...(Object.fromEntries(Object.entries(textosCasoTeste).map(([nome, { exibido }]) => [nome, exibido])) as Record<CabecalhoTexto, string>),
 };
 /** Quanto do texto longo volta no `valor` do erro, como no backend (`TRECHO_TEXTO_LONGO`). */
@@ -66,15 +71,40 @@ const TRECHO_TEXTO_LONGO = 40;
 /** Cabeçalhos do modelo para download, na ordem da planilha atual (spec 027, RN-04). */
 export const CABECALHOS_MODELO_PLANILHA = [
   "App", "TC ID", "Title(English)", "Test Precondition(English)", "Test Procedure(English)", "Expected Result(English)",
-  "Difficulty", "Category", "Automation Level", "TC Situation", "One UI", "Assignees", "Backup",
+  "Difficulty", "Category", "Automation Level", "TC Situation", "One UI", "Assignees", "Backup", "Planned date",
 ] as const;
 /** Linha de exemplo do modelo: indexada pelo cabeçalho, então não sai da ordem nem do tamanho dele. */
 export const EXEMPLO_MODELO_PLANILHA: Record<(typeof CABECALHOS_MODELO_PLANILHA)[number], string> = {
   App: "Clock", "TC ID": "Clock_0001", "Title(English)": "Create an alarm", "Test Precondition(English)": "The Clock app is installed",
   "Test Procedure(English)": "1. Open Clock\n2. Tap Add", "Expected Result(English)": "The alarm is created",
   Difficulty: "Low", Category: "A", "Automation Level": "1", "TC Situation": "New", "One UI": "9.5",
-  Assignees: "nome ou e-mail do membro do time", Backup: "nome ou e-mail do backup",
+  Assignees: "nome ou e-mail do membro do time", Backup: "nome ou e-mail do backup", "Planned date": "",
 };
+
+// Planned date em texto, como no backend (`_DATA_TEXTO`): dia/mês/ano. A célula de data do Excel é lida pelo número.
+const DATA_TEXTO = /^([0-9]{1,2})\/([0-9]{1,2})\/([0-9]{4})$/;
+/** Até quantos dias depois de hoje a data planejada pode ir (`Projeto.DATA_PLANEJADA_MAX_DIAS` no backend). */
+const DATA_PLANEJADA_MAX_DIAS = 730;
+
+function diaIso(ano: number, mes: number, dia: number): string | null {
+  const data = new Date(Date.UTC(ano, mes - 1, dia));
+  if (data.getUTCFullYear() !== ano || data.getUTCMonth() !== mes - 1 || data.getUTCDate() !== dia) return null;
+  return `${ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+}
+
+/** Célula de data do Excel (número com formato de data) ou texto `dd/mm/aaaa`, em `AAAA-MM-DD`; `null` se não for data. */
+function lerData(XLSX: SheetJs, celula: { t?: string; v?: unknown; z?: unknown } | undefined, valor: string, date1904: boolean): string | null {
+  if (celula?.t === "n" && typeof celula.v === "number" && XLSX.SSF.is_date(String(celula.z ?? ""))) {
+    // Planilhas do Excel do Mac podem contar os dias a partir de 1904: sem isso, a data sairia uns 4 anos antes.
+    const { y, m, d } = XLSX.SSF.parse_date_code(celula.v, { date1904 });
+    return diaIso(y, m, d);
+  }
+  const partes = DATA_TEXTO.exec(valor);
+  return partes ? diaIso(Number(partes[3]), Number(partes[2]), Number(partes[1])) : null;
+}
+
+/** `AAAA-MM-DD` → `dd/mm/aaaa`, o formato que a planilha aceita na Planned date. */
+export const formatarDiaBr = (dia: string) => dia.split("-").reverse().join("/");
 
 // Mesma regra do validador do backend (importacao_projeto.py): inteiro puro ou com casa decimal zerada, só dígitos ASCII.
 const REGRA_NIVEL_AUTOMACAO = /^[0-9]+(\.0+)?$/;
@@ -143,9 +173,11 @@ export async function lerPlanilhaProjeto(file: File, onProgress?: (progress: num
   let workbook: ExcelWorkbook;
   try {
     const bytes = await lerBytes(file, onProgress);
-    workbook = XLSX.read(bytes, { type: "array", cellDates: false });
+    // cellNF guarda o formato da célula: é ele que diz se um número é uma data (Planned date).
+    const opcoes = { type: "array", cellDates: false, cellNF: true } as const;
+    workbook = XLSX.read(bytes, opcoes);
     if (workbook.SheetNames.length && !workbook.Sheets[workbook.SheetNames[0]]) {
-      workbook = XLSX.read(semHyperlinks(XLSX, bytes), { type: "array", cellDates: false });
+      workbook = XLSX.read(semHyperlinks(XLSX, bytes), opcoes);
     }
   } catch {
     return falha([geral("arquivo_invalido")]);
@@ -179,6 +211,15 @@ export async function lerPlanilhaProjeto(file: File, onProgress?: (progress: num
   let oneUi = "";
   let totalLinhas = 0;
   const pessoas: PessoasDaLinha[] = [];
+  // O dia de quem importa, como o backend recebe pelo fuso do navegador (spec 071, RN-09).
+  const agora = new Date();
+  const hoje = formatarDiaIso(agora);
+  const limiteIso = formatarDiaIso(new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + DATA_PLANEJADA_MAX_DIAS));
+  // Alterada dentro do forEach: o tipo explícito evita que o TS a estreite para null.
+  let planejada = null as { linha: number; dia: string } | null;
+  // `rows` começa no canto da área usada da aba, que nem sempre é A1: a célula crua precisa do mesmo início.
+  const inicio = XLSX.utils.decode_range(firstSheet["!ref"] ?? "A1").s;
+  const date1904 = Boolean(workbook.Workbook?.WBProps?.date1904);
   rows.slice(1).forEach((row, index) => {
     const linha = index + 2;
     const get = (name: CabecalhoLido) => {
@@ -211,6 +252,15 @@ export async function lerPlanilhaProjeto(file: File, onProgress?: (progress: num
     const numeroNivel = REGRA_NIVEL_AUTOMACAO.test(valorNivel) ? Number.parseInt(valorNivel, 10) : 0;
     const automationLevel: NivelAutomacaoCasoTeste | null = NIVEIS_AUTOMACAO_CASO_TESTE.find((nivel) => nivel === numeroNivel) ?? null;
     if (valorNivel && !automationLevel) erro("automation level", "valor_invalido", valorNivel, { esperados: NIVEIS_AUTOMACAO_CASO_TESTE.map(String) });
+    const valorData = get("planned date");
+    if (valorData) {
+      const celula = firstSheet[XLSX.utils.encode_cell({ r: inicio.r + index + 1, c: inicio.c + indexes.get("planned date")! })];
+      const dia = lerData(XLSX, celula, valorData, date1904);
+      if (!dia) erro("planned date", "data_planejada_invalida", valorData);
+      else if (dia < hoje || dia > limiteIso) erro("planned date", "data_planejada_fora_do_intervalo", formatarDiaBr(dia));
+      else if (!planejada) planejada = { linha, dia };
+      else if (dia !== planejada.dia) erro("planned date", "data_planejada_divergente", formatarDiaBr(dia), { primeira_linha: planejada.linha });
+    }
     const textos = Object.fromEntries(Object.entries(textosCasoTeste).map(([nome, { campo, maximo }]) => {
       const valor = get(nome as CabecalhoTexto);
       // `.length` (UTF-16) nunca é menor que a contagem de code points: só o que passa dela é recontado como o Python,
@@ -240,5 +290,5 @@ export async function lerPlanilhaProjeto(file: File, onProgress?: (progress: num
   if (errors.length) return falha(errors, totalLinhas, pessoas, colunas as PlanilhaProjeto["colunas"]);
   // Só a leitura bem-sucedida chega a 100: com problemas, a barra para onde estava (spec 016, RN-18).
   onProgress?.(100);
-  return { app, one_ui: oneUi, casos, totalLinhas, colunas: colunas as PlanilhaProjeto["colunas"] };
+  return { app, one_ui: oneUi, casos, totalLinhas, colunas: colunas as PlanilhaProjeto["colunas"], data_planejada: planejada?.dia ?? null };
 }

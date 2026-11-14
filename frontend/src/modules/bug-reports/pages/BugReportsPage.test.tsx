@@ -33,7 +33,7 @@ const falha = (extra: Partial<FalhaSdf> = {}): FalhaSdf => ({
 });
 const caso = (extra: Partial<CasoComFalhas> = {}): CasoComFalhas => ({
   caso_teste_id: "caso-2", tc_id: "Clock_000002", status: "To-Do", time_id: "time-1", responsavel_id: "bia",
-  responsavel_identificador: "bia.s", backup_id: null, dev_fix_id: null, dev_fix_identificador: null,
+  responsavel_identificador: "bia.s", backup_id: null, dev_fix_id: null, dev_fix_identificador: null, tentativa_correcao: 0, correcao_em_revisao_em: null,
   falhas: [falha({ modelo_nome: "S26 Ultra", sdf_id: "SDF-6", resultado: "EXCEPTION", descricao: null, data_execucao: "2026-11-06T09:00:00Z" }), falha()],
   ...extra,
 });
@@ -64,6 +64,20 @@ describe("BugReportsPage (SDF Failures)", () => {
       ],
       page: 1, page_size: 100, total_count: 3,
     } as never);
+  });
+
+  it("mostra o selo a partir da segunda tentativa e o filtro Reincidentes vai para a API (spec 073, CA-04 e CA-11)", async () => {
+    vi.mocked(bugReportsApi.listar).mockResolvedValue(pagina([caso({ tentativa_correcao: 2 }), caso({ caso_teste_id: "caso-3", tc_id: "Clock_000003", tentativa_correcao: 1 })]));
+    const user = userEvent.setup();
+    renderPage();
+
+    const [reincidente] = await screen.findAllByRole("row", { name: /Clock_000002/ });
+    expect(within(reincidente).getByText("Fix 2")).toBeInTheDocument();
+    const [primeira] = screen.getAllByRole("row", { name: /Clock_000003/ });
+    expect(within(primeira).queryByText(/^Fix /)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Recurring" }));
+    await waitFor(() => expect(bugReportsApi.listar).toHaveBeenLastCalledWith("clock", 1, DEFAULT_TABLE_PAGE_SIZE, { reincidentes: true }));
   });
 
   it("abre o primeiro projeto e mostra a falha mais recente do caso (CA-01)", async () => {

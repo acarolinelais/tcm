@@ -50,12 +50,13 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
         if responsavel_ids:
             filtros.append(CasoTesteModel.responsavel_id.in_(responsavel_ids))
         if data_final_inicio is not None and data_final_fim is not None:
-            # Semana da End date (spec 065, RN-10): a finalização de tudo, sem depender do Status.
+            # Semana da End date: desde a spec 075 é a primeira entrada em In Review
+            # (`code_done_em`), sem depender do Status.
             filtros.extend(
                 (
                     CasoTesteModel.ativo.is_(True),
-                    CasoTesteModel.all_passed_em >= data_final_inicio,
-                    CasoTesteModel.all_passed_em < data_final_fim,
+                    CasoTesteModel.code_done_em >= data_final_inicio,
+                    CasoTesteModel.code_done_em < data_final_fim,
                 )
             )
         if associado_usuario_id is not None:
@@ -177,6 +178,30 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             CasoTesteComResponsavel(self._to_entity(modelo), nome, CorAvatar(cor or CorAvatar.AZUL))
             for modelo, nome, cor in linhas
         )
+
+    async def ultima_execucao_no_device(
+        self,
+        unidade_id: UUID,
+        projeto_id: UUID,
+        caso_ids: Sequence[UUID],
+        modelo_dispositivo_id: UUID,
+    ) -> dict[UUID, datetime]:
+        if not caso_ids:
+            return {}
+        linhas = await self.session.execute(
+            _resultados_validos(
+                unidade_id,
+                projeto_id,
+                ExecucaoSdfModel.caso_teste_id,
+                func.max(ExecucaoSdfModel.data_reportada),
+            )
+            .where(
+                ExecucaoSdfModel.caso_teste_id.in_(caso_ids),
+                ResultadoFormFactorModel.modelo_dispositivo_id == modelo_dispositivo_id,
+            )
+            .group_by(ExecucaoSdfModel.caso_teste_id)
+        )
+        return dict(linhas.tuples().all())
 
     async def listar_todos_aprovados(
         self, unidade_id: UUID, projeto_id: UUID, caso_ids: Sequence[UUID]
@@ -316,6 +341,8 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
         caso.all_passed_em = model.all_passed_em
         caso.dev_fix_id = model.dev_fix_id
         caso.dev_fix_em = model.dev_fix_em
+        caso.tentativa_correcao = model.tentativa_correcao
+        caso.correcao_em_revisao_em = model.correcao_em_revisao_em
         caso.ativo = model.ativo
         caso.created_at = model.created_at
         caso.updated_at = model.updated_at
@@ -345,6 +372,8 @@ class CasoTesteRepositoryImpl(RepositoryBaseImpl[CasoTeste, CasoTesteModel]):
             all_passed_em=entity.all_passed_em,
             dev_fix_id=entity.dev_fix_id,
             dev_fix_em=entity.dev_fix_em,
+            tentativa_correcao=entity.tentativa_correcao,
+            correcao_em_revisao_em=entity.correcao_em_revisao_em,
             ativo=entity.ativo,
             created_at=entity.created_at,
             updated_at=entity.updated_at,

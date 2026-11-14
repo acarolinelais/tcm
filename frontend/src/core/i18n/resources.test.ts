@@ -5,6 +5,21 @@ import i18n from "./index";
 import { formatNumber } from "./format";
 import { NOME_COR_AVATAR } from "@/shared/lib/cor-avatar";
 
+// Termos que ficam em inglês na interface em português (ADR 0054).
+const GLOSSARIO = ["SDF Failures", "My Fixes", "Automation Level", "Pull Requests", "Form Factor", "SDF Result", "Test Cases", "Test Case", "Pass Rate", "Dev Owner", "Dev Fix", "Backup", "Device", "Status", "App"];
+// Palavras que se escrevem igual nos dois idiomas, e as siglas.
+const MESMA_GRAFIA = ["Manual", "TCs", "SDF", "API"];
+// Do mais longo ao mais curto: "Test Cases" sai antes de "Test Case".
+const TERMOS = [...GLOSSARIO, ...MESMA_GRAFIA].sort((a, b) => b.length - a.length);
+// Nomes de tela e de status que têm rótulo em português e não podem aparecer em inglês no meio de uma frase.
+const NOMES_TRADUZIDOS = /\b(Overview|Board|Kanban|Timeline|General Results|To-Do|In Progress|In Review|In Validation|In Fixes|Done|Cancelled|burndown)\b/;
+
+/** Sem palavra a traduzir depois de tirar o glossário, as siglas e as variáveis. */
+function semTraducao(texto: string) {
+  const resto = TERMOS.reduce((atual, termo) => atual.replaceAll(termo, " "), texto).replace(/\{\{\w+\}\}/g, " ");
+  return !/\p{L}/u.test(resto);
+}
+
 describe("translation resources", () => {
   it("supports the account locale codes and has matching keys for every language", () => {
     expect(languages.map(({ code }) => code)).toEqual(["en", "pt-BR", "ko"]);
@@ -12,6 +27,27 @@ describe("translation resources", () => {
     for (const language of ["pt-BR", "ko"] as const) {
       expect(Object.keys(resources[language].translation).sort()).toEqual(englishKeys);
     }
+  });
+
+  it("names each language in that language (ADR 0055)", () => {
+    expect(languages.map(({ label }) => label)).toEqual(["English", "Português", "한국어"]);
+  });
+
+  it("keeps in English only the glossary terms of ADR 0054 in the Portuguese interface", () => {
+    const iguais = Object.entries(resources["pt-BR"].translation).filter(([key, value]) => value === resources.en.translation[key as keyof typeof resources.en.translation]);
+    expect(iguais.length).toBeGreaterThan(0);
+    for (const [key, value] of iguais) expect(semTraducao(value), `pt-BR ${key}: "${value}"`).toBe(true);
+  });
+
+  it("flags an English text outside the glossary", () => {
+    expect(semTraducao("Save changes")).toBe(false);
+    expect(semTraducao("Dev Fix changed.")).toBe(false);
+    expect(semTraducao("DONE")).toBe(false);
+  });
+
+  it("does not use English screen or status names inside Portuguese sentences", () => {
+    for (const [key, value] of Object.entries(resources["pt-BR"].translation)) expect(value, `pt-BR ${key}`).not.toMatch(NOMES_TRADUZIDOS);
+    expect("Filtros da Timeline").toMatch(NOMES_TRADUZIDOS);
   });
 
   it("names the Test Case detail sections in every language", () => {

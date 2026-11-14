@@ -8,7 +8,7 @@ import type { PerfilAtual } from "@/core/auth/api";
 import { ProjetoSwitcher } from "@/modules/projetos/components/ProjetoSwitcher";
 import { DetalhesCasoTesteDrawer } from "@/modules/projetos/components/casos-teste/DetalhesCasoTesteDrawer";
 import { useProjetosSeletor } from "@/modules/projetos/hooks/useProjetos";
-import { filtrarEncerrados, projetoEncerrado, type CasoTesteResumo } from "@/modules/projetos/model/projeto";
+import { filtrarEncerrados, projetoEncerrado, temEncerrados, type CasoTesteResumo } from "@/modules/projetos/model/projeto";
 import { formatarDiaIso } from "@/shared/lib/utils";
 import { AvatarUsuario } from "@/shared/ui/avatar-usuario";
 import { ErroComRetry } from "@/shared/ui/erro-com-retry";
@@ -113,7 +113,7 @@ export function TimelinePage() {
     {projetoAberto && <div className="min-w-0"><ProjetoSwitcher comoTitulo={false} projetoId={projetoAberto.id} nome={projetoAberto.app} projetos={filtrarEncerrados(todos, comEncerrados, projetoAberto.id)} buscavel onEscolher={trocarProjeto} /></div>}
     {/* Como no frame 2550:3921: o projeto à esquerda e, agrupados à direita, as visões, o intervalo, o Hoje e o Filter. */}
     <div className="ml-auto flex flex-wrap items-center gap-3">
-      <FiltroEncerrados ligado={comEncerrados} onChange={alternarEncerrados} />
+      <FiltroEncerrados existem={temEncerrados(todos)} ligado={comEncerrados} onChange={alternarEncerrados} />
       <ToggleButtonGroup
         aria-label={t("timelineViews")}
         selectionMode="single"

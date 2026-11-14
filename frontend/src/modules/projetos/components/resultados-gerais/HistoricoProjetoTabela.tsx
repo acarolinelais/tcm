@@ -68,10 +68,12 @@ export function HistoricoProjetoTabela(props: Props) {
   const { dados, filtros, expandidos } = props;
   const casos = props.erro ? SEM_CASOS : dados?.items ?? SEM_CASOS;
   const modelos = dados?.modelos ?? SEM_MODELOS;
-  const primeiro = modelos[0];
   const opcoesModelos = modelos.map((modelo) => ({ value: modelo.id, label: modelo.nome }));
+  // Com o filtro de Form Factor ligado, a tabela mostra só esse device (o backend já filtra os casos e as datas).
+  const visiveis = filtros.modeloDispositivoId ? modelos.filter((modelo) => modelo.id === filtros.modeloDispositivoId) : modelos;
+  const primeiro = visiveis[0];
   const pilha = (caso: CasoHistorico, celula: (modelo: ModeloFormFactor) => ReactNode) =>
-    (expandidos.has(caso.caso_teste_id) ? modelos : modelos.slice(0, 1)).map((modelo) => <Linha key={modelo.id}>{celula(modelo)}</Linha>);
+    (expandidos.has(caso.caso_teste_id) ? visiveis : visiveis.slice(0, 1)).map((modelo) => <Linha key={modelo.id}>{celula(modelo)}</Linha>);
   const sdfDoDevice = (caso: CasoHistorico, modeloId: string) => caso.ultimo_sdf_por_modelo[modeloId] ?? "—";
   const primeiraDaPagina = (props.page - 1) * props.pageSize;
 
@@ -86,7 +88,7 @@ export function HistoricoProjetoTabela(props: Props) {
         return <Linha className="gap-2">
           <span className="w-5 text-right tabular-nums text-muted">{String(primeiraDaPagina + casos.indexOf(caso) + 1).padStart(2, "0")}</span>
           {/* Com um device só, não há o que abrir. */}
-          {modelos.length > 1 && <Button
+          {visiveis.length > 1 && <Button
             isIconOnly
             size="sm"
             variant="ghost"
@@ -179,6 +181,6 @@ export function HistoricoProjetoTabela(props: Props) {
       filtered: { title: t("noResults"), hint: t("noGlobalResultsFiltered") },
     })}
     pagination={<DataTablePagination page={props.page} pageSize={props.pageSize} totalCount={dados?.total_count ?? 0} onPageChange={props.onPageChange} onPageSizeChange={props.onPageSizeChange} />}
-    rowDependencies={[t, dados, expandidos, primeiraDaPagina]}
+    rowDependencies={[t, dados, expandidos, primeiraDaPagina, filtros.modeloDispositivoId]}
   />;
 }

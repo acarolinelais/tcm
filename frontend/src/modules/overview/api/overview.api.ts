@@ -47,6 +47,7 @@ export const overviewApi = {
       andamentoPorSetor: r.andamento_por_setor.map(paraAndamento),
       emCorrecaoPorProjeto: r.em_correcao_por_projeto.map((p) => ({ projetoId: p.projeto_id, projeto: p.projeto, emCorrecao: p.em_correcao })),
       passRatePorProjeto: r.pass_rate_por_projeto.map((p) => ({ projetoId: p.projeto_id, projeto: p.projeto, aprovados: p.aprovados, total: p.total })),
+      correcoesPorDev: (r.correcoes_por_dev ?? []).map((d) => ({ usuarioId: d.usuario_id, nome: d.nome, corrigidas: d.corrigidas, falharamDeNovo: d.falharam_de_novo, mediaDias: d.media_dias })),
     };
   },
 

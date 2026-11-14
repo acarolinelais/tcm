@@ -39,5 +39,7 @@ test("falha: sem casos no escopo mostra o estado vazio e nenhum gráfico", async
   await page.goto("/overview");
 
   await expect(page.getByRole("heading", { name: "No Test Cases to show yet" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Overview" })).toBeVisible();
+  await expect(page.getByText("The numbers and charts of the projects in your scope.")).toBeVisible();
   await expect(page.locator(".recharts-surface")).toHaveCount(0);
 });
